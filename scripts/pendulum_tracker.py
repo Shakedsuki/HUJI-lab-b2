@@ -39,7 +39,7 @@ from scipy.signal import savgol_filter
 # ─────────────────────────────────────────────
 
 ROOT             = r"C:\dev\chaos"
-DEFAULT_VIDEO    = os.path.join(ROOT, r"Videos\DSC_0136.mov")
+DEFAULT_VIDEO    = os.path.join(ROOT, r"C:\dev\chaos\Videos\long_recording.mov")
 EXPERIMENTS_FILE = os.path.join(ROOT, r"data\experiments.json")
 
 PIVOT            = (608, 355)
@@ -232,10 +232,12 @@ def main():
 
     if existing_entry:
         print(f"\nFound existing registry entry for {stem}:")
-        print(f"  release_frame = {existing_entry['release_frame']}")
-        print(f"  IC: th1={existing_entry['theta1_release']:.2f}  "
-              f"th2={existing_entry['theta2_release']:.2f}  "
-              f"E={existing_entry['energy_proxy']:.3f}")
+        if existing_entry.get('release_frame') is not None:
+            print(f"  release_frame = {existing_entry['release_frame']}")
+        if existing_entry.get('theta1_release') is not None:
+            print(f"  IC: th1={existing_entry['theta1_release']:.2f}  "
+                  f"th2={existing_entry['theta2_release']:.2f}  "
+                  f"E={existing_entry.get('energy_proxy', 'n/a')}")
         if stored_rois:
             print("  ROIs stored — skipping selectROI")
 
@@ -253,7 +255,7 @@ def main():
     print(f"\nVideo: {width}x{height} @ {video_fps:.2f}fps, {total_frames} frames")
 
     # ── Init frame ───────────────────────────────────────────────────────
-    if existing_entry:
+    if existing_entry and existing_entry.get('init_frame') is not None:
         init_frame = existing_entry["init_frame"]
         print(f"Init frame loaded from registry: {init_frame}")
     else:
@@ -295,7 +297,7 @@ def main():
             print("ERROR: no RED ROI selected"); cap.release(); return
 
     # ── Release frame ────────────────────────────────────────────────────
-    if existing_entry:
+    if existing_entry and existing_entry.get('release_frame') is not None:
         release_frame = existing_entry["release_frame"]
         print(f"Release frame loaded from registry: {release_frame}")
     else:
@@ -320,8 +322,13 @@ def main():
     # ── Set up outputs ───────────────────────────────────────────────────
     os.makedirs(os.path.dirname(output_csv), exist_ok=True)
     os.makedirs(os.path.dirname(debug_mp4),  exist_ok=True)
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    writer = cv2.VideoWriter(debug_mp4, fourcc, video_fps, (width, height))
+    write_debug = '--no-debug' not in sys.argv
+    writer = None
+    if write_debug:
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        writer = cv2.VideoWriter(debug_mp4, fourcc, video_fps, (width, height))
+    else:
+        print("Debug video disabled (--no-debug)")
 
     cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
 
@@ -340,6 +347,23 @@ def main():
                 break
 
             phase = 'holding' if frame_idx < release_frame else 'free_swing'
+            time_s = frame_idx / video_fps
+
+            # ── Pre-init frames: write dropout rows without calling tracker ──
+            # CSRT is a sequential tracker initialized at init_frame.
+            # Calling update() on frames BEFORE init_frame corrupts its
+            # appearance model and causes cascading dropouts for the entire video.
+            if frame_idx < init_frame:
+                wcsv.writerow({
+                    'frame': frame_idx, 'time_s': round(time_s, 5),
+                    'phase': phase, 'x_green': '', 'y_green': '',
+                    'x_red': '', 'y_red': '',
+                    'theta1_deg': '', 'theta2_deg': '', 'dropout': 1,
+                })
+                dropout_total += 1
+                if phase == 'holding': dropout_holding += 1
+                else:                  dropout_free    += 1
+                continue
 
             ok_g, bbox_g = tracker_green.update(frame)
             ok_r, bbox_r = tracker_red.update(frame)
@@ -357,8 +381,6 @@ def main():
             theta1 = compute_angle(PIVOT, green_pos)       if green_pos else None
             theta2 = compute_angle(green_pos, red_pos) \
                      if (green_pos and red_pos) else None
-
-            time_s = frame_idx / video_fps
             wcsv.writerow({
                 'frame':      frame_idx,
                 'time_s':     round(time_s, 5),
@@ -372,46 +394,50 @@ def main():
                 'dropout':    1 if dropout else 0,
             })
 
-            # Debug overlay
-            debug = frame.copy()
-            draw_dashed_circle(debug, PIVOT, MASK_RADIUS, (255,255,255), 1, 14)
-            cv2.circle(debug, PIVOT, 8, (0,215,255), -1)
+            # Debug overlay — skip if --no-debug flag set
+            if '--no-debug' not in sys.argv:
+                debug = frame.copy()
+                draw_dashed_circle(debug, PIVOT, MASK_RADIUS, (255,255,255), 1, 14)
+                cv2.circle(debug, PIVOT, 8, (0,215,255), -1)
 
-            phase_col  = (100,255,100) if phase == 'free_swing' else (100,100,255)
-            phase_text = "FREE_SWING" if phase == 'free_swing' else "HOLDING"
-            cv2.putText(debug, phase_text, (10,55),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, phase_col, 2)
+                phase_col  = (100,255,100) if phase == 'free_swing' else (100,100,255)
+                phase_text = "FREE_SWING" if phase == 'free_swing' else "HOLDING"
+                cv2.putText(debug, phase_text, (10,55),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, phase_col, 2)
 
-            if green_pos:
-                cv2.line(debug, PIVOT, green_pos, (0,255,0), 2)
-                cv2.circle(debug, green_pos, 8, (0,255,0), -1)
-                if theta1 is not None:
-                    cv2.putText(debug, f"th1={theta1:.1f}",
-                                (green_pos[0]+10, green_pos[1]),
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,255,0), 1)
-            if red_pos:
-                cv2.circle(debug, red_pos, 8, (0,0,255), -1)
                 if green_pos:
-                    cv2.line(debug, green_pos, red_pos, (0,0,200), 2)
-                if theta2 is not None:
-                    cv2.putText(debug, f"th2={theta2:.1f}",
-                                (red_pos[0]+10, red_pos[1]),
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 1)
+                    cv2.line(debug, PIVOT, green_pos, (0,255,0), 2)
+                    cv2.circle(debug, green_pos, 8, (0,255,0), -1)
+                    if theta1 is not None:
+                        cv2.putText(debug, f"th1={theta1:.1f}",
+                                    (green_pos[0]+10, green_pos[1]),
+                                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,255,0), 1)
+                if red_pos:
+                    cv2.circle(debug, red_pos, 8, (0,0,255), -1)
+                    if green_pos:
+                        cv2.line(debug, green_pos, red_pos, (0,0,200), 2)
+                    if theta2 is not None:
+                        cv2.putText(debug, f"th2={theta2:.1f}",
+                                    (red_pos[0]+10, red_pos[1]),
+                                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0,0,255), 1)
 
-            cv2.putText(debug, f"frame {frame_idx}/{total_frames}  t={time_s:.2f}s",
-                        (10,25), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255,255,255), 1)
-            if dropout:
-                cv2.putText(debug, "DROPOUT", (10,85),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0,0,255), 2)
-            writer.write(debug)
+                cv2.putText(debug, f"frame {frame_idx}/{total_frames}  t={time_s:.2f}s",
+                            (10,25), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255,255,255), 1)
+                if dropout:
+                    cv2.putText(debug, "DROPOUT", (10,85),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0,0,255), 2)
+                writer.write(debug)
 
-            if frame_idx % 100 == 0:
+            # Progress — every 100 frames normally, every 500 for long videos
+            progress_interval = 500 if total_frames > 5000 else 100
+            if frame_idx % progress_interval == 0:
                 print(f"  {frame_idx}/{total_frames} "
                       f"({100*frame_idx//total_frames}%)  "
                       f"dropouts: {dropout_total}", end='\r')
 
     cap.release()
-    writer.release()
+    if writer:
+        writer.release()
 
     free_n = max(0, total_frames - release_frame)
     def pct(n, d): return f"{100*n/d:.1f}%" if d else "n/a"

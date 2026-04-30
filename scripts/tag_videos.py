@@ -52,7 +52,8 @@ EXPERIMENTS_FILE = os.path.join(ROOT, "data", "experiments.json")
 PIVOT            = (608, 355)   # fixed wall pivot in original 1280x720 frame
 WIN              = "Tag Video  |  L-click=GREEN  R-click=RED  R=reset  ENTER=confirm  S=skip  Q=quit"
 
-RETAG = "--retag" in sys.argv
+RETAG      = "--retag" in sys.argv
+LONG_ONLY  = "--long"  in sys.argv   # target only long_recording.mov
 
 
 # ─────────────────────────────────────────────
@@ -184,28 +185,30 @@ class FrameTagger:
         r_status = f"th2={self.theta2:+.1f}" if self.theta2 is not None else "R-click=RED"
         ready    = "  >>  ENTER to confirm" if self.both_set else ""
 
-        cv2.rectangle(display, (0, 0), (1280, 75), (0, 0, 0), -1)
-        cv2.addWeighted(display, 0.6, self.frame_raw, 0.4, 0, display)
-        cv2.rectangle(display, (0, 0), (1280, 75), (0, 0, 0), -1)
+        # ── Status bar at BOTTOM so top of frame is never obscured ──
+        bar_y = 720 - 75   # top of the status strip
+        overlay = display.copy()
+        cv2.rectangle(overlay, (0, bar_y), (1280, 720), (0, 0, 0), -1)
+        cv2.addWeighted(overlay, 0.75, display, 0.25, 0, display)
 
         cv2.putText(display,
                     f"frame {frame_idx}/{total}   t={t:.2f}s   "
                     f"A/D=+-1   <-/->=+-50   R=reset   S=skip   Q=quit",
-                    (10, 22), cv2.FONT_HERSHEY_SIMPLEX, 0.52,
+                    (10, bar_y + 22), cv2.FONT_HERSHEY_SIMPLEX, 0.52,
                     (180, 180, 180), 1, lineType=cv2.LINE_AA)
 
         col_g = (0, 255, 0)   if self.green_pos else (120, 120, 120)
         col_r = (80, 80, 255) if self.red_pos   else (120, 120, 120)
 
         cv2.putText(display, g_status,
-                    (10, 58), cv2.FONT_HERSHEY_SIMPLEX, 0.65,
+                    (10, bar_y + 58), cv2.FONT_HERSHEY_SIMPLEX, 0.65,
                     col_g, 1, lineType=cv2.LINE_AA)
         cv2.putText(display, r_status,
-                    (300, 58), cv2.FONT_HERSHEY_SIMPLEX, 0.65,
+                    (300, bar_y + 58), cv2.FONT_HERSHEY_SIMPLEX, 0.65,
                     col_r, 1, lineType=cv2.LINE_AA)
         if ready:
             cv2.putText(display, ready,
-                        (580, 58), cv2.FONT_HERSHEY_SIMPLEX, 0.65,
+                        (580, bar_y + 58), cv2.FONT_HERSHEY_SIMPLEX, 0.65,
                         (0, 255, 255), 1, lineType=cv2.LINE_AA)
 
         return display
@@ -325,11 +328,18 @@ def main():
     reg = load_registry()
 
     all_movs = sorted(glob.glob(os.path.join(VIDEOS_DIR, "*.mov")))
-    videos = [
-        v for v in all_movs
-        if 'trimmed' not in os.path.basename(v).lower()
-        and 'long'    not in os.path.basename(v).lower()
-    ]
+
+    if LONG_ONLY:
+        # Target only the long recording
+        videos = [v for v in all_movs
+                  if 'long' in os.path.basename(v).lower()]
+    else:
+        # Normal run — exclude trimmed and long recording
+        videos = [
+            v for v in all_movs
+            if 'trimmed' not in os.path.basename(v).lower()
+            and 'long'    not in os.path.basename(v).lower()
+        ]
 
     print(f"Found {len(videos)} videos.")
     print("Controls: LEFT CLICK = green marker   RIGHT CLICK = red marker")
@@ -403,19 +413,28 @@ def main():
               f"(th1={th1:+.1f} deg,  th2={th2:+.1f} deg)")
 
         # ── Rename video file ─────────────────────────────────────────
-        new_filename = label + ".mov"
-        new_path     = os.path.join(VIDEOS_DIR, new_filename)
+        # Long recording keeps its descriptive name — skip rename
+        is_long = 'long' in os.path.basename(video_path).lower()
 
-        if os.path.normpath(new_path) == os.path.normpath(video_path):
-            print(f"  File already named correctly: {new_filename}")
-        elif os.path.exists(new_path):
-            print(f"  WARNING: {new_filename} already exists — not renaming.")
-            print(f"  Increment the repeat number if this is a different run.")
-        else:
-            os.rename(video_path, new_path)
-            reg[stem]["video_file"] = new_filename
+        if is_long:
+            reg[stem]["is_long_recording"] = True
+            reg[stem]["video_file"] = os.path.basename(video_path)
             save_registry(reg)
-            print(f"  Renamed: {os.path.basename(video_path)} -> {new_filename}")
+            print(f"  Long recording — keeping original filename")
+        else:
+            new_filename = label + ".mov"
+            new_path     = os.path.join(VIDEOS_DIR, new_filename)
+
+            if os.path.normpath(new_path) == os.path.normpath(video_path):
+                print(f"  File already named correctly: {new_filename}")
+            elif os.path.exists(new_path):
+                print(f"  WARNING: {new_filename} already exists — not renaming.")
+                print(f"  Increment the repeat number if this is a different run.")
+            else:
+                os.rename(video_path, new_path)
+                reg[stem]["video_file"] = new_filename
+                save_registry(reg)
+                print(f"  Renamed: {os.path.basename(video_path)} -> {new_filename}")
 
         tagged += 1
 

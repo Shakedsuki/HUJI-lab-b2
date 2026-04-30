@@ -207,5 +207,23 @@
       919,
       400
     ]
+  },
+  "long_recording": {
+    "video_file": "long_recording.mov",
+    "config_description": "th1_p180_th2_m179",
+    "video_label": "th1_p180_th2_m179",
+    "theta1_measured": 180.0,
+    "theta2_measured": -178.91,
+    "repeat_number": 1,
+    "tag_frame": 37,
+    "green_click_px": [
+      608,
+      193
+    ],
+    "red_click_px": [
+      605,
+      35
+    ],
+    "is_long_recording": true
   }
 }
