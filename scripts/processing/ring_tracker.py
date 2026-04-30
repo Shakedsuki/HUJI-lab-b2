@@ -79,8 +79,20 @@ from video_status import (         # noqa: E402  (after sys.path tweak)
 
 ROOT             = r"C:\dev\chaos"
 VIDEOS_DIR       = os.path.join(ROOT, "Videos")
-EXPERIMENTS_FILE = os.path.join(ROOT, r"data\experiments.json")
-HSV_FILE         = os.path.join(ROOT, r"data\hsv_values.json")
+DATA_DIR         = os.path.join(ROOT, "data")
+EXPERIMENTS_FILE = os.path.join(DATA_DIR, "experiments.json")
+GLOBAL_HSV_FILE  = os.path.join(DATA_DIR, "hsv_values.json")
+
+
+def hsv_file_for_video(video_path):
+    """
+    Per-video HSV file path: data/hsv_<videostem>.json.
+    Mirrors the helper of the same name in hsv_tuner.py.
+    """
+    if not video_path:
+        return GLOBAL_HSV_FILE
+    stem = os.path.splitext(os.path.basename(video_path))[0]
+    return os.path.join(DATA_DIR, f"hsv_{stem}.json")
 
 PIVOT            = (608, 355)
 ARM_LENGTH_PX    = 188
@@ -224,21 +236,36 @@ def validate_geometry(green_pos, red_pos):
 # HSV LOADING + MASKS
 # ─────────────────────────────────────────────
 
-def load_hsv_values():
-    if not os.path.exists(HSV_FILE):
-        print(f"ERROR: {HSV_FILE} not found.")
-        print("Run scripts/processing/hsv_tuner.py to calibrate marker colours.")
-        sys.exit(1)
-    with open(HSV_FILE, "r") as f:
-        data = json.load(f)
-    for k in ("green", "red"):
-        if k not in data:
-            print(f"ERROR: hsv_values.json is missing '{k}' section")
-            sys.exit(1)
-    data["red"].setdefault("h_min2", 170)
-    data["red"].setdefault("h_max2", 180)
-    data.setdefault("ring_tolerance", DEFAULT_RING_TOL)
-    return data
+def load_hsv_values(video_path=None):
+    """
+    Load HSV calibration. Tries the per-video file first
+    (data/hsv_<videostem>.json), falling back to the global
+    data/hsv_values.json. Returns the dict and the path it loaded from
+    (so the caller can print it). Aborts if neither file exists.
+    """
+    candidates = []
+    if video_path:
+        candidates.append(hsv_file_for_video(video_path))
+    candidates.append(GLOBAL_HSV_FILE)
+
+    for path in candidates:
+        if os.path.exists(path):
+            with open(path, "r") as f:
+                data = json.load(f)
+            for k in ("green", "red"):
+                if k not in data:
+                    print(f"ERROR: {path} is missing '{k}' section")
+                    sys.exit(1)
+            data["red"].setdefault("h_min2", 170)
+            data["red"].setdefault("h_max2", 180)
+            data.setdefault("ring_tolerance", DEFAULT_RING_TOL)
+            data["_hsv_path"] = path           # so the caller can report it
+            return data
+
+    print("ERROR: no HSV calibration found.")
+    print(f"  Tried: {', '.join(candidates)}")
+    print("Run scripts/processing/hsv_tuner.py to calibrate marker colours.")
+    sys.exit(1)
 
 
 def color_mask_green(hsv, cfg):
@@ -828,7 +855,8 @@ def pick_frame_interactive(video_path, label, fps, total_frames,
                 print(f"  ERROR: could not launch {HSV_TUNER_PATH}")
 
             # Reload HSV calibration into the same dict the caller holds.
-            new_hsv = load_hsv_values()
+            # Pass video_path so we get the per-video file the tuner just wrote.
+            new_hsv = load_hsv_values(video_path)
             hsv_values.clear()
             hsv_values.update(new_hsv)
             ring_tolerance = int(new_hsv.get("ring_tolerance", DEFAULT_RING_TOL))
@@ -911,9 +939,12 @@ def main():
             print("Cancelled.")
             return
 
-    hsv_values     = load_hsv_values()
+    hsv_values     = load_hsv_values(video_path)
     ring_tolerance = int(hsv_values.get("ring_tolerance", DEFAULT_RING_TOL))
-    print(f"HSV   : {HSV_FILE}  (ring tolerance = {ring_tolerance}px)")
+    hsv_kind       = ("PER-VIDEO" if hsv_values["_hsv_path"] != GLOBAL_HSV_FILE
+                      else "GLOBAL")
+    print(f"HSV   : {hsv_values['_hsv_path']}  [{hsv_kind}]  "
+          f"(ring tolerance = {ring_tolerance}px)")
 
     existing_entry = reg.get(stem)
     if existing_entry:
