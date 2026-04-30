@@ -34,10 +34,10 @@ from scipy.signal import savgol_filter
 # CONFIG
 # ─────────────────────────────────────────────
 
-DEFAULT_CSV   = r"C:\dev\chaos\data\DSC_0136_v2_tracking.csv"
-DEFAULT_VIDEO = r"C:\dev\chaos\Videos\DSC_0136.mov"
+DEFAULT_CSV   = r"C:\dev\chaos\data\long_recording_tracking.csv"
+DEFAULT_VIDEO = r"C:\dev\chaos\Videos\long_recording.mov"
 OUTPUT_DIR    = r"C:\dev\chaos\data\figures"
-OUTPUT_MP4    = r"C:\dev\chaos\data\figures\DSC_0136_combined.mp4"
+OUTPUT_MP4    = r"C:\dev\chaos\data\figures\long_recording_combined.mp4"
 
 PANEL_W   = 960     # width of each half panel
 PANEL_H   = 720     # height of both panels

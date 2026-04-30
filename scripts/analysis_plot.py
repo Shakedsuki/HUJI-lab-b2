@@ -16,7 +16,7 @@ Angular velocities computed via Savitzky-Golay derivative (window=11, poly=3).
 Usage:
   python scripts/analysis_plot.py
   Optionally pass a CSV path as argument:
-  python scripts/analysis_plot.py C:/dev/chaos/data/DSC_0136_v2_tracking.csv
+  python scripts/analysis_plot.py C:/dev/chaos/data/long_recording_tracking.csv
 """
 
 import sys
@@ -32,7 +32,7 @@ from scipy.signal import savgol_filter
 # CONFIG
 # ─────────────────────────────────────────────
 
-DEFAULT_CSV = r"C:\dev\chaos\data\DSC_0136_v2_tracking.csv"
+DEFAULT_CSV = r"C:\dev\chaos\data\long_recording_tracking.csv"
 OUTPUT_DIR  = r"C:\dev\chaos\data\figures"
 
 # Savitzky-Golay parameters

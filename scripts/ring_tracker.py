@@ -29,9 +29,11 @@ Why this works for our specific rig:
     within a small arc, even at the worst (the pendulum hits maybe 30°/frame
     at 60fps even in the wildest fall).
 
-Drop-in I/O:
+I/O:
     Reads:   data/hsv_values.json,  data/experiments.json
-    Writes:  data/<stem>_tracking.csv     (same schema as pendulum_tracker.py)
+    Writes:  data/<stem>_tracking.csv     (frame, time_s, phase, x_green,
+                                            y_green, x_red, y_red, theta1_deg,
+                                            theta2_deg, dropout)
              output/<stem>_debug.mp4      (annotated debug video)
              data/experiments.json        (entry updated, tracker='ring')
 

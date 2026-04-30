@@ -1,13 +1,12 @@
 """
 verify_tracking.py
 ------------------
-Independent quality check on a tracking CSV produced by ring_tracker.py
-or ring_tracker_v2.py.
+Independent quality check on a tracking CSV produced by ring_tracker.py.
 
 The `dropout` column only flags frames where *no* marker was found at all.
 It cannot tell you whether the marker that *was* found is the right one —
-the fallback chain in ring_tracker_v2 will happily lock onto a chunk of
-arm shaft if the marker mask is empty, and that shows up as `dropout=0`.
+without an anchor gate, the fallback chain can latch onto a chunk of arm
+shaft when the marker mask is empty, and that shows up as `dropout=0`.
 
 This script computes the apparent angular velocity (ω = Δθ/dt with proper
 ±180° unwrapping) per frame and flags rows whose |ω| exceeds a physical
@@ -94,7 +93,12 @@ def main():
         print(f"ERROR: CSV not found: {csv_path}")
         sys.exit(1)
 
+    # Strip the trailing `_tracking` so outputs read e.g.
+    # `long_recording_verification.csv`, not `long_recording_tracking_verification.csv`.
     stem = os.path.splitext(os.path.basename(csv_path))[0]
+    if stem.endswith("_tracking"):
+        stem = stem[: -len("_tracking")]
+
     print(f"verify_tracking.py")
     print(f"CSV : {csv_path}")
     print(f"|ω| threshold: {args.omega_cap:.0f} deg/s")

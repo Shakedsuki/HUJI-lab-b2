@@ -20,11 +20,12 @@ hsv_tuner   ring_tracker   verify_tracking   analysis_*
 ## Setup
 
 ```bash
-pip install opencv-contrib-python numpy scipy matplotlib gdown
+pip install opencv-python numpy scipy matplotlib gdown
 ```
 
-`opencv-contrib-python` (not `opencv-python`) is required because
-`pendulum_tracker.py` uses CSRT.
+(Use `opencv-contrib-python` instead if you also want to run the archived
+CSRT tracker — `archive/scripts/pendulum_tracker.py`. The active pipeline
+only needs core OpenCV.)
 
 Raw videos aren't tracked in git (too large; ~3 GB). They live on Google Drive:
 
@@ -109,7 +110,6 @@ chaos/
 │   ├── hsv_tuner.py
 │   ├── ring_tracker.py
 │   ├── verify_tracking.py
-│   ├── pendulum_tracker.py    legacy CSRT tracker
 │   ├── analysis_3d.py
 │   ├── analysis_animate.py
 │   ├── analysis_combined_video.py
@@ -119,17 +119,26 @@ chaos/
 ├── output/                    debug videos, verification plots (gitignored)
 ├── Videos/                    raw .mov files (gitignored, ~3 GB)
 └── archive/                   superseded scripts and reference data
-    ├── scripts/               tag_videos, video_tagger, rename_tagged_videos,
-    │                          ring_tracker (v1), pendulum_tracker_hybrid,
-    │                          split_video, stitch_csv, preview_frame
+    ├── scripts/               pendulum_tracker (CSRT), pendulum_tracker_hybrid,
+    │                          ring_tracker (v1), tag_videos, video_tagger,
+    │                          rename_tagged_videos, split_video, stitch_csv,
+    │                          preview_frame
     └── Videos/                angle reference jpgs
 ```
 
-## Legacy
+## History
 
-`scripts/pendulum_tracker.py` is the original CSRT-based tracker. It still
-works for short clips at moderate angles where appearance tracking is
-reliable. The ring tracker replaces it on harder footage (inverted starts,
-long recordings, fast falls) — on `long_recording.mov` CSRT loses the red
-marker on ~98% of free-swing frames, while the ring tracker's typical
-dropout rate is around 5%.
+`ring_tracker.py` is the third generation of the tracker. The earlier two
+live in `archive/scripts/`:
+
+- `pendulum_tracker.py` — original CSRT (appearance-based) tracker. Works
+  on slow, well-lit clips but loses the red marker on inverted starts and
+  fast falls. On `long_recording.mov` it dropped ~98% of free-swing red
+  frames.
+- `ring_tracker.py` (v1) — first ring-based tracker. Frame-independent
+  HSV detection inside the arm-length annulus. Improved over CSRT but
+  still missed motion-blur frames where saturation collapses.
+- `ring_tracker.py` (current) — adds median-frame background subtraction,
+  a temporal angular predictor, and a five-stage fallback chain. Brings
+  the long-recording dropout rate from ~98% (CSRT) to ~0.07% with
+  `verify_tracking.py` confirming physical plausibility.
