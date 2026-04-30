@@ -72,6 +72,20 @@ python scripts/processing/ring_tracker.py Videos/long_recording.mov
 python scripts/processing/verify_tracking.py
 ```
 
+### Pick a video from the GUI picker
+
+```bash
+python scripts/processing/ring_tracker.py
+# opens a file dialog rooted at Videos/ — pick any .mov / .mp4 / .avi
+```
+
+The dialog also opens automatically if you pass `--browse`, which is
+useful when you want the picker even though you typed a path:
+
+```bash
+python scripts/processing/ring_tracker.py --browse
+```
+
 ### Re-running on a video already in `experiments.json`
 
 ```bash
