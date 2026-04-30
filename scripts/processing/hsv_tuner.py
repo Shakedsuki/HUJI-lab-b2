@@ -21,9 +21,9 @@ This collapses the search from ~921k pixels to ~1.2k per ring and is robust
 to motion blur (no temporal model, no appearance drift).
 
 Usage:
-  python scripts/hsv_tuner.py
-  python scripts/hsv_tuner.py Videos/long_recording.mov
-  python scripts/hsv_tuner.py Videos/long_recording.mov 200    # start frame
+  python scripts/processing/hsv_tuner.py
+  python scripts/processing/hsv_tuner.py Videos/long_recording.mov
+  python scripts/processing/hsv_tuner.py Videos/long_recording.mov 200    # start frame
 
 Keys:
   G / R          switch active marker (GREEN / RED)

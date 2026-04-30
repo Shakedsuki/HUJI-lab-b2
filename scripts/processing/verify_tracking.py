@@ -16,9 +16,9 @@ above ~2500 °/s is almost certainly a tracking jump rather than physics.
 
 Usage
 ~~~~~
-    python scripts/verify_tracking.py
-    python scripts/verify_tracking.py data/long_recording_tracking.csv
-    python scripts/verify_tracking.py data/long_recording_tracking.csv --omega-cap 2000
+    python scripts/processing/verify_tracking.py
+    python scripts/processing/verify_tracking.py data/long_recording_tracking.csv
+    python scripts/processing/verify_tracking.py data/long_recording_tracking.csv --omega-cap 2000
 
 Outputs
 ~~~~~~~
