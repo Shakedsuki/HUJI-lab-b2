@@ -38,6 +38,16 @@ import sys
 import argparse
 import numpy as np
 
+# The script prints angle / omega symbols (θ, ω, Δ) which fall outside
+# Windows' default cp1252 stdout encoding when output is captured. Force
+# UTF-8 so the script works the same in cmd, PowerShell, Git Bash, and
+# when piped to a file.
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+except (AttributeError, OSError):
+    pass
+
+
 ROOT = r"C:\dev\chaos"
 DEFAULT_CSV = os.path.join(ROOT, r"data\long_recording_tracking.csv")
 
