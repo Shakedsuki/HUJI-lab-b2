@@ -32,9 +32,9 @@ from scipy.signal import savgol_filter
 # CONFIG
 # ─────────────────────────────────────────────
 
-DEFAULT_CSV  = r"C:\dev\chaos\data\DSC_0136_v2_tracking.csv"
+DEFAULT_CSV  = r"C:\dev\chaos\data\long_recording_tracking.csv"
 OUTPUT_DIR   = r"C:\dev\chaos\data\figures"
-OUTPUT_MP4   = r"C:\dev\chaos\data\figures\DSC_0136_phase_animation.mp4"
+OUTPUT_MP4   = r"C:\dev\chaos\data\figures\long_recording_phase_animation.mp4"
 
 SG_WINDOW    = 11
 SG_POLY      = 3

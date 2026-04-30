@@ -32,7 +32,7 @@ from matplotlib.collections import LineCollection
 # CONFIG
 # ─────────────────────────────────────────────
 
-DEFAULT_CSV  = r"C:\dev\chaos\data\DSC_0136_v2_tracking.csv"
+DEFAULT_CSV  = r"C:\dev\chaos\data\long_recording_tracking.csv"
 OUTPUT_DIR   = r"C:\dev\chaos\data\figures"
 
 SG_WINDOW    = 11
