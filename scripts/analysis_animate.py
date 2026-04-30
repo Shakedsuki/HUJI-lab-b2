@@ -44,6 +44,11 @@ SKIP         = 1      # process every Nth frame (1 = all frames, 2 = half speed)
 
 SAVE_MP4     = "--save" in sys.argv
 
+# ── Canonical color scheme ──────────────────────────────────────────────
+COLOR_CONFIG = 'tab:blue'    # configuration space (θ₁ vs θ₂)
+COLOR_ARM1   = 'tab:green'   # arm 1 / green physical marker
+COLOR_ARM2   = 'tab:red'     # arm 2 / red physical marker
+
 
 # ─────────────────────────────────────────────
 # LOAD & PREPARE
@@ -117,7 +122,7 @@ def animate(path):
     #   - a permanent trace (builds up as animation progresses)
     #   - a head dot (current position, always on top)
 
-    COLORS = ['tab:green', 'tab:blue', 'tab:red']
+    COLORS = [COLOR_CONFIG, COLOR_ARM1, COLOR_ARM2]
 
     traces = []
     heads  = []

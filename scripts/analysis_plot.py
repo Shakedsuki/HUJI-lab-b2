@@ -41,6 +41,11 @@ SG_POLY   = 3    # polynomial order
 
 FPS = 59.94      # used only if CSV timestamps look wrong
 
+# Canonical color scheme
+COLOR_CONFIG = 'tab:blue'    # configuration space
+COLOR_ARM1   = 'tab:green'   # arm 1 / green physical marker
+COLOR_ARM2   = 'tab:red'     # arm 2 / red physical marker
+
 
 # ─────────────────────────────────────────────
 # LOAD DATA
@@ -136,7 +141,7 @@ def make_figure(t, th1, th2, om1, om2, label, out_path):
     cmap = plt.cm.plasma
 
     # ── Panel 1: theta1(t) ──────────────────────
-    ax1.plot(t, th1, color='tab:green', lw=0.9)
+    ax1.plot(t, th1, color=COLOR_ARM1, lw=0.9)
     ax1.axhline(0, color='gray', lw=0.5, ls='--')
     ax1.set_xlabel('t (s)')
     ax1.set_ylabel('θ₁ (deg)')
@@ -144,7 +149,7 @@ def make_figure(t, th1, th2, om1, om2, label, out_path):
     ax1.grid(True, alpha=0.3)
 
     # ── Panel 2: theta2(t) ──────────────────────
-    ax2.plot(t, th2, color='tab:red', lw=0.9)
+    ax2.plot(t, th2, color=COLOR_ARM2, lw=0.9)
     ax2.axhline(0, color='gray', lw=0.5, ls='--')
     ax2.set_xlabel('t (s)')
     ax2.set_ylabel('θ₂ (deg)')
@@ -153,7 +158,8 @@ def make_figure(t, th1, th2, om1, om2, label, out_path):
 
     # ── Panel 3: theta1 vs theta2 ───────────────
     # Configuration space — scatter coloured by time
-    sc = ax3.scatter(th1, th2, c=t, cmap=cmap, s=2, alpha=0.7, norm=norm)
+    sc = ax3.scatter(th1, th2, c=t, cmap=plt.cm.Blues,
+                     s=2, alpha=0.8, norm=norm)
     ax3.set_xlabel('θ₁ (deg)')
     ax3.set_ylabel('θ₂ (deg)')
     ax3.set_title('Configuration space  θ₁ vs θ₂')
@@ -161,7 +167,8 @@ def make_figure(t, th1, th2, om1, om2, label, out_path):
     plt.colorbar(sc, ax=ax3, label='t (s)', shrink=0.85)
 
     # ── Panel 4: Phase portrait arm 1 ───────────
-    sc4 = ax4.scatter(th1, om1, c=t, cmap=cmap, s=2, alpha=0.7, norm=norm)
+    sc4 = ax4.scatter(th1, om1, c=t, cmap=plt.cm.Greens,
+                      s=2, alpha=0.8, norm=norm)
     ax4.set_xlabel('θ₁ (deg)')
     ax4.set_ylabel('ω₁ (deg/s)')
     ax4.set_title('Phase portrait — arm 1')
@@ -171,7 +178,8 @@ def make_figure(t, th1, th2, om1, om2, label, out_path):
     plt.colorbar(sc4, ax=ax4, label='t (s)', shrink=0.85)
 
     # ── Panel 5: Phase portrait arm 2 ───────────
-    sc5 = ax5.scatter(th2, om2, c=t, cmap=cmap, s=2, alpha=0.7, norm=norm)
+    sc5 = ax5.scatter(th2, om2, c=t, cmap=plt.cm.Reds,
+                      s=2, alpha=0.8, norm=norm)
     ax5.set_xlabel('θ₂ (deg)')
     ax5.set_ylabel('ω₂ (deg/s)')
     ax5.set_title('Phase portrait — arm 2')

@@ -49,6 +49,18 @@ SG_POLY   = 3
 # Pivot pixel coordinates in original 1280×720 video
 PIVOT_ORIG = (608, 355)
 
+# ── Canonical color scheme ──────────────────────────────────────────────
+# Matches physical markers and is consistent across all analysis scripts.
+# matplotlib hex        OpenCV BGR
+COLOR_CONFIG  = '#2196f3'          # blue  — configuration space (θ₁ vs θ₂)
+COLOR_ARM1    = '#4caf50'          # green — arm 1 / green physical marker
+COLOR_ARM2    = '#ef5350'          # red   — arm 2 / red physical marker
+
+# OpenCV BGR equivalents (R,G,B -> B,G,R)
+BGR_ARM1   = (80,  175,  76)       # green
+BGR_ARM2   = (80,   83, 239)       # red
+BGR_CONFIG = (243, 150,  33)       # blue
+
 
 # ─────────────────────────────────────────────
 # LOAD CSV
@@ -134,7 +146,7 @@ def setup_figure(th1, th2, om1, om2):
     ]
     xlabels = [r"$\theta_1$ (°)", r"$\theta_1$ (°)", r"$\theta_2$ (°)"]
     ylabels = [r"$\theta_2$ (°)", r"$\omega_1$ (°/s)", r"$\omega_2$ (°/s)"]
-    colors  = ['#4caf50', '#42a5f5', '#ef5350']
+    colors  = [COLOR_CONFIG, COLOR_ARM1, COLOR_ARM2]
 
     trace_lines = []
     head_dots   = []
@@ -178,9 +190,9 @@ def setup_figure(th1, th2, om1, om2):
 def render_figure(fig):
     """Render matplotlib figure to a BGR numpy array (PANEL_H × PANEL_W × 3)."""
     fig.canvas.draw()
-    buf = np.frombuffer(fig.canvas.tostring_rgb(), dtype=np.uint8)
-    buf = buf.reshape(PANEL_H, PANEL_W, 3)
-    return cv2.cvtColor(buf, cv2.COLOR_RGB2BGR)
+    buf = np.frombuffer(fig.canvas.buffer_rgba(), dtype=np.uint8)
+    buf = buf.reshape(PANEL_H, PANEL_W, 4)
+    return cv2.cvtColor(buf, cv2.COLOR_RGBA2BGR)
 
 
 # ─────────────────────────────────────────────
@@ -190,13 +202,13 @@ def render_figure(fig):
 def make_left_panel(frame, phase, t, th1, th2, om1, om2,
                     x_green, y_green, x_red, y_red):
     """
-    Scale original 1280×720 frame to 960×720, draw tracking overlay,
+    Scale original 1280x720 frame to 960x720, draw tracking overlay,
     and add parameter strip at the bottom.
     """
-    # Scale frame: 1280×720 → 960×720
+    # Scale frame: 1280x720 -> 960x720
     panel = cv2.resize(frame, (PANEL_W, PANEL_H))
 
-    # Scale pivot and marker coords from 1280→960
+    # Scale pivot and marker coords from 1280->960
     sx = PANEL_W / 1280.0
     sy = PANEL_H / 720.0
     pivot = (int(PIVOT_ORIG[0] * sx), int(PIVOT_ORIG[1] * sy))
@@ -212,6 +224,7 @@ def make_left_panel(frame, phase, t, th1, th2, om1, om2,
     cv2.circle(panel, pivot, 7, (0, 215, 255), -1, lineType=cv2.LINE_AA)
 
     # Arms and markers
+    gp = None
     if not np.isnan(x_green):
         gp = sp(x_green, y_green)
         cv2.line(panel, pivot, gp, (0, 200, 0), 2, lineType=cv2.LINE_AA)
@@ -220,37 +233,55 @@ def make_left_panel(frame, phase, t, th1, th2, om1, om2,
     if not np.isnan(x_red):
         rp = sp(x_red, y_red)
         cv2.circle(panel, rp, 7, (0, 0, 255), -1, lineType=cv2.LINE_AA)
-        if not np.isnan(x_green):
+        if gp is not None:
             cv2.line(panel, gp, rp, (0, 0, 200), 2, lineType=cv2.LINE_AA)
 
-    # Dark strip at bottom for parameters
-    strip_h = 72
-    overlay = panel.copy()
-    cv2.rectangle(overlay, (0, PANEL_H - strip_h), (PANEL_W, PANEL_H),
-                  (0, 0, 0), -1)
-    cv2.addWeighted(overlay, 0.7, panel, 0.3, 0, panel)
+    # ── Parameter strip at bottom ──────────────────────────────────────
+    # Two-row grid, ASCII only (cv2.putText does not support Unicode)
+    strip_h = 80
+    y_top   = PANEL_H - strip_h
 
-    # Parameter text
-    phase_col = (80, 255, 80) if phase == 'free_swing' else (80, 80, 255)
+    # Dark background
+    overlay = panel.copy()
+    cv2.rectangle(overlay, (0, y_top), (PANEL_W, PANEL_H), (0, 0, 0), -1)
+    cv2.addWeighted(overlay, 0.72, panel, 0.28, 0, panel)
+
+    # Helper: format a value or show --- if NaN
+    def fv(v, decimals=1):
+        return f"{v:+.{decimals}f}" if not np.isnan(v) else "  ---  "
+
+    # Row 1: phase label + time
+    phase_col = (80, 255, 80) if phase == 'free_swing' else (100, 100, 255)
     cv2.putText(panel, phase.upper(),
-                (12, PANEL_H - strip_h + 20),
+                (10, y_top + 22),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.55, phase_col, 1,
                 lineType=cv2.LINE_AA)
+    cv2.putText(panel, f"t = {t:.3f} s",
+                (220, y_top + 22),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.55, (200, 200, 200), 1,
+                lineType=cv2.LINE_AA)
 
-    def fmt(v, unit):
-        return f"{v:+7.1f} {unit}" if not np.isnan(v) else "  ---    "
+    # Row 2: four parameters in a 4-column grid, colour-coded by arm
+    # Each column is PANEL_W/4 = 240px wide
+    col_w = PANEL_W // 4
+    y2    = y_top + 58
+    font  = cv2.FONT_HERSHEY_SIMPLEX
+    fs    = 0.50
+    swatch_size = 10   # colored square side length
 
     params = [
-        (f"t  = {t:6.2f} s",          (12,  PANEL_H - strip_h + 42)),
-        (f"θ₁ = {fmt(th1,'°')}",       (12,  PANEL_H - 20)),
-        (f"θ₂ = {fmt(th2,'°')}",       (250, PANEL_H - 20)),
-        (f"ω₁ = {fmt(om1,'°/s')}",     (490, PANEL_H - 20)),
-        (f"ω₂ = {fmt(om2,'°/s')}",     (730, PANEL_H - 20)),
+        (f"th1 = {fv(th1)} deg",      10,              BGR_ARM1),
+        (f"th2 = {fv(th2)} deg",      10 + col_w,      BGR_ARM2),
+        (f"om1 = {fv(om1, 0)} deg/s", 10 + 2 * col_w, BGR_ARM1),
+        (f"om2 = {fv(om2, 0)} deg/s", 10 + 3 * col_w, BGR_ARM2),
     ]
-    for text, pos in params:
-        cv2.putText(panel, text, pos,
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.48, (200, 200, 200), 1,
-                    lineType=cv2.LINE_AA)
+    for text, x, color in params:
+        # Small color swatch before the label
+        sy1 = y2 - swatch_size
+        sy2 = y2
+        cv2.rectangle(panel, (x, sy1), (x + swatch_size, sy2), color, -1)
+        cv2.putText(panel, text, (x + swatch_size + 5, y2),
+                    font, fs, color, 1, lineType=cv2.LINE_AA)
 
     return panel
 

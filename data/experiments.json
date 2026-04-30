@@ -1,0 +1,211 @@
+{
+  "DSC_0136": {
+    "video_file": "th1_p044_th2_m001.mov",
+    "init_frame": 164,
+    "release_frame": 164,
+    "green_roi": null,
+    "red_roi": null,
+    "theta1_release": 42.25,
+    "theta2_release": 1.725,
+    "omega1_release": -47.386,
+    "omega2_release": 15.896,
+    "energy_proxy": -1.719,
+    "t0_offset_s": 2.736,
+    "duration_s": 17.918,
+    "n_free_frames": 1075,
+    "dropout_rate_pct": 0.0,
+    "arm_length_cm": 35.0,
+    "pivot_px": [
+      608,
+      355
+    ],
+    "scale_cm_per_px": 0.186,
+    "csv_file": "DSC_0136_tracking.csv",
+    "config_description": "th1_p044_th2_m001",
+    "tracking_quality": "good",
+    "notes": "",
+    "video_label": "th1_p044_th2_m001",
+    "theta1_measured": 43.75,
+    "theta2_measured": -1.04,
+    "repeat_number": 1,
+    "tag_frame": 119,
+    "green_click_px": [
+      720,
+      472
+    ],
+    "red_click_px": [
+      717,
+      637
+    ]
+  },
+  "DSC_0139": {
+    "video_file": "th1_p047_th2_m002.mov",
+    "config_description": "th1_p047_th2_m002",
+    "video_label": "th1_p047_th2_m002",
+    "theta1_measured": 46.77,
+    "theta2_measured": -2.36,
+    "repeat_number": 1,
+    "tag_frame": 119,
+    "green_click_px": [
+      725,
+      465
+    ],
+    "red_click_px": [
+      718,
+      635
+    ]
+  },
+  "DSC_0140": {
+    "video_file": "th1_p056_th2_m001.mov",
+    "config_description": "th1_p056_th2_m001",
+    "video_label": "th1_p056_th2_m001",
+    "theta1_measured": 55.91,
+    "theta2_measured": -1.0,
+    "repeat_number": 1,
+    "tag_frame": 27,
+    "green_click_px": [
+      738,
+      443
+    ],
+    "red_click_px": [
+      735,
+      615
+    ]
+  },
+  "DSC_0141": {
+    "video_file": "th1_p079_th2_p000.mov",
+    "config_description": "th1_p079_th2_p000",
+    "video_label": "th1_p079_th2_p000",
+    "theta1_measured": 78.69,
+    "theta2_measured": 0.35,
+    "repeat_number": 1,
+    "tag_frame": 119,
+    "green_click_px": [
+      763,
+      386
+    ],
+    "red_click_px": [
+      764,
+      552
+    ]
+  },
+  "DSC_0143": {
+    "video_file": "th1_p116_th2_m001.mov",
+    "config_description": "th1_p116_th2_m001",
+    "video_label": "th1_p116_th2_m001",
+    "theta1_measured": 115.6,
+    "theta2_measured": -1.41,
+    "repeat_number": 1,
+    "tag_frame": 119,
+    "green_click_px": [
+      752,
+      286
+    ],
+    "red_click_px": [
+      748,
+      449
+    ]
+  },
+  "DSC_0144": {
+    "video_file": "th1_p138_th2_m002.mov",
+    "config_description": "th1_p138_th2_m002",
+    "video_label": "th1_p138_th2_m002",
+    "theta1_measured": 138.25,
+    "theta2_measured": -2.12,
+    "repeat_number": 1,
+    "tag_frame": 119,
+    "green_click_px": [
+      716,
+      234
+    ],
+    "red_click_px": [
+      710,
+      396
+    ]
+  },
+  "DSC_0145": {
+    "video_file": "th1_p160_th2_m001.mov",
+    "config_description": "th1_p160_th2_m001",
+    "video_label": "th1_p160_th2_m001",
+    "theta1_measured": 160.37,
+    "theta2_measured": -0.7,
+    "repeat_number": 1,
+    "tag_frame": 74,
+    "green_click_px": [
+      664,
+      198
+    ],
+    "red_click_px": [
+      662,
+      362
+    ]
+  },
+  "DSC_0146": {
+    "video_file": "th1_p180_th2_p090.mov",
+    "config_description": "th1_p180_th2_p090",
+    "video_label": "th1_p180_th2_p090",
+    "theta1_measured": 179.65,
+    "theta2_measured": 90.0,
+    "repeat_number": 1,
+    "tag_frame": 73,
+    "green_click_px": [
+      609,
+      189
+    ],
+    "red_click_px": [
+      611,
+      189
+    ]
+  },
+  "DSC_0147": {
+    "video_file": "th1_m001_th2_p093.mov",
+    "config_description": "th1_m001_th2_p093",
+    "video_label": "th1_m001_th2_p093",
+    "theta1_measured": -0.72,
+    "theta2_measured": 92.84,
+    "repeat_number": 1,
+    "tag_frame": 79,
+    "green_click_px": [
+      606,
+      515
+    ],
+    "red_click_px": [
+      767,
+      507
+    ]
+  },
+  "DSC_0148": {
+    "video_file": "th1_p037_th2_p094.mov",
+    "config_description": "th1_p037_th2_p094",
+    "video_label": "th1_p037_th2_p094",
+    "theta1_measured": 36.58,
+    "theta2_measured": 94.34,
+    "repeat_number": 1,
+    "tag_frame": 66,
+    "green_click_px": [
+      703,
+      483
+    ],
+    "red_click_px": [
+      861,
+      471
+    ]
+  },
+  "DSC_0150": {
+    "video_file": "th1_p067_th2_p096.mov",
+    "config_description": "th1_p067_th2_p096",
+    "video_label": "th1_p067_th2_p096",
+    "theta1_measured": 67.13,
+    "theta2_measured": 95.92,
+    "repeat_number": 1,
+    "tag_frame": 65,
+    "green_click_px": [
+      755,
+      417
+    ],
+    "red_click_px": [
+      919,
+      400
+    ]
+  }
+}
