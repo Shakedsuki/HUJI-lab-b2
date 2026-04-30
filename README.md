@@ -85,9 +85,13 @@ When the video isn't already in `experiments.json`, the tracker opens
 that show the actual frame with a live HSV detection overlay (green and
 red markers light up if calibration is good). Navigate with `a/d` (±1),
 `A/D` (±10), `z/x` (±100), then `ENTER` to confirm. The overlay
-doubles as the HSV-adequacy check: if neither marker lights up while
-you scrub, calibration is stale — close the picker and re-run
-`hsv_tuner`.
+doubles as the HSV-adequacy check.
+
+If you spot a bad detection (e.g. the red dot lands on the user's face
+because skin matches the red HSV range), press **`T`** inside the
+picker. That hands off to `hsv_tuner.py` on the current frame; once you
+re-tune and save, the tuner closes and the picker resumes with the new
+calibration — no need to restart the tracker.
 
 ```bash
 # 3. Sanity check.
