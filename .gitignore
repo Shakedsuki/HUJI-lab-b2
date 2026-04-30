@@ -15,6 +15,13 @@ output/*.mp4
 # ── VLC snapshots ────────────────────────────────
 output/vlcsnap-*.png
 
+# ── Animation exports ────────────────────────────
+# Large MP4s, regenerable from CSV
+data/figures/*.mp4
+
+# ── Claude worktrees ─────────────────────────────
+.claude/
+
 # ── Python cache ─────────────────────────────────
 __pycache__/
 *.pyc
