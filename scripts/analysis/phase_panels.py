@@ -20,6 +20,12 @@ Usage:
 """
 
 import sys
+
+# Force UTF-8 stdout so unicode glyphs (θ, ω) don't crash on Windows cp1252.
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+except (AttributeError, OSError):
+    pass
 import os
 import csv
 import numpy as np
@@ -86,14 +92,56 @@ def load_csv(path):
 def compute_velocities(t, th1, th2):
     """
     Compute angular velocities using Savitzky-Golay differentiation.
+
+    Critical: the angles in the CSV are wrapped to [-180, 180]. SG'ing the
+    wrapped series produces ~360°/frame phantom spikes at every wrap,
+    which smear into 5000+ deg/s plateaus when the SG window crosses one.
+    We np.unwrap first so the derivative reflects the physical pendulum
+    motion across the inverted position.
+
     Returns om1, om2 in deg/s.
     """
     dt = np.mean(np.diff(t))   # mean frame interval (should be ~1/60 s)
 
-    om1 = savgol_filter(th1, SG_WINDOW, SG_POLY, deriv=1, delta=dt)
-    om2 = savgol_filter(th2, SG_WINDOW, SG_POLY, deriv=1, delta=dt)
+    th1u = np.degrees(np.unwrap(np.radians(th1)))
+    th2u = np.degrees(np.unwrap(np.radians(th2)))
+
+    om1 = savgol_filter(th1u, SG_WINDOW, SG_POLY, deriv=1, delta=dt)
+    om2 = savgol_filter(th2u, SG_WINDOW, SG_POLY, deriv=1, delta=dt)
 
     return om1, om2
+
+
+# ─────────────────────────────────────────────
+# WRAP-AWARE LINE PLOTTING
+# ─────────────────────────────────────────────
+
+def wrap_break_mask(theta, threshold=180.0):
+    """Boolean mask of length N-1 marking positions where consecutive
+    samples jump by more than `threshold` degrees (= a wrap discontinuity)."""
+    return np.abs(np.diff(theta)) > threshold
+
+
+def insert_breaks(arrays, break_mask):
+    """
+    Insert NaN at the positions indicated by break_mask in each array of
+    `arrays` (all arrays must have the same length N; mask has length N-1).
+    matplotlib renders NaN as a gap, breaking the connecting line cleanly.
+    """
+    if not break_mask.any():
+        return tuple(np.asarray(a, dtype=float) for a in arrays)
+    break_idx = np.where(break_mask)[0]
+    out = []
+    for a in arrays:
+        a = np.asarray(a, dtype=float)
+        pieces, last = [], 0
+        for bi in break_idx:
+            pieces.append(a[last:bi + 1])
+            pieces.append(np.array([np.nan]))
+            last = bi + 1
+        pieces.append(a[last:])
+        out.append(np.concatenate(pieces))
+    return tuple(out)
 
 
 # ─────────────────────────────────────────────
@@ -141,7 +189,15 @@ def make_figure(t, th1, th2, om1, om2, label, out_path):
     cmap = plt.cm.plasma
 
     # ── Panel 1: theta1(t) ──────────────────────
-    ax1.plot(t, th1, color=COLOR_ARM1, lw=0.9)
+    # Insert NaN at ±180° wraps so the line breaks instead of streaking
+    # vertically across the plot at every inverted-angle crossing.
+    # insert_breaks lengthens BOTH arrays in sync, so plot t_b vs theta_b.
+    diff_th1 = np.abs(np.diff(th1)) > 180
+    diff_th2 = np.abs(np.diff(th2)) > 180
+    t1_b, th1_b = insert_breaks([t, th1], diff_th1)
+    t2_b, th2_b = insert_breaks([t, th2], diff_th2)
+
+    ax1.plot(t1_b, th1_b, color=COLOR_ARM1, lw=0.9)
     ax1.axhline(0, color='gray', lw=0.5, ls='--')
     ax1.set_xlabel('t (s)')
     ax1.set_ylabel('θ₁ (deg)')
@@ -149,7 +205,7 @@ def make_figure(t, th1, th2, om1, om2, label, out_path):
     ax1.grid(True, alpha=0.3)
 
     # ── Panel 2: theta2(t) ──────────────────────
-    ax2.plot(t, th2, color=COLOR_ARM2, lw=0.9)
+    ax2.plot(t2_b, th2_b, color=COLOR_ARM2, lw=0.9)
     ax2.axhline(0, color='gray', lw=0.5, ls='--')
     ax2.set_xlabel('t (s)')
     ax2.set_ylabel('θ₂ (deg)')
