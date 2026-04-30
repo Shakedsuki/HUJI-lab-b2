@@ -94,6 +94,14 @@ MAX_OMEGA_DEG_S   = 3500.0   # safety cap on ω estimate (3500 deg/s ~ 60 deg/fr
 MIN_BLOB_RADIUS   = 2.5
 MAX_BLOB_RADIUS   = 35.0
 
+# Anchor proximity gates for the riskier fallback stages. Without these
+# the no-colour and ring+motion fallbacks can latch onto a chunk of arm
+# shaft that happens to lie on the ring; gating by distance to the
+# predicted anchor prevents the silent false positives that show up
+# downstream as |ω| spikes.
+MAX_DIST_NO_COLOUR   = 35.0    # stage 3: motion ∩ ring ∩ arc
+MAX_DIST_RING_MOTION = 25.0    # stage 5: motion ∩ ring (last resort)
+
 
 # ─────────────────────────────────────────────
 # REGISTRY I/O  (mirrors ring_tracker.py)
@@ -312,15 +320,21 @@ def make_arc_uint8(angle_grid, theta_pred_deg, half_width_deg):
 # BLOB SCORING
 # ─────────────────────────────────────────────
 
-def best_blob(mask, anchor=None,
+def best_blob(mask, anchor=None, max_dist=None,
               min_area=MIN_BLOB_AREA,
               min_radius=MIN_BLOB_RADIUS,
               max_radius=MAX_BLOB_RADIUS):
     """
     Return centroid of the best blob in `mask` or None.
 
-    `anchor` (x, y) — when given, the score is area / (1 + dist_to_anchor)
-    so we prefer blobs near a predicted location. When None, biggest wins.
+    `anchor`   (x, y) — when given, the score is area / (1 + dist_to_anchor)
+                        so we prefer blobs near a predicted location.
+                        When None, biggest wins.
+    `max_dist` px     — when given (and `anchor` is also given), reject any
+                        candidate farther than this from the anchor. Used in
+                        the riskier fallback stages (no-colour, ring+motion)
+                        to prevent the tracker from latching onto a chunk of
+                        arm shaft far from the predicted marker location.
     """
     contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL,
                                    cv2.CHAIN_APPROX_SIMPLE)
@@ -346,6 +360,8 @@ def best_blob(mask, anchor=None,
             score = area
         else:
             d = float(np.hypot(cx - anchor[0], cy - anchor[1]))
+            if max_dist is not None and d > max_dist:
+                continue
             score = area / (1.0 + d)
 
         if score > best_score:
@@ -457,9 +473,11 @@ def detect_green(hsv_blurred, fg_mask,
         return pos, "no-arc"
 
     # 3: ring ∩ motion ∩ arc  (drop colour — typical motion-blur recovery)
-    if ring_arc is not None:
+    # Gate by anchor distance so we don't latch onto a chunk of arm shaft
+    # that happens to lie on the ring far from the predicted angle.
+    if ring_arc is not None and anchor is not None:
         m = cv2.bitwise_and(ring_motion, ring_arc)
-        pos = best_blob(m, anchor=anchor)
+        pos = best_blob(m, anchor=anchor, max_dist=MAX_DIST_NO_COLOUR)
         if pos is not None:
             return pos, "no-colour"
 
@@ -469,10 +487,14 @@ def detect_green(hsv_blurred, fg_mask,
     if pos is not None:
         return pos, "no-motion"
 
-    # 5: ring ∩ motion  (last resort — any moving thing on the ring)
-    pos = best_blob(ring_motion, anchor=anchor)
-    if pos is not None:
-        return pos, "ring+motion"
+    # 5: ring ∩ motion  (last resort — any moving thing on the ring).
+    # Tightest anchor gate of the chain; without it this branch is the
+    # main source of silent false positives.
+    if anchor is not None:
+        pos = best_blob(ring_motion, anchor=anchor,
+                        max_dist=MAX_DIST_RING_MOTION)
+        if pos is not None:
+            return pos, "ring+motion"
 
     return None, "fail"
 
@@ -542,22 +564,24 @@ def detect_red(hsv_blurred, fg_mask, frame_shape,
     if pos is not None:
         return pos, "no-arc"
 
-    # 3
-    if ring_arc is not None:
+    # 3 — drop colour. Tighten with anchor gate to prevent arm-shaft latch.
+    if ring_arc is not None and anchor is not None:
         m = cv2.bitwise_and(ring_motion, ring_arc)
-        pos = best_blob(m, anchor=anchor)
+        pos = best_blob(m, anchor=anchor, max_dist=MAX_DIST_NO_COLOUR)
         if pos is not None:
             return pos, "no-colour"
 
-    # 4
+    # 4 — drop motion (static frames during holding).
     pos = best_blob(ring_color, anchor=anchor)
     if pos is not None:
         return pos, "no-motion"
 
-    # 5
-    pos = best_blob(ring_motion, anchor=anchor)
-    if pos is not None:
-        return pos, "ring+motion"
+    # 5 — last resort, motion ∩ ring only. Tightest anchor gate.
+    if anchor is not None:
+        pos = best_blob(ring_motion, anchor=anchor,
+                        max_dist=MAX_DIST_RING_MOTION)
+        if pos is not None:
+            return pos, "ring+motion"
 
     return None, "fail"
 
