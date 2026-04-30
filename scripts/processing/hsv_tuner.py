@@ -11,8 +11,10 @@ Lets the user:
   - Preview ring-based detection live (one ring around the pivot for the
     GREEN marker, a second ring centred on the green marker for the RED
     marker)
-  - Save the calibrated values to data/hsv_values.json so that
-    ring_tracker.py can pick them up.
+  - Save the calibrated values to a per-video file
+    (data/hsv_<videostem>.json) so each video gets its own calibration.
+    Pass --global to save to data/hsv_values.json instead, which acts as
+    the fallback for any video without its own per-video file.
 
 Why ring-based detection? Because the arm lengths are fixed:
     GREEN sits on a circle of radius ARM_LENGTH_PX around the pivot.
@@ -21,9 +23,10 @@ This collapses the search from ~921k pixels to ~1.2k per ring and is robust
 to motion blur (no temporal model, no appearance drift).
 
 Usage:
-  python scripts/processing/hsv_tuner.py
-  python scripts/processing/hsv_tuner.py Videos/long_recording.mov
-  python scripts/processing/hsv_tuner.py Videos/long_recording.mov 200    # start frame
+  python scripts/processing/hsv_tuner.py                                       # default video, save to global
+  python scripts/processing/hsv_tuner.py Videos/long_recording.mov             # save to per-video file
+  python scripts/processing/hsv_tuner.py Videos/long_recording.mov 200         # start at frame 200
+  python scripts/processing/hsv_tuner.py Videos/long_recording.mov --global    # force save to global
 
 Keys:
   G / R          switch active marker (GREEN / RED)
@@ -48,10 +51,22 @@ import sys
 # CONSTANTS
 # ─────────────────────────────────────────────
 
-ROOT          = r"C:\dev\chaos"
-DEFAULT_VIDEO = os.path.join(ROOT, r"Videos\long_recording.mov")
-HSV_FILE      = os.path.join(ROOT, r"data\hsv_values.json")
-HSV_README    = os.path.join(ROOT, r"data\hsv_values_readme.txt")
+ROOT             = r"C:\dev\chaos"
+DEFAULT_VIDEO    = os.path.join(ROOT, r"Videos\long_recording.mov")
+DATA_DIR         = os.path.join(ROOT, "data")
+GLOBAL_HSV_FILE  = os.path.join(DATA_DIR, "hsv_values.json")
+HSV_README       = os.path.join(DATA_DIR, "hsv_values_readme.txt")
+
+
+def hsv_file_for_video(video_path, force_global=False):
+    """
+    Per-video HSV file path: data/hsv_<videostem>.json. With force_global
+    or no video, returns the global path (data/hsv_values.json).
+    """
+    if force_global or not video_path:
+        return GLOBAL_HSV_FILE
+    stem = os.path.splitext(os.path.basename(video_path))[0]
+    return os.path.join(DATA_DIR, f"hsv_{stem}.json")
 
 PIVOT          = (608, 355)        # fixed pivot in original 1280x720 coords
 ARM_LENGTH_PX  = 188               # default — override with --arm-length N
@@ -284,22 +299,32 @@ def suggest_from_samples(samples, mode):
 # JSON I/O
 # ─────────────────────────────────────────────
 
-def load_hsv_file():
-    """Load existing hsv_values.json if it exists, else return defaults."""
-    if os.path.exists(HSV_FILE):
-        try:
-            with open(HSV_FILE, "r") as f:
-                data = json.load(f)
-            print(f"Loaded existing HSV values from {HSV_FILE}")
-            # Make sure the wraparound keys exist for red.
-            if "red" in data:
-                data["red"].setdefault("h_min2", DEFAULTS["red"]["h_min2"])
-                data["red"].setdefault("h_max2", DEFAULTS["red"]["h_max2"])
-            data.setdefault("ring_tolerance", RING_TOLERANCES[DEFAULT_TOL_IDX])
-            data.setdefault("arm_length_px", ARM_LENGTH_PX)
-            return data
-        except Exception as e:
-            print(f"WARN: could not parse {HSV_FILE} ({e}) — using defaults")
+def load_hsv_file(target_path):
+    """
+    Load HSV values from `target_path` if it exists. If not, fall back to
+    the global file (when target is per-video) so the user starts from a
+    sensible baseline rather than the hard-coded defaults. Returns a dict
+    with the standard fields filled in.
+    """
+    candidates = [target_path]
+    if target_path != GLOBAL_HSV_FILE:
+        candidates.append(GLOBAL_HSV_FILE)
+
+    for path in candidates:
+        if os.path.exists(path):
+            try:
+                with open(path, "r") as f:
+                    data = json.load(f)
+                print(f"Loaded HSV values from {path}")
+                if "red" in data:
+                    data["red"].setdefault("h_min2", DEFAULTS["red"]["h_min2"])
+                    data["red"].setdefault("h_max2", DEFAULTS["red"]["h_max2"])
+                data.setdefault("ring_tolerance", RING_TOLERANCES[DEFAULT_TOL_IDX])
+                data.setdefault("arm_length_px", ARM_LENGTH_PX)
+                return data
+            except Exception as e:
+                print(f"WARN: could not parse {path} ({e}) — trying next")
+
     return {
         "green":          dict(DEFAULTS["green"]),
         "red":            dict(DEFAULTS["red"]),
@@ -308,20 +333,21 @@ def load_hsv_file():
     }
 
 
-def save_hsv_file(state):
-    """Write data/hsv_values.json plus a human-readable readme."""
-    os.makedirs(os.path.dirname(HSV_FILE), exist_ok=True)
+def save_hsv_file(state, target_path):
+    """Write HSV calibration JSON plus the (global) human-readable readme."""
+    os.makedirs(os.path.dirname(target_path), exist_ok=True)
     payload = {
         "green":          state["green"],
         "red":            state["red"],
         "ring_tolerance": state["ring_tolerance"],
         "arm_length_px":  ARM_LENGTH_PX,
     }
-    with open(HSV_FILE, "w") as f:
+    with open(target_path, "w") as f:
         json.dump(payload, f, indent=2)
+    # Readme describes the schema, not the values — write once globally.
     with open(HSV_README, "w") as f:
         f.write(_readme_text())
-    print(f"Saved {HSV_FILE}")
+    print(f"Saved {target_path}")
 
 
 def _readme_text():
@@ -353,7 +379,7 @@ def _readme_text():
 
 class TunerState:
     """Mutable state shared across the main loop and the mouse callback."""
-    def __init__(self):
+    def __init__(self, target_path):
         self.mode               = "green"           # "green" or "red"
         self.frame_idx          = 0
         self.paused             = True              # pause by default
@@ -363,9 +389,12 @@ class TunerState:
         self.last_click         = None              # (x_orig, y_orig) for crosshair
         self.last_sample_frame  = -1                # to fade the crosshair
         self.dirty              = False             # any unsaved changes?
+        # Where this session reads from / saves to. Per-video by default;
+        # global with --global. Caller passes the resolved path.
+        self.target_path        = target_path
         # `data` holds the saved/desired ranges plus tolerance — the active
         # trackbar values are pulled from cv2.getTrackbarPos each frame.
-        self.data               = load_hsv_file()
+        self.data               = load_hsv_file(target_path)
         # Keep tol idx in sync with whatever was saved.
         if self.data["ring_tolerance"] in RING_TOLERANCES:
             self.tol_idx = RING_TOLERANCES.index(self.data["ring_tolerance"])
@@ -388,7 +417,12 @@ def display_to_frame(x_disp, y_disp):
 
 def main():
     # ── Parse CLI ────────────────────────────────────────────────────────
-    video_path = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_VIDEO
+    raw_args   = sys.argv[1:]
+    flags      = [a for a in raw_args if a.startswith("--")]
+    positional = [a for a in raw_args if not a.startswith("--")]
+    force_global = "--global" in flags
+
+    video_path = positional[0] if positional else DEFAULT_VIDEO
     if not os.path.isabs(video_path):
         video_path = os.path.join(ROOT, video_path)
     if not os.path.exists(video_path):
@@ -396,11 +430,16 @@ def main():
         return
 
     start_frame = 0
-    if len(sys.argv) > 2:
+    if len(positional) > 1:
         try:
-            start_frame = int(sys.argv[2])
+            start_frame = int(positional[1])
         except ValueError:
-            print(f"WARN: bad start frame '{sys.argv[2]}', using 0")
+            print(f"WARN: bad start frame '{positional[1]}', using 0")
+
+    # Resolve the per-video / global HSV path that this session will read
+    # from on launch and write to on save.
+    target_path = hsv_file_for_video(video_path, force_global=force_global)
+    target_kind = "GLOBAL" if target_path == GLOBAL_HSV_FILE else "PER-VIDEO"
 
     # ── Open video ───────────────────────────────────────────────────────
     cap = cv2.VideoCapture(video_path)
@@ -411,16 +450,16 @@ def main():
     fps          = cap.get(cv2.CAP_PROP_FPS) or 59.94
 
     print("hsv_tuner.py")
-    print(f"Video : {video_path}")
-    print(f"Frames: {total_frames}  fps: {fps:.2f}")
-    print(f"HSV   : {HSV_FILE}")
+    print(f"Video  : {video_path}")
+    print(f"Frames : {total_frames}  fps: {fps:.2f}")
+    print(f"HSV    : {target_path}  [{target_kind}]")
     print()
     print("Keys: G/R switch marker  A/D step 1  ←/→ step 50  SPACE pause")
     print("      LEFT-CLICK sample  C clear samples  T cycle tolerance")
     print("      S save  Q/ESC quit")
     print()
 
-    state = TunerState()
+    state = TunerState(target_path)
     state.frame_idx = max(0, min(total_frames - 1, start_frame))
 
     # Precompute the static pivot distance grid once — used for the green ring.
@@ -646,7 +685,7 @@ def main():
                 ans = input("Unsaved changes. Save before quitting? [y/N]: ")
                 if ans.strip().lower().startswith("y"):
                     state.data["ring_tolerance"] = state.tolerance
-                    save_hsv_file(state.data)
+                    save_hsv_file(state.data, state.target_path)
             break
 
         if k == ord(" "):
@@ -707,7 +746,7 @@ def main():
 
         if k in (ord("s"), ord("S")):
             state.data["ring_tolerance"] = state.tolerance
-            save_hsv_file(state.data)
+            save_hsv_file(state.data, state.target_path)
             state.dirty = False
             continue
 

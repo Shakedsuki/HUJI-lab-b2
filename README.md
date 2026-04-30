@@ -12,7 +12,7 @@ hsv_tuner   ring_tracker   verify_tracking   phase_*, combined_video
 
 | Stage | Script | What it does |
 |---|---|---|
-| Calibrate | `scripts/processing/hsv_tuner.py` | Interactive HSV calibration. Eyedropper-sample marker pixels, auto-suggest ranges, fine-tune with sliders, live ring-detection preview. Saves to `data/hsv_values.json`. Run once per lighting setup. |
+| Calibrate | `scripts/processing/hsv_tuner.py` | Interactive HSV calibration. Eyedropper-sample marker pixels, auto-suggest ranges, fine-tune with sliders, live ring-detection preview. Saves to a per-video file (`data/hsv_<videostem>.json`) by default; pass `--global` to save to the shared `data/hsv_values.json` instead. |
 | Track | `scripts/processing/ring_tracker.py` | Frame-independent tracker. Stacks four filters (motion mask via temporal-median background, fixed-arm-length ring, HSV colour, predicted angular arc) with a graceful fallback chain. Reads the calibration; writes `data/<stem>_tracking.csv` and `output/<stem>_debug.mp4`. |
 | Verify | `scripts/processing/verify_tracking.py` | Post-hoc QA on the CSV. Flags rows where the apparent &#124;dθ/dt&#124; exceeds physical limits — catches silent false positives that `dropout=0` won't reveal. |
 | Analyse | `scripts/analysis/*.py` | Plots, 3-D phase rotations, animated trajectory videos, side-by-side comparisons. |
@@ -53,8 +53,19 @@ python scripts/utils/download_videos.py
 | 🟢 Green  | Joint between arm 1 and arm 2 | HSV inside an annulus around the pivot |
 | 🔴 Red    | Tip of arm 2 | HSV inside an annulus around the green marker |
 
-Calibrated HSV ranges live in `data/hsv_values.json` (regenerable via
-`hsv_tuner.py`). Field meanings are in `data/hsv_values_readme.txt`.
+Calibrated HSV ranges live in two tiers:
+
+- **Per-video** at `data/hsv_<videostem>.json` — created automatically when
+  you run `hsv_tuner.py` on a specific video, or when you press `T`
+  inside the frame picker to retune mid-run.
+- **Global** at `data/hsv_values.json` — fallback used by the tracker
+  whenever a video has no per-video file yet. Created by running
+  `hsv_tuner.py` with no positional argument, or with `--global`.
+
+`load_hsv_values(video_path)` in `ring_tracker.py` tries the per-video
+file first and falls back to the global one. So re-tuning for one
+video never clobbers another's calibration. Field meanings are in
+`data/hsv_values_readme.txt`.
 
 ## Common workflows
 
