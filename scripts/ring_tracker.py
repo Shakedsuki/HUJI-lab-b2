@@ -1,9 +1,8 @@
 """
-ring_tracker_v2.py
-------------------
-Robust ring tracker for the wall-mounted double pendulum. Builds on
-ring_tracker.py by stacking four weak filters that AND together so each
-individual filter can be lax:
+ring_tracker.py
+---------------
+Robust ring tracker for the wall-mounted double pendulum. Stacks four
+weak filters that AND together so each individual filter can be lax:
 
     motion (median-frame background subtraction)
         AND
@@ -33,13 +32,13 @@ Why this works for our specific rig:
 Drop-in I/O:
     Reads:   data/hsv_values.json,  data/experiments.json
     Writes:  data/<stem>_tracking.csv     (same schema as pendulum_tracker.py)
-             output/<stem>_debug_v2.mp4   (separate from v1 so you can A/B)
-             data/experiments.json        (entry updated, tracker='ring_v2')
+             output/<stem>_debug.mp4      (annotated debug video)
+             data/experiments.json        (entry updated, tracker='ring')
 
 Usage:
-    python scripts/ring_tracker_v2.py
-    python scripts/ring_tracker_v2.py Videos/long_recording.mov
-    python scripts/ring_tracker_v2.py Videos/long_recording.mov --no-debug
+    python scripts/ring_tracker.py
+    python scripts/ring_tracker.py Videos/long_recording.mov
+    python scripts/ring_tracker.py Videos/long_recording.mov --no-debug
 
 Sources behind the design choices:
     PyImageSearch ball-tracking (GaussianBlur + erode/dilate + minEnclosingCircle)
@@ -57,7 +56,7 @@ from scipy.signal import savgol_filter
 
 
 # ─────────────────────────────────────────────
-# PATHS / CONSTANTS  (kept in sync with ring_tracker.py)
+# PATHS / CONSTANTS
 # ─────────────────────────────────────────────
 
 ROOT             = r"C:\dev\chaos"
@@ -78,7 +77,7 @@ MIN_BLOB_AREA    = 8
 SG_WINDOW = 11
 SG_POLY   = 3
 
-# v2-specific knobs ───────────────────────────
+# Tuning knobs ────────────────────────────────
 BG_SAMPLES        = 60       # frames sampled for the median background
 BG_DIFF_THRESH    = 22       # grayscale |frame - bg| threshold
 GAUSS_KSIZE       = (5, 5)   # blur applied before everything
@@ -131,7 +130,7 @@ def update_registry(reg, key, video_file, init_frame, release_frame,
         "release_frame":    release_frame,
         "green_roi":        None,
         "red_roi":          None,
-        "tracker":          "ring_v2",
+        "tracker":          "ring",
         "arm_length_px":    ARM_LENGTH_PX,
         "ring_tolerance":   ring_tolerance,
         "theta1_release":   round(th1_rel, 4),
@@ -619,9 +618,9 @@ def main():
 
     stem       = os.path.splitext(os.path.basename(video_path))[0]
     output_csv = os.path.join(ROOT, "data",   f"{stem}_tracking.csv")
-    debug_mp4  = os.path.join(ROOT, "output", f"{stem}_debug_v2.mp4")
+    debug_mp4  = os.path.join(ROOT, "output", f"{stem}_debug.mp4")
 
-    print("ring_tracker_v2.py")
+    print("ring_tracker.py")
     print(f"Video : {video_path}")
     print(f"CSV   : {output_csv}")
 
