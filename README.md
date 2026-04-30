@@ -104,6 +104,21 @@ picker. That hands off to `hsv_tuner.py` on the current frame; once you
 re-tune and save, the tuner closes and the picker resumes with the new
 calibration — no need to restart the tracker.
 
+### Filename position prior
+
+If the video filename matches `th1_pXXX_th2_pYYY.mov` (e.g.
+`th1_p180_th2_p180.mov`), the picker uses those angles as a position
+prior: blobs more than 70 px from the expected marker location are
+rejected. This eliminates skin-tone / wall-poster / glove-color false
+positives at held-pendulum starting frames, where HSV thresholds alone
+cannot separate the actual marker from a confounder of similar colour.
+
+The expected positions show as **cyan crosshairs** in the picker. If
+your ground-truth angles differ from the filename (e.g. mid-tracking
+on a long recording), pass `--no-prior` to disable. Videos without
+matching filenames (`long_recording.mov`, `DSC_0136.mov`, etc.) get
+the legacy unconstrained behaviour automatically.
+
 ```bash
 # 3. Sanity check.
 python scripts/processing/verify_tracking.py

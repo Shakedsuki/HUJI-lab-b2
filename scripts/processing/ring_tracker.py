@@ -52,7 +52,9 @@ Sources behind the design choices:
 import cv2
 import numpy as np
 import csv
+import math
 import os
+import re
 import subprocess
 import sys
 import json
@@ -103,6 +105,46 @@ FPS_DEFAULT      = 59.94
 
 DEFAULT_RING_TOL = 30
 MIN_BLOB_AREA    = 8
+
+# Picker-only: if the video filename encodes initial angles
+# (th1_pXXX_th2_pYYY.mov), the picker uses them as a position prior so
+# blobs far from the expected marker location are rejected — eliminating
+# face/skin false positives at the held-pendulum starting frames.
+FILENAME_ANGLE_PATTERN = re.compile(
+    r"th1_([pm])(\d+)_th2_([pm])(\d+)", re.IGNORECASE,
+)
+PICKER_ANCHOR_MAX_DIST = 70   # px tolerance around the expected position
+
+
+def parse_initial_angles(video_path):
+    """
+    Parse a filename like 'th1_p180_th2_m045.mov' into (th1_deg, th2_deg).
+    'p' = positive, 'm' = negative. Returns None if no match — falls back
+    to the unconstrained picker behaviour.
+    """
+    m = FILENAME_ANGLE_PATTERN.search(os.path.basename(video_path))
+    if not m:
+        return None
+    sign1, deg1, sign2, deg2 = m.groups()
+    th1 = float(deg1) * (-1.0 if sign1.lower() == "m" else 1.0)
+    th2 = float(deg2) * (-1.0 if sign2.lower() == "m" else 1.0)
+    return th1, th2
+
+
+def expected_marker_positions(th1_deg, th2_deg):
+    """
+    Convert filename-encoded initial angles into expected pixel positions
+    for the green and red markers. Uses the same convention as
+    compute_angle (0 = down, +90 = right, ±180 = up).
+    """
+    g_x = PIVOT[0] + ARM_LENGTH_PX * math.sin(math.radians(th1_deg))
+    g_y = PIVOT[1] + ARM_LENGTH_PX * math.cos(math.radians(th1_deg))
+    expected_green = (int(round(g_x)), int(round(g_y)))
+
+    r_x = g_x + ARM_LENGTH_PX * math.sin(math.radians(th2_deg))
+    r_y = g_y + ARM_LENGTH_PX * math.cos(math.radians(th2_deg))
+    expected_red = (int(round(r_x)), int(round(r_y)))
+    return expected_green, expected_red
 
 SG_WINDOW = 11
 SG_POLY   = 3
@@ -712,7 +754,8 @@ def pick_video_interactive():
 # ─────────────────────────────────────────────
 
 def pick_frame_interactive(video_path, label, fps, total_frames,
-                           hsv_values, ring_tolerance, start_frame=0):
+                           hsv_values, ring_tolerance, start_frame=0,
+                           use_filename_prior=True):
     """
     Open a navigable cv2 window to pick a single frame from `video_path`.
     Live HSV detection (ring ∩ colour, no motion mask) is overlaid on each
@@ -738,6 +781,24 @@ def pick_frame_interactive(video_path, label, fps, total_frames,
 
     pivot_dist, _ = precompute_pivot_grids(width, height, PIVOT)
     pivot_ring    = make_ring_uint8(pivot_dist, ARM_LENGTH_PX, ring_tolerance)
+
+    # ── Filename position prior ──
+    # If the video filename encodes its initial angles (th1_pXXX_th2_pYYY),
+    # use them as anchors so blobs far from the expected marker positions
+    # are rejected. This is what fixes the "red mask matches the user's
+    # face" failure on inverted-start clips: the face is far from where
+    # the red sticker is supposed to be at frame 0, even though it sits
+    # on the search ring around green.
+    initial_angles = (parse_initial_angles(video_path)
+                      if use_filename_prior else None)
+    if initial_angles is not None:
+        expected_green, expected_red = expected_marker_positions(*initial_angles)
+        prior_status = (f"prior: th1={initial_angles[0]:+.0f}  "
+                        f"th2={initial_angles[1]:+.0f}  "
+                        f"(blobs > {PICKER_ANCHOR_MAX_DIST}px from expected rejected)")
+    else:
+        expected_green = expected_red = None
+        prior_status   = "no filename prior — pure HSV+ring matching"
 
     # Plain ASCII dash — em-dash mojibakes to "â€"" through cv2's window
     # title encoding on Windows.
@@ -768,22 +829,69 @@ def pick_frame_interactive(video_path, label, fps, total_frames,
         hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
         green_color    = color_mask_green(hsv, hsv_values["green"])
         green_combined = cv2.bitwise_and(green_color, pivot_ring)
-        green_pos      = best_blob(green_combined)
+        green_pos      = best_blob(
+            green_combined,
+            anchor=expected_green,
+            max_dist=(PICKER_ANCHOR_MAX_DIST if expected_green else None),
+        )
+
+        # If anchored detection found nothing, try unanchored as a hint
+        # that the prior is wrong (e.g. wrong frame, or rig moved).
+        green_pos_unanchored = None
+        if green_pos is None and expected_green is not None:
+            green_pos_unanchored = best_blob(green_combined)
 
         red_pos = None
+        red_pos_unanchored = None
         if green_pos is not None:
             local_dist, _ = precompute_pivot_grids(width, height, green_pos)
             red_ring      = make_ring_uint8(local_dist, ARM_LENGTH_PX,
                                             ring_tolerance)
             red_color     = color_mask_red(hsv, hsv_values["red"])
             red_combined  = cv2.bitwise_and(red_color, red_ring)
-            red_pos       = best_blob(red_combined)
+            # Recompute expected_red from the actual green so any
+            # green-detection drift carries through.
+            if initial_angles is not None:
+                _, exp_red_dyn = expected_marker_positions(*initial_angles)
+                exp_red_dyn = (
+                    int(round(green_pos[0] + ARM_LENGTH_PX
+                              * math.sin(math.radians(initial_angles[1])))),
+                    int(round(green_pos[1] + ARM_LENGTH_PX
+                              * math.cos(math.radians(initial_angles[1])))),
+                )
+            else:
+                exp_red_dyn = None
+            red_pos = best_blob(
+                red_combined,
+                anchor=exp_red_dyn,
+                max_dist=(PICKER_ANCHOR_MAX_DIST if exp_red_dyn else None),
+            )
+            if red_pos is None and exp_red_dyn is not None:
+                red_pos_unanchored = best_blob(red_combined)
 
         green_pos, red_pos = validate_geometry(green_pos, red_pos)
 
         # ── Overlay on the original-resolution frame ──
         cv2.circle(frame, PIVOT, 8, (0, 215, 255), -1)
         cv2.circle(frame, PIVOT, ARM_LENGTH_PX, (0, 200, 0), 1)
+
+        # Draw the expected (filename-prior) marker positions as cyan
+        # crosshairs so the user can see where the picker is looking.
+        if expected_green is not None:
+            cv2.drawMarker(frame, expected_green, (255, 255, 0),
+                           cv2.MARKER_TILTED_CROSS, 18, 2)
+        if green_pos is not None and initial_angles is not None:
+            # exp_red_dyn was computed above
+            cv2.drawMarker(frame, exp_red_dyn, (255, 200, 0),
+                           cv2.MARKER_TILTED_CROSS, 18, 2)
+
+        # Show rejected (unanchored) detections as faint grey dots so the
+        # user can see WHY the prior is helping.
+        if green_pos_unanchored is not None:
+            cv2.circle(frame, green_pos_unanchored, 6, (120, 120, 120), 1)
+        if red_pos_unanchored is not None:
+            cv2.circle(frame, red_pos_unanchored, 6, (120, 120, 120), 1)
+
         if green_pos is not None:
             cv2.line(frame, PIVOT, green_pos, (0, 255, 0), 2)
             cv2.circle(frame, green_pos, 8, (0, 255, 0), -1)
@@ -792,14 +900,22 @@ def pick_frame_interactive(video_path, label, fps, total_frames,
                 cv2.line(frame, green_pos, red_pos, (0, 0, 200), 2)
                 cv2.circle(frame, red_pos, 8, (0, 0, 255), -1)
 
-        # Status banner — also signals HSV adequacy.
+        # Status banner — also signals HSV adequacy and prior agreement.
         if green_pos is not None and red_pos is not None:
             status_txt, status_col = "[+] both markers detected", (0, 220, 0)
+        elif green_pos is not None and red_pos_unanchored is not None:
+            status_txt = ("[!] red blob is far from filename prior — "
+                          "wrong frame? scrub forward, or press T to retune")
+            status_col = (0, 165, 255)
         elif green_pos is not None:
             status_txt = "[!] green ok, red missing (occluded? or HSV stale)"
             status_col = (0, 200, 255)
+        elif green_pos_unanchored is not None:
+            status_txt = ("[!] green blob is far from filename prior — "
+                          "wrong frame, rig moved, or HSV stale")
+            status_col = (0, 165, 255)
         else:
-            status_txt = "[X] green not found — wrong frame, or HSV stale"
+            status_txt = "[X] green not found - wrong frame, or HSV stale"
             status_col = (0, 0, 255)
 
         # Resize to display.
@@ -808,7 +924,9 @@ def pick_frame_interactive(video_path, label, fps, total_frames,
         cv2.putText(disp, f"PICK {label.upper()}", (10, 28),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
         cv2.putText(disp, status_txt, (10, 56),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, status_col, 2)
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.55, status_col, 2)
+        cv2.putText(disp, prior_status, (10, 80),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.45, (180, 220, 255), 1)
         cv2.putText(disp,
                     "a/d +-1   A/D +-10   z/x +-100   T re-tune HSV   ENTER confirm   ESC cancel",
                     (10, DISP_H - 38),
@@ -885,9 +1003,10 @@ def main():
     args  = [a for a in sys.argv[1:] if not a.startswith("--")]
     flags = [a for a in sys.argv[1:] if a.startswith("--")]
     no_debug     = "--no-debug" in flags
-    force_browse = "--browse"   in flags
-    show_status  = "--status"   in flags
-    force_run    = "--force"    in flags
+    force_browse = "--browse"    in flags
+    show_status  = "--status"    in flags
+    force_run    = "--force"     in flags
+    no_prior     = "--no-prior"  in flags
 
     # --status mode: print the tracked/pending breakdown and exit.
     if show_status:
@@ -975,6 +1094,7 @@ def main():
         init_frame = pick_frame_interactive(
             video_path, "init frame", video_fps, total_frames,
             hsv_values, ring_tolerance, start_frame=0,
+            use_filename_prior=not no_prior,
         )
         if init_frame is None:
             print("Cancelled — no init frame selected.")
@@ -994,6 +1114,7 @@ def main():
         release_frame = pick_frame_interactive(
             video_path, "release frame", video_fps, total_frames,
             hsv_values, ring_tolerance, start_frame=init_frame,
+            use_filename_prior=not no_prior,
         )
         if release_frame is None:
             print("Cancelled — no release frame selected.")
