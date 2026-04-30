@@ -53,6 +53,7 @@ import cv2
 import numpy as np
 import csv
 import os
+import subprocess
 import sys
 import json
 from scipy.signal import savgol_filter
@@ -61,8 +62,9 @@ from scipy.signal import savgol_filter
 # instead of duplicating them. ring_tracker.py is a script (never imported),
 # so a one-shot sys.path insertion is fine. Compute the path relative to
 # this file so the import works from any worktree, not just master.
-_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-_UTILS_DIR  = os.path.abspath(os.path.join(_SCRIPT_DIR, os.pardir, "utils"))
+_SCRIPT_DIR     = os.path.dirname(os.path.abspath(__file__))
+_UTILS_DIR      = os.path.abspath(os.path.join(_SCRIPT_DIR, os.pardir, "utils"))
+HSV_TUNER_PATH  = os.path.join(_SCRIPT_DIR, "hsv_tuner.py")
 sys.path.insert(0, _UTILS_DIR)
 from video_status import (         # noqa: E402  (after sys.path tweak)
     is_tracked,
@@ -710,7 +712,9 @@ def pick_frame_interactive(video_path, label, fps, total_frames,
     pivot_dist, _ = precompute_pivot_grids(width, height, PIVOT)
     pivot_ring    = make_ring_uint8(pivot_dist, ARM_LENGTH_PX, ring_tolerance)
 
-    win_title = f"Pick {label} — {os.path.basename(video_path)}"
+    # Plain ASCII dash — em-dash mojibakes to "â€"" through cv2's window
+    # title encoding on Windows.
+    win_title = f"Pick {label} - {os.path.basename(video_path)}"
     cv2.namedWindow(win_title, cv2.WINDOW_AUTOSIZE)
 
     DISP_W, DISP_H = 960, 540
@@ -779,7 +783,7 @@ def pick_frame_interactive(video_path, label, fps, total_frames,
         cv2.putText(disp, status_txt, (10, 56),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.6, status_col, 2)
         cv2.putText(disp,
-                    "a/d +-1   A/D +-10   z/x +-100   ENTER confirm   ESC cancel",
+                    "a/d +-1   A/D +-10   z/x +-100   T re-tune HSV   ENTER confirm   ESC cancel",
                     (10, DISP_H - 38),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (220, 220, 220), 1)
         cv2.putText(disp,
@@ -807,6 +811,38 @@ def pick_frame_interactive(video_path, label, fps, total_frames,
             idx = max(0, idx - 100)
         elif k == ord("x"):
             idx = min(total_frames - 1, idx + 100)
+        elif k in (ord("t"), ord("T")):
+            # Hand off to hsv_tuner on the current frame. After it exits,
+            # reload HSV calibration in place and rebuild the green ring
+            # mask so the picker resumes with the new values.
+            cv2.destroyWindow(win_title)
+            cap.release()
+            print(f"\n  Launching hsv_tuner on '{os.path.basename(video_path)}' "
+                  f"@ frame {idx} ...")
+            try:
+                subprocess.run(
+                    [sys.executable, HSV_TUNER_PATH, video_path, str(idx)],
+                    check=False,
+                )
+            except FileNotFoundError:
+                print(f"  ERROR: could not launch {HSV_TUNER_PATH}")
+
+            # Reload HSV calibration into the same dict the caller holds.
+            new_hsv = load_hsv_values()
+            hsv_values.clear()
+            hsv_values.update(new_hsv)
+            ring_tolerance = int(new_hsv.get("ring_tolerance", DEFAULT_RING_TOL))
+
+            # Rebuild the green ring mask at the new tolerance.
+            pivot_ring = make_ring_uint8(pivot_dist, ARM_LENGTH_PX,
+                                         ring_tolerance)
+
+            # Reopen the picker. last_idx = -1 forces a re-decode + re-detect.
+            cap = cv2.VideoCapture(video_path)
+            cv2.namedWindow(win_title, cv2.WINDOW_AUTOSIZE)
+            last_idx = -1
+            print(f"  Reloaded HSV (ring tolerance = {ring_tolerance}px). "
+                  f"Resuming picker.\n")
 
     cap.release()
     cv2.destroyWindow(win_title)
@@ -914,6 +950,9 @@ def main():
             cap.release()
             return
         print(f"Init frame selected: {init_frame}")
+        # The picker may have updated HSV calibration via the T hotkey;
+        # refresh ring_tolerance so the rest of the run uses the new value.
+        ring_tolerance = int(hsv_values.get("ring_tolerance", DEFAULT_RING_TOL))
 
     # ── Release frame: registry → visual picker ──────────────────────────
     if existing_entry and existing_entry.get("release_frame") is not None:
@@ -930,6 +969,8 @@ def main():
             cap.release()
             return
         print(f"Release frame selected: {release_frame}")
+        # Pick up any tuning the user did via T during release-frame picking.
+        ring_tolerance = int(hsv_values.get("ring_tolerance", DEFAULT_RING_TOL))
     print(f"Release frame: {release_frame}  (t={release_frame / video_fps:.3f}s)")
 
     # ── Build static background (median of sampled frames) ───────────────
