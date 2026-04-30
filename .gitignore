@@ -20,7 +20,12 @@ __pycache__/
 *.pyc
 *.pyo
 
-# ── OS junk ──────────────────────────────────────
-.DS_Store
+# ── Part 1 samples (large data files) ────────────
+chaos/part1/samples
+
+# ── Windows OS files ─────────────────────────────
 Thumbs.db
-Desktop.ini
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.lnk
+.DS_Store
