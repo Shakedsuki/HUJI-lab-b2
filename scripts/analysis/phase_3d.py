@@ -10,9 +10,9 @@ coloured by time. The trajectory lives on the energy surface — a curved
 Also produces a rotating animation saved as an MP4.
 
 Usage:
-  python scripts/analysis_3d.py
-  python scripts/analysis_3d.py path/to/tracking.csv
-  python scripts/analysis_3d.py path/to/tracking.csv --save
+  python scripts/analysis/phase_3d.py
+  python scripts/analysis/phase_3d.py path/to/tracking.csv
+  python scripts/analysis/phase_3d.py path/to/tracking.csv --save
 """
 
 import sys

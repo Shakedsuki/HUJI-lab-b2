@@ -8,7 +8,7 @@ Requirements:
     pip install gdown
 
 Usage:
-    python scripts/download_videos.py
+    python scripts/utils/download_videos.py
 
 The Drive folder is public (view access). No authentication needed.
 """

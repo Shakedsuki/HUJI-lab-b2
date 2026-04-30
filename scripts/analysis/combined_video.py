@@ -14,8 +14,8 @@ Parameter strip along the bottom of the right panel shows:
 Output: 1920×720 MP4 at source framerate.
 
 Usage:
-  python scripts/analysis_combined_video.py
-  python scripts/analysis_combined_video.py path/to/tracking.csv path/to/video.mov
+  python scripts/analysis/combined_video.py
+  python scripts/analysis/combined_video.py path/to/tracking.csv path/to/video.mov
 """
 
 import sys

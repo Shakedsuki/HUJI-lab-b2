@@ -38,9 +38,9 @@ I/O:
              data/experiments.json        (entry updated, tracker='ring')
 
 Usage:
-    python scripts/ring_tracker.py
-    python scripts/ring_tracker.py Videos/long_recording.mov
-    python scripts/ring_tracker.py Videos/long_recording.mov --no-debug
+    python scripts/processing/ring_tracker.py
+    python scripts/processing/ring_tracker.py Videos/long_recording.mov
+    python scripts/processing/ring_tracker.py Videos/long_recording.mov --no-debug
 
 Sources behind the design choices:
     PyImageSearch ball-tracking (GaussianBlur + erode/dilate + minEnclosingCircle)
@@ -211,7 +211,7 @@ def validate_geometry(green_pos, red_pos):
 def load_hsv_values():
     if not os.path.exists(HSV_FILE):
         print(f"ERROR: {HSV_FILE} not found.")
-        print("Run scripts/hsv_tuner.py to calibrate marker colours.")
+        print("Run scripts/processing/hsv_tuner.py to calibrate marker colours.")
         sys.exit(1)
     with open(HSV_FILE, "r") as f:
         data = json.load(f)

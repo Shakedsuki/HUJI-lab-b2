@@ -7,15 +7,15 @@ producing per-frame angles + angular velocities for downstream analysis.
 
 ```
 calibrate ──▶ track ──▶ verify ──▶ analyse
-hsv_tuner   ring_tracker   verify_tracking   analysis_*
+hsv_tuner   ring_tracker   verify_tracking   phase_*, combined_video
 ```
 
 | Stage | Script | What it does |
 |---|---|---|
-| Calibrate | `scripts/hsv_tuner.py` | Interactive HSV calibration. Eyedropper-sample marker pixels, auto-suggest ranges, fine-tune with sliders, live ring-detection preview. Saves to `data/hsv_values.json`. Run once per lighting setup. |
-| Track | `scripts/ring_tracker.py` | Frame-independent tracker. Stacks four filters (motion mask via temporal-median background, fixed-arm-length ring, HSV colour, predicted angular arc) with a graceful fallback chain. Reads the calibration; writes `data/<stem>_tracking.csv` and `output/<stem>_debug.mp4`. |
-| Verify | `scripts/verify_tracking.py` | Post-hoc QA on the CSV. Flags rows where the apparent &#124;dθ/dt&#124; exceeds physical limits — catches silent false positives that `dropout=0` won't reveal. |
-| Analyse | `scripts/analysis_*.py` | Plots, 3-D phase rotations, animated trajectory videos, side-by-side comparisons. |
+| Calibrate | `scripts/processing/hsv_tuner.py` | Interactive HSV calibration. Eyedropper-sample marker pixels, auto-suggest ranges, fine-tune with sliders, live ring-detection preview. Saves to `data/hsv_values.json`. Run once per lighting setup. |
+| Track | `scripts/processing/ring_tracker.py` | Frame-independent tracker. Stacks four filters (motion mask via temporal-median background, fixed-arm-length ring, HSV colour, predicted angular arc) with a graceful fallback chain. Reads the calibration; writes `data/<stem>_tracking.csv` and `output/<stem>_debug.mp4`. |
+| Verify | `scripts/processing/verify_tracking.py` | Post-hoc QA on the CSV. Flags rows where the apparent &#124;dθ/dt&#124; exceeds physical limits — catches silent false positives that `dropout=0` won't reveal. |
+| Analyse | `scripts/analysis/*.py` | Plots, 3-D phase rotations, animated trajectory videos, side-by-side comparisons. |
 
 ## Setup
 
@@ -34,7 +34,7 @@ Raw videos aren't tracked in git (too large; ~3 GB). They live on Google Drive:
 Pull them locally:
 
 ```bash
-python scripts/download_videos.py
+python scripts/utils/download_videos.py
 ```
 
 ## Camera / rig
@@ -62,33 +62,33 @@ Calibrated HSV ranges live in `data/hsv_values.json` (regenerable via
 
 ```bash
 # 1. Calibrate marker colours — click ~8 green pixels, R, ~8 red pixels, S, Q.
-python scripts/hsv_tuner.py Videos/long_recording.mov
+python scripts/processing/hsv_tuner.py Videos/long_recording.mov
 
 # 2. Track. Prompts for init_frame and release_frame the first run;
 #    after that they're stored in data/experiments.json.
-python scripts/ring_tracker.py Videos/long_recording.mov
+python scripts/processing/ring_tracker.py Videos/long_recording.mov
 
 # 3. Sanity check.
-python scripts/verify_tracking.py
+python scripts/processing/verify_tracking.py
 ```
 
 ### Re-running on a video already in `experiments.json`
 
 ```bash
-python scripts/ring_tracker.py Videos/long_recording.mov
+python scripts/processing/ring_tracker.py Videos/long_recording.mov
 # no prompts — init/release loaded from registry
 ```
 
 ### Skip the debug video (faster on long recordings)
 
 ```bash
-python scripts/ring_tracker.py Videos/long_recording.mov --no-debug
+python scripts/processing/ring_tracker.py Videos/long_recording.mov --no-debug
 ```
 
 ### Stricter verification
 
 ```bash
-python scripts/verify_tracking.py --omega-cap 1800
+python scripts/processing/verify_tracking.py --omega-cap 1800
 # default cap is 2500 deg/s; arm-2 chaos peaks ~1500 deg/s for a 35 cm arm
 ```
 
@@ -106,15 +106,18 @@ python scripts/verify_tracking.py --omega-cap 1800
 
 ```
 chaos/
-├── scripts/                   active pipeline
-│   ├── hsv_tuner.py
-│   ├── ring_tracker.py
-│   ├── verify_tracking.py
-│   ├── analysis_3d.py
-│   ├── analysis_animate.py
-│   ├── analysis_combined_video.py
-│   ├── analysis_plot.py
-│   └── download_videos.py
+├── scripts/
+│   ├── processing/             tracking pipeline
+│   │   ├── hsv_tuner.py            interactive HSV calibration
+│   │   ├── ring_tracker.py         main tracker
+│   │   └── verify_tracking.py      post-hoc QA
+│   ├── analysis/               plots, figures, animations
+│   │   ├── phase_3d.py             3D phase trajectory + rotating MP4
+│   │   ├── phase_animation.py      animated 3-panel phase view
+│   │   ├── phase_panels.py         6-panel static physics sanity check
+│   │   └── combined_video.py       side-by-side raw video + phase panels
+│   └── utils/
+│       └── download_videos.py      pull raw videos from Google Drive
 ├── data/                      tracking CSVs, experiments.json, HSV calibration
 ├── output/                    debug videos, verification plots (gitignored)
 ├── Videos/                    raw .mov files (gitignored, ~3 GB)

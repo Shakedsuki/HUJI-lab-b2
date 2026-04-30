@@ -14,9 +14,9 @@ Produces a 6-panel figure:
 Angular velocities computed via Savitzky-Golay derivative (window=11, poly=3).
 
 Usage:
-  python scripts/analysis_plot.py
+  python scripts/analysis/phase_panels.py
   Optionally pass a CSV path as argument:
-  python scripts/analysis_plot.py C:/dev/chaos/data/long_recording_tracking.csv
+  python scripts/analysis/phase_panels.py C:/dev/chaos/data/long_recording_tracking.csv
 """
 
 import sys

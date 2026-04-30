@@ -12,11 +12,11 @@ The trajectory builds up frame by frame, with a bright dot marking the
 current state and a fading trail showing recent history.
 
 Usage:
-  python scripts/analysis_animate.py
-  python scripts/analysis_animate.py path/to/tracking.csv
+  python scripts/analysis/phase_animation.py
+  python scripts/analysis/phase_animation.py path/to/tracking.csv
 
 Optional: save to MP4 (requires ffmpeg):
-  python scripts/analysis_animate.py --save
+  python scripts/analysis/phase_animation.py --save
 """
 
 import sys
