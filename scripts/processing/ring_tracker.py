@@ -57,6 +57,19 @@ import sys
 import json
 from scipy.signal import savgol_filter
 
+# Reuse the tracked/pending helpers from scripts/utils/video_status.py
+# instead of duplicating them. ring_tracker.py is a script (never imported),
+# so a one-shot sys.path insertion is fine. Compute the path relative to
+# this file so the import works from any worktree, not just master.
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+_UTILS_DIR  = os.path.abspath(os.path.join(_SCRIPT_DIR, os.pardir, "utils"))
+sys.path.insert(0, _UTILS_DIR)
+from video_status import (         # noqa: E402  (after sys.path tweak)
+    is_tracked,
+    status_summary,
+    print_status,
+)
+
 
 # ─────────────────────────────────────────────
 # PATHS / CONSTANTS
@@ -666,6 +679,141 @@ def pick_video_interactive():
 
 
 # ─────────────────────────────────────────────
+# VISUAL FRAME PICKER  (init_frame / release_frame)
+# ─────────────────────────────────────────────
+
+def pick_frame_interactive(video_path, label, fps, total_frames,
+                           hsv_values, ring_tolerance, start_frame=0):
+    """
+    Open a navigable cv2 window to pick a single frame from `video_path`.
+    Live HSV detection (ring ∩ colour, no motion mask) is overlaid on each
+    frame, so the picker doubles as the HSV-adequacy check: if the markers
+    don't light up while you scrub, the calibration is stale.
+
+    Keys:
+        a / d        ±1 frame
+        A / D        ±10 frames
+        z / x        ±100 frames
+        ENTER        confirm
+        ESC          cancel
+
+    Returns the chosen frame index, or None if the user cancels.
+    """
+    cap = cv2.VideoCapture(video_path)
+    if not cap.isOpened():
+        print(f"  WARN: couldn't open {video_path} for the frame picker")
+        return None
+
+    width  = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+
+    pivot_dist, _ = precompute_pivot_grids(width, height, PIVOT)
+    pivot_ring    = make_ring_uint8(pivot_dist, ARM_LENGTH_PX, ring_tolerance)
+
+    win_title = f"Pick {label} — {os.path.basename(video_path)}"
+    cv2.namedWindow(win_title, cv2.WINDOW_AUTOSIZE)
+
+    DISP_W, DISP_H = 960, 540
+
+    idx       = max(0, min(total_frames - 1, start_frame))
+    last_idx  = -1
+    cached    = None
+    chosen    = None
+
+    while True:
+        # Re-decode only when the index changes.
+        if idx != last_idx:
+            cap.set(cv2.CAP_PROP_POS_FRAMES, idx)
+            ret, frame = cap.read()
+            if not ret:
+                idx = max(0, min(total_frames - 1, idx - 1))
+                continue
+            cached   = frame
+            last_idx = idx
+
+        frame = cached.copy()
+
+        # ── Live HSV detection (ring + colour, no motion mask) ──
+        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+        green_color    = color_mask_green(hsv, hsv_values["green"])
+        green_combined = cv2.bitwise_and(green_color, pivot_ring)
+        green_pos      = best_blob(green_combined)
+
+        red_pos = None
+        if green_pos is not None:
+            local_dist   = precompute_distance_grid(width, height, green_pos)
+            red_ring     = make_ring_uint8(local_dist, ARM_LENGTH_PX,
+                                           ring_tolerance)
+            red_color    = color_mask_red(hsv, hsv_values["red"])
+            red_combined = cv2.bitwise_and(red_color, red_ring)
+            red_pos      = best_blob(red_combined)
+
+        green_pos, red_pos = validate_geometry(green_pos, red_pos)
+
+        # ── Overlay on the original-resolution frame ──
+        cv2.circle(frame, PIVOT, 8, (0, 215, 255), -1)
+        cv2.circle(frame, PIVOT, ARM_LENGTH_PX, (0, 200, 0), 1)
+        if green_pos is not None:
+            cv2.line(frame, PIVOT, green_pos, (0, 255, 0), 2)
+            cv2.circle(frame, green_pos, 8, (0, 255, 0), -1)
+            cv2.circle(frame, green_pos, ARM_LENGTH_PX, (0, 0, 200), 1)
+            if red_pos is not None:
+                cv2.line(frame, green_pos, red_pos, (0, 0, 200), 2)
+                cv2.circle(frame, red_pos, 8, (0, 0, 255), -1)
+
+        # Status banner — also signals HSV adequacy.
+        if green_pos is not None and red_pos is not None:
+            status_txt, status_col = "[+] both markers detected", (0, 220, 0)
+        elif green_pos is not None:
+            status_txt = "[!] green ok, red missing (occluded? or HSV stale)"
+            status_col = (0, 200, 255)
+        else:
+            status_txt = "[X] green not found — wrong frame, or HSV stale"
+            status_col = (0, 0, 255)
+
+        # Resize to display.
+        disp = cv2.resize(frame, (DISP_W, DISP_H), interpolation=cv2.INTER_AREA)
+
+        cv2.putText(disp, f"PICK {label.upper()}", (10, 28),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
+        cv2.putText(disp, status_txt, (10, 56),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, status_col, 2)
+        cv2.putText(disp,
+                    "a/d +-1   A/D +-10   z/x +-100   ENTER confirm   ESC cancel",
+                    (10, DISP_H - 38),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.5, (220, 220, 220), 1)
+        cv2.putText(disp,
+                    f"frame {idx}/{total_frames - 1}   t={idx / fps:.3f}s",
+                    (10, DISP_H - 12),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.55, (255, 255, 255), 2)
+
+        cv2.imshow(win_title, disp)
+        k = cv2.waitKey(0) & 0xFF
+
+        if k in (13, 10):                       # ENTER
+            chosen = idx
+            break
+        if k == 27:                              # ESC
+            break
+        if k == ord("a"):
+            idx = max(0, idx - 1)
+        elif k == ord("d"):
+            idx = min(total_frames - 1, idx + 1)
+        elif k == ord("A"):
+            idx = max(0, idx - 10)
+        elif k == ord("D"):
+            idx = min(total_frames - 1, idx + 10)
+        elif k == ord("z"):
+            idx = max(0, idx - 100)
+        elif k == ord("x"):
+            idx = min(total_frames - 1, idx + 100)
+
+    cap.release()
+    cv2.destroyWindow(win_title)
+    return chosen
+
+
+# ─────────────────────────────────────────────
 # MAIN
 # ─────────────────────────────────────────────
 
@@ -674,13 +822,24 @@ def main():
     flags = [a for a in sys.argv[1:] if a.startswith("--")]
     no_debug     = "--no-debug" in flags
     force_browse = "--browse"   in flags
+    show_status  = "--status"   in flags
+    force_run    = "--force"    in flags
+
+    # --status mode: print the tracked/pending breakdown and exit.
+    if show_status:
+        print_status()
+        return
+
+    # When no positional path is given, print a one-line tracking-status
+    # banner before the picker opens, so the user knows what's left.
+    if not args or force_browse:
+        print(status_summary())
 
     if args and not force_browse:
         video_path = args[0]
         if not os.path.isabs(video_path):
             video_path = os.path.join(ROOT, video_path)
     else:
-        # No path on the CLI (or --browse forced): open the picker.
         video_path = pick_video_interactive()
         if not video_path:
             print("No video selected — cancelled.")
@@ -698,11 +857,28 @@ def main():
     print(f"Video : {video_path}")
     print(f"CSV   : {output_csv}")
 
+    # ── Already tracked? Confirm re-run unless --force was passed. ──
+    reg = load_registry()
+    if is_tracked(stem, reg) and not force_run:
+        e = reg[stem]
+        print(f"\n[+] '{stem}' is already tracked")
+        print(f"    init_frame    = {e.get('init_frame')}")
+        print(f"    release_frame = {e.get('release_frame')}")
+        if e.get("theta1_release") is not None:
+            print(f"    th1={e['theta1_release']:.2f}  "
+                  f"th2={e['theta2_release']:.2f}  "
+                  f"E={e.get('energy_proxy', '?')}")
+        if e.get("dropout_rate_pct") is not None:
+            print(f"    dropout       = {e['dropout_rate_pct']}%")
+        ans = input("\nRe-run tracking? [y/N]: ").strip().lower()
+        if not ans.startswith("y"):
+            print("Cancelled.")
+            return
+
     hsv_values     = load_hsv_values()
     ring_tolerance = int(hsv_values.get("ring_tolerance", DEFAULT_RING_TOL))
     print(f"HSV   : {HSV_FILE}  (ring tolerance = {ring_tolerance}px)")
 
-    reg            = load_registry()
     existing_entry = reg.get(stem)
     if existing_entry:
         print(f"\nFound existing registry entry for {stem}:")
@@ -723,34 +899,37 @@ def main():
     dt           = 1.0 / video_fps
     print(f"\nVideo: {width}x{height} @ {video_fps:.2f}fps, {total_frames} frames")
 
-    # ── Init / release frames ────────────────────────────────────────────
+    # ── Init frame: registry → visual picker ─────────────────────────────
     if existing_entry and existing_entry.get("init_frame") is not None:
         init_frame = int(existing_entry["init_frame"])
         print(f"Init frame loaded from registry: {init_frame}")
     else:
-        while True:
-            try:
-                init_frame = int(input(
-                    "\nInit frame (first frame where both markers visible): ").strip())
-                if 0 <= init_frame < total_frames:
-                    break
-                print(f"  must be in [0, {total_frames - 1}]")
-            except ValueError:
-                print("  enter an integer")
+        print("\nOpening visual picker for INIT FRAME ...")
+        init_frame = pick_frame_interactive(
+            video_path, "init frame", video_fps, total_frames,
+            hsv_values, ring_tolerance, start_frame=0,
+        )
+        if init_frame is None:
+            print("Cancelled — no init frame selected.")
+            cap.release()
+            return
+        print(f"Init frame selected: {init_frame}")
 
+    # ── Release frame: registry → visual picker ──────────────────────────
     if existing_entry and existing_entry.get("release_frame") is not None:
         release_frame = int(existing_entry["release_frame"])
         print(f"Release frame loaded from registry: {release_frame}")
     else:
-        while True:
-            try:
-                release_frame = int(input(
-                    "\nRelease frame (frame where pendulum is let go): ").strip())
-                if 0 <= release_frame < total_frames:
-                    break
-                print(f"  must be in [0, {total_frames - 1}]")
-            except ValueError:
-                print("  enter an integer")
+        print("\nOpening visual picker for RELEASE FRAME ...")
+        release_frame = pick_frame_interactive(
+            video_path, "release frame", video_fps, total_frames,
+            hsv_values, ring_tolerance, start_frame=init_frame,
+        )
+        if release_frame is None:
+            print("Cancelled — no release frame selected.")
+            cap.release()
+            return
+        print(f"Release frame selected: {release_frame}")
     print(f"Release frame: {release_frame}  (t={release_frame / video_fps:.3f}s)")
 
     # ── Build static background (median of sampled frames) ───────────────

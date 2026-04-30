@@ -58,16 +58,38 @@ Calibrated HSV ranges live in `data/hsv_values.json` (regenerable via
 
 ## Common workflows
 
+### See what's tracked vs pending
+
+```bash
+python scripts/utils/video_status.py
+# or, equivalently, from the tracker:
+python scripts/processing/ring_tracker.py --status
+```
+
+A video counts as "tracked" only when its `experiments.json` entry has
+populated `release_frame`, ICs (`theta1_release`, `theta2_release`), and
+a `csv_file` that still exists on disk.
+
 ### First time on a new video / new lighting
 
 ```bash
 # 1. Calibrate marker colours — click ~8 green pixels, R, ~8 red pixels, S, Q.
 python scripts/processing/hsv_tuner.py Videos/long_recording.mov
 
-# 2. Track. Prompts for init_frame and release_frame the first run;
-#    after that they're stored in data/experiments.json.
-python scripts/processing/ring_tracker.py Videos/long_recording.mov
+# 2. Track. With no path, opens a file picker rooted at Videos/.
+python scripts/processing/ring_tracker.py
+```
 
+When the video isn't already in `experiments.json`, the tracker opens
+**two cv2 windows** — one for `init_frame`, one for `release_frame` —
+that show the actual frame with a live HSV detection overlay (green and
+red markers light up if calibration is good). Navigate with `a/d` (±1),
+`A/D` (±10), `z/x` (±100), then `ENTER` to confirm. The overlay
+doubles as the HSV-adequacy check: if neither marker lights up while
+you scrub, calibration is stale — close the picker and re-run
+`hsv_tuner`.
+
+```bash
 # 3. Sanity check.
 python scripts/processing/verify_tracking.py
 ```
@@ -76,21 +98,25 @@ python scripts/processing/verify_tracking.py
 
 ```bash
 python scripts/processing/ring_tracker.py
-# opens a file dialog rooted at Videos/ — pick any .mov / .mp4 / .avi
+# prints a one-line "Tracked: N  Pending: M" banner, then opens a Tk
+# file dialog rooted at Videos/.
 ```
 
-The dialog also opens automatically if you pass `--browse`, which is
-useful when you want the picker even though you typed a path:
-
-```bash
-python scripts/processing/ring_tracker.py --browse
-```
+The dialog also opens if you pass `--browse`, useful to override a stale
+positional path.
 
 ### Re-running on a video already in `experiments.json`
 
 ```bash
 python scripts/processing/ring_tracker.py Videos/long_recording.mov
-# no prompts — init/release loaded from registry
+```
+
+If the video is already tracked, the script prints its stored ICs and
+asks `Re-run tracking? [y/N]:` so you don't accidentally overwrite a
+good run. Pass `--force` to skip that prompt:
+
+```bash
+python scripts/processing/ring_tracker.py Videos/long_recording.mov --force
 ```
 
 ### Skip the debug video (faster on long recordings)
@@ -131,7 +157,8 @@ chaos/
 │   │   ├── phase_panels.py         6-panel static physics sanity check
 │   │   └── combined_video.py       side-by-side raw video + phase panels
 │   └── utils/
-│       └── download_videos.py      pull raw videos from Google Drive
+│       ├── download_videos.py      pull raw videos from Google Drive
+│       └── video_status.py         which Videos/ files are tracked vs pending
 ├── data/                      tracking CSVs, experiments.json, HSV calibration
 ├── output/                    debug videos, verification plots (gitignored)
 ├── Videos/                    raw .mov files (gitignored, ~3 GB)
