@@ -741,12 +741,12 @@ def pick_frame_interactive(video_path, label, fps, total_frames,
 
         red_pos = None
         if green_pos is not None:
-            local_dist   = precompute_distance_grid(width, height, green_pos)
-            red_ring     = make_ring_uint8(local_dist, ARM_LENGTH_PX,
-                                           ring_tolerance)
-            red_color    = color_mask_red(hsv, hsv_values["red"])
-            red_combined = cv2.bitwise_and(red_color, red_ring)
-            red_pos      = best_blob(red_combined)
+            local_dist, _ = precompute_pivot_grids(width, height, green_pos)
+            red_ring      = make_ring_uint8(local_dist, ARM_LENGTH_PX,
+                                            ring_tolerance)
+            red_color     = color_mask_red(hsv, hsv_values["red"])
+            red_combined  = cv2.bitwise_and(red_color, red_ring)
+            red_pos       = best_blob(red_combined)
 
         green_pos, red_pos = validate_geometry(green_pos, red_pos)
 
