@@ -38,8 +38,9 @@ I/O:
              data/experiments.json        (entry updated, tracker='ring')
 
 Usage:
-    python scripts/processing/ring_tracker.py
-    python scripts/processing/ring_tracker.py Videos/long_recording.mov
+    python scripts/processing/ring_tracker.py                            # opens a file picker rooted at Videos/
+    python scripts/processing/ring_tracker.py Videos/long_recording.mov  # explicit path
+    python scripts/processing/ring_tracker.py --browse                   # force the picker even if a path is given
     python scripts/processing/ring_tracker.py Videos/long_recording.mov --no-debug
 
 Sources behind the design choices:
@@ -62,7 +63,7 @@ from scipy.signal import savgol_filter
 # ─────────────────────────────────────────────
 
 ROOT             = r"C:\dev\chaos"
-DEFAULT_VIDEO    = os.path.join(ROOT, r"Videos\long_recording.mov")
+VIDEOS_DIR       = os.path.join(ROOT, "Videos")
 EXPERIMENTS_FILE = os.path.join(ROOT, r"data\experiments.json")
 HSV_FILE         = os.path.join(ROOT, r"data\hsv_values.json")
 
@@ -627,17 +628,64 @@ def extract_ic_from_csv(csv_path, release_frame, video_fps):
 
 
 # ─────────────────────────────────────────────
+# VIDEO PICKER
+# ─────────────────────────────────────────────
+
+def pick_video_interactive():
+    """
+    Open a Tk file dialog rooted at Videos/. Returns the chosen absolute
+    path or None if the user cancelled. Falls back gracefully (returns
+    None with a printed hint) on systems where Tk isn't available.
+    """
+    try:
+        import tkinter as tk
+        from tkinter import filedialog
+    except ImportError:
+        print("tkinter is not available — pass a video path on the command line.")
+        return None
+
+    initialdir = VIDEOS_DIR if os.path.isdir(VIDEOS_DIR) else ROOT
+
+    root = tk.Tk()
+    root.withdraw()                      # hide the empty Tk root window
+    try:
+        root.attributes("-topmost", True)   # bring the dialog to the front
+    except tk.TclError:
+        pass
+    chosen = filedialog.askopenfilename(
+        parent=root,
+        title="Select pendulum video to track",
+        initialdir=initialdir,
+        filetypes=[
+            ("Video files", "*.mov *.mp4 *.avi *.mkv *.m4v"),
+            ("All files",   "*.*"),
+        ],
+    )
+    root.destroy()
+    return chosen if chosen else None
+
+
+# ─────────────────────────────────────────────
 # MAIN
 # ─────────────────────────────────────────────
 
 def main():
     args  = [a for a in sys.argv[1:] if not a.startswith("--")]
     flags = [a for a in sys.argv[1:] if a.startswith("--")]
-    no_debug = "--no-debug" in flags
+    no_debug     = "--no-debug" in flags
+    force_browse = "--browse"   in flags
 
-    video_path = args[0] if args else DEFAULT_VIDEO
-    if not os.path.isabs(video_path):
-        video_path = os.path.join(ROOT, video_path)
+    if args and not force_browse:
+        video_path = args[0]
+        if not os.path.isabs(video_path):
+            video_path = os.path.join(ROOT, video_path)
+    else:
+        # No path on the CLI (or --browse forced): open the picker.
+        video_path = pick_video_interactive()
+        if not video_path:
+            print("No video selected — cancelled.")
+            return
+
     if not os.path.exists(video_path):
         print(f"ERROR: video not found: {video_path}")
         return
