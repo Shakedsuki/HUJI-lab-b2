@@ -1,76 +1,135 @@
 # Double Pendulum — Chaos Lab (Part 2)
 
-## Video Data
+Computer-vision pipeline for tracking a wall-mounted double pendulum and
+producing per-frame angles + angular velocities for downstream analysis.
 
-Raw videos are **not tracked in git** (too large). They are stored on Google Drive:
+## Pipeline
 
-📁 **[כאוס — Google Drive Folder](https://drive.google.com/drive/folders/1nB9rrpZ1UTdLrKEJudptLbawavkvXWj-)**
-
-To download all videos locally, run:
-```bash
-python scripts/download_videos.py
 ```
-Requires `gdown`: `pip install gdown`
+calibrate ──▶ track ──▶ verify ──▶ analyse
+hsv_tuner   ring_tracker   verify_tracking   analysis_*
+```
+
+| Stage | Script | What it does |
+|---|---|---|
+| Calibrate | `scripts/hsv_tuner.py` | Interactive HSV calibration. Eyedropper-sample marker pixels, auto-suggest ranges, fine-tune with sliders, live ring-detection preview. Saves to `data/hsv_values.json`. Run once per lighting setup. |
+| Track | `scripts/ring_tracker.py` | Frame-independent tracker. Stacks four filters (motion mask via temporal-median background, fixed-arm-length ring, HSV colour, predicted angular arc) with a graceful fallback chain. Reads the calibration; writes `data/<stem>_tracking.csv` and `output/<stem>_debug.mp4`. |
+| Verify | `scripts/verify_tracking.py` | Post-hoc QA on the CSV. Flags rows where the apparent &#124;dθ/dt&#124; exceeds physical limits — catches silent false positives that `dropout=0` won't reveal. |
+| Analyse | `scripts/analysis_*.py` | Plots, 3-D phase rotations, animated trajectory videos, side-by-side comparisons. |
 
 ## Setup
 
-Video files are stored locally in `Videos/` — not tracked by git (too large).
-
-Install dependencies:
 ```bash
-pip install opencv-python numpy
+pip install opencv-contrib-python numpy scipy matplotlib gdown
 ```
 
-## Directory Structure
+`opencv-contrib-python` (not `opencv-python`) is required because
+`pendulum_tracker.py` uses CSRT.
+
+Raw videos aren't tracked in git (too large; ~3 GB). They live on Google Drive:
+
+📁 **[כאוס — Google Drive Folder](https://drive.google.com/drive/folders/1nB9rrpZ1UTdLrKEJudptLbawavkvXWj-)**
+
+Pull them locally:
+
+```bash
+python scripts/download_videos.py
+```
+
+## Camera / rig
+
+- Resolution: 1280×720 @ 59.94 fps, H.264
+- Fixed pivot pixel: `(608, 355)` — never moves, not detected
+- Arm length: 35 cm each (≈ 188 px)
+- Scale: 0.186 cm/px (22 cm plate ≈ 118 px)
+- Angle convention: 0° = straight down, +90 = right, −90 = left, ±180 = up
+
+## Markers
+
+| Marker | Role | How it's tracked |
+|---|---|---|
+| 🟡 Yellow | Fixed wall pivot | Hard-coded, not tracked |
+| 🟢 Green  | Joint between arm 1 and arm 2 | HSV inside an annulus around the pivot |
+| 🔴 Red    | Tip of arm 2 | HSV inside an annulus around the green marker |
+
+Calibrated HSV ranges live in `data/hsv_values.json` (regenerable via
+`hsv_tuner.py`). Field meanings are in `data/hsv_values_readme.txt`.
+
+## Common workflows
+
+### First time on a new video / new lighting
+
+```bash
+# 1. Calibrate marker colours — click ~8 green pixels, R, ~8 red pixels, S, Q.
+python scripts/hsv_tuner.py Videos/long_recording.mov
+
+# 2. Track. Prompts for init_frame and release_frame the first run;
+#    after that they're stored in data/experiments.json.
+python scripts/ring_tracker.py Videos/long_recording.mov
+
+# 3. Sanity check.
+python scripts/verify_tracking.py
+```
+
+### Re-running on a video already in `experiments.json`
+
+```bash
+python scripts/ring_tracker.py Videos/long_recording.mov
+# no prompts — init/release loaded from registry
+```
+
+### Skip the debug video (faster on long recordings)
+
+```bash
+python scripts/ring_tracker.py Videos/long_recording.mov --no-debug
+```
+
+### Stricter verification
+
+```bash
+python scripts/verify_tracking.py --omega-cap 1800
+# default cap is 2500 deg/s; arm-2 chaos peaks ~1500 deg/s for a 35 cm arm
+```
+
+## Outputs
+
+| File | Produced by | Notes |
+|---|---|---|
+| `data/<stem>_tracking.csv` | `ring_tracker.py` | Per frame: `frame, time_s, phase, x_green, y_green, x_red, y_red, theta1_deg, theta2_deg, dropout` |
+| `output/<stem>_debug.mp4` | `ring_tracker.py` | Annotated video — search rings, predicted arcs, marker dots, phase, dropout flag |
+| `data/<stem>_verification.csv` | `verify_tracking.py` | Tracking CSV + `omega1_deg_s`, `omega2_deg_s`, `suspect` columns |
+| `output/<stem>_verification.png` | `verify_tracking.py` | θ and ω timelines with suspect frames highlighted |
+| `data/experiments.json` | `ring_tracker.py` (auto) | Registry: init/release frames, ICs at release, dropout rate, normalised energy proxy, tracker name |
+
+## Directory structure
 
 ```
 chaos/
-├── scripts/
-│   ├── pendulum_tracker.py   # Main tracking pipeline → outputs CSV
-│   ├── hsv_tuner.py          # Interactive HSV range tuning tool
-│   └── hsv_values.txt        # Tuned HSV ranges for this camera/lighting
-├── data/                     # CSV outputs (tracked by git)
-├── snapshots/                # Reference photos (tracked by git)
-├── output/                   # Debug videos (git-ignored — large)
-├── frames/                   # Extracted frames (git-ignored — regenerable)
-└── Videos/                   # Raw .mov files (git-ignored — ~3 GB)
+├── scripts/                   active pipeline
+│   ├── hsv_tuner.py
+│   ├── ring_tracker.py
+│   ├── verify_tracking.py
+│   ├── pendulum_tracker.py    legacy CSRT tracker
+│   ├── analysis_3d.py
+│   ├── analysis_animate.py
+│   ├── analysis_combined_video.py
+│   ├── analysis_plot.py
+│   └── download_videos.py
+├── data/                      tracking CSVs, experiments.json, HSV calibration
+├── output/                    debug videos, verification plots (gitignored)
+├── Videos/                    raw .mov files (gitignored, ~3 GB)
+└── archive/                   superseded scripts and reference data
+    ├── scripts/               tag_videos, video_tagger, rename_tagged_videos,
+    │                          ring_tracker (v1), pendulum_tracker_hybrid,
+    │                          split_video, stitch_csv, preview_frame
+    └── Videos/                angle reference jpgs
 ```
 
-## Workflow
+## Legacy
 
-### 1 — Trim a video (remove hold period before release)
-```bash
-ffmpeg -i Videos/DSC_0136.mov -vf "select=gte(n\,234)" -vsync vfr -c:v libx264 -crf 18 Videos/DSC_0136_trimmed.mov
-```
-Replace `234` with the frame where the person's hand clears the frame.
-
-### 2 — Tune HSV ranges (if needed for a new video)
-```bash
-python scripts/hsv_tuner.py
-```
-Navigate to a frame with active motion, adjust sliders until both markers
-show clean white blobs, press `S` to save.
-
-### 3 — Run the tracker
-```bash
-python scripts/pendulum_tracker.py
-```
-Edit the `CONFIG` section at the top of the script first.
-
-Output: `data/<video_name>_tracking.csv`
-
-## Camera / Setup
-
-- Resolution: 1280×720 @ 59.94fps
-- Codec: H.264
-- Fixed pivot pixel: `(608, 355)`
-- Arm length: 35 cm each
-- Scale: ~0.186 cm/px (derived from 22cm plate ≈ 118px)
-
-## Marker Colors
-
-| Marker | Role | HSV range |
-|--------|------|-----------|
-| 🟡 Yellow | Fixed wall pivot | Hard-coded, not tracked |
-| 🟢 Green  | Joint (arm1 → arm2) | H:35–80, S:30–255, V:80–255 |
-| 🔴 Red    | Tip of arm 2 | H:0–10 + 165–179, S:32–255, V:72–255 |
+`scripts/pendulum_tracker.py` is the original CSRT-based tracker. It still
+works for short clips at moderate angles where appearance tracking is
+reliable. The ring tracker replaces it on harder footage (inverted starts,
+long recordings, fast falls) — on `long_recording.mov` CSRT loses the red
+marker on ~98% of free-swing frames, while the ring tracker's typical
+dropout rate is around 5%.
