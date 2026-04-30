@@ -1,5 +1,17 @@
 # Double Pendulum — Chaos Lab (Part 2)
 
+## Video Data
+
+Raw videos are **not tracked in git** (too large). They are stored on Google Drive:
+
+📁 **[כאוס — Google Drive Folder](https://drive.google.com/drive/folders/1nB9rrpZ1UTdLrKEJudptLbawavkvXWj-)**
+
+To download all videos locally, run:
+```bash
+python scripts/download_videos.py
+```
+Requires `gdown`: `pip install gdown`
+
 ## Setup
 
 Video files are stored locally in `Videos/` — not tracked by git (too large).
