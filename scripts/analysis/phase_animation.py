@@ -200,4 +200,11 @@ if __name__ == "__main__":
         print(f"ERROR: CSV not found: {csv_path}")
         sys.exit(1)
 
+    ext = os.path.splitext(csv_path)[1].lower()
+    if ext != ".csv":
+        print(f"ERROR: expected a tracking CSV, got '{csv_path}' (extension '{ext}').")
+        print("       This script reads the per-frame angle CSV, not videos.")
+        print(f"       Try:  python {os.path.basename(__file__)}    (uses default CSV)")
+        sys.exit(2)
+
     animate(csv_path)

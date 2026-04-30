@@ -224,6 +224,15 @@ def main():
         print(f"ERROR: CSV not found: {csv_path}")
         sys.exit(1)
 
+    ext = os.path.splitext(csv_path)[1].lower()
+    if ext != ".csv":
+        print(f"ERROR: expected a tracking CSV, got '{csv_path}' (extension '{ext}').")
+        print("       This script reads the per-frame angle CSV, not videos.")
+        print("       Try:")
+        print(f"         python {os.path.basename(__file__)}                                # default CSV")
+        print(f"         python {os.path.basename(__file__)} data/long_recording_tracking.csv")
+        sys.exit(2)
+
     print(f"Loading {csv_path} ...")
     t, th1, th2 = load_csv(csv_path)
     print(f"  {len(t)} clean free-swing frames  "

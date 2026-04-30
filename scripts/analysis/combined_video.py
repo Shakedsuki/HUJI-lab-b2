@@ -295,6 +295,20 @@ def main():
     csv_path   = args[0] if len(args) > 0 else DEFAULT_CSV
     video_path = args[1] if len(args) > 1 else DEFAULT_VIDEO
 
+    csv_ext = os.path.splitext(csv_path)[1].lower()
+    if csv_ext != ".csv":
+        print(f"ERROR: first argument must be a tracking CSV, got '{csv_path}' "
+              f"(extension '{csv_ext}').")
+        print("       Usage:")
+        print(f"         python {os.path.basename(__file__)}                                                # defaults")
+        print(f"         python {os.path.basename(__file__)} data/long_recording_tracking.csv Videos/long_recording.mov")
+        sys.exit(2)
+
+    video_ext = os.path.splitext(video_path)[1].lower()
+    if video_ext not in (".mov", ".mp4", ".avi", ".mkv", ".m4v"):
+        print(f"WARN: second argument doesn't look like a video ('{video_path}'). "
+              f"Continuing anyway.")
+
     print(f"CSV:   {csv_path}")
     print(f"Video: {video_path}")
 
