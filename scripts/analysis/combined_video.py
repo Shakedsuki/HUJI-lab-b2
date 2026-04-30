@@ -19,6 +19,12 @@ Usage:
 """
 
 import sys
+
+# Force UTF-8 stdout so unicode glyphs (θ, ω) don't crash on Windows cp1252.
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+except (AttributeError, OSError):
+    pass
 import os
 import csv
 import numpy as np
@@ -92,8 +98,13 @@ def load_csv(path):
     th1c = fill_nan(th1.copy())
     th2c = fill_nan(th2.copy())
 
-    om1 = savgol_filter(th1c, SG_WINDOW, SG_POLY, deriv=1, delta=dt)
-    om2 = savgol_filter(th2c, SG_WINDOW, SG_POLY, deriv=1, delta=dt)
+    # Unwrap before SG-differentiating: SG'ing a wrapped series produces
+    # ~360°/frame phantom spikes at every ±180° crossing.
+    th1u = np.degrees(np.unwrap(np.radians(th1c)))
+    th2u = np.degrees(np.unwrap(np.radians(th2c)))
+
+    om1 = savgol_filter(th1u, SG_WINDOW, SG_POLY, deriv=1, delta=dt)
+    om2 = savgol_filter(th2u, SG_WINDOW, SG_POLY, deriv=1, delta=dt)
 
     # Restore NaNs for dropout frames
     om1[dropouts == 1] = np.nan
@@ -329,8 +340,26 @@ def main():
     print("Setting up figure ...")
     fig, trace_lines, head_dots, time_txt = setup_figure(th1, th2, om1, om2)
 
-    # Pre-compute XY data for each panel
-    XY = [(th1, th2), (th1, om1), (th2, om2)]
+    # Pre-compute XY data for each panel. Insert NaN at ±180° wrap
+    # points so matplotlib breaks the trace line at the inverted-angle
+    # crossings instead of streaking across the plot.
+    def _break_arrays(arrays, mask):
+        out = []
+        for a in arrays:
+            b = np.asarray(a, dtype=float).copy()
+            b[1:][mask] = np.nan
+            out.append(b)
+        return out
+
+    diff_th1 = np.abs(np.diff(th1)) > 180
+    diff_th2 = np.abs(np.diff(th2)) > 180
+    th1c, th2c = _break_arrays([th1, th2], diff_th1 | diff_th2)
+    th1p, om1p = _break_arrays([th1, om1], diff_th1)
+    th2p, om2p = _break_arrays([th2, om2], diff_th2)
+    XY = [(th1c, th2c), (th1p, om1p), (th2p, om2p)]
+    # Head-dot data: original (un-broken) arrays so the dot doesn't
+    # disappear on a wrap frame.
+    HEAD_XY = [(th1, th2), (th1, om1), (th2, om2)]
 
     # ── Open video ──
     cap = cv2.VideoCapture(video_path)
@@ -359,14 +388,14 @@ def main():
             break
 
         # ── Update matplotlib plots ──
-        for panel_idx, (x, y) in enumerate(XY):
-            # Mask NaN for clean plotting
-            valid = ~(np.isnan(x[:i+1]) | np.isnan(y[:i+1]))
-            xv = x[:i+1][valid]
-            yv = y[:i+1][valid]
-            trace_lines[panel_idx].set_data(xv, yv)
-            if valid.any():
-                head_dots[panel_idx].set_data([x[i]], [y[i]])
+        for panel_idx, ((x, y), (xh, yh)) in enumerate(zip(XY, HEAD_XY)):
+            # Pass arrays *with* NaN intact — matplotlib renders NaN as
+            # a gap, breaking the line cleanly at wraps and dropouts.
+            trace_lines[panel_idx].set_data(x[:i+1], y[:i+1])
+            # Head dot uses the un-broken arrays so it stays visible
+            # even on wrap frames.
+            if not (np.isnan(xh[i]) or np.isnan(yh[i])):
+                head_dots[panel_idx].set_data([xh[i]], [yh[i]])
             else:
                 head_dots[panel_idx].set_data([], [])
 

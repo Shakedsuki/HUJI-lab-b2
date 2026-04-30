@@ -16,6 +16,12 @@ Usage:
 """
 
 import sys
+
+# Force UTF-8 stdout so unicode glyphs (θ, ω) don't crash on Windows cp1252.
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+except (AttributeError, OSError):
+    pass
 import os
 import csv
 import numpy as np
@@ -62,9 +68,13 @@ def load(path):
     th2 = np.array([float(r['theta2_deg']) for r in rows])
     t   = t - t[0]
 
-    dt  = np.mean(np.diff(t))
-    om1 = savgol_filter(th1, SG_WINDOW, SG_POLY, deriv=1, delta=dt)
-    om2 = savgol_filter(th2, SG_WINDOW, SG_POLY, deriv=1, delta=dt)
+    dt = np.mean(np.diff(t))
+    # Unwrap before SG-differentiating so the derivative is physically
+    # correct across the ±180° wrap.
+    th1u = np.degrees(np.unwrap(np.radians(th1)))
+    th2u = np.degrees(np.unwrap(np.radians(th2)))
+    om1  = savgol_filter(th1u, SG_WINDOW, SG_POLY, deriv=1, delta=dt)
+    om2  = savgol_filter(th2u, SG_WINDOW, SG_POLY, deriv=1, delta=dt)
 
     return t, th1, th2, om1, om2
 
@@ -73,14 +83,19 @@ def load(path):
 # COLOURED LINE SEGMENTS
 # ─────────────────────────────────────────────
 
-def make_segments(x, y, z):
+def make_segments(x, y, z, wrap_threshold=180.0):
     """
-    Break (x, y, z) arrays into N-1 line segments, each connecting
-    consecutive points. Returns array of shape (N-1, 2, 3).
+    Break (x, y, z) arrays into line segments connecting consecutive
+    points. Drops segments that straddle a ±180° wrap on either x (θ1)
+    or y (θ2) so the trajectory doesn't draw a long line across the
+    plot at every inverted-angle crossing.
     """
-    pts = np.array([x, y, z]).T                    # (N, 3)
-    segs = np.stack([pts[:-1], pts[1:]], axis=1)   # (N-1, 2, 3)
-    return segs
+    pts = np.array([x, y, z]).T                       # (N, 3)
+    segs = np.stack([pts[:-1], pts[1:]], axis=1)      # (N-1, 2, 3)
+    # Drop segments where x or y jumps by more than the wrap threshold.
+    keep = (np.abs(np.diff(x)) <= wrap_threshold) & \
+           (np.abs(np.diff(y)) <= wrap_threshold)
+    return segs[keep], keep
 
 
 # ─────────────────────────────────────────────
@@ -100,8 +115,8 @@ def plot_3d(t, th1, th2, om1, label, out_path):
     norm  = plt.Normalize(t.min(), t.max())
     cmap  = plt.cm.plasma
 
-    segs  = make_segments(th1, th2, om1)
-    colors = cmap(norm((t[:-1] + t[1:]) / 2))   # midpoint colour per segment
+    segs, keep = make_segments(th1, th2, om1)
+    colors = cmap(norm((t[:-1] + t[1:]) / 2))[keep]   # midpoint colour per kept segment
 
     lc = Line3DCollection(segs, colors=colors, linewidth=0.7, alpha=0.85)
     ax.add_collection3d(lc)

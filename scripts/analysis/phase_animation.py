@@ -20,6 +20,12 @@ Optional: save to MP4 (requires ffmpeg):
 """
 
 import sys
+
+# Force UTF-8 stdout so unicode glyphs (θ, ω) don't crash on Windows cp1252.
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+except (AttributeError, OSError):
+    pass
 import os
 import csv
 import numpy as np
@@ -65,11 +71,32 @@ def load(path):
     th2 = np.array([float(r['theta2_deg']) for r in rows])
     t   = t - t[0]
 
-    dt  = np.mean(np.diff(t))
-    om1 = savgol_filter(th1, SG_WINDOW, SG_POLY, deriv=1, delta=dt)
-    om2 = savgol_filter(th2, SG_WINDOW, SG_POLY, deriv=1, delta=dt)
+    dt = np.mean(np.diff(t))
+
+    # Unwrap before differentiating: the CSV stores angles wrapped to
+    # [-180, 180], and SG-differentiating across a wrap produces phantom
+    # ~360°/frame spikes that smear into thousand-deg/s plateaus.
+    th1u = np.degrees(np.unwrap(np.radians(th1)))
+    th2u = np.degrees(np.unwrap(np.radians(th2)))
+
+    om1 = savgol_filter(th1u, SG_WINDOW, SG_POLY, deriv=1, delta=dt)
+    om2 = savgol_filter(th2u, SG_WINDOW, SG_POLY, deriv=1, delta=dt)
 
     return t, th1, th2, om1, om2
+
+
+def break_arrays(arrays, wrap_mask):
+    """
+    Set position (i + 1) to NaN in every array where wrap_mask[i] is True.
+    matplotlib draws no line through NaN, so the trace breaks cleanly at
+    each ±180° wrap instead of streaking across the whole plot.
+    """
+    out = []
+    for a in arrays:
+        b = np.asarray(a, dtype=float).copy()
+        b[1:][wrap_mask] = np.nan
+        out.append(b)
+    return out
 
 
 # ─────────────────────────────────────────────
@@ -101,8 +128,26 @@ def animate(path):
     xlabels = [r"$\theta_1$ (deg)", r"$\theta_1$ (deg)", r"$\theta_2$ (deg)"]
     ylabels = [r"$\theta_2$ (deg)", r"$\omega_1$ (deg/s)", r"$\omega_2$ (deg/s)"]
 
-    # Data for each panel: (x-array, y-array)
+    # Compute wrap-break masks per panel. Config space breaks at either
+    # arm's wrap; arm-1 / arm-2 portraits each break at their own wrap.
+    diff_th1 = np.abs(np.diff(th1)) > 180
+    diff_th2 = np.abs(np.diff(th2)) > 180
+    mask_config = diff_th1 | diff_th2
+
+    # Trace arrays (NaN-broken at wraps) — used for the building line.
+    th1c, th2c   = break_arrays([th1, th2], mask_config)
+    th1p, om1p   = break_arrays([th1, om1], diff_th1)
+    th2p, om2p   = break_arrays([th2, om2], diff_th2)
+
+    # Trace data per panel.
     XY = [
+        (th1c, th2c),
+        (th1p, om1p),
+        (th2p, om2p),
+    ]
+    # Head-dot data per panel — original (non-broken) arrays so the dot
+    # never disappears, even on a wrap frame.
+    HEAD_XY = [
         (th1, th2),
         (th1, om1),
         (th2, om2),
@@ -111,8 +156,9 @@ def animate(path):
     for ax, title, xl, yl, (x, y) in zip(axes, titles, xlabels, ylabels, XY):
         ax.set_title(title, fontsize=11)
         ax.set_xlabel(xl);  ax.set_ylabel(yl)
-        ax.set_xlim(x.min() * 1.12, x.max() * 1.12)
-        ax.set_ylim(y.min() * 1.12, y.max() * 1.12)
+        # NaN-aware min/max for axis limits.
+        ax.set_xlim(np.nanmin(x) * 1.12, np.nanmax(x) * 1.12)
+        ax.set_ylim(np.nanmin(y) * 1.12, np.nanmax(y) * 1.12)
         ax.axhline(0, color='gray', lw=0.5, ls='--', zorder=0)
         ax.axvline(0, color='gray', lw=0.5, ls='--', zorder=0)
         ax.grid(True, alpha=0.25)
@@ -145,11 +191,14 @@ def animate(path):
     def update(frame):
         i = frame
 
-        for panel, (x, y) in enumerate(XY):
+        for panel, ((x, y), (xh, yh)) in enumerate(zip(XY, HEAD_XY)):
             # Permanent trace — show everything up to current frame
+            # (uses NaN-broken arrays so wraps don't streak).
             traces[panel].set_data(x[:i+1], y[:i+1])
+            # Head dot uses the un-broken arrays so it never disappears,
+            # even when the trace just broke for a wrap.
             if i < N:
-                heads[panel].set_data([x[i]], [y[i]])
+                heads[panel].set_data([xh[i]], [yh[i]])
 
         time_txt.set_text(f"t = {t[i]:.2f} s")
 
