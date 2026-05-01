@@ -36,6 +36,9 @@ Keys:
   LEFT-CLICK     sample HSV at the cursor (auto-suggest after >=5 samples)
   C              clear sampled points for the active marker
   T              cycle ring tolerance (20 -> 30 -> 40 px)
+  Z              toggle zoom loupe (magnified inset following the cursor)
+  M              cycle overlay level (full / minimal / clean)
+  + / -          increase / decrease zoom magnification (2x..8x)
   S              save data/hsv_values.json
   Q / ESC        quit (prompts to save if there are unsaved changes)
 """
@@ -93,6 +96,22 @@ WINDOW_CTRL     = "HSV Controls"
 # Ring tolerances we cycle through with the T key.
 RING_TOLERANCES = [20, 30, 40]
 DEFAULT_TOL_IDX = 1            # start at 30 px
+
+# Zoom loupe — magnified inset that follows the cursor so the user can
+# pick individual marker pixels without misclicking onto neighbouring
+# wall texture. Source region is INSET_PX/zoom_factor pixels wide in
+# the original frame; the inset itself is drawn INSET_PX × INSET_PX.
+INSET_PX        = 240
+ZOOM_FACTORS    = [2, 3, 4, 6, 8]
+DEFAULT_ZOOM_IDX = 2           # 4x magnification by default
+
+# Overlay levels cycled by M:
+#   0 = full     — rings + markers + labels + click crosshair (current default)
+#   1 = minimal  — only the click crosshair, raw pixels otherwise
+#   2 = clean    — raw frame with no overlays at all
+OVERLAY_FULL, OVERLAY_MINIMAL, OVERLAY_CLEAN = 0, 1, 2
+OVERLAY_LABELS = {OVERLAY_FULL: "FULL", OVERLAY_MINIMAL: "MIN",
+                  OVERLAY_CLEAN: "CLEAN"}
 
 # Default HSV ranges — sensible starting points for the green/red gaff tape.
 DEFAULTS = {
@@ -389,6 +408,15 @@ class TunerState:
         self.last_click         = None              # (x_orig, y_orig) for crosshair
         self.last_sample_frame  = -1                # to fade the crosshair
         self.dirty              = False             # any unsaved changes?
+        # Cursor tracking for the zoom loupe. cursor_orig is in the
+        # original 1280x720 frame; cursor_disp is in display coords (the
+        # 960x540 video sub-region). Both stay in sync via the mouse
+        # callback handling EVENT_MOUSEMOVE.
+        self.cursor_orig        = None
+        self.cursor_disp        = None
+        self.zoom_on            = False
+        self.zoom_idx           = DEFAULT_ZOOM_IDX
+        self.overlay_level      = OVERLAY_FULL
         # Where this session reads from / saves to. Per-video by default;
         # global with --global. Caller passes the resolved path.
         self.target_path        = target_path
@@ -402,6 +430,10 @@ class TunerState:
     @property
     def tolerance(self):
         return RING_TOLERANCES[self.tol_idx]
+
+    @property
+    def zoom_factor(self):
+        return ZOOM_FACTORS[self.zoom_idx]
 
 
 def display_to_frame(x_disp, y_disp):
@@ -456,6 +488,7 @@ def main():
     print()
     print("Keys: G/R switch marker  A/D step 1  ←/→ step 50  SPACE pause")
     print("      LEFT-CLICK sample  C clear samples  T cycle tolerance")
+    print("      Z zoom loupe  +/- zoom 2x..8x  M cycle overlay (full/min/clean)")
     print("      S save  Q/ESC quit")
     print()
 
@@ -475,9 +508,18 @@ def main():
     state.current_hsv = None
 
     def on_mouse(event, x, y, flags, _userdata):
+        # Always track cursor position for the zoom loupe — the position
+        # is consumed by the render loop, no other side effects.
+        mapped = display_to_frame(x, y)
+        if mapped is not None:
+            state.cursor_disp = (x, y)
+            state.cursor_orig = mapped
+        else:
+            state.cursor_disp = None
+            state.cursor_orig = None
+
         if event != cv2.EVENT_LBUTTONDOWN:
             return
-        mapped = display_to_frame(x, y)
         if mapped is None:
             return
         ox, oy = mapped
@@ -564,34 +606,41 @@ def main():
             red_pixel_count = int(np.count_nonzero(red_combined))
 
         # ── Draw overlays on the original frame ─────────────────────────
+        # The zoom-loupe inset is built from the RAW frame (pre-overlay)
+        # below, so make a copy for the inset before any drawing.
+        raw_frame_for_zoom = frame.copy() if state.zoom_on else None
         overlay = frame.copy()
 
-        # Pivot dot.
-        cv2.circle(overlay, PIVOT, 8, (0, 215, 255), -1)
+        # Marker overlays (rings, lines, labels) only at OVERLAY_FULL.
+        if state.overlay_level == OVERLAY_FULL:
+            # Pivot dot.
+            cv2.circle(overlay, PIVOT, 8, (0, 215, 255), -1)
 
-        # Green ring.
-        cv2.circle(overlay, PIVOT, ARM_LENGTH_PX, (0, 200, 0), 1)
+            # Green ring.
+            cv2.circle(overlay, PIVOT, ARM_LENGTH_PX, (0, 200, 0), 1)
 
-        if green_pos is not None:
-            cv2.line(overlay, PIVOT, green_pos, (0, 255, 0), 2)
-            cv2.circle(overlay, green_pos, 8, (0, 255, 0), -1)
-            theta1 = compute_angle(PIVOT, green_pos)
-            cv2.putText(overlay, f"th1={theta1:.1f}",
-                        (green_pos[0] + 10, green_pos[1] - 10),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
-            # Red ring (centred on green).
-            cv2.circle(overlay, green_pos, ARM_LENGTH_PX, (0, 0, 200), 1)
+            if green_pos is not None:
+                cv2.line(overlay, PIVOT, green_pos, (0, 255, 0), 2)
+                cv2.circle(overlay, green_pos, 8, (0, 255, 0), -1)
+                theta1 = compute_angle(PIVOT, green_pos)
+                cv2.putText(overlay, f"th1={theta1:.1f}",
+                            (green_pos[0] + 10, green_pos[1] - 10),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+                # Red ring (centred on green).
+                cv2.circle(overlay, green_pos, ARM_LENGTH_PX, (0, 0, 200), 1)
 
-            if red_pos is not None:
-                cv2.line(overlay, green_pos, red_pos, (0, 0, 255), 2)
-                cv2.circle(overlay, red_pos, 8, (0, 0, 255), -1)
-                theta2 = compute_angle(green_pos, red_pos)
-                cv2.putText(overlay, f"th2={theta2:.1f}",
-                            (red_pos[0] + 10, red_pos[1] - 10),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+                if red_pos is not None:
+                    cv2.line(overlay, green_pos, red_pos, (0, 0, 255), 2)
+                    cv2.circle(overlay, red_pos, 8, (0, 0, 255), -1)
+                    theta2 = compute_angle(green_pos, red_pos)
+                    cv2.putText(overlay, f"th2={theta2:.1f}",
+                                (red_pos[0] + 10, red_pos[1] - 10),
+                                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
 
-        # Crosshair on the most recent click (so the user sees what they sampled).
-        if state.last_click is not None:
+        # Click crosshair shown at FULL and MINIMAL — useful for verifying
+        # which pixel the last sample came from. Hidden only at CLEAN.
+        if (state.overlay_level != OVERLAY_CLEAN
+                and state.last_click is not None):
             cx, cy = state.last_click
             cv2.drawMarker(overlay, (cx, cy), (255, 255, 255),
                            cv2.MARKER_CROSS, 18, 2)
@@ -612,6 +661,37 @@ def main():
         left_panel = np.zeros((DISPLAY_H, LEFT_W, 3), dtype=np.uint8)
         left_panel[:VIDEO_DISP_H, :VIDEO_DISP_W] = scaled
 
+        # ── Zoom loupe — magnified inset following the cursor ─────────
+        # Helps the user click individual marker pixels without
+        # misclicking onto neighbouring wall texture or arm shaft.
+        # The inset is drawn on the LEFT panel (display coordinates),
+        # but its source pixels come from the RAW frame so the loupe
+        # doesn't include the rings/lines from the overlay.
+        if (state.zoom_on and state.cursor_orig is not None
+                and raw_frame_for_zoom is not None):
+            zf  = state.zoom_factor
+            src = INSET_PX // zf            # source region size (px in original frame)
+            cx, cy = state.cursor_orig
+            x0 = max(0, min(FRAME_W - src, cx - src // 2))
+            y0 = max(0, min(FRAME_H - src, cy - src // 2))
+            crop = raw_frame_for_zoom[y0:y0 + src, x0:x0 + src]
+            inset = cv2.resize(crop, (INSET_PX, INSET_PX),
+                               interpolation=cv2.INTER_NEAREST)
+            # Crosshair at the inset centre (= cursor position).
+            mid = INSET_PX // 2
+            cv2.drawMarker(inset, (mid, mid), (255, 255, 255),
+                           cv2.MARKER_CROSS, 24, 1)
+            cv2.rectangle(inset, (0, 0),
+                          (INSET_PX - 1, INSET_PX - 1), (255, 255, 255), 2)
+            cv2.putText(inset, f"ZOOM {zf}x",
+                        (8, 22), cv2.FONT_HERSHEY_SIMPLEX, 0.55,
+                        (255, 255, 255), 2)
+
+            # Place the inset in the top-left corner of the video region.
+            # Avoid covering the marker area in the centre of the frame.
+            ix, iy = 5, 5
+            left_panel[iy:iy + INSET_PX, ix:ix + INSET_PX] = inset
+
         # Mode badge at top-right of the video region.
         mode_color = (0, 255, 0) if state.mode == "green" else (0, 0, 255)
         cv2.rectangle(left_panel, (VIDEO_DISP_W - 130, 5),
@@ -619,6 +699,20 @@ def main():
         cv2.putText(left_panel, f"MODE: {state.mode.upper()}",
                     (VIDEO_DISP_W - 122, 27),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 0, 0), 2)
+
+        # Overlay-level badge below the mode badge (small, easy to ignore
+        # when full but visible enough that the user knows why the rings
+        # have disappeared in MINIMAL/CLEAN mode).
+        if state.overlay_level != OVERLAY_FULL:
+            badge_y = 42
+            cv2.rectangle(left_panel, (VIDEO_DISP_W - 130, badge_y),
+                          (VIDEO_DISP_W - 5, badge_y + 24),
+                          (60, 60, 60), -1)
+            cv2.putText(left_panel,
+                        f"OVERLAY: {OVERLAY_LABELS[state.overlay_level]}",
+                        (VIDEO_DISP_W - 122, badge_y + 18),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.45,
+                        (220, 220, 220), 1)
 
         # Status line (just below the video).
         n_g = len(state.green_samples)
@@ -748,6 +842,27 @@ def main():
             state.data["ring_tolerance"] = state.tolerance
             save_hsv_file(state.data, state.target_path)
             state.dirty = False
+            continue
+
+        if k in (ord("z"), ord("Z")):
+            state.zoom_on = not state.zoom_on
+            print(f"Zoom loupe -> {'ON' if state.zoom_on else 'OFF'} "
+                  f"({state.zoom_factor}x)")
+            continue
+
+        if k in (ord("m"), ord("M")):
+            state.overlay_level = (state.overlay_level + 1) % 3
+            print(f"Overlay -> {OVERLAY_LABELS[state.overlay_level]}")
+            continue
+
+        if k in (ord("+"), ord("=")):
+            state.zoom_idx = min(len(ZOOM_FACTORS) - 1, state.zoom_idx + 1)
+            print(f"Zoom magnification -> {state.zoom_factor}x")
+            continue
+
+        if k in (ord("-"), ord("_")):
+            state.zoom_idx = max(0, state.zoom_idx - 1)
+            print(f"Zoom magnification -> {state.zoom_factor}x")
             continue
 
     cap.release()
