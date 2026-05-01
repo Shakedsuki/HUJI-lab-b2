@@ -125,10 +125,13 @@
       355
     ],
     "scale_cm_per_px": 0.186,
-    "tracking_quality": "verified",
+    "tracking_quality": "review",
     "notes": "",
     "verification_date": "2026-05-01",
-    "verification_notes": "dropout, suspects, and \u03c9 all within thresholds"
+    "verification_notes": "DOWNGRADED via chaos audit on 2026-05-02: was 'verified'; new verdict WARN. Reasons: 1 residual suspects post-interpolation; 1 frame(s) with |\u0394\u03c9| spike (unphysical acceleration)",
+    "audit_date": "2026-05-02",
+    "audit_old_status": "verified",
+    "audit_new_status": "WARN"
   },
   "DSC_0141": {
     "video_file": "th1_p079_th2_p000.mov",
@@ -194,7 +197,31 @@
     "measurements_dir": "measurements/th1_p116_th2_m001",
     "csv_file": "tracking.csv",
     "init_frame": 119,
-    "release_frame": 119
+    "release_frame": 119,
+    "green_roi": null,
+    "red_roi": null,
+    "tracker": "ring",
+    "arm_length_px": 188,
+    "ring_tolerance": 30,
+    "theta1_release": 115.145,
+    "theta2_release": -2.459,
+    "omega1_release": 0.0,
+    "omega2_release": 7.2704,
+    "energy_proxy": -0.1332,
+    "t0_offset_s": 1.98532,
+    "duration_s": 32.783,
+    "n_free_frames": 1966,
+    "dropout_rate_pct": 0.0,
+    "arm_length_cm": 35.0,
+    "pivot_px": [
+      608,
+      355
+    ],
+    "scale_cm_per_px": 0.186,
+    "tracking_quality": "good",
+    "notes": "",
+    "suspect_frames_interpolated": 96,
+    "interpolation_date": "2026-05-02"
   },
   "DSC_0144": {
     "video_file": "th1_p138_th2_m002.mov",
@@ -215,7 +242,31 @@
     "measurements_dir": "measurements/th1_p138_th2_m002",
     "csv_file": "tracking.csv",
     "init_frame": 119,
-    "release_frame": 119
+    "release_frame": 119,
+    "green_roi": null,
+    "red_roi": null,
+    "tracker": "ring",
+    "arm_length_px": 188,
+    "ring_tolerance": 30,
+    "theta1_release": 136.992,
+    "theta2_release": -3.16,
+    "omega1_release": 5.0114,
+    "omega2_release": 23.2205,
+    "energy_proxy": 0.6359,
+    "t0_offset_s": 1.98532,
+    "duration_s": 43.143,
+    "n_free_frames": 2587,
+    "dropout_rate_pct": 0.0,
+    "arm_length_cm": 35.0,
+    "pivot_px": [
+      608,
+      355
+    ],
+    "scale_cm_per_px": 0.186,
+    "tracking_quality": "good",
+    "notes": "",
+    "suspect_frames_interpolated": 187,
+    "interpolation_date": "2026-05-02"
   },
   "DSC_0145": {
     "video_file": "th1_p160_th2_m001.mov",
@@ -347,10 +398,13 @@
       355
     ],
     "scale_cm_per_px": 0.186,
-    "tracking_quality": "verified",
+    "tracking_quality": "review",
     "notes": "",
     "verification_date": "2026-05-01",
-    "verification_notes": "dropout, suspects, and \u03c9 all within thresholds"
+    "verification_notes": "DOWNGRADED via chaos audit on 2026-05-02: was 'verified'; new verdict WARN. Reasons: 12 residual suspects post-interpolation; 16 arm-length violation(s) (max deviation 27.2%) \u2014 tracker latched on wrong object; 12 frame(s) with |\u0394\u03c9| spike (unphysical acceleration)",
+    "audit_date": "2026-05-02",
+    "audit_old_status": "verified",
+    "audit_new_status": "WARN"
   },
   "DSC_0150": {
     "video_file": "th1_p067_th2_p096.mov",
@@ -392,10 +446,13 @@
       355
     ],
     "scale_cm_per_px": 0.186,
-    "tracking_quality": "verified",
+    "tracking_quality": "review",
     "notes": "",
     "verification_date": "2026-05-01",
-    "verification_notes": "PASS via WARN-band manual triage 2026-05-01. Smooth coupled oscillation over 24s, 0 hidden suspects, 4.3% dropout entirely in holding phase. Peak |omega2|=2402 is one early-release spike, otherwise within physical bounds."
+    "verification_notes": "DOWNGRADED via chaos audit on 2026-05-02: was 'verified'; new verdict WARN. Reasons: 13 residual suspects post-interpolation; peak |\u03c9\u2082| 2402\u00b0/s > 1500\u00b0/s physical rule-of-thumb; 33 arm-length violation(s) (max deviation 27.7%) \u2014 tracker latched on wrong object; 13 frame(s) with |\u0394\u03c9| spike (unphysical acceleration)",
+    "audit_date": "2026-05-02",
+    "audit_old_status": "verified",
+    "audit_new_status": "WARN"
   },
   "long_recording": {
     "video_file": "long_recording.mov",
@@ -423,13 +480,16 @@
     "scale_cm_per_px": 0.186,
     "csv_file": "tracking.csv",
     "config_description": "th1_p180_th2_m179",
-    "tracking_quality": "verified",
+    "tracking_quality": "review",
     "notes": "",
     "measurements_dir": "measurements/th1_p180_th2_m179",
-    "verification_notes": "PASS via WARN-band manual triage 2026-05-01. 12 residual suspects post-interpolation are paired-frame artefacts in the first 15s of chaos (0.04% of 30k frames); 0% dropout overall, smooth damping for the remaining ~500s.",
+    "verification_notes": "DOWNGRADED via chaos audit on 2026-05-02: was 'verified'; new verdict WARN. Reasons: 251 residual suspects post-interpolation; peak |\u03c9\u2082| 3466\u00b0/s > 1500\u00b0/s physical rule-of-thumb; 13 holding-phase suspects (|\u03c9| > 100\u00b0/s while stationary); 103 arm-length violation(s) (max deviation 32.2%) \u2014 tracker latched on wrong object; 243 frame(s) with |\u0394\u03c9| spike (unphysical acceleration)",
     "suspect_frames_interpolated": 20,
     "interpolation_date": "2026-05-01",
-    "verification_date": "2026-05-01"
+    "verification_date": "2026-05-01",
+    "audit_date": "2026-05-02",
+    "audit_old_status": "verified",
+    "audit_new_status": "WARN"
   },
   "DSC_0151": {
     "video_file": "th1_p140_th2_p089.mov",
@@ -450,7 +510,31 @@
     "measurements_dir": "measurements/th1_p140_th2_p089",
     "csv_file": "tracking.csv",
     "init_frame": 52,
-    "release_frame": 52
+    "release_frame": 52,
+    "green_roi": null,
+    "red_roi": null,
+    "tracker": "ring",
+    "arm_length_px": 188,
+    "ring_tolerance": 30,
+    "theta1_release": 140.511,
+    "theta2_release": 87.709,
+    "omega1_release": 0.0,
+    "omega2_release": -0.8062,
+    "energy_proxy": 1.5037,
+    "t0_offset_s": 0.86753,
+    "duration_s": 18.235,
+    "n_free_frames": 1094,
+    "dropout_rate_pct": 1.65,
+    "arm_length_cm": 35.0,
+    "pivot_px": [
+      608,
+      355
+    ],
+    "scale_cm_per_px": 0.186,
+    "tracking_quality": "good",
+    "notes": "",
+    "suspect_frames_interpolated": 123,
+    "interpolation_date": "2026-05-02"
   },
   "DSC_0152": {
     "video_file": "th1_p153_th2_p090.mov",
@@ -606,7 +690,31 @@
     "measurements_dir": "measurements/th1_p093_th2_m002",
     "csv_file": "tracking.csv",
     "init_frame": 62,
-    "release_frame": 62
+    "release_frame": 62,
+    "green_roi": null,
+    "red_roi": null,
+    "tracker": "ring",
+    "arm_length_px": 188,
+    "ring_tolerance": 30,
+    "theta1_release": 90.0,
+    "theta2_release": -2.148,
+    "omega1_release": -276.4857,
+    "omega2_release": 306.2529,
+    "energy_proxy": 50.8573,
+    "t0_offset_s": 1.03437,
+    "duration_s": 43.343,
+    "n_free_frames": 2599,
+    "dropout_rate_pct": 0.38,
+    "arm_length_cm": 35.0,
+    "pivot_px": [
+      608,
+      355
+    ],
+    "scale_cm_per_px": 0.186,
+    "tracking_quality": "good",
+    "notes": "",
+    "suspect_frames_interpolated": 144,
+    "interpolation_date": "2026-05-02"
   },
   "DSC_0157": {
     "video_file": "th1_p093_th2_m000.mov",
@@ -627,7 +735,31 @@
     "measurements_dir": "measurements/th1_p093_th2_m000",
     "csv_file": "tracking.csv",
     "init_frame": 84,
-    "release_frame": 84
+    "release_frame": 84,
+    "green_roi": null,
+    "red_roi": null,
+    "tracker": "ring",
+    "arm_length_px": 188,
+    "ring_tolerance": 30,
+    "theta1_release": 90.0,
+    "theta2_release": -1.768,
+    "omega1_release": 10.2294,
+    "omega2_release": -20.2413,
+    "energy_proxy": -0.8428,
+    "t0_offset_s": 1.4014,
+    "duration_s": 33.967,
+    "n_free_frames": 2037,
+    "dropout_rate_pct": 0.15,
+    "arm_length_cm": 35.0,
+    "pivot_px": [
+      608,
+      355
+    ],
+    "scale_cm_per_px": 0.186,
+    "tracking_quality": "good",
+    "notes": "",
+    "suspect_frames_interpolated": 82,
+    "interpolation_date": "2026-05-02"
   },
   "DSC_0158": {
     "video_file": "th1_p094_th2_p000.mov",
@@ -648,7 +780,31 @@
     "measurements_dir": "measurements/th1_p094_th2_p000",
     "csv_file": "tracking.csv",
     "init_frame": 28,
-    "release_frame": 28
+    "release_frame": 28,
+    "green_roi": null,
+    "red_roi": null,
+    "tracker": "ring",
+    "arm_length_px": 188,
+    "ring_tolerance": 30,
+    "theta1_release": 92.827,
+    "theta2_release": -0.349,
+    "omega1_release": -57.4315,
+    "omega2_release": -39.3039,
+    "energy_proxy": 0.574,
+    "t0_offset_s": 0.46713,
+    "duration_s": 39.206,
+    "n_free_frames": 2351,
+    "dropout_rate_pct": 0.0,
+    "arm_length_cm": 35.0,
+    "pivot_px": [
+      608,
+      355
+    ],
+    "scale_cm_per_px": 0.186,
+    "tracking_quality": "good",
+    "notes": "",
+    "suspect_frames_interpolated": 73,
+    "interpolation_date": "2026-05-02"
   },
   "DSC_0159": {
     "video_file": "th1_p092_th2_p000.mov",
@@ -669,7 +825,31 @@
     "measurements_dir": "measurements/th1_p092_th2_p000",
     "csv_file": "tracking.csv",
     "init_frame": 66,
-    "release_frame": 66
+    "release_frame": 66,
+    "green_roi": null,
+    "red_roi": null,
+    "tracker": "ring",
+    "arm_length_px": 188,
+    "ring_tolerance": 30,
+    "theta1_release": 92.121,
+    "theta2_release": 0.0,
+    "omega1_release": -3.4713,
+    "omega2_release": 12.9187,
+    "energy_proxy": -0.8715,
+    "t0_offset_s": 1.1011,
+    "duration_s": 41.625,
+    "n_free_frames": 2496,
+    "dropout_rate_pct": 0.2,
+    "arm_length_cm": 35.0,
+    "pivot_px": [
+      608,
+      355
+    ],
+    "scale_cm_per_px": 0.186,
+    "tracking_quality": "good",
+    "notes": "",
+    "suspect_frames_interpolated": 52,
+    "interpolation_date": "2026-05-02"
   },
   "DSC_0160": {
     "video_file": "th1_p090_th2_p000.mov",
@@ -735,7 +915,31 @@
     "measurements_dir": "measurements/th1_p092_th2_m002",
     "csv_file": "tracking.csv",
     "init_frame": 52,
-    "release_frame": 52
+    "release_frame": 52,
+    "green_roi": null,
+    "red_roi": null,
+    "tracker": "ring",
+    "arm_length_px": 188,
+    "ring_tolerance": 30,
+    "theta1_release": 90.703,
+    "theta2_release": -2.108,
+    "omega1_release": -4.3379,
+    "omega2_release": 12.5618,
+    "energy_proxy": -0.921,
+    "t0_offset_s": 0.86753,
+    "duration_s": 40.908,
+    "n_free_frames": 2453,
+    "dropout_rate_pct": 0.0,
+    "arm_length_cm": 35.0,
+    "pivot_px": [
+      608,
+      355
+    ],
+    "scale_cm_per_px": 0.186,
+    "tracking_quality": "good",
+    "notes": "",
+    "suspect_frames_interpolated": 32,
+    "interpolation_date": "2026-05-02"
   },
   "DSC_0162": {
     "video_file": "th1_p091_th2_m001.mov",
@@ -777,10 +981,13 @@
       355
     ],
     "scale_cm_per_px": 0.186,
-    "tracking_quality": "verified",
+    "tracking_quality": "review",
     "notes": "",
     "verification_date": "2026-05-01",
-    "verification_notes": "PASS via WARN-band manual triage 2026-05-01. Smooth coupled oscillation over 33s, 0 hidden suspects, 9.6% dropout entirely in holding phase. Tracked via manual_correction; registry dropout_rate_pct field is stale \u2014 see verification.csv for ground truth."
+    "verification_notes": "DOWNGRADED via chaos audit on 2026-05-02: was 'verified'; new verdict WARN. Reasons: free-swing dropout 5.8% in 5\u201310% band; 62 residual suspects post-interpolation; 62 arm-length violation(s) (max deviation 33.1%) \u2014 tracker latched on wrong object; 62 frame(s) with |\u0394\u03c9| spike (unphysical acceleration)",
+    "audit_date": "2026-05-02",
+    "audit_old_status": "verified",
+    "audit_new_status": "WARN"
   },
   "DSC_0165": {
     "video_file": "DSC_0165.mov",
@@ -838,13 +1045,16 @@
     "scale_cm_per_px": 0.186,
     "csv_file": "tracking.csv",
     "config_description": "th1_p180_th2_p180",
-    "tracking_quality": "verified",
+    "tracking_quality": "review",
     "notes": "",
     "measurements_dir": "measurements/th1_p180_th2_p180",
     "suspect_frames_interpolated": 2,
     "interpolation_date": "2026-05-01",
-    "verification_notes": "verify_tracking.py @ 2500 deg/s cap: 70 dropouts (4.98%, mostly early high-energy frames), 2 suspect frames interpolated, 0 suspects after re-verification.",
-    "verification_date": "2026-05-01"
+    "verification_notes": "DOWNGRADED via chaos audit on 2026-05-02: was 'verified'; new verdict WARN. Reasons: free-swing dropout 5.0% in 5\u201310% band; 116 residual suspects post-interpolation; peak |\u03c9\u2082| 1824\u00b0/s > 1500\u00b0/s physical rule-of-thumb; 19 arm-length violation(s) (max deviation 40.9%) \u2014 tracker latched on wrong object; 116 frame(s) with |\u0394\u03c9| spike (unphysical acceleration)",
+    "verification_date": "2026-05-01",
+    "audit_date": "2026-05-02",
+    "audit_old_status": "verified",
+    "audit_new_status": "WARN"
   },
   "th1_p001_th2_p093": {
     "video_file": "th1_p001_th2_p093.mov",
@@ -934,10 +1144,13 @@
       355
     ],
     "scale_cm_per_px": 0.186,
-    "tracking_quality": "verified",
+    "tracking_quality": "review",
     "notes": "",
     "verification_date": "2026-05-01",
-    "verification_notes": "dropout, suspects, and \u03c9 all within thresholds"
+    "verification_notes": "DOWNGRADED via chaos audit on 2026-05-02: was 'verified'; new verdict WARN. Reasons: 7 residual suspects post-interpolation; 7 frame(s) with |\u0394\u03c9| spike (unphysical acceleration)",
+    "audit_date": "2026-05-02",
+    "audit_old_status": "verified",
+    "audit_new_status": "WARN"
   },
   "th1_p090_th2_p000_r2": {
     "video_file": "th1_p090_th2_p000_2.mov",
@@ -971,11 +1184,14 @@
       355
     ],
     "scale_cm_per_px": 0.186,
-    "tracking_quality": "verified",
+    "tracking_quality": "review",
     "suspect_frames_interpolated": 2,
     "interpolation_date": "2026-05-01",
     "verification_date": "2026-05-01",
-    "verification_notes": "manually accepted via chaos next"
+    "verification_notes": "DOWNGRADED via chaos audit on 2026-05-02: was 'verified'; new verdict WARN. Reasons: 71 residual suspects post-interpolation; peak |\u03c9\u2082| 2092\u00b0/s > 1500\u00b0/s physical rule-of-thumb; 43 arm-length violation(s) (max deviation 30.8%) \u2014 tracker latched on wrong object; 71 frame(s) with |\u0394\u03c9| spike (unphysical acceleration)",
+    "audit_date": "2026-05-02",
+    "audit_old_status": "verified",
+    "audit_new_status": "WARN"
   },
   "th1_p094_th2_p000_r2": {
     "video_file": "th1_p094_th2_p000_2.mov",
