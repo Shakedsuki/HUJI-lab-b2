@@ -29,18 +29,23 @@ Usage:
   python scripts/processing/hsv_tuner.py Videos/long_recording.mov --global    # force save to global
 
 Keys:
-  G / R          switch active marker (GREEN / RED)
-  A / D          step  ±1 frame
-  LEFT / RIGHT   step  ±50 frames
-  SPACE          pause / play
-  LEFT-CLICK     sample HSV at the cursor (auto-suggest after >=5 samples)
-  C              clear sampled points for the active marker
-  T              cycle ring tolerance (20 -> 30 -> 40 px)
-  Z              toggle zoom loupe (magnified inset following the cursor)
-  M              cycle overlay level (full / minimal / clean)
-  + / -          increase / decrease zoom magnification (2x..8x)
-  S              save data/hsv_values.json
-  Q / ESC        quit (prompts to save if there are unsaved changes)
+  G / R                switch active marker (GREEN / RED)
+  A / D                step  ±1 frame
+  LEFT / RIGHT         step  ±50 frames
+  SPACE                pause / play
+  LEFT-CLICK           sample HSV at the cursor (auto-suggest after >=5)
+  SHIFT + LEFT-DRAG    region sample — drag a circle around the marker;
+                       on release the tool keeps pixels whose HSV is
+                       close to the centre pixel and adds them as
+                       samples (one drag captures spatial diversity
+                       that takes 5–8 single clicks)
+  C                    clear sampled points for the active marker
+  T                    cycle ring tolerance (20 -> 30 -> 40 px)
+  Z                    toggle zoom loupe (magnified inset following the cursor)
+  M                    cycle overlay level (full / minimal / clean)
+  + / -                increase / decrease zoom magnification (2x..8x)
+  S                    save data/hsv_values.json
+  Q / ESC              quit (prompts to save if there are unsaved changes)
 """
 
 import cv2
@@ -112,6 +117,18 @@ DEFAULT_ZOOM_IDX = 2           # 4x magnification by default
 OVERLAY_FULL, OVERLAY_MINIMAL, OVERLAY_CLEAN = 0, 1, 2
 OVERLAY_LABELS = {OVERLAY_FULL: "FULL", OVERLAY_MINIMAL: "MIN",
                   OVERLAY_CLEAN: "CLEAN"}
+
+# Circle / region sampling thresholds. After the user drags a circle,
+# we keep only pixels whose HSV is within these deltas of the centre
+# pixel — the rest (wall, arm shaft) get filtered out. The auto-
+# suggester then operates on a relevant sample set, not on everything
+# the circle happened to enclose.
+CIRCLE_DELTA_H        = 12
+CIRCLE_DELTA_S        = 50
+CIRCLE_DELTA_V        = 50
+CIRCLE_MAX_SAMPLES    = 80          # cap so one drag doesn't drown out
+                                    # earlier point samples
+CIRCLE_MIN_RADIUS_PX  = 4           # ignore tiny accidental drags
 
 # Default HSV ranges — sensible starting points for the green/red gaff tape.
 DEFAULTS = {
@@ -417,6 +434,10 @@ class TunerState:
         self.zoom_on            = False
         self.zoom_idx           = DEFAULT_ZOOM_IDX
         self.overlay_level      = OVERLAY_FULL
+        # Circle / region sampling state (active during shift-drag).
+        self.circle_dragging    = False
+        self.circle_center_orig = None    # (ox, oy) in original frame coords
+        self.circle_radius_orig = 0       # radius in original-frame pixels
         # Where this session reads from / saves to. Per-video by default;
         # global with --global. Caller passes the resolved path.
         self.target_path        = target_path
@@ -445,6 +466,73 @@ def display_to_frame(x_disp, y_disp):
     x_orig = max(0, min(FRAME_W - 1, x_orig))
     y_orig = max(0, min(FRAME_H - 1, y_orig))
     return (x_orig, y_orig)
+
+
+def sample_circle_region(hsv_full, center_orig, radius_orig):
+    """
+    Return a list of (H, S, V) samples drawn from the circle of radius
+    `radius_orig` around `center_orig` in the original-frame HSV image.
+    Filters to pixels whose HSV is "close" to the centre pixel
+    (|ΔH|<CIRCLE_DELTA_H, ΔS<CIRCLE_DELTA_S, ΔV<CIRCLE_DELTA_V) so wall
+    / arm-shaft pixels enclosed by a sloppy circle don't pollute the
+    range. Subsamples to CIRCLE_MAX_SAMPLES if more pixels survive.
+    Hue distance accounts for the [0, 180) wrap.
+    """
+    if radius_orig < CIRCLE_MIN_RADIUS_PX:
+        return [], 0  # ignore accidental tiny drags
+
+    cx, cy = center_orig
+    h, w = hsv_full.shape[:2]
+    x0 = max(0, cx - radius_orig)
+    y0 = max(0, cy - radius_orig)
+    x1 = min(w, cx + radius_orig + 1)
+    y1 = min(h, cy + radius_orig + 1)
+    sub = hsv_full[y0:y1, x0:x1]
+    sub_cy = cy - y0
+    sub_cx = cx - x0
+
+    # Mask: pixels inside the circle.
+    ys, xs = np.indices(sub.shape[:2], dtype=np.int32)
+    dist2 = (xs - sub_cx) ** 2 + (ys - sub_cy) ** 2
+    in_circle = dist2 <= radius_orig ** 2
+
+    if not in_circle.any():
+        return [], 0
+
+    # Centre pixel HSV is the colour seed.
+    seed_h, seed_s, seed_v = (int(v) for v in hsv_full[cy, cx])
+
+    H = sub[..., 0].astype(np.int32)
+    S = sub[..., 1].astype(np.int32)
+    V = sub[..., 2].astype(np.int32)
+
+    # Hue distance with wraparound at 180.
+    d_hue = np.minimum(np.abs(H - seed_h), 180 - np.abs(H - seed_h))
+    keep = (in_circle &
+            (d_hue <= CIRCLE_DELTA_H) &
+            (np.abs(S - seed_s) <= CIRCLE_DELTA_S) &
+            (np.abs(V - seed_v) <= CIRCLE_DELTA_V))
+
+    n_kept = int(keep.sum())
+    if n_kept == 0:
+        return [], 0
+
+    h_kept = H[keep]
+    s_kept = S[keep]
+    v_kept = V[keep]
+
+    # Subsample to a sensible cap so one drag doesn't dominate the
+    # auto-suggester's input over earlier point clicks.
+    n_take = min(CIRCLE_MAX_SAMPLES, n_kept)
+    if n_take < n_kept:
+        idx = np.random.default_rng(seed=cx * 31 + cy).choice(
+            n_kept, size=n_take, replace=False)
+        h_kept = h_kept[idx]
+        s_kept = s_kept[idx]
+        v_kept = v_kept[idx]
+
+    samples = list(zip(h_kept.tolist(), s_kept.tolist(), v_kept.tolist()))
+    return samples, n_kept
 
 
 def main():
@@ -487,7 +575,8 @@ def main():
     print(f"HSV    : {target_path}  [{target_kind}]")
     print()
     print("Keys: G/R switch marker  A/D step 1  ←/→ step 50  SPACE pause")
-    print("      LEFT-CLICK sample  C clear samples  T cycle tolerance")
+    print("      LEFT-CLICK sample one pixel  |  SHIFT+LEFT-DRAG sample circle region")
+    print("      C clear samples  T cycle tolerance")
     print("      Z zoom loupe  +/- zoom 2x..8x  M cycle overlay (full/min/clean)")
     print("      S save  Q/ESC quit")
     print()
@@ -508,6 +597,8 @@ def main():
     state.current_hsv = None
 
     def on_mouse(event, x, y, flags, _userdata):
+        shift_held = bool(flags & cv2.EVENT_FLAG_SHIFTKEY)
+
         # Always track cursor position for the zoom loupe — the position
         # is consumed by the render loop, no other side effects.
         mapped = display_to_frame(x, y)
@@ -518,6 +609,55 @@ def main():
             state.cursor_disp = None
             state.cursor_orig = None
 
+        # ── Circle / region sampling (shift + left-drag) ──────────────
+        if event == cv2.EVENT_LBUTTONDOWN and shift_held and mapped:
+            state.circle_dragging    = True
+            state.circle_center_orig = mapped
+            state.circle_radius_orig = 0
+            return
+
+        if event == cv2.EVENT_MOUSEMOVE and state.circle_dragging:
+            if mapped is None:
+                return
+            cx, cy = state.circle_center_orig
+            ox, oy = mapped
+            state.circle_radius_orig = int(round(
+                ((ox - cx) ** 2 + (oy - cy) ** 2) ** 0.5))
+            return
+
+        if event == cv2.EVENT_LBUTTONUP and state.circle_dragging:
+            state.circle_dragging = False
+            cc, rr = state.circle_center_orig, state.circle_radius_orig
+            state.circle_center_orig = None
+            state.circle_radius_orig = 0
+            if cc is None or state.current_hsv is None:
+                return
+            samples, n_kept = sample_circle_region(state.current_hsv, cc, rr)
+            if not samples:
+                if rr < CIRCLE_MIN_RADIUS_PX:
+                    print(f"  circle too small (r={rr}px) — ignored")
+                else:
+                    print(f"  circle @ ({cc[0]},{cc[1]}) r={rr}px — "
+                          f"no pixels matched the centre's HSV")
+                return
+            bucket = (state.green_samples if state.mode == "green"
+                      else state.red_samples)
+            bucket.extend(samples)
+            state.last_click        = cc
+            state.last_sample_frame = state.frame_idx
+            print(f"  circle @ ({cc[0]},{cc[1]}) r={rr}px — "
+                  f"{n_kept} pixels matched, {len(samples)} added "
+                  f"({state.mode} count: {len(bucket)})")
+
+            suggestion = suggest_from_samples(bucket, state.mode)
+            if suggestion is not None:
+                print(f"  auto-suggest ({state.mode}): {suggestion}")
+                state.data[state.mode].update(suggestion)
+                push_cfg_to_trackbars(state.data[state.mode], state.mode)
+                state.dirty = True
+            return
+
+        # ── Single-click sampling (existing behaviour) ────────────────
         if event != cv2.EVENT_LBUTTONDOWN:
             return
         if mapped is None:
@@ -644,6 +784,17 @@ def main():
             cx, cy = state.last_click
             cv2.drawMarker(overlay, (cx, cy), (255, 255, 255),
                            cv2.MARKER_CROSS, 18, 2)
+
+        # Live circle preview while shift-dragging.
+        if (state.circle_dragging
+                and state.circle_center_orig is not None
+                and state.circle_radius_orig > 0):
+            ring_color = ((0, 255, 0) if state.mode == "green"
+                          else (0, 0, 255))
+            cv2.circle(overlay, state.circle_center_orig,
+                       state.circle_radius_orig, ring_color, 2)
+            cv2.drawMarker(overlay, state.circle_center_orig,
+                           (255, 255, 255), cv2.MARKER_CROSS, 14, 2)
 
         # Frame number / timestamp at the BOTTOM of the frame (per spec).
         ts = state.frame_idx / fps

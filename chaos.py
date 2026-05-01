@@ -60,6 +60,7 @@ SCRIPT_VERIFY     = os.path.join(ROOT, "scripts", "processing", "verify_tracking
 SCRIPT_INTERP     = os.path.join(ROOT, "scripts", "processing", "interpolate_suspects.py")
 SCRIPT_TRACK_ONE  = os.path.join(ROOT, "scripts", "utils", "track_one.py")
 SCRIPT_MANUAL     = os.path.join(ROOT, "scripts", "utils", "manual_correction.py")
+SCRIPT_OVERRIDE   = os.path.join(ROOT, "scripts", "utils", "override_frame.py")
 SCRIPT_BULK       = os.path.join(ROOT, "scripts", "utils", "bulk_track.py")
 SCRIPT_STATUS     = os.path.join(ROOT, "scripts", "utils", "video_status.py")
 SCRIPT_REPORT     = os.path.join(ROOT, "scripts", "utils", "generate_status_report.py")
@@ -189,6 +190,15 @@ def cmd_fix(args):
     return run_script(SCRIPT_MANUAL, *extra)
 
 
+def cmd_override(args):
+    extra = ["--stem", args.stem, "--frame", str(args.frame)]
+    if args.no_verify:
+        extra.append("--no-verify")
+    if args.omega_cap is not None:
+        extra += ["--omega-cap", str(args.omega_cap)]
+    return run_script(SCRIPT_OVERRIDE, *extra)
+
+
 def cmd_verify(args):
     extra = ["--stem", args.stem]
     if args.omega_cap is not None:
@@ -231,6 +241,9 @@ PIPELINE COMMANDS  (per clip, in typical order)
   chaos tune <stem>          calibrate per-video HSV (interactive eyedropper)
   chaos track <stem>         track + verify + interpolate + verdict
   chaos fix <stem>           interactive manual-seed fix-up + re-track
+                             (forward-propagating; for cascading errors)
+  chaos override <stem>      surgical single-row CSV edit (no re-track)
+        --frame N            (frame-local; for one isolated bad frame)
   chaos verify <stem>        standalone QA on an existing tracking.csv
 
 BATCH / DRIVER COMMANDS
@@ -503,6 +516,18 @@ def build_parser():
         metavar="DEG_PER_S",
         help="ω threshold for the verify step (default 2500 °/s)")
 
+    p_override = sub.add_parser("override",
+        help="surgical CSV-row edit for a single bad frame (no re-track)")
+    p_override.add_argument("stem", metavar="<stem>",
+        help="config_description, e.g. th1_p047_th2_m002")
+    p_override.add_argument("--frame", type=int, required=True,
+        metavar="N", help="frame index whose row to overwrite")
+    p_override.add_argument("--no-verify", action="store_true",
+        help="skip the post-write verify_tracking re-run")
+    p_override.add_argument("--omega-cap", type=float, default=None,
+        metavar="DEG_PER_S",
+        help="ω threshold for the post-write verify step (default 2500 °/s)")
+
     p_verify = sub.add_parser("verify",
         help="standalone QA on an existing tracking.csv (no track/fix)")
     p_verify.add_argument("stem", metavar="<stem>",
@@ -535,15 +560,16 @@ def build_parser():
 
 
 HANDLERS = {
-    "status":  cmd_status,
-    "report":  cmd_report,
-    "tune":    cmd_tune,
-    "track":   cmd_track,
-    "fix":     cmd_fix,
-    "verify":  cmd_verify,
-    "bulk":    cmd_bulk,
-    "next":    cmd_next,
-    "help":    cmd_help,
+    "status":   cmd_status,
+    "report":   cmd_report,
+    "tune":     cmd_tune,
+    "track":    cmd_track,
+    "fix":      cmd_fix,
+    "override": cmd_override,
+    "verify":   cmd_verify,
+    "bulk":     cmd_bulk,
+    "next":     cmd_next,
+    "help":     cmd_help,
 }
 
 
