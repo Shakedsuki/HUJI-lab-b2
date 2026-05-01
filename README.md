@@ -13,9 +13,10 @@ hsv_tuner   ring_tracker   verify_tracking   phase_*, combined_video
 | Stage | Script | What it does |
 |---|---|---|
 | Calibrate | `scripts/processing/hsv_tuner.py` | Interactive HSV calibration. Eyedropper-sample marker pixels, auto-suggest ranges, fine-tune with sliders, live ring-detection preview. Saves to a per-video file (`data/hsv_<videostem>.json`) by default; pass `--global` to save to the shared `data/hsv_values.json` instead. |
-| Track | `scripts/processing/ring_tracker.py` | Frame-independent tracker. Stacks four filters (motion mask via temporal-median background, fixed-arm-length ring, HSV colour, predicted angular arc) with a graceful fallback chain. Reads the calibration; writes `measurements/<config>/tracking.csv` and `measurements/<config>/debug.mp4`. |
+| Track | `scripts/processing/ring_tracker.py` | Frame-independent tracker. Stacks four filters (motion mask via temporal-median background, fixed-arm-length ring, HSV colour, predicted angular arc) with a graceful fallback chain. Pre-flight: HSV-adequacy probe (sample 30 frames, abort if <40% of them detect both markers cleanly), smart init/release suggestions in the picker, predictor seeding from `green_click_px` / `red_click_px` when available. Writes `measurements/<config>/tracking.csv` and `measurements/<config>/debug.mp4`. |
 | Verify | `scripts/processing/verify_tracking.py` | Post-hoc QA on the CSV. Flags rows where the apparent &#124;dθ/dt&#124; exceeds physical limits — catches silent false positives that `dropout=0` won't reveal. Writes `measurements/<config>/verification.{csv,png}`. |
 | Repair | `scripts/processing/interpolate_suspects.py` | Linearly interpolates the suspect frames flagged by verify_tracking. Backs up the CSV first and re-verifies after rewriting. |
+| **Orchestrate** | **`scripts/utils/track_one.py`** | **Single per-video command — runs Track → Verify → Repair (when needed) → re-Verify and prints a PASS/WARN/FAIL verdict card. PASS auto-marks `tracking_quality=verified` in the registry.** |
 | Analyse | `scripts/analysis/*.py` | Plots, 3-D phase rotations, animated trajectory videos, side-by-side comparisons. All accept `--stem <config_description>` to read/write inside a measurement folder. |
 | Status | `scripts/utils/generate_status_report.py` | Excel report (`data/status_report.xlsx`) with per-measurement dropout stats, file presence, and derived status — computed live from the CSVs. |
 
@@ -87,11 +88,30 @@ a `tracking.csv` at the entry's `measurements_dir`.
 
 ### First time on a new video / new lighting
 
+The recommended per-video flow is `track_one.py` — it bundles
+calibration check, tracking, verification, and interpolation:
+
 ```bash
 # 1. Calibrate marker colours — click ~8 green pixels, R, ~8 red pixels, S, Q.
 python scripts/processing/hsv_tuner.py Videos/long_recording.mov
 
-# 2. Track. With no path, opens a file picker rooted at Videos/.
+# 2. Track + Verify + Repair + Verdict in one go.
+python scripts/utils/track_one.py --stem th1_p180_th2_m179
+# or by video path:
+python scripts/utils/track_one.py Videos/long_recording.mov
+```
+
+`track_one.py` opens the picker (with smart pre-positioned init/release
+candidates from the new T3 scan), runs tracking, runs `verify_tracking`,
+runs `interpolate_suspects` if the verification turned up hidden
+suspects, re-runs verification, and prints a one-page verdict card.
+PASS bumps `tracking_quality=verified` in the registry. A transcript of
+all verdict cards is appended to `data/track_one_log.txt`.
+
+Skipping the orchestrator and calling the steps individually is also
+fine — the bare `ring_tracker.py` still works as before:
+
+```bash
 python scripts/processing/ring_tracker.py
 ```
 
