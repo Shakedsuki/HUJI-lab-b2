@@ -13,7 +13,8 @@ pip install -r requirements.txt
 python scripts/utils/download_videos.py     # pull raw videos from Drive
 
 # Drive the pending queue interactively (god-mode):
-chaos next                                  # cmd / PowerShell on Windows
+.\chaos next                                # PowerShell — auto-resolves chaos.ps1 via PATHEXT
+chaos next                                  # cmd.exe (with the repo on PATH or from repo root)
 ./chaos.sh next                             # Git Bash / Linux / macOS
 python chaos.py next                        # cross-platform fallback
 
@@ -30,6 +31,18 @@ chaos help                                  # cheat sheet
 
 `<stem>` is a `config_description` like `th1_p047_th2_m002` — the folder
 name under `measurements/`. `chaos status` prints the list.
+
+> **PowerShell note:** PowerShell does not run commands from the
+> current directory by default — type `.\chaos <cmd>` (with the
+> leading `.\`). For an unprefixed `chaos` from any directory, add a
+> function to your `$PROFILE`:
+>
+> ```powershell
+> function chaos { & "C:\dev\chaos\chaos.ps1" @args }
+> ```
+>
+> (Reload with `. $PROFILE` or open a new shell.) `cmd.exe`, Git Bash,
+> Linux, and macOS users don't need this step.
 
 ## Per-clip workflow (what `chaos next` automates)
 
@@ -144,7 +157,9 @@ release, dropout rate, energy proxy, tracker name,
 ```
 chaos/
 ├── chaos.py                 ← unified entry point (the "god script")
-├── chaos.bat / chaos.sh     ← shell wrappers (npm-run-style invocation)
+├── chaos.bat                ← cmd.exe wrapper
+├── chaos.ps1                ← PowerShell wrapper (use `.\chaos <cmd>`)
+├── chaos.sh                 ← POSIX wrapper (Git Bash / Linux / macOS)
 ├── scripts/
 │   ├── processing/                tracking primitives
 │   │   ├── hsv_tuner.py             interactive HSV calibration
