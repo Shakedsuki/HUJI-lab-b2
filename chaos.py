@@ -221,8 +221,47 @@ def resolve_video_path_for_stem(stem):
     return p
 
 
+_HELP_CHEAT_SHEET = r"""
+chaos — unified entry point for the double-pendulum tracking pipeline
+
+USAGE
+  chaos <command> [args]                      # PowerShell: .\chaos <command>
+
+PIPELINE COMMANDS  (per clip, in typical order)
+  chaos tune <stem>          calibrate per-video HSV (interactive eyedropper)
+  chaos track <stem>         track + verify + interpolate + verdict
+  chaos fix <stem>           interactive manual-seed fix-up + re-track
+  chaos verify <stem>        standalone QA on an existing tracking.csv
+
+BATCH / DRIVER COMMANDS
+  chaos next                 god-mode loop — drive pending queue end-to-end
+  chaos next --stem <stem>   same loop but only one clip
+  chaos bulk                 sequential bulk pass over plannable pendings
+  chaos bulk --dry-run       show the plan without tracking anything
+
+INFO / REPORT COMMANDS
+  chaos status               who's tracked, who's pending (one-screen)
+  chaos report               regenerate data/status_report.xlsx (Excel)
+  chaos help                 this cheat sheet
+  chaos <command> --help     full flag list for any subcommand
+
+EXAMPLES
+  chaos status
+  chaos tune th1_p047_th2_m002
+  chaos track th1_p047_th2_m002
+  chaos fix th1_p047_th2_m002
+  chaos next                            # the typical session: drive everything
+
+WHERE TO LEARN MORE
+  README.md                  quickstart, setup, architecture
+  docs/PIPELINE.md           keystroke-level reference for every stage
+  scripts/processing/*.py    low-level building blocks (callable directly)
+  scripts/utils/*.py         orchestrators (track_one, manual_correction, bulk_track)
+"""
+
+
 def cmd_help(args):
-    print(__doc__)
+    print(_HELP_CHEAT_SHEET)
     return 0
 
 
@@ -423,52 +462,75 @@ def _mark_verified(stem, note="manually accepted"):
 def build_parser():
     p = argparse.ArgumentParser(
         prog="chaos",
-        description="Unified entry point for the chaos tracking pipeline.")
-    sub = p.add_subparsers(dest="command", required=False)
+        description="Unified entry point for the chaos tracking pipeline.",
+        epilog="Run `chaos help` for a one-page cheat sheet.")
+    sub = p.add_subparsers(dest="command", required=False,
+                           metavar="<command>")
 
-    sub.add_parser("status", help="list tracked vs pending")
+    sub.add_parser("status",
+        help="list tracked vs pending videos with IC angles + dropout %")
 
     p_report = sub.add_parser("report",
-        help="regenerate data/status_report.xlsx")
-    p_report.add_argument("--output")
+        help="regenerate data/status_report.xlsx (or --output PATH)")
+    p_report.add_argument("--output", metavar="PATH",
+        help="alternate output path for the .xlsx file")
 
     p_tune = sub.add_parser("tune",
-        help="launch hsv_tuner on a clip")
-    p_tune.add_argument("stem")
+        help="launch hsv_tuner.py on a clip's video")
+    p_tune.add_argument("stem", metavar="<stem>",
+        help="config_description, e.g. th1_p047_th2_m002")
 
     p_track = sub.add_parser("track",
-        help="standard track + verify + verdict")
-    p_track.add_argument("stem")
-    p_track.add_argument("--skip-probe", action="store_true")
-    p_track.add_argument("--yes-to-warn", action="store_true")
-    p_track.add_argument("--debug", action="store_true")
-    p_track.add_argument("--omega-cap", type=float, default=None)
+        help="standard track + verify + interpolate + verdict card")
+    p_track.add_argument("stem", metavar="<stem>",
+        help="config_description, e.g. th1_p047_th2_m002")
+    p_track.add_argument("--skip-probe", action="store_true",
+        help="skip the HSV-adequacy probe (forces tracking even if HSV is poor)")
+    p_track.add_argument("--yes-to-warn", action="store_true",
+        help="auto-confirm a WARN verdict from the HSV probe (for bulk mode)")
+    p_track.add_argument("--debug", action="store_true",
+        help="generate debug.mp4 (default: skipped to save 50–400 MB)")
+    p_track.add_argument("--omega-cap", type=float, default=None,
+        metavar="DEG_PER_S",
+        help="ω threshold for the verify step (default 2500 °/s)")
 
     p_fix = sub.add_parser("fix",
-        help="interactive manual-seed correction + re-track")
-    p_fix.add_argument("stem")
-    p_fix.add_argument("--save-only", action="store_true")
-    p_fix.add_argument("--omega-cap", type=float, default=None)
+        help="interactive manual-seed correction + re-track + verdict")
+    p_fix.add_argument("stem", metavar="<stem>",
+        help="config_description, e.g. th1_p047_th2_m002")
+    p_fix.add_argument("--save-only", action="store_true",
+        help="save seeds.json and quit; skip the re-track step")
+    p_fix.add_argument("--omega-cap", type=float, default=None,
+        metavar="DEG_PER_S",
+        help="ω threshold for the verify step (default 2500 °/s)")
 
     p_verify = sub.add_parser("verify",
-        help="standalone QA on an existing tracking.csv")
-    p_verify.add_argument("stem")
-    p_verify.add_argument("--omega-cap", type=float, default=None)
-    p_verify.add_argument("--no-plot", action="store_true")
+        help="standalone QA on an existing tracking.csv (no track/fix)")
+    p_verify.add_argument("stem", metavar="<stem>",
+        help="config_description, e.g. th1_p047_th2_m002")
+    p_verify.add_argument("--omega-cap", type=float, default=None,
+        metavar="DEG_PER_S",
+        help="ω threshold above which |Δθ/dt| is suspect (default 2500)")
+    p_verify.add_argument("--no-plot", action="store_true",
+        help="skip writing measurements/<stem>/verification.png")
 
     p_bulk = sub.add_parser("bulk",
         help="sequential bulk pass over plannable pending clips")
-    p_bulk.add_argument("--dry-run", action="store_true")
-    p_bulk.add_argument("--filter")
-    p_bulk.add_argument("--debug", action="store_true")
-    p_bulk.add_argument("--redo", action="store_true")
+    p_bulk.add_argument("--dry-run", action="store_true",
+        help="print the plan and exit; don't track anything")
+    p_bulk.add_argument("--filter", metavar="SUBSTR",
+        help="only process clips whose stem contains SUBSTR")
+    p_bulk.add_argument("--debug", action="store_true",
+        help="generate debug.mp4 for each clip (default: skipped)")
+    p_bulk.add_argument("--redo", action="store_true",
+        help="re-track even clips that already have a verified tracking.csv")
 
     p_next = sub.add_parser("next",
         help="interactive driver — process pending clips end-to-end")
-    p_next.add_argument("--stem", default=None,
-        help="optional: process only this stem instead of the queue")
+    p_next.add_argument("--stem", default=None, metavar="<stem>",
+        help="optional: process only this stem instead of the full queue")
 
-    sub.add_parser("help", help="cheat sheet")
+    sub.add_parser("help", help="one-page cheat sheet for all subcommands")
 
     return p
 
