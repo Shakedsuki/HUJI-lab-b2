@@ -292,6 +292,17 @@ MAX_BLOB_RADIUS   = 35.0
 MAX_DIST_NO_COLOUR   = 35.0    # stage 3: motion ∩ ring ∩ arc
 MAX_DIST_RING_MOTION = 25.0    # stage 5: motion ∩ ring (last resort)
 
+# Strict-physics mode (--strict-physics or active inside the post-seed
+# window). Applies an angular gate to every fallback stage and refuses
+# to fall through to a weaker detection when the gate fails — the row
+# becomes dropout=1 instead. The gate width scales with the predictor's
+# current ω so it doesn't lock the tracker out during real chaotic
+# bursts.
+STRICT_ARC_BASE_DEG    = 25.0
+STRICT_ARC_OMEGA_K     = 1.5    # gate radius = base + k * |ω| * dt
+STRICT_POST_SEED_FRAMES = 30    # how many frames to keep strict mode on after a seed
+STRICT_PIXEL_FLOOR_PX  = 18.0   # pixel-distance gate floor for slow / sleeping predictor
+
 
 # ─────────────────────────────────────────────
 # REGISTRY I/O  (mirrors ring_tracker.py)
@@ -362,6 +373,56 @@ def update_registry(reg, key, video_file, init_frame, release_frame,
 # ─────────────────────────────────────────────
 # GEOMETRY HELPERS
 # ─────────────────────────────────────────────
+
+def strict_pixel_radius(predictor, dt):
+    """
+    Pixel-distance gate radius for strict-physics mode.
+
+    Angular budget = STRICT_ARC_BASE_DEG + STRICT_ARC_OMEGA_K * |ω| * dt
+    Convert to arc length on the arm-length ring: r_px ≈ ARM_LENGTH_PX *
+    radians(angular_budget). Falls back to a pixel-floor when the
+    predictor isn't yet alive (no ω estimate yet).
+    """
+    if not predictor.alive:
+        return STRICT_PIXEL_FLOOR_PX
+    angle_budget = (STRICT_ARC_BASE_DEG +
+                    STRICT_ARC_OMEGA_K * abs(predictor.omega) * dt)
+    return max(STRICT_PIXEL_FLOOR_PX,
+               ARM_LENGTH_PX * np.radians(angle_budget))
+
+
+def load_seeds(path):
+    """
+    Load a seeds.json file: returns dict {frame_idx -> seed_record}.
+    Returns {} if the file doesn't exist or is malformed.
+
+    seeds.json schema:
+      {"seeds":
+        [{"frame": 130, "green_xy":[722, 470], "red_xy":[810, 580]},
+         ...],
+       "strict_physics_window": 30,
+       "notes": "..."}
+    """
+    if not path or not os.path.exists(path):
+        return {}, None
+    try:
+        with open(path, "r") as f:
+            data = json.load(f)
+    except (json.JSONDecodeError, OSError) as e:
+        print(f"WARN: could not load seeds.json ({e}); ignoring.")
+        return {}, None
+
+    by_frame = {}
+    for s in data.get("seeds", []):
+        try:
+            frame = int(s["frame"])
+            green_xy = tuple(int(v) for v in s["green_xy"]) if s.get("green_xy") else None
+            red_xy   = tuple(int(v) for v in s["red_xy"])   if s.get("red_xy")   else None
+        except (KeyError, ValueError, TypeError):
+            continue
+        by_frame[frame] = {"green_xy": green_xy, "red_xy": red_xy}
+    return by_frame, data
+
 
 def euclid(p1, p2):
     return float(np.sqrt((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2))
@@ -646,10 +707,16 @@ class AngularPredictor:
 
 def detect_green(hsv_blurred, fg_mask,
                  pivot_ring_uint8, pivot_angle_grid,
-                 hsv_values, predictor, dt):
+                 hsv_values, predictor, dt, strict=False):
     """
     Try the strict pipeline first, then fall back through progressively
     looser combinations. Returns (green_pos, used_fallback_str).
+
+    When `strict=True`, every fallback stage is anchor-gated by
+    `strict_pixel_radius(predictor, dt)` and the chain refuses to
+    return a candidate that's outside the gate. If no stage produces an
+    in-gate candidate, returns (None, "fail-strict") so the caller
+    records dropout=1 instead of accepting an unphysical jump.
     """
     color_mask = color_mask_green(hsv_blurred, hsv_values["green"])
 
@@ -671,16 +738,28 @@ def detect_green(hsv_blurred, fg_mask,
         ring_arc = None
         anchor   = None
 
+    # Strict-physics gate: a single max-distance applied to every stage.
+    # Use it as max_dist for stages that don't already have a tighter one.
+    strict_max = strict_pixel_radius(predictor, dt) if strict else None
+
+    def gate(default):
+        """Pick the tighter of the strict gate and a stage's own gate."""
+        if strict_max is None:
+            return default
+        if default is None:
+            return strict_max
+        return min(default, strict_max)
+
     # Strict 1: ring ∩ motion ∩ colour ∩ arc
     if ring_arc is not None:
         m = cv2.bitwise_and(cv2.bitwise_and(ring_motion, color_mask), ring_arc)
-        pos = best_blob(m, anchor=anchor)
+        pos = best_blob(m, anchor=anchor, max_dist=gate(None))
         if pos is not None:
             return pos, "strict"
 
     # 2: ring ∩ motion ∩ colour
     m = cv2.bitwise_and(ring_motion, color_mask)
-    pos = best_blob(m, anchor=anchor)
+    pos = best_blob(m, anchor=anchor, max_dist=gate(None))
     if pos is not None:
         return pos, "no-arc"
 
@@ -689,13 +768,13 @@ def detect_green(hsv_blurred, fg_mask,
     # that happens to lie on the ring far from the predicted angle.
     if ring_arc is not None and anchor is not None:
         m = cv2.bitwise_and(ring_motion, ring_arc)
-        pos = best_blob(m, anchor=anchor, max_dist=MAX_DIST_NO_COLOUR)
+        pos = best_blob(m, anchor=anchor, max_dist=gate(MAX_DIST_NO_COLOUR))
         if pos is not None:
             return pos, "no-colour"
 
     # 4: ring ∩ colour  (drop motion — useful while pendulum is held still)
     m = ring_color
-    pos = best_blob(m, anchor=anchor)
+    pos = best_blob(m, anchor=anchor, max_dist=gate(None))
     if pos is not None:
         return pos, "no-motion"
 
@@ -704,20 +783,24 @@ def detect_green(hsv_blurred, fg_mask,
     # main source of silent false positives.
     if anchor is not None:
         pos = best_blob(ring_motion, anchor=anchor,
-                        max_dist=MAX_DIST_RING_MOTION)
+                        max_dist=gate(MAX_DIST_RING_MOTION))
         if pos is not None:
             return pos, "ring+motion"
 
-    return None, "fail"
+    return None, "fail-strict" if strict else "fail"
 
 
 def detect_red(hsv_blurred, fg_mask, frame_shape,
                green_pos, ring_tolerance,
-               hsv_values, predictor, dt):
+               hsv_values, predictor, dt, strict=False):
     """
     Same fallback chain as green, but the ring is centred on green_pos and
     must be built per-frame. We restrict the heavy distance/angle math to
     a bounding box around green_pos to keep this fast.
+
+    `strict` is the same hard-gate flag as detect_green: each stage gets
+    capped by strict_pixel_radius, and the chain returns None instead of
+    falling through when the gate fails on every stage.
     """
     if green_pos is None:
         return None, "skip-no-green"
@@ -763,39 +846,48 @@ def detect_red(hsv_blurred, fg_mask, frame_shape,
         ring_arc = None
         anchor   = None
 
+    strict_max = strict_pixel_radius(predictor, dt) if strict else None
+
+    def gate(default):
+        if strict_max is None:
+            return default
+        if default is None:
+            return strict_max
+        return min(default, strict_max)
+
     # Strict 1
     if ring_arc is not None:
         m = cv2.bitwise_and(cv2.bitwise_and(ring_motion, color_mask), ring_arc)
-        pos = best_blob(m, anchor=anchor)
+        pos = best_blob(m, anchor=anchor, max_dist=gate(None))
         if pos is not None:
             return pos, "strict"
 
     # 2
     m = cv2.bitwise_and(ring_motion, color_mask)
-    pos = best_blob(m, anchor=anchor)
+    pos = best_blob(m, anchor=anchor, max_dist=gate(None))
     if pos is not None:
         return pos, "no-arc"
 
     # 3 — drop colour. Tighten with anchor gate to prevent arm-shaft latch.
     if ring_arc is not None and anchor is not None:
         m = cv2.bitwise_and(ring_motion, ring_arc)
-        pos = best_blob(m, anchor=anchor, max_dist=MAX_DIST_NO_COLOUR)
+        pos = best_blob(m, anchor=anchor, max_dist=gate(MAX_DIST_NO_COLOUR))
         if pos is not None:
             return pos, "no-colour"
 
     # 4 — drop motion (static frames during holding).
-    pos = best_blob(ring_color, anchor=anchor)
+    pos = best_blob(ring_color, anchor=anchor, max_dist=gate(None))
     if pos is not None:
         return pos, "no-motion"
 
     # 5 — last resort, motion ∩ ring only. Tightest anchor gate.
     if anchor is not None:
         pos = best_blob(ring_motion, anchor=anchor,
-                        max_dist=MAX_DIST_RING_MOTION)
+                        max_dist=gate(MAX_DIST_RING_MOTION))
         if pos is not None:
             return pos, "ring+motion"
 
-    return None, "fail"
+    return None, "fail-strict" if strict else "fail"
 
 
 # ─────────────────────────────────────────────
@@ -1254,6 +1346,24 @@ def main():
     no_prior      = "--no-prior"     in flags
     skip_probe    = "--skip-probe"   in flags
     yes_to_warn   = "--yes-to-warn"  in flags
+    strict_phys   = "--strict-physics" in flags
+
+    # --seeds-file <path>: extract value (or auto-detect <meas_dir>/seeds.json).
+    seeds_file_arg = None
+    for i, f in enumerate(sys.argv[1:]):
+        if f == "--seeds-file" and i + 1 < len(sys.argv) - 1:
+            seeds_file_arg = sys.argv[i + 2]
+            break
+
+    # --from-frame N: extract value.
+    from_frame_arg = None
+    for i, f in enumerate(sys.argv[1:]):
+        if f == "--from-frame" and i + 1 < len(sys.argv) - 1:
+            try:
+                from_frame_arg = int(sys.argv[i + 2])
+            except ValueError:
+                print(f"WARN: --from-frame expects an int, got '{sys.argv[i+2]}'")
+            break
 
     # --status mode: print the tracked/pending breakdown and exit.
     if show_status:
@@ -1374,14 +1484,53 @@ def main():
                 cap.release()
                 sys.exit(3)
 
+    # ── Resolve seeds-file path. Auto-detect if --seeds-file wasn't
+    # passed: <meas_dir>/seeds.json. Falls back to no seeds when absent.
+    seeds_path = seeds_file_arg
+    if seeds_path is None:
+        candidate = os.path.join(meas_dir, "seeds.json")
+        if os.path.exists(candidate):
+            seeds_path = candidate
+    seeds_by_frame, _seeds_meta = load_seeds(seeds_path)
+    if seeds_by_frame:
+        print(f"\nLoaded {len(seeds_by_frame)} seed(s) from "
+              f"{os.path.relpath(seeds_path, ROOT)}")
+
+    # When --from-frame is given AND a tracking.csv already exists, we
+    # preserve rows 0..from_frame-1 from the existing CSV and re-track
+    # only frames from_frame..end. The picker is also skipped in that
+    # case since init/release must already be in the registry.
+    resume_from   = from_frame_arg
+    resume_skip_picker = resume_from is not None
+    existing_csv_rows = []
+    if resume_from is not None:
+        if not os.path.exists(output_csv):
+            print(f"ERROR: --from-frame={resume_from} requires an existing "
+                  f"tracking.csv at {output_csv} to preserve rows from.")
+            cap.release()
+            sys.exit(2)
+        with open(output_csv, "r", newline="") as f:
+            existing_csv_rows = list(csv.DictReader(f))
+        if not (existing_entry
+                and existing_entry.get("init_frame") is not None
+                and existing_entry.get("release_frame") is not None):
+            print(f"ERROR: --from-frame requires init_frame and "
+                  f"release_frame in the registry; aborting.")
+            cap.release()
+            sys.exit(2)
+        print(f"\nResuming tracking from frame {resume_from}; preserving "
+              f"{resume_from} rows from existing tracking.csv.")
+        if strict_phys:
+            print("Strict-physics gate ENABLED for the entire resume range.")
+
     # ── Smart pre-positioning for the picker ─────────────────────────────
     # Compute candidate init/release frames once, before either picker
     # opens. The picker uses the candidate as its starting frame so the
     # user typically just confirms with ENTER instead of scrubbing.
     init_suggestion = release_suggestion = None
-    need_pick_init    = not (existing_entry and
+    need_pick_init    = (not resume_skip_picker) and not (existing_entry and
                               existing_entry.get("init_frame") is not None)
-    need_pick_release = not (existing_entry and
+    need_pick_release = (not resume_skip_picker) and not (existing_entry and
                               existing_entry.get("release_frame") is not None)
     if need_pick_init or need_pick_release:
         tag_hint = (existing_entry or {}).get("tag_frame")
@@ -1519,12 +1668,32 @@ def main():
 
     progress_interval = 500 if total_frames >= 5000 else 100
 
+    # Strict-physics window — frames at which strict mode is active. The
+    # CLI flag --strict-physics keeps it active for the whole run; each
+    # seed extends the window by STRICT_POST_SEED_FRAMES from its frame.
+    # When neither is set, strict mode is off everywhere.
+    strict_until = -1
+    if strict_phys:
+        strict_until = total_frames + 1
+    fallback_counts_g["fail-strict"] = 0
+    fallback_counts_r["fail-strict"] = 0
+
     with open(output_csv, "w", newline="") as csvfile:
         fieldnames = ["frame", "time_s", "phase",
                       "x_green", "y_green", "x_red", "y_red",
                       "theta1_deg", "theta2_deg", "dropout"]
         wcsv = csv.DictWriter(csvfile, fieldnames=fieldnames)
         wcsv.writeheader()
+
+        # Map preserved rows by frame for fast lookup when --from-frame
+        # is in effect. We replay them verbatim into the new CSV.
+        existing_by_frame = {}
+        if resume_from is not None:
+            for r in existing_csv_rows:
+                try:
+                    existing_by_frame[int(r["frame"])] = r
+                except (KeyError, ValueError):
+                    continue
 
         for frame_idx in range(total_frames):
             ret, frame = cap.read()
@@ -1533,6 +1702,67 @@ def main():
 
             phase  = "holding" if frame_idx < release_frame else "free_swing"
             time_s = frame_idx / video_fps
+
+            # ── --from-frame: replay preserved rows verbatim. We still
+            # consume the frame from cv2 (cap.read above) so the iterator
+            # advances; we just don't run detection.
+            if resume_from is not None and frame_idx < resume_from:
+                if frame_idx in existing_by_frame:
+                    wcsv.writerow(existing_by_frame[frame_idx])
+                    # Re-seed the predictor from the preserved row so the
+                    # transition into the live-tracked range is smooth.
+                    er = existing_by_frame[frame_idx]
+                    try:
+                        gx = float(er.get("x_green", "")) if er.get("x_green") else None
+                        gy = float(er.get("y_green", "")) if er.get("y_green") else None
+                        rx = float(er.get("x_red", ""))   if er.get("x_red")   else None
+                        ry = float(er.get("y_red", ""))   if er.get("y_red")   else None
+                    except (TypeError, ValueError):
+                        gx = gy = rx = ry = None
+                    if gx is not None and gy is not None:
+                        pred1.observe(compute_angle(PIVOT, (gx, gy)), dt)
+                        if rx is not None and ry is not None:
+                            pred2.observe(compute_angle((gx, gy), (rx, ry)), dt)
+                else:
+                    # No preserved row for this frame — write a dropout.
+                    wcsv.writerow({
+                        "frame": frame_idx, "time_s": round(time_s, 5),
+                        "phase": phase, "x_green": "", "y_green": "",
+                        "x_red": "", "y_red": "",
+                        "theta1_deg": "", "theta2_deg": "", "dropout": 1,
+                    })
+                continue
+
+            # ── Honour any seed at this frame: write the seed row,
+            # re-anchor the predictors, and (re)open the strict-physics
+            # window for the next STRICT_POST_SEED_FRAMES frames.
+            if frame_idx in seeds_by_frame:
+                seed = seeds_by_frame[frame_idx]
+                gxy = seed.get("green_xy")
+                rxy = seed.get("red_xy")
+                seed_th1 = compute_angle(PIVOT, gxy) if gxy else None
+                seed_th2 = (compute_angle(gxy, rxy)
+                            if (gxy and rxy) else None)
+                if gxy is not None:
+                    pred1.observe(seed_th1, dt)
+                if gxy is not None and rxy is not None:
+                    pred2.observe(seed_th2, dt)
+                # Open / extend the strict-physics window past this seed.
+                strict_until = max(strict_until,
+                                   frame_idx + STRICT_POST_SEED_FRAMES)
+                wcsv.writerow({
+                    "frame":      frame_idx,
+                    "time_s":     round(time_s, 5),
+                    "phase":      phase,
+                    "x_green":    gxy[0] if gxy else "",
+                    "y_green":    gxy[1] if gxy else "",
+                    "x_red":      rxy[0] if rxy else "",
+                    "y_red":      rxy[1] if rxy else "",
+                    "theta1_deg": round(seed_th1, 3) if seed_th1 is not None else "",
+                    "theta2_deg": round(seed_th2, 3) if seed_th2 is not None else "",
+                    "dropout":    0 if (gxy and rxy) else 1,
+                })
+                continue
 
             # ── Pre-init: write dropout, do not detect ──────────────────
             if frame_idx < init_frame:
@@ -1566,21 +1796,25 @@ def main():
             hsv     = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
             fg_mask = motion_mask(blurred, bg_gray, BG_DIFF_THRESH)
 
+            strict_now = (frame_idx <= strict_until)
+
             # ── Detect green ───────────────────────────────────────────
             green_pos, fb_g = detect_green(
                 hsv, fg_mask,
                 pivot_ring_uint8, pivot_angle,
                 hsv_values, pred1, dt,
+                strict=strict_now,
             )
-            fallback_counts_g[fb_g] += 1
+            fallback_counts_g[fb_g] = fallback_counts_g.get(fb_g, 0) + 1
 
             # ── Detect red (depends on green) ──────────────────────────
             red_pos, fb_r = detect_red(
                 hsv, fg_mask, frame.shape,
                 green_pos, ring_tolerance,
                 hsv_values, pred2, dt,
+                strict=strict_now,
             )
-            fallback_counts_r[fb_r] += 1
+            fallback_counts_r[fb_r] = fallback_counts_r.get(fb_r, 0) + 1
 
             # ── Geometric sanity ───────────────────────────────────────
             green_pos, red_pos = validate_geometry(green_pos, red_pos)
