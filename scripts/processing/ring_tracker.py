@@ -1496,11 +1496,16 @@ def main():
         print(f"\nLoaded {len(seeds_by_frame)} seed(s) from "
               f"{os.path.relpath(seeds_path, ROOT)}")
 
-    # When --from-frame is given AND a tracking.csv already exists, we
-    # preserve rows 0..from_frame-1 from the existing CSV and re-track
-    # only frames from_frame..end. The picker is also skipped in that
-    # case since init/release must already be in the registry.
-    resume_from   = from_frame_arg
+    # When --from-frame=N is given AND N > 0, we preserve rows
+    # 0..N-1 from the existing CSV and re-track only frames N..end.
+    # In that case the picker is skipped (init/release must already be
+    # in the registry) since this is a resume of an earlier track.
+    #
+    # --from-frame=0 is the degenerate case: zero rows to preserve. We
+    # treat it as equivalent to no --from-frame at all, so the picker
+    # still runs (or skips) per the normal logic, and a missing CSV is
+    # fine.
+    resume_from = from_frame_arg if (from_frame_arg and from_frame_arg > 0) else None
     resume_skip_picker = resume_from is not None
     existing_csv_rows = []
     if resume_from is not None:
@@ -1522,6 +1527,9 @@ def main():
               f"{resume_from} rows from existing tracking.csv.")
         if strict_phys:
             print("Strict-physics gate ENABLED for the entire resume range.")
+    elif from_frame_arg == 0:
+        print("\nNote: --from-frame=0 is a no-op; tracking from scratch "
+              "(seeds and --strict-physics still apply).")
 
     # ── Smart pre-positioning for the picker ─────────────────────────────
     # Compute candidate init/release frames once, before either picker

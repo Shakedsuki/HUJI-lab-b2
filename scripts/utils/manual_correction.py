@@ -362,10 +362,21 @@ def render_frame(state, frame):
 # ORCHESTRATION
 # ─────────────────────────────────────────────
 
-def run_track_and_verify(stem, seeds_path, earliest_seed, omega_cap):
+def run_track_and_verify(stem, seeds_path, earliest_seed, omega_cap,
+                         have_existing_csv):
     """
-    Re-run ring_tracker with --strict-physics --seeds-file --from-frame,
-    then verify_tracking. Returns the rc of verify (0 = ok).
+    Re-run ring_tracker with --strict-physics + --seeds-file, then
+    verify_tracking. Returns the rc of verify (0 = ok).
+
+    Three cases for --from-frame:
+      * earliest_seed > 0 AND existing tracking.csv → pass --from-frame
+        so rows 0..earliest_seed-1 are preserved verbatim and only
+        frame earliest_seed onward gets re-tracked.
+      * earliest_seed == 0  → no --from-frame; ring_tracker runs from
+        scratch with seeds + strict-physics applied.
+      * earliest_seed > 0 BUT no existing CSV → no --from-frame either;
+        we'd have nothing to preserve. The whole clip gets re-tracked
+        with strict-physics; the seed is honoured at its frame.
     """
     video_filename = None
     reg = load_registry()
@@ -377,16 +388,25 @@ def run_track_and_verify(stem, seeds_path, earliest_seed, omega_cap):
         return 1
     video_path = os.path.join(VIDEOS_DIR, video_filename)
 
+    use_from_frame = (earliest_seed > 0 and have_existing_csv)
+
     print()
     print("─" * 70)
-    print(f"Re-tracking {stem} from frame {earliest_seed} with strict-physics...")
+    if use_from_frame:
+        print(f"Re-tracking {stem} from frame {earliest_seed} with "
+              f"strict-physics (rows 0..{earliest_seed - 1} preserved)...")
+    else:
+        print(f"Tracking {stem} from scratch with strict-physics + seeds...")
     print("─" * 70)
+
     cmd = [sys.executable, TRACKER_SCRIPT, video_path,
            "--no-debug", "--force",
            "--seeds-file", seeds_path,
            "--strict-physics",
-           "--from-frame", str(earliest_seed),
            "--skip-probe"]   # the user just verified by clicking — probe is moot
+    if use_from_frame:
+        cmd += ["--from-frame", str(earliest_seed)]
+
     rc = subprocess.run(cmd, cwd=ROOT).returncode
     if rc != 0:
         print(f"ring_tracker exit {rc} — aborting before verify.")
@@ -450,6 +470,18 @@ def main():
     print(f"  verify : {'(absent)' if not susp_rows else f'{len(susp_rows)} rows; {len(susp_frames)} suspects'}")
     print(f"  seeds  : {len(seeds_by_frame)} loaded")
     print()
+
+    if not track_rows:
+        print("Note: no tracking.csv exists for this clip yet.")
+        print("  manual_correction is most effective AFTER an initial track")
+        print("  (you can see where the tracker's gone wrong and fix only those")
+        print("  frames). For a fresh clip, the standard flow is:")
+        print(f"     python scripts/utils/track_one.py --stem {args.stem}")
+        print("  Continuing here is fine if you want to seed predictor anchors")
+        print("  before the first track — pressing P will run ring_tracker")
+        print("  from scratch with --strict-physics + your seeds, opening the")
+        print("  picker for init/release frames if the registry has none.")
+        print()
 
     state = State(args.stem, video_path, meas_dir, total_frames, fps,
                   track_rows, susp_frames, seeds_by_frame)
@@ -554,8 +586,9 @@ def main():
             print(f"\n  saved {seeds_path}  ({len(state.seeds)} seeds)")
             cv2.destroyWindow(WINDOW)
             earliest = min(state.seeds.keys())
+            have_existing_csv = bool(state.track_rows)
             rc = run_track_and_verify(args.stem, seeds_path, earliest,
-                                      args.omega_cap)
+                                      args.omega_cap, have_existing_csv)
             print(f"\nrun_track_and_verify exit code: {rc}")
             break
 
