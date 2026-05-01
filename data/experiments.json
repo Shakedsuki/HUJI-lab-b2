@@ -58,7 +58,32 @@
       635
     ],
     "measurements_dir": "measurements/th1_p047_th2_m002",
-    "csv_file": "tracking.csv"
+    "csv_file": "tracking.csv",
+    "tracking_quality": "verified",
+    "verification_date": "2026-05-01",
+    "verification_notes": "PASS via manual_correction strict-physics flow.",
+    "init_frame": 0,
+    "release_frame": 123,
+    "green_roi": null,
+    "red_roi": null,
+    "tracker": "ring",
+    "arm_length_px": 188,
+    "ring_tolerance": 30,
+    "theta1_release": 45.25,
+    "theta2_release": -0.699,
+    "omega1_release": -28.015,
+    "omega2_release": 17.6962,
+    "energy_proxy": -2.0735,
+    "t0_offset_s": 2.05205,
+    "duration_s": 44.228,
+    "n_free_frames": 2652,
+    "dropout_rate_pct": 0.53,
+    "arm_length_cm": 35.0,
+    "pivot_px": [
+      608,
+      355
+    ],
+    "scale_cm_per_px": 0.186
   },
   "DSC_0140": {
     "video_file": "th1_p056_th2_m001.mov",

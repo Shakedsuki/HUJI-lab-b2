@@ -72,7 +72,13 @@ EXPERIMENTS_FILE = os.path.join(DATA_DIR, "experiments.json")
 
 TRACKER_SCRIPT = os.path.join(ROOT, "scripts", "processing", "ring_tracker.py")
 VERIFY_SCRIPT  = os.path.join(ROOT, "scripts", "processing", "verify_tracking.py")
+INTERP_SCRIPT  = os.path.join(ROOT, "scripts", "processing", "interpolate_suspects.py")
 TRACK_ONE      = os.path.join(ROOT, "scripts", "utils",       "track_one.py")
+
+# Reuse the metrics + verdict logic from track_one so manual_correction
+# emits the same verdict card and auto-marks tracking_quality on PASS.
+sys.path.insert(0, os.path.join(ROOT, "scripts", "utils"))
+import track_one as _track_one_mod  # noqa: E402
 
 # Frame display dimensions (mirrors the picker in ring_tracker / hsv_tuner).
 FRAME_W   = 1280
@@ -412,6 +418,7 @@ def run_track_and_verify(stem, seeds_path, earliest_seed, omega_cap,
         print(f"ring_tracker exit {rc} — aborting before verify.")
         return rc
 
+    # ── Verify (pre-interp) ─────────────────────────────────────────────
     print()
     print("─" * 70)
     print("Re-running verify_tracking ...")
@@ -421,7 +428,55 @@ def run_track_and_verify(stem, seeds_path, earliest_seed, omega_cap,
          "--omega-cap", str(omega_cap), "--no-plot"],
         cwd=ROOT,
     ).returncode
-    return rc
+    if rc != 0:
+        print(f"verify_tracking exit {rc} — aborting before interpolation.")
+        return rc
+
+    meas_dir = os.path.join(MEAS_DIR, stem)
+    metrics_pre = _track_one_mod.read_verification_metrics(meas_dir)
+    n_pre = (metrics_pre or {}).get("n_suspect_hidden", 0)
+
+    # ── Interpolate any residual hidden suspects (rare with strict
+    # physics but boundary cases can still slip through) and re-verify.
+    n_interp = 0
+    if n_pre > 0:
+        print()
+        print("─" * 70)
+        print(f"Found {n_pre} residual suspects — running interpolate_suspects ...")
+        print("─" * 70)
+        irc = subprocess.run(
+            [sys.executable, INTERP_SCRIPT, "--stem", stem,
+             "--omega-cap", str(omega_cap)],
+            cwd=ROOT,
+        ).returncode
+        if irc != 0:
+            print(f"interpolate_suspects exit {irc} — verdict will use pre-interp metrics.")
+            metrics_post = metrics_pre
+        else:
+            # interpolate_suspects already re-ran verify internally; re-read.
+            metrics_post = _track_one_mod.read_verification_metrics(meas_dir)
+            reg_after = load_registry()
+            _, e_after = find_entry_by_stem(reg_after, stem)
+            n_interp = int((e_after or {}).get("suspect_frames_interpolated", 0))
+    else:
+        metrics_post = metrics_pre
+
+    # ── Verdict card + maybe mark verified — same logic as track_one. ──
+    n_post = (metrics_post or {}).get("n_suspect_hidden", 0)
+    status, reasons = _track_one_mod.compute_verdict(metrics_post, n_post)
+    reg = load_registry()
+    key, entry = find_entry_by_stem(reg, stem)
+    video_filename = (entry or {}).get("video_file", "")
+    _track_one_mod.emit_card(
+        stem, video_path, key, entry or {},
+        status=status, reasons=reasons,
+        metrics_pre=metrics_pre, metrics_post=metrics_post,
+        n_interpolated=n_interp,
+        hsv_kind=_track_one_mod.hsv_kind_for_video(video_filename),
+        total_elapsed=0.0,   # we don't time-track manual_correction's whole flow
+    )
+    _track_one_mod.maybe_mark_verified(stem, status, reasons)
+    return 0 if status != "FAIL" else 1
 
 
 # ─────────────────────────────────────────────

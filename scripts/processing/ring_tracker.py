@@ -119,6 +119,32 @@ def derive_config_description(stem, video_path, existing_entry):
     return stem
 
 
+def find_registry_key(reg, stem, video_filename, config_description):
+    """
+    Resolve the existing registry key for this measurement, or None.
+    Tries three strategies in order:
+      1. reg[stem]  — direct key match (works when the registry key was
+         set to the video stem, e.g. for clips imported from older flows).
+      2. config_description match  — finds DSC-style keys whose
+         config_description equals our stem (e.g. DSC_0139 -> th1_p047_th2_m002).
+      3. video_file match  — last-resort fallback if config_description
+         is missing.
+    Returning None means "no existing entry; caller should create one
+    under `stem`".
+    """
+    if stem in reg:
+        return stem
+    if config_description:
+        for k, e in reg.items():
+            if e.get("config_description") == config_description:
+                return k
+    if video_filename:
+        for k, e in reg.items():
+            if e.get("video_file") == video_filename:
+                return k
+    return None
+
+
 def hsv_file_for_video(video_path):
     """
     Per-video HSV file path: data/hsv_<videostem>.json.
@@ -1390,16 +1416,31 @@ def main():
         return
 
     stem = os.path.splitext(os.path.basename(video_path))[0]
+    video_filename = os.path.basename(video_path)
 
     # Resolve config_description before computing output paths so all
     # outputs land in the canonical measurements/<config> folder.
-    reg_preview     = load_registry()
+    reg_preview      = load_registry()
+    # First-pass lookup with stem-only — tolerates registries that use
+    # the video stem as the key. We'll re-resolve once we know the
+    # config_description (which is what the second-pass scan uses).
     existing_preview = reg_preview.get(stem)
-    config_desc     = derive_config_description(stem, video_path,
+    config_desc      = derive_config_description(stem, video_path,
+                                                 existing_preview)
+    # Second-pass lookup: when the registry uses an opaque key like
+    # DSC_0139 but the entry's config_description matches our stem,
+    # find that entry so we don't create a duplicate row.
+    reg_key = find_registry_key(reg_preview, stem,
+                                video_filename, config_desc) or stem
+    if reg_key != stem and reg_key in reg_preview:
+        existing_preview = reg_preview[reg_key]
+        # Re-derive config_description in case the existing entry
+        # carries an authoritative one we should adopt.
+        config_desc = derive_config_description(stem, video_path,
                                                 existing_preview)
-    meas_dir        = measurements_dir_for(config_desc)
-    output_csv      = os.path.join(meas_dir, "tracking.csv")
-    debug_mp4       = os.path.join(meas_dir, "debug.mp4")
+    meas_dir   = measurements_dir_for(config_desc)
+    output_csv = os.path.join(meas_dir, "tracking.csv")
+    debug_mp4  = os.path.join(meas_dir, "debug.mp4")
 
     print("ring_tracker.py")
     print(f"Video  : {video_path}")
@@ -1409,7 +1450,9 @@ def main():
     # ── Already tracked? Confirm re-run unless --force was passed. ──
     reg = load_registry()
     if is_tracked(stem, reg, root=ROOT) and not force_run:
-        e = reg[stem]
+        # Use reg_key so we read the right entry even when the registry
+        # key (e.g. DSC_0139) differs from the video stem.
+        e = reg.get(reg_key, reg.get(stem, {}))
         print(f"\n[+] '{stem}' is already tracked")
         print(f"    init_frame    = {e.get('init_frame')}")
         print(f"    release_frame = {e.get('release_frame')}")
@@ -1431,9 +1474,9 @@ def main():
     print(f"HSV   : {hsv_values['_hsv_path']}  [{hsv_kind}]  "
           f"(ring tolerance = {ring_tolerance}px)")
 
-    existing_entry = reg.get(stem)
+    existing_entry = reg.get(reg_key) if reg_key in reg else None
     if existing_entry:
-        print(f"\nFound existing registry entry for {stem}:")
+        print(f"\nFound existing registry entry under key '{reg_key}':")
         if existing_entry.get("init_frame") is not None:
             print(f"  init_frame    = {existing_entry['init_frame']}")
         if existing_entry.get("release_frame") is not None:
@@ -1967,13 +2010,17 @@ def main():
           f"om1={om1r:.3f}  om2={om2r:.3f}")
 
     reg = load_registry()
+    # Re-resolve reg_key against the freshly-loaded registry in case
+    # something else mutated experiments.json mid-run.
+    reg_key = (find_registry_key(reg, stem, video_filename, config_desc)
+               or stem)
     update_registry(
-        reg, stem, video_path,
+        reg, reg_key, video_path,
         init_frame, release_frame,
         config_desc, ring_tolerance,
         th1r, th2r, om1r, om2r,
         n_free, d_pct, dur,
-        video_fps, existing_entry=reg.get(stem),
+        video_fps, existing_entry=reg.get(reg_key),
     )
     save_registry(reg)
 
