@@ -33,9 +33,14 @@ measurements/*/combined.mp4
 # Migration / bulk-tracking sidecar logs
 data/migration_log.txt
 data/bulk_tracking_log.json
+# Long-render stdout logs from analysis scripts
+data/log_*.txt
 
 # Tracking-CSV backups created by interpolate_suspects.py
 measurements/*/tracking.csv.bak
+
+# Personal VS Code workspace
+*.code-workspace
 
 # ── Claude worktrees ─────────────────────────────
 .claude/

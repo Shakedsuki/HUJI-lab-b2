@@ -13,9 +13,11 @@ hsv_tuner   ring_tracker   verify_tracking   phase_*, combined_video
 | Stage | Script | What it does |
 |---|---|---|
 | Calibrate | `scripts/processing/hsv_tuner.py` | Interactive HSV calibration. Eyedropper-sample marker pixels, auto-suggest ranges, fine-tune with sliders, live ring-detection preview. Saves to a per-video file (`data/hsv_<videostem>.json`) by default; pass `--global` to save to the shared `data/hsv_values.json` instead. |
-| Track | `scripts/processing/ring_tracker.py` | Frame-independent tracker. Stacks four filters (motion mask via temporal-median background, fixed-arm-length ring, HSV colour, predicted angular arc) with a graceful fallback chain. Reads the calibration; writes `data/<stem>_tracking.csv` and `output/<stem>_debug.mp4`. |
-| Verify | `scripts/processing/verify_tracking.py` | Post-hoc QA on the CSV. Flags rows where the apparent &#124;dθ/dt&#124; exceeds physical limits — catches silent false positives that `dropout=0` won't reveal. |
-| Analyse | `scripts/analysis/*.py` | Plots, 3-D phase rotations, animated trajectory videos, side-by-side comparisons. |
+| Track | `scripts/processing/ring_tracker.py` | Frame-independent tracker. Stacks four filters (motion mask via temporal-median background, fixed-arm-length ring, HSV colour, predicted angular arc) with a graceful fallback chain. Reads the calibration; writes `measurements/<config>/tracking.csv` and `measurements/<config>/debug.mp4`. |
+| Verify | `scripts/processing/verify_tracking.py` | Post-hoc QA on the CSV. Flags rows where the apparent &#124;dθ/dt&#124; exceeds physical limits — catches silent false positives that `dropout=0` won't reveal. Writes `measurements/<config>/verification.{csv,png}`. |
+| Repair | `scripts/processing/interpolate_suspects.py` | Linearly interpolates the suspect frames flagged by verify_tracking. Backs up the CSV first and re-verifies after rewriting. |
+| Analyse | `scripts/analysis/*.py` | Plots, 3-D phase rotations, animated trajectory videos, side-by-side comparisons. All accept `--stem <config_description>` to read/write inside a measurement folder. |
+| Status | `scripts/utils/generate_status_report.py` | Excel report (`data/status_report.xlsx`) with per-measurement dropout stats, file presence, and derived status — computed live from the CSVs. |
 
 ## Setup
 
@@ -79,7 +81,7 @@ python scripts/processing/ring_tracker.py --status
 
 A video counts as "tracked" only when its `experiments.json` entry has
 populated `release_frame`, ICs (`theta1_release`, `theta2_release`), and
-a `csv_file` that still exists on disk.
+a `tracking.csv` at the entry's `measurements_dir`.
 
 ### First time on a new video / new lighting
 
@@ -120,9 +122,24 @@ matching filenames (`long_recording.mov`, `DSC_0136.mov`, etc.) get
 the legacy unconstrained behaviour automatically.
 
 ```bash
-# 3. Sanity check.
-python scripts/processing/verify_tracking.py
+# 3. Sanity check — pass --stem to look up the CSV in measurements/.
+python scripts/processing/verify_tracking.py --stem th1_p180_th2_m179
+
+# 4. Repair (only if step 3 found suspect frames).
+python scripts/processing/interpolate_suspects.py --stem th1_p180_th2_m179
+
+# 5. Analyse — each script writes its canonical output into the same folder.
+python scripts/analysis/phase_panels.py     --stem th1_p180_th2_m179
+python scripts/analysis/phase_3d.py         --stem th1_p180_th2_m179
+python scripts/analysis/phase_animation.py  --stem th1_p180_th2_m179
+python scripts/analysis/combined_video.py   --stem th1_p180_th2_m179
 ```
+
+`--stem` is the `config_description` of the measurement (the folder name
+under `measurements/`, e.g. `th1_p180_th2_m179`). The scripts also accept
+a positional CSV path (`measurements/<stem>/tracking.csv`) for backward
+compatibility, and `combined_video.py` looks up the source `.mov` from
+`experiments.json` when `--stem` is given.
 
 ### Pick a video from the GUI picker
 
@@ -158,19 +175,46 @@ python scripts/processing/ring_tracker.py Videos/long_recording.mov --no-debug
 ### Stricter verification
 
 ```bash
-python scripts/processing/verify_tracking.py --omega-cap 1800
+python scripts/processing/verify_tracking.py --stem th1_p180_th2_m179 --omega-cap 1800
 # default cap is 2500 deg/s; arm-2 chaos peaks ~1500 deg/s for a 35 cm arm
 ```
 
+### Status report across every measurement
+
+```bash
+python scripts/utils/generate_status_report.py
+# writes data/status_report.xlsx
+```
+
+Two sheets: a row-per-measurement overview with live dropout stats
+computed from each `tracking.csv`, plus a long-recording sheet with
+extra columns. Idempotent — always regenerates from scratch.
+
 ## Outputs
+
+Every per-measurement artefact lives in `measurements/<config_description>/`.
+A "complete" measurement has the eight canonical files below. Status is
+derived from which of these files are present.
 
 | File | Produced by | Notes |
 |---|---|---|
-| `data/<stem>_tracking.csv` | `ring_tracker.py` | Per frame: `frame, time_s, phase, x_green, y_green, x_red, y_red, theta1_deg, theta2_deg, dropout` |
-| `output/<stem>_debug.mp4` | `ring_tracker.py` | Annotated video — search rings, predicted arcs, marker dots, phase, dropout flag |
-| `data/<stem>_verification.csv` | `verify_tracking.py` | Tracking CSV + `omega1_deg_s`, `omega2_deg_s`, `suspect` columns |
-| `output/<stem>_verification.png` | `verify_tracking.py` | θ and ω timelines with suspect frames highlighted |
-| `data/experiments.json` | `ring_tracker.py` (auto) | Registry: init/release frames, ICs at release, dropout rate, normalised energy proxy, tracker name |
+| `tracking.csv` | `ring_tracker.py` | Per frame: `frame, time_s, phase, x_green, y_green, x_red, y_red, theta1_deg, theta2_deg, dropout` |
+| `debug.mp4` | `ring_tracker.py` | Annotated video — search rings, predicted arcs, marker dots, phase, dropout flag |
+| `verification.csv` | `verify_tracking.py` | Tracking CSV + `omega1_deg_s`, `omega2_deg_s`, `suspect` columns |
+| `verification.png` | `verify_tracking.py` | θ and ω timelines with suspect frames highlighted |
+| `phase_panels.png` | `phase_panels.py` | 6-panel static physics-sanity figure |
+| `phase_3d_trajectory.png` | `phase_3d.py` | 3-D phase ribbon (θ₁, θ₂, ω₁) coloured by time |
+| `phase_3d_rotation.mp4` | `phase_3d.py` | Same view, rotating 360° |
+| `phase_animation.mp4` | `phase_animation.py` | Animated 3-panel phase view, real time |
+| `combined.mp4` | `combined_video.py` | Side-by-side raw video + phase panels |
+
+The registry at `data/experiments.json` is the only file outside the
+measurement folder. It carries init/release frames, ICs at release,
+dropout rate, normalised energy proxy, tracker name, `config_description`
+(folder name), `measurements_dir`, and quality flags
+(`tracking_quality`, `verification_notes`, `verification_date`,
+`suspect_frames_interpolated`).
+
 
 ## Directory structure
 
@@ -178,19 +222,36 @@ python scripts/processing/verify_tracking.py --omega-cap 1800
 chaos/
 ├── scripts/
 │   ├── processing/             tracking pipeline
-│   │   ├── hsv_tuner.py            interactive HSV calibration
-│   │   ├── ring_tracker.py         main tracker
-│   │   └── verify_tracking.py      post-hoc QA
-│   ├── analysis/               plots, figures, animations
-│   │   ├── phase_3d.py             3D phase trajectory + rotating MP4
-│   │   ├── phase_animation.py      animated 3-panel phase view
-│   │   ├── phase_panels.py         6-panel static physics sanity check
-│   │   └── combined_video.py       side-by-side raw video + phase panels
+│   │   ├── hsv_tuner.py             interactive HSV calibration
+│   │   ├── ring_tracker.py          main tracker
+│   │   ├── verify_tracking.py       post-hoc QA
+│   │   └── interpolate_suspects.py  linear-interp the |ω| > cap suspects
+│   ├── analysis/               plots, figures, animations (all accept --stem)
+│   │   ├── phase_3d.py              3D phase trajectory + rotating MP4
+│   │   ├── phase_animation.py       animated 3-panel phase view
+│   │   ├── phase_panels.py          6-panel static physics sanity check
+│   │   └── combined_video.py        side-by-side raw video + phase panels
 │   └── utils/
-│       ├── download_videos.py      pull raw videos from Google Drive
-│       └── video_status.py         which Videos/ files are tracked vs pending
-├── data/                      tracking CSVs, experiments.json, HSV calibration
-├── output/                    debug videos, verification plots (gitignored)
+│       ├── download_videos.py        pull raw videos from Google Drive
+│       ├── video_status.py           which Videos/ files are tracked vs pending
+│       ├── migrate_to_measurements.py one-shot reorganisation script (idempotent)
+│       └── generate_status_report.py builds data/status_report.xlsx
+├── measurements/              per-measurement output folders
+│   └── <config_description>/  e.g. th1_p044_th2_m001/
+│       ├── tracking.csv             (gitignored — large, regenerable)
+│       ├── verification.csv         (gitignored)
+│       ├── debug.mp4                (gitignored)
+│       ├── phase_3d_rotation.mp4    (gitignored)
+│       ├── phase_animation.mp4      (gitignored)
+│       ├── combined.mp4             (gitignored)
+│       ├── phase_3d_trajectory.png  (tracked)
+│       ├── phase_panels.png         (tracked)
+│       └── verification.png         (tracked)
+├── data/                      registry, HSV calibration, status report
+│   ├── experiments.json            single source of truth for measurements
+│   ├── hsv_values.json             global HSV fallback
+│   ├── hsv_<videostem>.json        per-video HSV overrides
+│   └── status_report.xlsx          generated by generate_status_report.py
 ├── Videos/                    raw .mov files (gitignored, ~3 GB)
 └── archive/                   superseded scripts and reference data
     ├── scripts/               pendulum_tracker (CSRT), pendulum_tracker_hybrid,
@@ -199,6 +260,10 @@ chaos/
     │                          preview_frame
     └── Videos/                angle reference jpgs
 ```
+
+Small human-readable artefacts (the three PNGs) stay tracked so the
+repo always shows what's been measured at a glance. Large regenerable
+artefacts (CSVs and MP4s) are gitignored.
 
 ## History
 
@@ -214,5 +279,8 @@ live in `archive/scripts/`:
   still missed motion-blur frames where saturation collapses.
 - `ring_tracker.py` (current) — adds median-frame background subtraction,
   a temporal angular predictor, and a five-stage fallback chain. Brings
-  the long-recording dropout rate from ~98% (CSRT) to ~0.07% with
-  `verify_tracking.py` confirming physical plausibility.
+  the long-recording dropout rate from ~98% (CSRT) to 0.01% (2 of 30,942
+  frames). `verify_tracking.py` flagged 23 hidden suspects (dropout=0
+  but |ω₂| > 2500 °/s) on long_recording, which were fixed by
+  `interpolate_suspects.py`; physically the residual ω peaks are now
+  well within plausible chaotic-motion limits.

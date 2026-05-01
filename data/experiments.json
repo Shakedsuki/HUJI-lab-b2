@@ -22,7 +22,7 @@
     "scale_cm_per_px": 0.186,
     "csv_file": "tracking.csv",
     "config_description": "th1_p044_th2_m001",
-    "tracking_quality": "good",
+    "tracking_quality": "verified",
     "notes": "",
     "video_label": "th1_p044_th2_m001",
     "theta1_measured": 43.75,
@@ -37,7 +37,9 @@
       717,
       637
     ],
-    "measurements_dir": "measurements/th1_p044_th2_m001"
+    "measurements_dir": "measurements/th1_p044_th2_m001",
+    "verification_notes": "verify_tracking.py @ 2500 deg/s cap: 0 dropouts, 0 suspects across 1239 frames (164 holding, 1075 free_swing). All physics plausible.",
+    "verification_date": "2026-05-01"
   },
   "DSC_0139": {
     "video_file": "th1_p047_th2_m002.mov",
@@ -508,9 +510,13 @@
     "scale_cm_per_px": 0.186,
     "csv_file": "tracking.csv",
     "config_description": "th1_p180_th2_p180",
-    "tracking_quality": "good",
+    "tracking_quality": "verified",
     "notes": "",
-    "measurements_dir": "measurements/th1_p180_th2_p180"
+    "measurements_dir": "measurements/th1_p180_th2_p180",
+    "suspect_frames_interpolated": 2,
+    "interpolation_date": "2026-05-01",
+    "verification_notes": "verify_tracking.py @ 2500 deg/s cap: 70 dropouts (4.98%, mostly early high-energy frames), 2 suspect frames interpolated, 0 suspects after re-verification.",
+    "verification_date": "2026-05-01"
   },
   "th1_p001_th2_p093": {
     "video_file": "th1_p001_th2_p093.mov",
