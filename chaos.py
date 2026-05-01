@@ -464,11 +464,10 @@ def build_parser():
         prog="chaos",
         description="Unified entry point for the chaos tracking pipeline.",
         epilog="Run `chaos help` for a one-page cheat sheet.")
-    sub = p.add_subparsers(dest="command", required=False,
-                           metavar="<command>")
+    sub = p.add_subparsers(dest="command", required=False)
 
     sub.add_parser("status",
-        help="list tracked vs pending videos with IC angles + dropout %")
+        help="list tracked vs pending videos with IC angles + dropout %%")
 
     p_report = sub.add_parser("report",
         help="regenerate data/status_report.xlsx (or --output PATH)")
