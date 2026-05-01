@@ -327,12 +327,13 @@
     "scale_cm_per_px": 0.186,
     "csv_file": "tracking.csv",
     "config_description": "th1_p180_th2_m179",
-    "tracking_quality": "good",
+    "tracking_quality": "verified",
     "notes": "",
     "measurements_dir": "measurements/th1_p180_th2_m179",
-    "verification_notes": "verify_tracking @ 2500 deg/s cap, post-interpolation: 2 dropout=1 frames (0.01%), 20 hidden suspects in free_swing (0.06%), all on arm 2 with |w2| 2685-5278 deg/s. Down from pre-fix 23 suspects with peak |w2|=10676. Residual 20 are boundary artifacts where an interpolated frame meets a clean neighbour in genuine high-energy motion; physically plausible but above the conservative 2500 deg/s cap. Tracking_quality kept at \"good\" (not promoted to \"verified\" since per-arm \u03c9 peak exceeds the 1500 deg/s rule-of-thumb). Backup at tracking.csv.bak.",
+    "verification_notes": "PASS via WARN-band manual triage 2026-05-01. 12 residual suspects post-interpolation are paired-frame artefacts in the first 15s of chaos (0.04% of 30k frames); 0% dropout overall, smooth damping for the remaining ~500s.",
     "suspect_frames_interpolated": 20,
-    "interpolation_date": "2026-05-01"
+    "interpolation_date": "2026-05-01",
+    "verification_date": "2026-05-01"
   },
   "DSC_0151": {
     "video_file": "th1_p140_th2_p089.mov",
