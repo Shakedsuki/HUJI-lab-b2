@@ -190,6 +190,32 @@ def render(state):
 
     disp = cv2.resize(overlay, (DISP_W, DISP_H), interpolation=cv2.INTER_AREA)
 
+    # ── Goal ribbon — top-center ───────────────────────────────────
+    g_set = state.new_green is not None
+    r_set = state.new_red is not None
+    if not g_set:
+        goal_text = "GOAL: click the actual GREEN marker"
+    elif not r_set:
+        goal_text = "GOAL: click the actual RED marker"
+    else:
+        goal_text = "READY: press ENTER to commit"
+    progress = (f"GREEN: {'OK' if g_set else 'not set'}   "
+                f"RED: {'OK' if r_set else 'not set'}")
+    rib_x0, rib_y0 = 252, 4
+    rib_x1, rib_y1 = DISP_W - 135, 50
+    cv2.rectangle(disp, (rib_x0, rib_y0), (rib_x1, rib_y1),
+                  (40, 40, 40), -1)
+    cv2.rectangle(disp, (rib_x0, rib_y0), (rib_x1, rib_y1),
+                  (220, 220, 220), 1)
+    cv2.putText(disp, goal_text,
+                (rib_x0 + 10, rib_y0 + 19),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.55,
+                (255, 255, 255), 2)
+    cv2.putText(disp, progress,
+                (rib_x0 + 10, rib_y0 + 40),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.45,
+                (200, 220, 200) if (g_set and r_set) else (220, 220, 220), 1)
+
     # Mode badge.
     mode_color = (0, 255, 0) if state.mode == "green" else (0, 0, 255)
     cv2.rectangle(disp, (DISP_W - 130, 5), (DISP_W - 5, 35), mode_color, -1)
@@ -311,19 +337,35 @@ def main():
         print(f"ERROR: could not read frame {args.frame}")
         return 1
 
+    bar = "=" * 72
     print()
+    print(bar)
     print(f"override_frame.py  —  {args.stem}  frame {args.frame}")
-    print(f"  video      : {video_path}")
-    print(f"  current green : {cur_green}")
-    print(f"  current red   : {cur_red}")
-    print(f"  current row   : phase={target.get('phase')}   "
-          f"dropout={target.get('dropout')}")
+    print(bar)
+    print("Why")
+    print("  This frame in tracking.csv is suspect. Overwrite that one row")
+    print("  with correct marker positions; nothing else in the CSV changes.")
+    print()
+    print("Steps")
+    print("  1. LEFT-CLICK the GREEN marker (mode auto-switches to RED).")
+    print("  2. LEFT-CLICK the RED marker.")
+    print("  3. Press ENTER to commit.")
+    print()
+    print("Done when")
+    print("  Both markers clicked (colored stars visible). ENTER → re-verify.")
     print()
     print("Keys")
     print("  marker     : G green   R red   LEFT-CLICK set position")
     print("  view       : Z zoom loupe   +/- magnification   "
           "M overlay (full/min/clean)")
     print("  commit     : ENTER write row + re-verify   ESC/Q cancel")
+    print()
+    print("Status")
+    print(f"  video         : {video_path}")
+    print(f"  current green : {cur_green}")
+    print(f"  current red   : {cur_red}")
+    print(f"  current row   : phase={target.get('phase')}   "
+          f"dropout={target.get('dropout')}")
     print()
 
     state = State(args.frame, frame_img, cur_green, cur_red)
@@ -338,9 +380,15 @@ def main():
         if state.mode == "green":
             state.new_green = mapped
             print(f"  set new_green = {mapped}")
+            # Auto-switch to RED if RED isn't yet placed.
+            if state.new_red is None:
+                state.mode = "red"
+                print("  → mode auto-switched to RED")
         else:
             state.new_red = mapped
             print(f"  set new_red   = {mapped}")
+            if state.new_green is not None and state.new_red is not None:
+                print("  → both set — press ENTER to commit")
 
     cv2.setMouseCallback(WINDOW, on_mouse)
 

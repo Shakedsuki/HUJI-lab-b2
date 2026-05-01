@@ -381,25 +381,41 @@ def cmd_next(args):
     for i, video_filename in enumerate(pending):
         stem = stem_for_video(video_filename)
         video_path = os.path.join(VIDEOS_DIR, video_filename)
+        bar = "=" * 72
         print()
-        print("=" * 70)
-        print(f"[{i + 1}/{len(pending)}]  {stem}  ({video_filename})")
-        print("=" * 70)
+        print(bar)
+        print(f"[{i + 1}/{len(pending)}]  {stem}")
+        print(bar)
+        print(f"Source video       : Videos\\{video_filename}")
 
         # ── Step 1: HSV adequacy probe ─────────────────────────────────
         hsv_kind = hsv_kind_for_stem(stem)
-        print(f"  HSV file: {hsv_kind}")
+        hsv_label = ("per-video hsv_<stem>.json" if hsv_kind == "per-video"
+                     else "global hsv_values.json (no per-video file yet)")
+        print(f"HSV calibration    : {hsv_label}")
         try:
             verdict, both_pct = hsv_probe_for_clip(video_path)
         except Exception as e:
-            print(f"  HSV probe failed: {e}")
+            print(f"HSV adequacy probe : ERROR  ({e})")
             verdict, both_pct = "WARN", 0.0
-        print(f"  HSV probe: {verdict}  ({both_pct:.0f}% both markers)")
+        else:
+            verdict_arrow = {
+                "OK":    f"{both_pct:.0f}%  ->  OK (≥70%, ready to track)",
+                "WARN":  f"{both_pct:.0f}%  ->  WARN (40-70%, can proceed)",
+                "ABORT": f"{both_pct:.0f}%  ->  ABORT (<40%, need to tune)",
+            }
+            print(f"HSV adequacy probe : "
+                  f"{verdict_arrow.get(verdict, verdict)}")
 
         if verdict == "ABORT":
+            print()
+            print("Action required")
+            print("  This clip needs HSV calibration before tracking can")
+            print("  engage. Next step opens hsv_tuner so you can sample")
+            print("  green and red marker pixels in this clip's lighting.")
+            print()
             ans = prompt(
-                "  Calibration too poor. [t]une HSV / [s]kip / [q]uit "
-                "(default tune): ",
+                "  [t]une HSV / [s]kip / [q]uit  (default tune): ",
                 ["t", "s", "q"],
             )
             if ans == "q": break
@@ -410,11 +426,16 @@ def cmd_next(args):
                 verdict, both_pct = hsv_probe_for_clip(video_path)
             except Exception:
                 verdict = "WARN"
-            print(f"  HSV probe (post-tune): {verdict}  ({both_pct:.0f}%)")
+            print(f"HSV probe (post-tune): {verdict}  ({both_pct:.0f}%)")
         elif verdict == "WARN":
+            print()
+            print("Action required")
+            print("  HSV is borderline — tracking will probably work but")
+            print("  may produce more dropouts than usual. You can continue")
+            print("  or re-tune for a cleaner pass.")
+            print()
             ans = prompt(
-                "  HSV borderline. [c]ontinue / [t]une / [s]kip / [q]uit "
-                "(default continue): ",
+                "  [c]ontinue / [t]une / [s]kip / [q]uit  (default continue): ",
                 ["c", "t", "s", "q"],
             )
             if ans == "q": break
@@ -431,9 +452,13 @@ def cmd_next(args):
         rc = run_script(SCRIPT_TRACK_ONE, *track_args)
 
         if rc != 0:
+            print()
+            print("Action required")
+            print("  track_one returned a non-zero exit code (FAIL or")
+            print("  picker cancelled). Manual seed clicks are the next step.")
+            print()
             ans = prompt(
-                "  track_one returned non-zero. [f]ix manually / "
-                "[s]kip / [q]uit (default fix): ",
+                "  [f]ix manually / [s]kip / [q]uit  (default fix): ",
                 ["f", "s", "q"],
             )
             if ans == "q": break
@@ -443,7 +468,7 @@ def cmd_next(args):
         # ── Step 3: read verdict from registry ─────────────────────────
         quality = get_tracking_quality(stem)
         if quality == "verified":
-            print(f"\n  ✓ {stem} verified.")
+            print(f"\n  [PASS] {stem} verified.")
             ans = prompt(
                 "  [Enter] next clip / [s]top here / [r]eport now: ",
                 ["", "s", "r"],
@@ -454,10 +479,16 @@ def cmd_next(args):
                 ans = prompt("  Continue to next clip? [y/n]: ", ["y", "n"])
                 if ans == "n": break
         else:
-            print(f"\n  ⚠ {stem} did not auto-verify (tracking_quality="
-                  f"{quality!r}).")
+            print(f"\n  [WARN] {stem} did not auto-verify "
+                  f"(tracking_quality={quality!r}).")
+            print()
+            print("Action required")
+            print("  Inspect measurements/<stem>/verification.png. If the")
+            print("  trace looks like real chaos, [a]ccept. If the tracker")
+            print("  latched onto something wrong, [f]ix with seeded retrack.")
+            print()
             ans = prompt(
-                "  [f]ix manually / [a]ccept anyway / [s]kip / [q]uit "
+                "  [f]ix manually / [a]ccept anyway / [s]kip / [q]uit  "
                 "(default fix): ",
                 ["f", "a", "s", "q"],
             )

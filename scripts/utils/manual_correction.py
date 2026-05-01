@@ -309,6 +309,42 @@ def render_frame(state, frame):
     # Resize to display.
     disp = cv2.resize(overlay, (DISP_W, DISP_H), interpolation=cv2.INTER_AREA)
 
+    # ── Goal ribbon — top-center of the display ────────────────────
+    # GOAL adapts to mode + which seeds are already set on this frame.
+    seed_now = state.seeds.get(state.frame_idx, {}) or {}
+    has_g = bool(seed_now.get("green_xy"))
+    has_r = bool(seed_now.get("red_xy"))
+    if state.mode == "green":
+        goal_text = "GOAL: click the actual GREEN marker"
+        if has_g:
+            goal_text = "GOAL: GREEN seeded — press R for RED"
+    else:
+        goal_text = "GOAL: click the actual RED marker"
+        if has_r and has_g:
+            goal_text = "GOAL: both seeded — press n for next or P to commit"
+
+    n_seeded = len(state.seeds)
+    n_susp = len(state.susp_frames)
+    progress = f"frame {state.frame_idx}/{state.total_frames - 1}   "
+    if state.frame_idx in state.susp_frames:
+        progress += "SUSPECT   "
+    progress += f"seeds: {n_seeded}   suspects: {n_susp}"
+    if state.dirty:
+        progress += "   *unsaved*"
+
+    rib_x0, rib_y0 = 252, 4
+    rib_x1, rib_y1 = DISP_W - 135, 50
+    cv2.rectangle(disp, (rib_x0, rib_y0), (rib_x1, rib_y1),
+                  (40, 40, 40), -1)
+    cv2.rectangle(disp, (rib_x0, rib_y0), (rib_x1, rib_y1),
+                  (220, 220, 220), 1)
+    cv2.putText(disp, goal_text,
+                (rib_x0 + 10, rib_y0 + 19),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.55, (255, 255, 255), 2)
+    cv2.putText(disp, progress,
+                (rib_x0 + 10, rib_y0 + 40),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.45, (220, 220, 220), 1)
+
     # Mode + seed-count + dirty badge.
     mode_color = (0, 255, 0) if state.mode == "green" else (0, 0, 255)
     cv2.rectangle(disp, (DISP_W - 130, 5), (DISP_W - 5, 35), mode_color, -1)
@@ -507,26 +543,48 @@ def main():
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     fps = cap.get(cv2.CAP_PROP_FPS) or 59.94
 
+    bar = "=" * 72
+    n_suspects = len(susp_frames)
+    print(bar)
     print(f"manual_correction.py  —  {args.stem}")
+    print(bar)
+    print("Why")
+    print(f"  verify_tracking flagged {n_suspects} suspect frame(s) "
+          f"(|ω| above the cap). Click correct marker positions; strict-")
+    print("  physics propagates the fix 30 frames forward from each seed.")
+    print()
+    print("Steps")
+    print("  1. Press n to jump to the worst suspect.")
+    print("  2. LEFT-CLICK the GREEN marker, press R, LEFT-CLICK the RED")
+    print("     marker. Tool auto-jumps to the next suspect when both seeded.")
+    print("  3. Press P to save seeds and re-run track + verify.")
+    print()
+    print("Done when")
+    print("  Verdict card prints PASS, or each suspect cluster has ≥1 seed")
+    print("  and you've pressed P.")
+    print()
+    print("Keys")
+    print("  marker     : G green   R red   LEFT-CLICK set seed   "
+          "X delete frame's seed")
+    print("  navigate   : a/d ±1   A/D ±10   z/x ±100   n next suspect frame")
+    print("  view       : Z zoom loupe   +/- magnification   "
+          "M overlay (full/min/clean)")
+    print("  commit     : P/ENTER save seeds + re-track + verify   "
+          "S save seeds only   Q/ESC quit")
+    print()
+    print("Status")
     print(f"  video      : {video_path}")
     print(f"  meas       : {meas_dir}")
     print(f"  csv        : "
           f"{'(absent)' if not track_rows else f'{len(track_rows)} rows'}")
     print(f"  verify     : "
-          f"{'(absent)' if not susp_rows else f'{len(susp_rows)} rows; {len(susp_frames)} suspects'}")
+          f"{'(absent)' if not susp_rows else f'{len(susp_rows)} rows; {n_suspects} suspects'}")
     print(f"  seeds      : {len(seeds_by_frame)} loaded")
     print()
 
     if not track_rows:
-        print("Note: no tracking.csv exists for this clip yet.")
-        print("  manual_correction is most effective AFTER an initial track")
-        print("  (you can see where the tracker's gone wrong and fix only those")
-        print("  frames). For a fresh clip, the standard flow is:")
-        print(f"     python scripts/utils/track_one.py --stem {args.stem}")
-        print("  Continuing here is fine if you want to seed predictor anchors")
-        print("  before the first track — pressing P will run ring_tracker")
-        print("  from scratch with --strict-physics + your seeds, opening the")
-        print("  picker for init/release frames if the registry has none.")
+        print("Note: no tracking.csv exists yet — this is most useful AFTER")
+        print(f"  an initial track. Standard flow: chaos track {args.stem}")
         print()
 
     state = State(args.stem, video_path, meas_dir, total_frames, fps,
@@ -549,17 +607,28 @@ def main():
         state.dirty = True
         print(f"  set seed[frame {state.frame_idx}].{state.mode}_xy = {mapped}")
 
-    cv2.setMouseCallback(WINDOW, on_mouse)
+        # If GREEN was just clicked and RED isn't set yet, auto-switch to
+        # RED so the user doesn't have to press R between clicks.
+        if (state.mode == "green" and seed.get("green_xy")
+                and not seed.get("red_xy")):
+            state.mode = "red"
+            print("  → mode auto-switched to RED")
+            return
 
-    print("Keys")
-    print("  marker     : G green   R red   LEFT-CLICK set seed   "
-          "X delete frame's seed")
-    print("  navigate   : a/d ±1   A/D ±10   z/x ±100   n next suspect frame")
-    print("  view       : Z zoom loupe   +/- magnification   "
-          "M overlay (full/min/clean)")
-    print("  commit     : P/ENTER save seeds + re-track + verify   "
-          "S save seeds only   Q/ESC quit")
-    print()
+        # If both green AND red are set on this frame, auto-jump to the
+        # next suspect frame (if any) and reset mode to GREEN.
+        if seed.get("green_xy") and seed.get("red_xy"):
+            future = [s for s in state.susp_frames if s > state.frame_idx]
+            if future:
+                state.frame_idx = future[0]
+                state.mode = "green"
+                print(f"  → both seeds set; auto-jump to next suspect "
+                      f"frame {state.frame_idx} (mode=GREEN)")
+            else:
+                print("  → both seeds set; no more suspects — "
+                      "press P to save + retrack")
+
+    cv2.setMouseCallback(WINDOW, on_mouse)
 
     while True:
         if state.frame_idx != state.last_idx:

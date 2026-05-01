@@ -123,6 +123,14 @@ CIRCLE_MAX_SAMPLES    = 80          # cap so one drag doesn't drown out
                                     # earlier point samples
 CIRCLE_MIN_RADIUS_PX  = 4           # ignore tiny accidental drags
 
+# Auto-advance reference frames — distributed across the clip so a
+# single sampling pass naturally captures lighting variation. After
+# every successful shift-drag we jump to the next entry in this queue;
+# after the last entry we stop auto-advancing. Mode switch (G/R) and
+# the C clear-key reset the queue to entry 0.
+AUTO_ADVANCE_FRACTIONS = [0.10, 0.35, 0.65, 0.90]
+SAMPLE_TARGET          = 6          # min samples per marker before "ready"
+
 # Default HSV ranges — sensible starting points for the green/red gaff tape.
 DEFAULTS = {
     "green": {"h_min": 40, "h_max": 80,  "s_min": 50, "s_max": 255,
@@ -431,6 +439,10 @@ class TunerState:
         self.circle_dragging    = False
         self.circle_center_orig = None    # (ox, oy) in original frame coords
         self.circle_radius_orig = 0       # radius in original-frame pixels
+        # Auto-advance reference queue. Populated in main() once total_frames
+        # is known. Each successful shift-drag advances the pointer.
+        self.ref_queue          = []
+        self.ref_queue_idx      = 0
         # Where this session reads from / saves to. Per-video by default;
         # global with --global. Caller passes the resolved path.
         self.target_path        = target_path
@@ -562,10 +574,23 @@ def main():
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     fps          = cap.get(cv2.CAP_PROP_FPS) or 59.94
 
+    bar = "=" * 72
+    print(bar)
     print(f"hsv_tuner.py  —  {os.path.basename(video_path)}")
-    print(f"  video      : {video_path}")
-    print(f"  frames     : {total_frames}   fps: {fps:.2f}")
-    print(f"  HSV file   : {target_path}   [{target_kind}]")
+    print(bar)
+    print("Why")
+    print("  Sample green and red marker pixels in this clip's lighting so")
+    print("  the tracker can find them. (Run when HSV adequacy ABORTed.)")
+    print()
+    print("Steps")
+    print(f"  1. SHIFT-DRAG a circle over the GREEN marker. Auto-advances")
+    print(f"     to the next reference frame after each drag "
+          f"({len(AUTO_ADVANCE_FRACTIONS)} frames total).")
+    print(f"  2. After ≥{SAMPLE_TARGET} green samples, press R and repeat for RED.")
+    print(f"  3. Scrub the clip; rings should lock on the markers.")
+    print()
+    print("Done when")
+    print(f"  GREEN ≥{SAMPLE_TARGET}, RED ≥{SAMPLE_TARGET}, rings track during scrub. Then S → Q.")
     print()
     print("Keys")
     print("  marker     : G green   R red   LEFT-CLICK sample 1 px   "
@@ -577,9 +602,22 @@ def main():
           "(20→30→40 px)")
     print("  commit     : S save HSV file   Q/ESC quit")
     print()
+    print("Status")
+    print(f"  video      : {video_path}")
+    print(f"  frames     : {total_frames}   fps: {fps:.2f}")
+    print(f"  HSV file   : {target_path}   [{target_kind}]")
+    print()
 
     state = TunerState(target_path)
-    state.frame_idx = max(0, min(total_frames - 1, start_frame))
+    # Auto-advance reference queue spans the clip evenly.
+    state.ref_queue = sorted({
+        max(0, min(total_frames - 1, int(f * total_frames)))
+        for f in AUTO_ADVANCE_FRACTIONS
+    })
+    # Start at the first reference frame (or wherever caller asked).
+    state.frame_idx = (start_frame if start_frame else state.ref_queue[0]
+                       if state.ref_queue else 0)
+    state.frame_idx = max(0, min(total_frames - 1, state.frame_idx))
 
     # Precompute the static pivot distance grid once — used for the green ring.
     pivot_dist_grid = precompute_distance_grid(FRAME_W, FRAME_H, PIVOT)
@@ -652,6 +690,15 @@ def main():
                 state.data[state.mode].update(suggestion)
                 push_cfg_to_trackbars(state.data[state.mode], state.mode)
                 state.dirty = True
+
+            # Auto-advance to the next reference frame, if any remain.
+            if (state.ref_queue
+                    and state.ref_queue_idx + 1 < len(state.ref_queue)):
+                state.ref_queue_idx += 1
+                state.frame_idx = state.ref_queue[state.ref_queue_idx]
+                print(f"  → auto-advance to reference frame "
+                      f"{state.frame_idx} "
+                      f"({state.ref_queue_idx + 1}/{len(state.ref_queue)})")
             return
 
         # ── Single-click sampling (existing behaviour) ────────────────
@@ -861,6 +908,46 @@ def main():
             ix, iy = 5, 5
             left_panel[iy:iy + INSET_PX, ix:ix + INSET_PX] = inset
 
+        # ── Goal ribbon — top-center of the video panel ────────────────
+        # Sits between the zoom-inset (top-left, eats x ≤ 250 when on)
+        # and the mode badge (top-right, eats x ≥ 830). Two lines:
+        # GOAL (mode-dependent imperative) and PROGRESS (sample counts +
+        # auto-advance pointer + S-to-save once both targets met).
+        n_g = len(state.green_samples)
+        n_r = len(state.red_samples)
+        ready = n_g >= SAMPLE_TARGET and n_r >= SAMPLE_TARGET
+        if state.mode == "green":
+            goal_text = "GOAL: SHIFT-DRAG over the GREEN marker"
+        else:
+            goal_text = "GOAL: SHIFT-DRAG over the RED marker"
+        if ready:
+            goal_text = "READY: scrub the clip — rings should lock on markers"
+
+        g_chk = " OK" if n_g >= SAMPLE_TARGET else ""
+        r_chk = " OK" if n_r >= SAMPLE_TARGET else ""
+        progress = (f"GREEN {n_g}/{SAMPLE_TARGET}+{g_chk}   "
+                    f"RED {n_r}/{SAMPLE_TARGET}+{r_chk}")
+        if state.ref_queue:
+            progress += (f"   frame {state.ref_queue_idx + 1}/"
+                         f"{len(state.ref_queue)}")
+        if ready:
+            progress += "   ->  press S to save"
+
+        rib_x0, rib_y0 = 252, 4
+        rib_x1, rib_y1 = VIDEO_DISP_W - 135, 50
+        cv2.rectangle(left_panel, (rib_x0, rib_y0), (rib_x1, rib_y1),
+                      (40, 40, 40), -1)
+        cv2.rectangle(left_panel, (rib_x0, rib_y0), (rib_x1, rib_y1),
+                      (220, 220, 220), 1)
+        cv2.putText(left_panel, goal_text,
+                    (rib_x0 + 10, rib_y0 + 19),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.55,
+                    (255, 255, 255), 2)
+        cv2.putText(left_panel, progress,
+                    (rib_x0 + 10, rib_y0 + 40),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.45,
+                    (200, 220, 200) if ready else (220, 220, 220), 1)
+
         # Mode badge at top-right of the video region.
         mode_color = (0, 255, 0) if state.mode == "green" else (0, 0, 255)
         cv2.rectangle(left_panel, (VIDEO_DISP_W - 130, 5),
@@ -982,14 +1069,23 @@ def main():
             state.mode = "green"
             build_controls_window(state.mode)
             push_cfg_to_trackbars(state.data["green"], "green")
-            print("Mode -> GREEN")
+            # Restart the auto-advance queue for the new colour pass.
+            if state.ref_queue:
+                state.ref_queue_idx = 0
+                state.frame_idx = state.ref_queue[0]
+            print(f"Mode -> GREEN  (auto-advance queue reset to frame "
+                  f"{state.frame_idx})")
             continue
 
         if k in (ord("r"), ord("R")) and state.mode != "red":
             state.mode = "red"
             build_controls_window(state.mode)
             push_cfg_to_trackbars(state.data["red"], "red")
-            print("Mode -> RED")
+            if state.ref_queue:
+                state.ref_queue_idx = 0
+                state.frame_idx = state.ref_queue[0]
+            print(f"Mode -> RED  (auto-advance queue reset to frame "
+                  f"{state.frame_idx})")
             continue
 
         if k in (ord("c"), ord("C")):
@@ -997,7 +1093,12 @@ def main():
                 state.green_samples.clear()
             else:
                 state.red_samples.clear()
-            print(f"Cleared samples for {state.mode.upper()}")
+            # Clearing implies a fresh sampling pass; restart the queue.
+            if state.ref_queue:
+                state.ref_queue_idx = 0
+                state.frame_idx = state.ref_queue[0]
+            print(f"Cleared samples for {state.mode.upper()}  "
+                  f"(auto-advance queue reset)")
             continue
 
         if k in (ord("t"), ord("T")):

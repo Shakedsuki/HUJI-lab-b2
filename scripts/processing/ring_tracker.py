@@ -1283,9 +1283,18 @@ def pick_frame_interactive(video_path, label, fps, total_frames,
 
         cv2.putText(disp, f"PICK {label.upper()}", (10, 28),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
-        cv2.putText(disp, status_txt, (10, 56),
+        # GOAL line — what the user is looking for in this frame.
+        if "init" in label.lower():
+            goal_text = "GOAL: first stable frame, both rings on actual markers"
+        elif "release" in label.lower():
+            goal_text = "GOAL: moment of letting go (first frame of free motion)"
+        else:
+            goal_text = f"GOAL: pick the {label}"
+        cv2.putText(disp, goal_text, (10, 50),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 255, 255), 2)
+        cv2.putText(disp, status_txt, (10, 78),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.55, status_col, 2)
-        cv2.putText(disp, prior_status, (10, 80),
+        cv2.putText(disp, prior_status, (10, 102),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.45, (180, 220, 255), 1)
         cv2.putText(disp,
                     "a/d +-1   A/D +-10   z/x +-100   T re-tune HSV   ENTER confirm   ESC cancel",
@@ -1602,12 +1611,30 @@ def main():
             print("  release suggestion: none (no motion threshold crossed within scan).")
 
     # ── Init frame: registry → visual picker (pre-positioned) ────────────
+    bar = "=" * 72
     if existing_entry and existing_entry.get("init_frame") is not None:
         init_frame = int(existing_entry["init_frame"])
         print(f"Init frame loaded from registry: {init_frame}")
     else:
         start_at = init_suggestion if init_suggestion is not None else 0
-        print(f"\nOpening visual picker for INIT FRAME (start at {start_at}) ...")
+        print()
+        print(bar)
+        print(f"Pick INIT FRAME  —  {os.path.basename(video_path)}")
+        print(bar)
+        print("Why")
+        print("  First stable frame where both markers are visible and")
+        print("  not moving. Tracking starts from here.")
+        print()
+        print("Steps")
+        print("  1. Scrub until both rings pin to the actual markers.")
+        print("  2. Confirm markers haven't started moving yet.")
+        print("  3. Press ENTER.")
+        print()
+        print("Done when")
+        print("  Both rings on actual markers, static. ENTER to confirm.")
+        print()
+        print(f"Starting at frame {start_at} "
+              f"({'motion-scan suggestion' if init_suggestion is not None else 'frame 0'}).")
         init_frame = pick_frame_interactive(
             video_path, "init frame", video_fps, total_frames,
             hsv_values, ring_tolerance, start_frame=start_at,
@@ -1629,7 +1656,24 @@ def main():
     else:
         start_at = (release_suggestion if release_suggestion is not None
                     else init_frame)
-        print(f"\nOpening visual picker for RELEASE FRAME (start at {start_at}) ...")
+        print()
+        print(bar)
+        print(f"Pick RELEASE FRAME  —  {os.path.basename(video_path)}")
+        print(bar)
+        print("Why")
+        print("  Moment of letting go: first frame of free motion. Frames")
+        print("  before this are tagged 'holding'; after are 'free_swing'.")
+        print()
+        print("Steps")
+        print("  1. Scrub to the frame just before motion begins.")
+        print("  2. Step forward until you see motion blur or angle change.")
+        print("  3. Press ENTER on the first free-motion frame.")
+        print()
+        print("Done when")
+        print("  Cursor frame shows the first hint of pendulum motion. ENTER.")
+        print()
+        print(f"Starting at frame {start_at} "
+              f"({'motion-scan suggestion' if release_suggestion is not None else 'init frame'}).")
         release_frame = pick_frame_interactive(
             video_path, "release frame", video_fps, total_frames,
             hsv_values, ring_tolerance, start_frame=start_at,
