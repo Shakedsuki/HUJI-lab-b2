@@ -28,24 +28,17 @@ Usage:
   python scripts/processing/hsv_tuner.py Videos/long_recording.mov 200         # start at frame 200
   python scripts/processing/hsv_tuner.py Videos/long_recording.mov --global    # force save to global
 
-Keys:
-  G / R                switch active marker (GREEN / RED)
-  A / D                step  ±1 frame
-  LEFT / RIGHT         step  ±50 frames
-  SPACE                pause / play
-  LEFT-CLICK           sample HSV at the cursor (auto-suggest after >=5)
-  SHIFT + LEFT-DRAG    region sample — drag a circle around the marker;
-                       on release the tool keeps pixels whose HSV is
-                       close to the centre pixel and adds them as
-                       samples (one drag captures spatial diversity
-                       that takes 5–8 single clicks)
-  C                    clear sampled points for the active marker
-  T                    cycle ring tolerance (20 -> 30 -> 40 px)
-  Z                    toggle zoom loupe (magnified inset following the cursor)
-  M                    cycle overlay level (full / minimal / clean)
-  + / -                increase / decrease zoom magnification (2x..8x)
-  S                    save data/hsv_values.json
-  Q / ESC              quit (prompts to save if there are unsaved changes)
+Keys
+  marker     : G green   R red   LEFT-CLICK sample 1 px   SHIFT-DRAG sample circle region
+  navigate   : a/d ±1   ←/→ ±50   SPACE pause/play
+  view       : Z zoom loupe   +/- magnification 2x..8x   M overlay (full/min/clean)
+  edit       : C clear samples   T cycle ring tolerance (20→30→40 px)
+  commit     : S save HSV file   Q/ESC quit (prompts if unsaved)
+
+LEFT-CLICK samples the HSV under the cursor; auto-suggests once ≥5
+points exist for the active marker. SHIFT-DRAG draws a circle and
+keeps pixels close to the centre's HSV, capturing spatial diversity
+that would otherwise take 5–8 individual clicks.
 """
 
 import cv2
@@ -569,16 +562,20 @@ def main():
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     fps          = cap.get(cv2.CAP_PROP_FPS) or 59.94
 
-    print("hsv_tuner.py")
-    print(f"Video  : {video_path}")
-    print(f"Frames : {total_frames}  fps: {fps:.2f}")
-    print(f"HSV    : {target_path}  [{target_kind}]")
+    print(f"hsv_tuner.py  —  {os.path.basename(video_path)}")
+    print(f"  video      : {video_path}")
+    print(f"  frames     : {total_frames}   fps: {fps:.2f}")
+    print(f"  HSV file   : {target_path}   [{target_kind}]")
     print()
-    print("Keys: G/R switch marker  A/D step 1  ←/→ step 50  SPACE pause")
-    print("      LEFT-CLICK sample one pixel  |  SHIFT+LEFT-DRAG sample circle region")
-    print("      C clear samples  T cycle tolerance")
-    print("      Z zoom loupe  +/- zoom 2x..8x  M cycle overlay (full/min/clean)")
-    print("      S save  Q/ESC quit")
+    print("Keys")
+    print("  marker     : G green   R red   LEFT-CLICK sample 1 px   "
+          "SHIFT-DRAG sample circle region")
+    print("  navigate   : a/d ±1   ←/→ ±50   SPACE pause/play")
+    print("  view       : Z zoom loupe   +/- magnification 2x..8x   "
+          "M overlay (full/min/clean)")
+    print("  edit       : C clear samples   T cycle ring tolerance "
+          "(20→30→40 px)")
+    print("  commit     : S save HSV file   Q/ESC quit")
     print()
 
     state = TunerState(target_path)
@@ -832,6 +829,27 @@ def main():
             mid = INSET_PX // 2
             cv2.drawMarker(inset, (mid, mid), (255, 255, 255),
                            cv2.MARKER_CROSS, 24, 1)
+
+            # While shift-dragging, also project the live circle into the
+            # inset so the user can see what they're tracing without
+            # taking their eye off the marker. The inset is built from
+            # raw pixels (no overlay), so we have to redraw the circle
+            # here in inset coordinates: original-frame point (px, py)
+            # maps to inset point ((px - x0) * zf, (py - y0) * zf), and
+            # an original-frame pixel radius rr maps to rr * zf.
+            if (state.circle_dragging
+                    and state.circle_center_orig is not None
+                    and state.circle_radius_orig > 0):
+                ccx, ccy = state.circle_center_orig
+                rr = state.circle_radius_orig
+                ring_color = ((0, 255, 0) if state.mode == "green"
+                              else (0, 0, 255))
+                ix_c = int(round((ccx - x0) * zf))
+                iy_c = int(round((ccy - y0) * zf))
+                cv2.circle(inset, (ix_c, iy_c), rr * zf, ring_color, 2)
+                cv2.drawMarker(inset, (ix_c, iy_c), (255, 255, 255),
+                               cv2.MARKER_CROSS, 14, 2)
+
             cv2.rectangle(inset, (0, 0),
                           (INSET_PX - 1, INSET_PX - 1), (255, 255, 255), 2)
             cv2.putText(inset, f"ZOOM {zf}x",

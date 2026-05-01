@@ -22,14 +22,9 @@ Usage
     chaos override <stem> --frame N
 
 Keys
-~~~~
-    G / R           switch active marker (GREEN / RED)
-    LEFT-CLICK      set the active marker's correct position
-    Z               toggle zoom loupe
-    +/-             cycle zoom magnification
-    M               cycle overlay level (full / minimal / clean)
-    ENTER           write the override row to tracking.csv and re-verify
-    ESC / Q         cancel without writing
+  marker     : G green   R red   LEFT-CLICK set position
+  view       : Z zoom loupe   +/- magnification   M overlay (full/min/clean)
+  commit     : ENTER write row to tracking.csv + re-verify   ESC/Q cancel
 """
 
 import argparse
@@ -318,13 +313,17 @@ def main():
 
     print()
     print(f"override_frame.py  —  {args.stem}  frame {args.frame}")
-    print(f"  current green: {cur_green}")
-    print(f"  current red  : {cur_red}")
-    print(f"  current row  : phase={target.get('phase')}  "
+    print(f"  video      : {video_path}")
+    print(f"  current green : {cur_green}")
+    print(f"  current red   : {cur_red}")
+    print(f"  current row   : phase={target.get('phase')}   "
           f"dropout={target.get('dropout')}")
     print()
-    print("Click the correct GREEN position, then R, then click correct RED.")
-    print("ENTER to commit, ESC to cancel.")
+    print("Keys")
+    print("  marker     : G green   R red   LEFT-CLICK set position")
+    print("  view       : Z zoom loupe   +/- magnification   "
+          "M overlay (full/min/clean)")
+    print("  commit     : ENTER write row + re-verify   ESC/Q cancel")
     print()
 
     state = State(args.frame, frame_img, cur_green, cur_red)

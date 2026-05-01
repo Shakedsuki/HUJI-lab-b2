@@ -29,21 +29,11 @@ Usage
     # automatically. To skip that and just save seeds.json:
     python scripts/utils/manual_correction.py --stem ... --save-only
 
-Keys (in the picker window)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    G / R           switch active marker (GREEN / RED)
-    LEFT-CLICK      set the seed for the active marker AT THIS FRAME
-    X               delete this frame's seed (for the active marker)
-    a / d           ±1 frame
-    A / D           ±10 frames
-    z / x           ±100 frames
-    n               jump to the next suspect frame
-    Z               toggle zoom loupe (4x), again to disable
-    M               cycle overlay level (full / minimal / clean)
-    +/-             cycle zoom magnification
-    P / ENTER       save seeds.json and re-run track + verify
-    S               save seeds.json without re-tracking
-    Q / ESC         quit (asks to save if there are unsaved changes)
+Keys
+  marker     : G green   R red   LEFT-CLICK set seed   X delete frame's seed
+  navigate   : a/d ±1   A/D ±10   z/x ±100   n next suspect frame
+  view       : Z zoom loupe   +/- magnification   M overlay (full/min/clean)
+  commit     : P/ENTER save seeds + re-track + verify   S save seeds only   Q/ESC quit
 """
 
 import argparse
@@ -517,13 +507,14 @@ def main():
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     fps = cap.get(cv2.CAP_PROP_FPS) or 59.94
 
-    print("manual_correction.py")
-    print(f"  stem   : {args.stem}")
-    print(f"  video  : {video_path}")
-    print(f"  meas   : {meas_dir}")
-    print(f"  csv    : {'(absent)' if not track_rows else f'{len(track_rows)} rows'}")
-    print(f"  verify : {'(absent)' if not susp_rows else f'{len(susp_rows)} rows; {len(susp_frames)} suspects'}")
-    print(f"  seeds  : {len(seeds_by_frame)} loaded")
+    print(f"manual_correction.py  —  {args.stem}")
+    print(f"  video      : {video_path}")
+    print(f"  meas       : {meas_dir}")
+    print(f"  csv        : "
+          f"{'(absent)' if not track_rows else f'{len(track_rows)} rows'}")
+    print(f"  verify     : "
+          f"{'(absent)' if not susp_rows else f'{len(susp_rows)} rows; {len(susp_frames)} suspects'}")
+    print(f"  seeds      : {len(seeds_by_frame)} loaded")
     print()
 
     if not track_rows:
@@ -560,10 +551,14 @@ def main():
 
     cv2.setMouseCallback(WINDOW, on_mouse)
 
-    print("UI keys:")
-    print("  G/R switch marker | a/d ±1 | A/D ±10 | z/x ±100 | n next suspect")
-    print("  LEFT-CLICK set seed | X delete frame's seed | Z zoom | M overlay")
-    print("  P/ENTER process (save+retrack+verify) | S save only | Q/ESC quit")
+    print("Keys")
+    print("  marker     : G green   R red   LEFT-CLICK set seed   "
+          "X delete frame's seed")
+    print("  navigate   : a/d ±1   A/D ±10   z/x ±100   n next suspect frame")
+    print("  view       : Z zoom loupe   +/- magnification   "
+          "M overlay (full/min/clean)")
+    print("  commit     : P/ENTER save seeds + re-track + verify   "
+          "S save seeds only   Q/ESC quit")
     print()
 
     while True:

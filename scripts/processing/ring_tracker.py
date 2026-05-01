@@ -1125,12 +1125,9 @@ def pick_frame_interactive(video_path, label, fps, total_frames,
     frame, so the picker doubles as the HSV-adequacy check: if the markers
     don't light up while you scrub, the calibration is stale.
 
-    Keys:
-        a / d        ±1 frame
-        A / D        ±10 frames
-        z / x        ±100 frames
-        ENTER        confirm
-        ESC          cancel
+    Keys
+      navigate   : a/d ±1   A/D ±10   z/x ±100
+      commit     : ENTER confirm   ESC cancel
 
     Returns the chosen frame index, or None if the user cancels.
     """
