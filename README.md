@@ -3,22 +3,65 @@
 Computer-vision pipeline for tracking a wall-mounted double pendulum and
 producing per-frame angles + angular velocities for downstream analysis.
 
-## Pipeline
+## Quickstart — the `chaos` command
+
+One entry point to drive the whole pipeline:
+
+```bash
+# Setup once
+pip install -r requirements.txt
+python scripts/utils/download_videos.py     # pull raw videos from Drive
+
+# Drive the pending queue interactively (god-mode):
+chaos next                                  # cmd / PowerShell on Windows
+./chaos.sh next                             # Git Bash / Linux / macOS
+python chaos.py next                        # cross-platform fallback
+
+# Or operate one clip at a time:
+chaos status                                # who's tracked, who's pending
+chaos tune <stem>                           # open the HSV tuner
+chaos track <stem>                          # standard track + verdict
+chaos fix <stem>                            # interactive manual fix-up
+chaos verify <stem>                         # standalone QA pass
+chaos report                                # regenerate the Excel report
+chaos bulk                                  # sequential bulk pass
+chaos help                                  # cheat sheet
+```
+
+`<stem>` is a `config_description` like `th1_p047_th2_m002` — the folder
+name under `measurements/`. `chaos status` prints the list.
+
+## Per-clip workflow (what `chaos next` automates)
 
 ```
-calibrate ──▶ track ──▶ verify ──▶ analyse
-hsv_tuner   ring_tracker   verify_tracking   phase_*, combined_video
+   ┌──────────────────────────────────────────────────────────────┐
+   │  HSV adequacy probe (30 sampled frames)                       │
+   │   ABORT (<40%)  ──▶  prompt to launch hsv_tuner               │
+   │   WARN  (40–70) ──▶  prompt to continue or tune               │
+   │   OK    (≥70)   ──▶  proceed                                  │
+   └────────────┬─────────────────────────────────────────────────┘
+                │
+                ▼
+   ┌──────────────────────────────────────────────────────────────┐
+   │  track_one  (= ring_tracker → verify → interpolate → verdict) │
+   │   strict-physics gate active in any post-seed window          │
+   │   PASS  ──▶ tracking_quality=verified, on to next clip        │
+   │   WARN  ──▶ prompt: accept / fix-up / skip                    │
+   │   FAIL  ──▶ prompt: fix-up (manual seeds) / skip              │
+   └──────────────────────────────────────────────────────────────┘
+                │
+                ▼
+   ┌──────────────────────────────────────────────────────────────┐
+   │  manual_correction (only if WARN/FAIL)                        │
+   │   interactive picker pre-positioned at the worst suspect      │
+   │   click correct marker positions on as many frames as needed  │
+   │   P → save seeds.json + re-track from earliest seed forward   │
+   │       under --strict-physics --seeds-file                     │
+   └──────────────────────────────────────────────────────────────┘
 ```
 
-| Stage | Script | What it does |
-|---|---|---|
-| Calibrate | `scripts/processing/hsv_tuner.py` | Interactive HSV calibration. Eyedropper-sample marker pixels, auto-suggest ranges, fine-tune with sliders, live ring-detection preview. Saves to a per-video file (`data/hsv_<videostem>.json`) by default; pass `--global` to save to the shared `data/hsv_values.json` instead. |
-| Track | `scripts/processing/ring_tracker.py` | Frame-independent tracker. Stacks four filters (motion mask via temporal-median background, fixed-arm-length ring, HSV colour, predicted angular arc) with a graceful fallback chain. Pre-flight: HSV-adequacy probe (sample 30 frames, abort if <40% of them detect both markers cleanly), smart init/release suggestions in the picker, predictor seeding from `green_click_px` / `red_click_px` when available. Writes `measurements/<config>/tracking.csv` and `measurements/<config>/debug.mp4`. |
-| Verify | `scripts/processing/verify_tracking.py` | Post-hoc QA on the CSV. Flags rows where the apparent &#124;dθ/dt&#124; exceeds physical limits — catches silent false positives that `dropout=0` won't reveal. Writes `measurements/<config>/verification.{csv,png}`. |
-| Repair | `scripts/processing/interpolate_suspects.py` | Linearly interpolates the suspect frames flagged by verify_tracking. Backs up the CSV first and re-verifies after rewriting. |
-| **Orchestrate** | **`scripts/utils/track_one.py`** | **Single per-video command — runs Track → Verify → Repair (when needed) → re-Verify and prints a PASS/WARN/FAIL verdict card. PASS auto-marks `tracking_quality=verified` in the registry.** |
-| Analyse | `scripts/analysis/*.py` | Plots, 3-D phase rotations, animated trajectory videos, side-by-side comparisons. All accept `--stem <config_description>` to read/write inside a measurement folder. |
-| Status | `scripts/utils/generate_status_report.py` | Excel report (`data/status_report.xlsx`) with per-measurement dropout stats, file presence, and derived status — computed live from the CSVs. |
+See [docs/PIPELINE.md](docs/PIPELINE.md) for the full keystroke-level
+workflow.
 
 ## Setup
 
@@ -61,156 +104,14 @@ python scripts/utils/download_videos.py
 Calibrated HSV ranges live in two tiers:
 
 - **Per-video** at `data/hsv_<videostem>.json` — created automatically when
-  you run `hsv_tuner.py` on a specific video, or when you press `T`
+  you run `chaos tune <stem>` or when you press `T`
   inside the frame picker to retune mid-run.
 - **Global** at `data/hsv_values.json` — fallback used by the tracker
-  whenever a video has no per-video file yet. Created by running
-  `hsv_tuner.py` with no positional argument, or with `--global`.
+  whenever a video has no per-video file yet.
 
 `load_hsv_values(video_path)` in `ring_tracker.py` tries the per-video
 file first and falls back to the global one. So re-tuning for one
-video never clobbers another's calibration. Field meanings are in
-`data/hsv_values_readme.txt`.
-
-## Common workflows
-
-### See what's tracked vs pending
-
-```bash
-python scripts/utils/video_status.py
-# or, equivalently, from the tracker:
-python scripts/processing/ring_tracker.py --status
-```
-
-A video counts as "tracked" only when its `experiments.json` entry has
-populated `release_frame`, ICs (`theta1_release`, `theta2_release`), and
-a `tracking.csv` at the entry's `measurements_dir`.
-
-### First time on a new video / new lighting
-
-The recommended per-video flow is `track_one.py` — it bundles
-calibration check, tracking, verification, and interpolation:
-
-```bash
-# 1. Calibrate marker colours — click ~8 green pixels, R, ~8 red pixels, S, Q.
-python scripts/processing/hsv_tuner.py Videos/long_recording.mov
-
-# 2. Track + Verify + Repair + Verdict in one go.
-python scripts/utils/track_one.py --stem th1_p180_th2_m179
-# or by video path:
-python scripts/utils/track_one.py Videos/long_recording.mov
-```
-
-`track_one.py` opens the picker (with smart pre-positioned init/release
-candidates from the new T3 scan), runs tracking, runs `verify_tracking`,
-runs `interpolate_suspects` if the verification turned up hidden
-suspects, re-runs verification, and prints a one-page verdict card.
-PASS bumps `tracking_quality=verified` in the registry. A transcript of
-all verdict cards is appended to `data/track_one_log.txt`.
-
-Skipping the orchestrator and calling the steps individually is also
-fine — the bare `ring_tracker.py` still works as before:
-
-```bash
-python scripts/processing/ring_tracker.py
-```
-
-When the video isn't already in `experiments.json`, the tracker opens
-**two cv2 windows** — one for `init_frame`, one for `release_frame` —
-that show the actual frame with a live HSV detection overlay (green and
-red markers light up if calibration is good). Navigate with `a/d` (±1),
-`A/D` (±10), `z/x` (±100), then `ENTER` to confirm. The overlay
-doubles as the HSV-adequacy check.
-
-If you spot a bad detection (e.g. the red dot lands on the user's face
-because skin matches the red HSV range), press **`T`** inside the
-picker. That hands off to `hsv_tuner.py` on the current frame; once you
-re-tune and save, the tuner closes and the picker resumes with the new
-calibration — no need to restart the tracker.
-
-### Filename position prior
-
-If the video filename matches `th1_pXXX_th2_pYYY.mov` (e.g.
-`th1_p180_th2_p180.mov`), the picker uses those angles as a position
-prior: blobs more than 70 px from the expected marker location are
-rejected. This eliminates skin-tone / wall-poster / glove-color false
-positives at held-pendulum starting frames, where HSV thresholds alone
-cannot separate the actual marker from a confounder of similar colour.
-
-The expected positions show as **cyan crosshairs** in the picker. If
-your ground-truth angles differ from the filename (e.g. mid-tracking
-on a long recording), pass `--no-prior` to disable. Videos without
-matching filenames (`long_recording.mov`, `DSC_0136.mov`, etc.) get
-the legacy unconstrained behaviour automatically.
-
-```bash
-# 3. Sanity check — pass --stem to look up the CSV in measurements/.
-python scripts/processing/verify_tracking.py --stem th1_p180_th2_m179
-
-# 4. Repair (only if step 3 found suspect frames).
-python scripts/processing/interpolate_suspects.py --stem th1_p180_th2_m179
-
-# 5. Analyse — each script writes its canonical output into the same folder.
-python scripts/analysis/phase_panels.py     --stem th1_p180_th2_m179
-python scripts/analysis/phase_3d.py         --stem th1_p180_th2_m179
-python scripts/analysis/phase_animation.py  --stem th1_p180_th2_m179
-python scripts/analysis/combined_video.py   --stem th1_p180_th2_m179
-```
-
-`--stem` is the `config_description` of the measurement (the folder name
-under `measurements/`, e.g. `th1_p180_th2_m179`). The scripts also accept
-a positional CSV path (`measurements/<stem>/tracking.csv`) for backward
-compatibility, and `combined_video.py` looks up the source `.mov` from
-`experiments.json` when `--stem` is given.
-
-### Pick a video from the GUI picker
-
-```bash
-python scripts/processing/ring_tracker.py
-# prints a one-line "Tracked: N  Pending: M" banner, then opens a Tk
-# file dialog rooted at Videos/.
-```
-
-The dialog also opens if you pass `--browse`, useful to override a stale
-positional path.
-
-### Re-running on a video already in `experiments.json`
-
-```bash
-python scripts/processing/ring_tracker.py Videos/long_recording.mov
-```
-
-If the video is already tracked, the script prints its stored ICs and
-asks `Re-run tracking? [y/N]:` so you don't accidentally overwrite a
-good run. Pass `--force` to skip that prompt:
-
-```bash
-python scripts/processing/ring_tracker.py Videos/long_recording.mov --force
-```
-
-### Skip the debug video (faster on long recordings)
-
-```bash
-python scripts/processing/ring_tracker.py Videos/long_recording.mov --no-debug
-```
-
-### Stricter verification
-
-```bash
-python scripts/processing/verify_tracking.py --stem th1_p180_th2_m179 --omega-cap 1800
-# default cap is 2500 deg/s; arm-2 chaos peaks ~1500 deg/s for a 35 cm arm
-```
-
-### Status report across every measurement
-
-```bash
-python scripts/utils/generate_status_report.py
-# writes data/status_report.xlsx
-```
-
-Two sheets: a row-per-measurement overview with live dropout stats
-computed from each `tracking.csv`, plus a long-recording sheet with
-extra columns. Idempotent — always regenerates from scratch.
+video never clobbers another's calibration.
 
 ## Outputs
 
@@ -229,36 +130,42 @@ derived from which of these files are present.
 | `phase_3d_rotation.mp4` | `phase_3d.py` | Same view, rotating 360° |
 | `phase_animation.mp4` | `phase_animation.py` | Animated 3-panel phase view, real time |
 | `combined.mp4` | `combined_video.py` | Side-by-side raw video + phase panels |
+| `seeds.json` | `manual_correction.py` | Optional human-asserted ground-truth marker positions |
 
-The registry at `data/experiments.json` is the only file outside the
-measurement folder. It carries init/release frames, ICs at release,
-dropout rate, normalised energy proxy, tracker name, `config_description`
-(folder name), `measurements_dir`, and quality flags
+The registry at `data/experiments.json` is the only authoritative file
+outside the measurement folders. It carries init/release frames, ICs at
+release, dropout rate, energy proxy, tracker name,
+`config_description`, `measurements_dir`, and quality flags
 (`tracking_quality`, `verification_notes`, `verification_date`,
 `suspect_frames_interpolated`).
-
 
 ## Directory structure
 
 ```
 chaos/
+├── chaos.py                 ← unified entry point (the "god script")
+├── chaos.bat / chaos.sh     ← shell wrappers (npm-run-style invocation)
 ├── scripts/
-│   ├── processing/             tracking pipeline
+│   ├── processing/                tracking primitives
 │   │   ├── hsv_tuner.py             interactive HSV calibration
 │   │   ├── ring_tracker.py          main tracker
 │   │   ├── verify_tracking.py       post-hoc QA
 │   │   └── interpolate_suspects.py  linear-interp the |ω| > cap suspects
-│   ├── analysis/               plots, figures, animations (all accept --stem)
-│   │   ├── phase_3d.py              3D phase trajectory + rotating MP4
-│   │   ├── phase_animation.py       animated 3-panel phase view
-│   │   ├── phase_panels.py          6-panel static physics sanity check
-│   │   └── combined_video.py        side-by-side raw video + phase panels
-│   └── utils/
-│       ├── download_videos.py        pull raw videos from Google Drive
-│       ├── video_status.py           which Videos/ files are tracked vs pending
-│       ├── migrate_to_measurements.py one-shot reorganisation script (idempotent)
+│   ├── analysis/                  plots, figures, animations (--stem aware)
+│   │   ├── phase_3d.py
+│   │   ├── phase_animation.py
+│   │   ├── phase_panels.py
+│   │   └── combined_video.py
+│   └── utils/                     orchestrators + housekeeping
+│       ├── download_videos.py        pull raw videos from Drive
+│       ├── video_status.py           who's tracked, who's pending
+│       ├── track_one.py              per-clip orchestrator
+│       ├── manual_correction.py      interactive seed UI + re-track
+│       ├── bulk_track.py             sequential bulk over track_one
 │       └── generate_status_report.py builds data/status_report.xlsx
-├── measurements/              per-measurement output folders
+├── docs/
+│   └── PIPELINE.md          ← keystroke-level workflow reference
+├── measurements/            per-measurement output folders
 │   └── <config_description>/  e.g. th1_p044_th2_m001/
 │       ├── tracking.csv             (gitignored — large, regenerable)
 │       ├── verification.csv         (gitignored)
@@ -268,24 +175,56 @@ chaos/
 │       ├── combined.mp4             (gitignored)
 │       ├── phase_3d_trajectory.png  (tracked)
 │       ├── phase_panels.png         (tracked)
-│       └── verification.png         (tracked)
-├── data/                      registry, HSV calibration, status report
+│       ├── verification.png         (tracked)
+│       └── seeds.json               (tracked — small, human input)
+├── data/                    registry, HSV calibration, status report
 │   ├── experiments.json            single source of truth for measurements
 │   ├── hsv_values.json             global HSV fallback
 │   ├── hsv_<videostem>.json        per-video HSV overrides
-│   └── status_report.xlsx          generated by generate_status_report.py
-├── Videos/                    raw .mov files (gitignored, ~3 GB)
-└── archive/                   superseded scripts and reference data
-    ├── scripts/               pendulum_tracker (CSRT), pendulum_tracker_hybrid,
-    │                          ring_tracker (v1), tag_videos, video_tagger,
-    │                          rename_tagged_videos, split_video, stitch_csv,
-    │                          preview_frame
-    └── Videos/                angle reference jpgs
+│   └── status_report.xlsx          generated by `chaos report`
+├── Videos/                  raw .mov files (gitignored, ~3 GB)
+└── archive/                 superseded scripts and reference data
+    └── scripts/
+        ├── oneshots/        one-shot migration scripts (already run)
+        ├── pendulum_tracker.py     CSRT tracker (v1)
+        └── ...
 ```
 
-Small human-readable artefacts (the three PNGs) stay tracked so the
-repo always shows what's been measured at a glance. Large regenerable
-artefacts (CSVs and MP4s) are gitignored.
+Small human-readable artefacts (the three PNGs + seeds.json) stay
+tracked so the repo always shows what's been measured at a glance. Large
+regenerable artefacts (CSVs and MP4s) are gitignored.
+
+## Reference: low-level building blocks
+
+The `chaos` command above is the recommended interface. The underlying
+scripts are still callable directly for power-users:
+
+```bash
+# Calibration
+python scripts/processing/hsv_tuner.py Videos/<clip>.mov
+
+# Tracking
+python scripts/processing/ring_tracker.py Videos/<clip>.mov [--no-debug]
+                                                            [--force]
+                                                            [--strict-physics]
+                                                            [--seeds-file <path>]
+                                                            [--from-frame N]
+                                                            [--skip-probe]
+                                                            [--yes-to-warn]
+
+# QA
+python scripts/processing/verify_tracking.py --stem <config>
+
+# Repair
+python scripts/processing/interpolate_suspects.py --stem <config> [--dry-run]
+
+# Orchestrators (subsumed by `chaos`)
+python scripts/utils/track_one.py          --stem <config>
+python scripts/utils/manual_correction.py  --stem <config>
+python scripts/utils/bulk_track.py         [--dry-run] [--filter STR]
+python scripts/utils/video_status.py
+python scripts/utils/generate_status_report.py
+```
 
 ## History
 
@@ -300,9 +239,10 @@ live in `archive/scripts/`:
   HSV detection inside the arm-length annulus. Improved over CSRT but
   still missed motion-blur frames where saturation collapses.
 - `ring_tracker.py` (current) — adds median-frame background subtraction,
-  a temporal angular predictor, and a five-stage fallback chain. Brings
+  a temporal angular predictor, a five-stage fallback chain, an HSV
+  adequacy probe, smart init/release scanning, click_px predictor seeding,
+  and a strict-physics mode driven by per-frame manual seeds. Brings
   the long-recording dropout rate from ~98% (CSRT) to 0.01% (2 of 30,942
-  frames). `verify_tracking.py` flagged 23 hidden suspects (dropout=0
-  but |ω₂| > 2500 °/s) on long_recording, which were fixed by
-  `interpolate_suspects.py`; physically the residual ω peaks are now
-  well within plausible chaotic-motion limits.
+  frames). Hidden suspect frames flagged by `verify_tracking.py` are
+  fixed by `interpolate_suspects.py`; the residual ω peaks then sit
+  within plausible chaotic-motion limits.

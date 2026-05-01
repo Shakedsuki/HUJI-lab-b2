@@ -1,8 +1,13 @@
 """
 bulk_track.py
 --------------
-Run ring_tracker.py over every pending video in one shot, then print a
+Run track_one.py over every pending video in one shot, then print a
 per-video dropout report.
+
+(Internally each clip goes through track_one, which itself wraps
+ring_tracker + verify_tracking + interpolate_suspects + verdict card
+emission. So bulk and single-clip runs produce identical artefacts and
+the same PASS/WARN/FAIL banding.)
 
 Why this exists
 ~~~~~~~~~~~~~~~
@@ -73,6 +78,7 @@ VIDEOS_DIR       = os.path.join(ROOT, "Videos")
 MEAS_DIR         = os.path.join(ROOT, "measurements")
 EXPERIMENTS_FILE = os.path.join(ROOT, "data", "experiments.json")
 TRACKER_SCRIPT   = os.path.join(ROOT, "scripts", "processing", "ring_tracker.py")
+TRACK_ONE_SCRIPT = os.path.join(ROOT, "scripts", "utils", "track_one.py")
 BULK_LOG_FILE    = os.path.join(ROOT, "data", "bulk_tracking_log.json")
 
 CONFIG_RE = re.compile(r"^th1_[pm]\d+_th2_[pm]\d+(_r\d+)?$")
@@ -216,14 +222,18 @@ def prepopulate_frames(reg, plan):
 
 def run_one(plan, no_debug=True, force=True):
     """
-    Spawn ring_tracker.py as a subprocess. Returns (returncode, elapsed_s).
-    Output is forwarded to this script's stdout/stderr live.
+    Delegate to track_one.py per clip. track_one wraps ring_tracker +
+    verify_tracking + interpolate_suspects + verdict-card emission, so
+    bulk runs use exactly the same evaluation path as a single
+    `chaos.py track <stem>` call. Returns (returncode, elapsed_s).
     """
-    cmd = [sys.executable, TRACKER_SCRIPT, plan.video_path]
+    cmd = [sys.executable, TRACK_ONE_SCRIPT,
+           "--stem", plan.config_description,
+           "--yes-to-warn"]   # bulk mode: don't pause on borderline HSV
     if no_debug:
         cmd.append("--no-debug")
-    if force:
-        cmd.append("--force")
+    # `force` from the old bulk_track signature was always True; track_one
+    # passes --force to ring_tracker internally for non-tracked entries.
 
     print()
     print("=" * 70)
