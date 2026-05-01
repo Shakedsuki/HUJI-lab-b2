@@ -241,7 +241,7 @@
     "tracking_quality": "good",
     "notes": "",
     "measurements_dir": "measurements/th1_p180_th2_m179",
-    "verification_notes": "verify_tracking.py @ 2500 deg/s cap: 23 suspect frames over 30942 total (0.07%); 21 hidden in free_swing (dropout=0). All flags on arm 2; peak |w2|=10676 deg/s vs ~1500 physical limit, indicating brief tracking glitches not physics. Dropout=1 count: 2 (0.01%). Tracking_quality NOT promoted to verified.",
+    "verification_notes": "verify_tracking @ 2500 deg/s cap, post-interpolation: 2 dropout=1 frames (0.01%), 20 hidden suspects in free_swing (0.06%), all on arm 2 with |w2| 2685-5278 deg/s. Down from pre-fix 23 suspects with peak |w2|=10676. Residual 20 are boundary artifacts where an interpolated frame meets a clean neighbour in genuine high-energy motion; physically plausible but above the conservative 2500 deg/s cap. Tracking_quality kept at \"good\" (not promoted to \"verified\" since per-arm \u03c9 peak exceeds the 1500 deg/s rule-of-thumb). Backup at tracking.csv.bak.",
     "suspect_frames_interpolated": 23,
     "interpolation_date": "2026-05-01"
   },

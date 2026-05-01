@@ -22,12 +22,14 @@ hsv_tuner   ring_tracker   verify_tracking   phase_*, combined_video
 ## Setup
 
 ```bash
-pip install opencv-python numpy scipy matplotlib gdown
+pip install -r requirements.txt
 ```
 
-(Use `opencv-contrib-python` instead if you also want to run the archived
-CSRT tracker — `archive/scripts/pendulum_tracker.py`. The active pipeline
-only needs core OpenCV.)
+The pinned set is `opencv-python`, `numpy`, `scipy`, `matplotlib`,
+`pandas`, `openpyxl`, and `gdown`. Use `opencv-contrib-python` instead
+of `opencv-python` if you also want to run the archived CSRT tracker
+at `archive/scripts/pendulum_tracker.py` — the active pipeline only
+needs core OpenCV.
 
 Raw videos aren't tracked in git (too large; ~3 GB). They live on Google Drive:
 

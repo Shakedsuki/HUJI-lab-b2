@@ -1,0 +1,22 @@
+# Double pendulum / chaos lab — runtime dependencies.
+# Tested on Python 3.13.2 + Windows 11; lower bounds reflect the
+# minimum versions that exercise current API usage. Upper bounds are
+# intentionally loose — pin in your venv if you need reproducibility.
+
+# Core video + math.
+opencv-python >= 4.8           # cv2 (background subtraction, video I/O)
+numpy >= 1.24                  # array math
+scipy >= 1.11                  # savgol_filter for ω derivatives
+matplotlib >= 3.7              # all phase plots + animations
+
+# Reports.
+pandas >= 2.0                  # generate_status_report dropout aggregation
+openpyxl >= 3.1                # status_report.xlsx writer
+
+# Optional — only required for scripts/utils/download_videos.py:
+gdown >= 5.0
+
+# Optional — only required for the archived CSRT tracker
+# (archive/scripts/pendulum_tracker.py). The active ring_tracker.py
+# uses core OpenCV only.
+# opencv-contrib-python >= 4.8
