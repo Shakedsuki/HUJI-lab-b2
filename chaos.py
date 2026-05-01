@@ -10,6 +10,7 @@ Subcommands
   report            regenerate data/status_report.xlsx
   roadmap           regenerate docs/tracking_roadmap.md (per-clip dropout/quality table)
   hsv-probe         probe every existing HSV file vs every HSV-ABORT clip
+  audit             re-validate verified clips against current verdict logic
   tune <stem>       launch hsv_tuner.py on a clip's video
   track <stem>      standard track + verify + interpolate + verdict
   fix <stem>        interactive manual-seed correction + re-track
@@ -68,6 +69,7 @@ SCRIPT_STATUS     = os.path.join(ROOT, "scripts", "utils", "video_status.py")
 SCRIPT_REPORT     = os.path.join(ROOT, "scripts", "utils", "generate_status_report.py")
 SCRIPT_ROADMAP    = os.path.join(ROOT, "scripts", "utils", "generate_roadmap.py")
 SCRIPT_HSV_PROBE  = os.path.join(ROOT, "scripts", "utils", "hsv_probe_matrix.py")
+SCRIPT_AUDIT      = os.path.join(ROOT, "scripts", "utils", "audit.py")
 
 VIDEO_EXTS = {".mov", ".mp4", ".avi", ".mkv", ".m4v"}
 
@@ -236,6 +238,16 @@ def cmd_hsv_probe(args):
     return run_script(SCRIPT_HSV_PROBE, *extra)
 
 
+def cmd_audit(args):
+    extra = []
+    if args.apply:         extra.append("--apply")
+    if args.filter:        extra += ["--filter", args.filter]
+    if args.skip_reverify: extra.append("--skip-reverify")
+    if args.omega_cap is not None:
+        extra += ["--omega-cap", str(args.omega_cap)]
+    return run_script(SCRIPT_AUDIT, *extra)
+
+
 def resolve_video_path_for_stem(stem):
     """Look up Videos/<video_file> for a config_description via registry."""
     reg = load_registry()
@@ -277,6 +289,8 @@ INFO / REPORT COMMANDS
   chaos roadmap              regenerate docs/tracking_roadmap.md (per-clip Markdown table)
   chaos hsv-probe            probe every existing HSV file vs every HSV-ABORT clip
                              (--apply: copy the best OK match per clip)
+  chaos audit                re-validate verified clips against current verdict logic
+                             (--apply: downgrade clips that no longer PASS)
   chaos help                 this cheat sheet
   chaos <command> --help     full flag list for any subcommand
 
@@ -618,6 +632,18 @@ def build_parser():
     p_hsv_probe.add_argument("--warn-also", action="store_true",
         help="also recommend WARN-band matches (default: OK only)")
 
+    p_audit = sub.add_parser("audit",
+        help="re-validate verified clips against current verdict logic")
+    p_audit.add_argument("--apply", action="store_true",
+        help="downgrade tracking_quality on clips whose new verdict isn't PASS")
+    p_audit.add_argument("--filter", metavar="SUBSTR",
+        help="only audit clips whose stem contains SUBSTR")
+    p_audit.add_argument("--skip-reverify", action="store_true",
+        help="trust existing verification.csv; skip the verify_tracking re-run")
+    p_audit.add_argument("--omega-cap", type=float, default=None,
+        metavar="DEG_PER_S",
+        help="ω cap passed to verify_tracking (default 2500 °/s)")
+
     p_next = sub.add_parser("next",
         help="interactive driver — process pending clips end-to-end")
     p_next.add_argument("--stem", default=None, metavar="<stem>",
@@ -633,6 +659,7 @@ HANDLERS = {
     "report":     cmd_report,
     "roadmap":    cmd_roadmap,
     "hsv-probe":  cmd_hsv_probe,
+    "audit":      cmd_audit,
     "tune":       cmd_tune,
     "track":    cmd_track,
     "fix":      cmd_fix,
