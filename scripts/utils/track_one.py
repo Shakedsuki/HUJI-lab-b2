@@ -59,6 +59,12 @@ INTERP_SCRIPT   = os.path.join(ROOT, "scripts", "processing",
                                "interpolate_suspects.py")
 GLOBAL_HSV_FILE = os.path.join(DATA_DIR, "hsv_values.json")
 
+# scripts/utils is already in sys.path because Python auto-adds the
+# script's directory; this re-affirms it for the case where track_one
+# is imported from another script (e.g. manual_correction).
+sys.path.insert(0, os.path.join(ROOT, "scripts", "utils"))
+from render import render_verdict  # noqa: E402
+
 
 # ─────────────────────────────────────────────
 # REGISTRY HELPERS
@@ -270,58 +276,25 @@ def hsv_kind_for_video(video_filename):
 def emit_card(stem, video_path, key, entry, *,
               status, reasons,
               metrics_pre, metrics_post,
-              n_interpolated, hsv_kind, total_elapsed):
-    """Print and append the one-page verdict card."""
-    flag = {"PASS": "[PASS]", "WARN": "[WARN]", "FAIL": "[FAIL]"}[status]
-    drop = (metrics_post.get("free_swing_dropout_pct")
-            if metrics_post else None)
-    drop_str = f"{drop:.2f}%" if drop is not None else "—"
-    n_susp_pre  = (metrics_pre or {}).get("n_suspect_hidden", 0)
-    n_susp_post = (metrics_post or {}).get("n_suspect_hidden", 0)
-    peak1 = (metrics_post or {}).get("peak_omega1", 0.0)
-    peak2 = (metrics_post or {}).get("peak_omega2", 0.0)
-    n_free  = (metrics_post or {}).get("n_free_swing", "—")
-    n_drop_free = (metrics_post or {}).get("n_dropout_free_swing", "—")
-    n_drop_hold = (metrics_post or {}).get("n_dropout_holding", "—")
-
-    lines = []
-    lines.append("=" * 70)
-    lines.append(f"VERDICT  {flag}  {stem}")
-    lines.append("=" * 70)
-    lines.append(f"  video         : {os.path.basename(video_path)}")
-    lines.append(f"  registry key  : {key}")
-    lines.append(f"  HSV used      : {hsv_kind}")
-    lines.append(f"  init/release  : {entry.get('init_frame')} / "
-                 f"{entry.get('release_frame')}")
-    lines.append(f"  free frames   : {n_free}")
-    lines.append(f"  dropout       : {drop_str}  "
-                 f"({n_drop_free} in free_swing, {n_drop_hold} in holding)")
-    lines.append(f"  suspects (pre): {n_susp_pre}")
-    if n_interpolated > 0:
-        lines.append(f"  interpolated  : {n_interpolated}")
-        lines.append(f"  suspects (post): {n_susp_post}")
-    lines.append(f"  peak |ω₁|     : {peak1:>5.0f} °/s")
-    lines.append(f"  peak |ω₂|     : {peak2:>5.0f} °/s "
-                 f"(physical RoT ≤ {PEAK_OMEGA_PHYSICAL:.0f})")
-    lines.append(f"  reasons       : " + ("; ".join(reasons) if reasons else "—"))
-    lines.append(f"  total elapsed : {total_elapsed:.0f}s")
-    lines.append("")
-    if status == "FAIL":
-        lines.append("  next step: inspect debug.mp4 (or re-run with --debug); "
-                     "consider hsv_tuner re-calibration or a different release frame.")
-    elif status == "WARN":
-        lines.append("  next step: review verification.png; if acceptable, "
-                     "set tracking_quality=verified manually.")
-    else:
-        lines.append("  next step: tracking_quality auto-set to 'verified' "
-                     "in the registry. On to the next clip.")
-    lines.append("=" * 70)
-
-    text = "\n".join(lines)
-    print()
-    print(text)
-
-    # Append to log.
+              n_interpolated, hsv_kind, total_elapsed,
+              actionable_steps=None):
+    """Print and append the one-page verdict card. Delegates the
+    presentation layer to render.render_verdict; only the log-file
+    append stays here."""
+    text = render_verdict(
+        stem=stem,
+        video_path=video_path,
+        key=key,
+        entry=entry,
+        status=status,
+        reasons=reasons,
+        metrics_pre=metrics_pre,
+        metrics_post=metrics_post,
+        n_interpolated=n_interpolated,
+        hsv_kind=hsv_kind,
+        total_elapsed=total_elapsed,
+        actionable_steps=actionable_steps,
+    )
     os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
     with open(LOG_FILE, "a", encoding="utf-8") as f:
         f.write(f"\n{datetime.datetime.now().isoformat(timespec='seconds')}\n")

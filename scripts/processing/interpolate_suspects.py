@@ -61,6 +61,9 @@ VERIFY_SCRIPT    = os.path.join(ROOT, "scripts", "processing",
 
 ARM_LENGTH_PX    = 188
 
+sys.path.insert(0, os.path.join(ROOT, "scripts", "utils"))
+from render import render_interpolation_plan  # noqa: E402
+
 
 # ─────────────────────────────────────────────
 # HELPERS
@@ -207,22 +210,20 @@ def main():
 
     if len(track_rows) != len(verif_rows):
         print(f"WARN: tracking rows ({len(track_rows)}) != verification "
-              f"rows ({len(verif_rows)}); aligning by `frame` instead.")
-        verif_by_frame = {int(r["frame"]): r for r in verif_rows}
-    else:
-        verif_by_frame = None
+              f"rows ({len(verif_rows)}); aligning by frame index.")
+    # Always build by frame, never positional — keeps render and the
+    # interpolation walk in agreement even when the two CSVs drift
+    # in row count (e.g., after a partial re-track).
+    verif_by_frame = {int(r["frame"]): r for r in verif_rows}
 
     # ── Stamp tracking rows with suspect status from verification ────
     # (verify_tracking.py uses time-derivative ω which is a row-level fact;
     # we attach it temporarily so is_clean_row sees it.)
-    for i, row in enumerate(track_rows):
-        if verif_by_frame is None:
-            vrow = verif_rows[i]
-        else:
-            vrow = verif_by_frame.get(int(row["frame"]))
-            if vrow is None:
-                row["suspect"] = "0"
-                continue
+    for row in track_rows:
+        vrow = verif_by_frame.get(int(row["frame"]))
+        if vrow is None:
+            row["suspect"] = "0"
+            continue
         row["suspect"] = vrow.get("suspect", "0")
 
     suspect_idxs = [i for i, r in enumerate(track_rows)
@@ -232,34 +233,14 @@ def main():
         print("No suspect frames found — nothing to interpolate.")
         return 0
 
-    # ── Print summary table of suspects (pre-fix) ───────────────────────
-    print(f"Found {len(suspect_idxs)} suspect frames:")
-    header = (f"  {'frame':>6}  {'time_s':>8}  {'phase':>11}  "
-              f"{'th2_before':>12}  {'th2_neighbours':>26}  {'|ω2|':>10}")
-    print(header)
-    for i in suspect_idxs[:30]:
-        r = track_rows[i]
-        prev_idx, next_idx = find_neighbours(track_rows, i)
-        th2_before = r.get("theta2_deg") or "—"
-        prev_v = (track_rows[prev_idx]["theta2_deg"]
-                  if prev_idx is not None else "—")
-        next_v = (track_rows[next_idx]["theta2_deg"]
-                  if next_idx is not None else "—")
-        # |ω₂| from verification CSV if available
-        if verif_by_frame is not None:
-            vrow = verif_by_frame.get(int(r["frame"]), {})
-        else:
-            vrow = verif_rows[i]
-        om2 = vrow.get("omega2_deg_s", "")
-        try:
-            om2_str = f"{abs(float(om2)):.0f}" if om2 != "" else "—"
-        except ValueError:
-            om2_str = "—"
-        print(f"  {int(r['frame']):>6}  {float(r['time_s']):>8.3f}  "
-              f"{r['phase']:>11}  {str(th2_before):>12}  "
-              f"{str(prev_v) + ' .. ' + str(next_v):>26}  {om2_str:>10}")
-    if len(suspect_idxs) > 30:
-        print(f"  ... and {len(suspect_idxs) - 30} more")
+    # ── Plan table (delegated to render so it matches the verdict
+    # panel's visual style). ────────────────────────────────────────
+    render_interpolation_plan(
+        suspect_idxs,
+        track_rows,
+        verif_by_frame,
+        dry_run=args.dry_run,
+    )
 
     # ── Compute interpolated values ────────────────────────────────────
     n_interpolated   = 0

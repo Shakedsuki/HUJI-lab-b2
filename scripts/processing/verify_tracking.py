@@ -54,6 +54,19 @@ EXPERIMENTS_FILE = os.path.join(ROOT, "data", "experiments.json")
 DEFAULT_CSV = os.path.join(ROOT, "measurements", "th1_p180_th2_m179",
                            "tracking.csv")
 
+# Pull rendering helpers from scripts/utils/render.py — every print
+# block in this script that produces a table is delegated there so
+# the verdict layer and the live verify output stay visually
+# consistent.
+sys.path.insert(0, os.path.join(ROOT, "scripts", "utils"))
+from render import (  # noqa: E402
+    render_verification_summary,
+    render_arm_breakdown,
+    render_phase_summary,
+    render_suspect_table,
+    render_arm_length_violations,
+)
+
 
 def parse_args():
     p = argparse.ArgumentParser(
@@ -173,43 +186,49 @@ def main():
     n_drop_suspect  = int(np.sum(suspect & (drops == 1)))
     n_clean_suspect = int(np.sum(suspect & (drops == 0)))
 
-    print(f"\nTotals over {n} frames")
-    print(f"  marked dropout=1            : {n_drop:>6}  ({100 * n_drop / n:.2f}%)")
-    print(f"  suspect (|ω| > cap)         : {n_suspect:>6}  ({100 * n_suspect / n:.2f}%)")
-    print(f"    also dropout=1            : {n_drop_suspect:>6}")
-    print(f"    but dropout=0  ← hidden   : {n_clean_suspect:>6}  ({100 * n_clean_suspect / n:.2f}%)")
-    if n_clean_suspect > 0:
-        print("    ^^^ these are likely false-positive detections")
+    render_verification_summary(n, n_drop, n_suspect, n_clean_suspect, dt_med)
 
     # ── Per-arm breakdown ──────────────────────────────────────────────
-    print(f"\nPer-arm |ω| > cap (clean rows only):")
     clean = drops == 0
-    print(f"  arm 1 only : {int(np.sum(suspect1 & ~suspect2 & clean)):>6}")
-    print(f"  arm 2 only : {int(np.sum(suspect2 & ~suspect1 & clean)):>6}")
-    print(f"  both       : {int(np.sum(suspect1 & suspect2 & clean)):>6}")
+    render_arm_breakdown({
+        "arm1_only": int(np.sum(suspect1 & ~suspect2 & clean)),
+        "arm2_only": int(np.sum(suspect2 & ~suspect1 & clean)),
+        "both":      int(np.sum(suspect1 & suspect2 & clean)),
+    })
 
     # ── Phase breakdown ────────────────────────────────────────────────
     holding = phase == "holding"
     free    = phase == "free_swing"
-    print(f"\nBy phase (clean rows only):")
-    print(f"  holding    suspect : {int(np.sum(suspect & clean & holding)):>6} / {int(np.sum(clean & holding))}")
-    print(f"  free_swing suspect : {int(np.sum(suspect & clean & free)):>6} / {int(np.sum(clean & free))}")
+    render_phase_summary({
+        "holding": {
+            "suspect":     int(np.sum(suspect & clean & holding)),
+            "total_clean": int(np.sum(clean & holding)),
+        },
+        "free_swing": {
+            "suspect":     int(np.sum(suspect & clean & free)),
+            "total_clean": int(np.sum(clean & free)),
+        },
+    })
 
     # ── Show worst-offender frames ─────────────────────────────────────
+    suspects_list = []
     if n_clean_suspect > 0:
         # Combined |ω| score (max of the two)
         worst_score = np.fmax(np.abs(om1), np.abs(om2))
         worst_score[~(suspect & clean)] = -1
         idx_sorted = np.argsort(worst_score)[::-1]
         worst = idx_sorted[:min(10, n_clean_suspect)]
-        print(f"\nTop suspect frames (dropout=0):")
-        print(f"  {'frame':>7}  {'time(s)':>8}  {'phase':>11}  "
-              f"{'th1':>8}  {'th2':>8}  {'|w1|':>9}  {'|w2|':>9}")
         for i in worst:
-            print(f"  {int(rows[i]['frame']):>7}  {times[i]:>8.3f}  "
-                  f"{phase[i]:>11}  "
-                  f"{th1[i]:>8.2f}  {th2[i]:>8.2f}  "
-                  f"{abs(om1[i]):>9.0f}  {abs(om2[i]):>9.0f}")
+            suspects_list.append({
+                "frame":  int(rows[i]["frame"]),
+                "time_s": float(times[i]),
+                "phase":  str(phase[i]),
+                "th1":    float(th1[i]),
+                "th2":    float(th2[i]),
+                "om1":    float(abs(om1[i])),
+                "om2":    float(abs(om2[i])),
+            })
+    render_suspect_table(suspects_list, omega_cap=args.omega_cap)
 
     # ── Optional: write CSV with a `suspect` column ────────────────────
     if not args.no_csv_out:

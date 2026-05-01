@@ -81,6 +81,13 @@ TRACKER_SCRIPT   = os.path.join(ROOT, "scripts", "processing", "ring_tracker.py"
 TRACK_ONE_SCRIPT = os.path.join(ROOT, "scripts", "utils", "track_one.py")
 BULK_LOG_FILE    = os.path.join(ROOT, "data", "bulk_tracking_log.json")
 
+# Pull verdict logic from track_one (in-process) and the rich summary
+# renderer from render so the bulk wrap-up uses the same PASS/WARN/FAIL
+# bands as a single-clip run.
+sys.path.insert(0, os.path.join(ROOT, "scripts", "utils"))
+from track_one import compute_verdict, read_verification_metrics  # noqa: E402
+from render import render_bulk_summary  # noqa: E402
+
 CONFIG_RE = re.compile(r"^th1_[pm]\d+_th2_[pm]\d+(_r\d+)?$")
 
 
@@ -277,64 +284,57 @@ def emit_report(rows):
         config_description, returncode, elapsed_s,
         dropout_rate_pct, n_free_frames, duration_s,
         theta1_release, theta2_release, energy_proxy.
+
+    Builds a per-clip results list using the same compute_verdict logic
+    as a single-clip run (so PASS/WARN/FAIL bands stay in one place),
+    then delegates rendering to render.render_bulk_summary.
     """
     if not rows:
         print("\nNothing tracked — nothing to report.")
         return
 
-    completed = [r for r in rows if r["returncode"] == 0]
-    failed    = [r for r in rows if r["returncode"] != 0]
+    results = []
+    for r in rows:
+        cd = r["config_description"]
+        if r["returncode"] != 0:
+            # Tracker bailed (HSV ABORT, picker cancel, etc.); no
+            # verification.csv to read. Treat as FAIL with no dropout.
+            results.append({
+                "stem":        cd,
+                "status":      "FAIL",
+                "dropout_pct": None,
+                "elapsed_s":   r["elapsed_s"],
+            })
+            continue
+        meas_dir = os.path.join(MEAS_DIR, cd)
+        metrics  = read_verification_metrics(meas_dir)
+        if metrics is None:
+            results.append({
+                "stem":        cd,
+                "status":      "FAIL",
+                "dropout_pct": r.get("dropout_rate_pct"),
+                "elapsed_s":   r["elapsed_s"],
+            })
+            continue
+        n_susp = metrics.get("n_suspect_hidden", 0)
+        status, _ = compute_verdict(metrics, n_susp)
+        results.append({
+            "stem":        cd,
+            "status":      status,
+            "dropout_pct": metrics.get("free_swing_dropout_pct"),
+            "elapsed_s":   r["elapsed_s"],
+        })
 
     print()
     print("=" * 70)
-    print(f"BULK TRACKING REPORT — {len(rows)} videos "
-          f"({len(completed)} ok, {len(failed)} failed)")
+    print(f"BULK TRACKING REPORT — {len(rows)} videos")
     print("=" * 70)
+    render_bulk_summary(results)
 
-    if completed:
-        completed.sort(key=lambda r: r["dropout_rate_pct"]
-                                       if r["dropout_rate_pct"] is not None
-                                       else 999.0)
-        hdr = (f"  {'config':<26}  {'drop%':>6}  {'free':>5}  "
-               f"{'dur(s)':>7}  {'th1':>7}  {'th2':>7}  "
-               f"{'E':>7}  {'time':>6}  flags")
-        print(hdr)
-        print("  " + "-" * (len(hdr) - 2))
-        for r in completed:
-            d = r["dropout_rate_pct"]
-            d_str = f"{d:.2f}" if d is not None else "—"
-            warn = ""
-            if d is not None:
-                if d > 10: warn += " ⚠⚠"
-                elif d > 5: warn += " ⚠"
-            print(f"  {r['config_description']:<26}  "
-                  f"{d_str:>6}  "
-                  f"{str(r.get('n_free_frames','—')):>5}  "
-                  f"{(r.get('duration_s') or 0):>7.2f}  "
-                  f"{(r.get('theta1_release') or 0):>7.2f}  "
-                  f"{(r.get('theta2_release') or 0):>7.2f}  "
-                  f"{(r.get('energy_proxy') or 0):>7.2f}  "
-                  f"{r['elapsed_s']:>5.0f}s {warn}")
-
-    if failed:
-        print()
-        print(f"FAILED ({len(failed)}):")
-        for r in failed:
-            print(f"  {r['config_description']:<26}  "
-                  f"returncode={r['returncode']}")
-
-    # Aggregate
-    print()
-    if completed:
-        ds = [r["dropout_rate_pct"] for r in completed
-              if r["dropout_rate_pct"] is not None]
-        if ds:
-            print(f"  median dropout: {sorted(ds)[len(ds)//2]:.2f}%")
-            print(f"  worst dropout : {max(ds):.2f}%")
-            print(f"  best dropout  : {min(ds):.2f}%")
-        total_time = sum(r["elapsed_s"] for r in completed)
-        print(f"  total wall-clock: {total_time:.0f}s "
-              f"({total_time/60:.1f} min)")
+    # Wall-clock aggregate.
+    total_time = sum(r["elapsed_s"] for r in rows)
+    print(f"  total wall-clock: {total_time:.0f}s "
+          f"({total_time / 60:.1f} min)")
 
 
 # ─────────────────────────────────────────────
