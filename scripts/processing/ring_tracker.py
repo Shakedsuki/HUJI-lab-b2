@@ -182,6 +182,91 @@ def expected_marker_positions(th1_deg, th2_deg):
 SG_WINDOW = 11
 SG_POLY   = 3
 
+# Pre-track HSV adequacy probe — sample N frames evenly, run
+# (HSV mask) ∩ (ring) on each, count how often each marker detects.
+# Below ADEQUACY_ABORT_PCT we abort and tell the user to re-run hsv_tuner;
+# below ADEQUACY_WARN_PCT we warn and proceed. The probe also doubles as
+# an inline reminder of which file (per-video vs global) is in use.
+ADEQUACY_SAMPLES   = 30
+ADEQUACY_WARN_PCT  = 70.0
+ADEQUACY_ABORT_PCT = 40.0
+
+
+def hsv_adequacy_probe(cap, total_frames, hsv_values, ring_tolerance,
+                       use_filename_prior, video_path):
+    """
+    Sample ADEQUACY_SAMPLES frames evenly across the video and report
+    how many produce a clean (green AND red, geometry-valid) detection
+    using the same HSV+ring pipeline the tracker will use frame-by-frame.
+
+    Returns (verdict, both_pct, green_pct, red_pct), where verdict is
+    one of "ABORT", "WARN", "OK". The caller decides what to do.
+    """
+    width  = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    pivot_dist, _ = precompute_pivot_grids(width, height, PIVOT)
+    pivot_ring    = make_ring_uint8(pivot_dist, ARM_LENGTH_PX, ring_tolerance)
+
+    initial_angles = (parse_initial_angles(video_path)
+                      if use_filename_prior else None)
+    if initial_angles is not None:
+        expected_green, _ = expected_marker_positions(*initial_angles)
+    else:
+        expected_green = None
+
+    sample_indices = np.linspace(0, total_frames - 1,
+                                 min(ADEQUACY_SAMPLES, total_frames),
+                                 dtype=int)
+    n_total = len(sample_indices)
+    n_green = n_red = n_both = 0
+
+    for idx in sample_indices:
+        cap.set(cv2.CAP_PROP_POS_FRAMES, int(idx))
+        ret, frame = cap.read()
+        if not ret:
+            continue
+        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+
+        green_color = color_mask_green(hsv, hsv_values["green"])
+        green_combined = cv2.bitwise_and(green_color, pivot_ring)
+        green_pos = best_blob(
+            green_combined,
+            anchor=expected_green,
+            max_dist=(PICKER_ANCHOR_MAX_DIST if expected_green else None),
+        )
+        if green_pos is None:
+            continue
+        n_green += 1
+
+        # Red ring is centred on green.
+        local_dist, _ = precompute_pivot_grids(width, height, green_pos)
+        red_ring   = make_ring_uint8(local_dist, ARM_LENGTH_PX,
+                                     ring_tolerance)
+        red_color  = color_mask_red(hsv, hsv_values["red"])
+        red_combined = cv2.bitwise_and(red_color, red_ring)
+        red_pos = best_blob(red_combined)
+        if red_pos is None:
+            continue
+        n_red += 1
+
+        # Geometric sanity check (same as the tracker uses).
+        green_pos_v, red_pos_v = validate_geometry(green_pos, red_pos)
+        if green_pos_v is not None and red_pos_v is not None:
+            n_both += 1
+
+    both_pct  = 100.0 * n_both  / n_total if n_total else 0.0
+    green_pct = 100.0 * n_green / n_total if n_total else 0.0
+    red_pct   = 100.0 * n_red   / n_total if n_total else 0.0
+
+    if both_pct < ADEQUACY_ABORT_PCT:
+        verdict = "ABORT"
+    elif both_pct < ADEQUACY_WARN_PCT:
+        verdict = "WARN"
+    else:
+        verdict = "OK"
+
+    return verdict, both_pct, green_pct, red_pct
+
 # Tuning knobs ────────────────────────────────
 BG_SAMPLES        = 60       # frames sampled for the median background
 BG_DIFF_THRESH    = 22       # grayscale |frame - bg| threshold
@@ -1042,11 +1127,13 @@ def pick_frame_interactive(video_path, label, fps, total_frames,
 def main():
     args  = [a for a in sys.argv[1:] if not a.startswith("--")]
     flags = [a for a in sys.argv[1:] if a.startswith("--")]
-    no_debug     = "--no-debug" in flags
-    force_browse = "--browse"    in flags
-    show_status  = "--status"    in flags
-    force_run    = "--force"     in flags
-    no_prior     = "--no-prior"  in flags
+    no_debug      = "--no-debug"     in flags
+    force_browse  = "--browse"       in flags
+    show_status   = "--status"       in flags
+    force_run     = "--force"        in flags
+    no_prior      = "--no-prior"     in flags
+    skip_probe    = "--skip-probe"   in flags
+    yes_to_warn   = "--yes-to-warn"  in flags
 
     # --status mode: print the tracked/pending breakdown and exit.
     if show_status:
@@ -1134,6 +1221,36 @@ def main():
     dt           = 1.0 / video_fps
     print(f"\nVideo: {width}x{height} @ {video_fps:.2f}fps, {total_frames} frames")
 
+    # ── HSV adequacy probe — fail fast before launching a 3-min track. ──
+    if not skip_probe:
+        print("\nProbing HSV adequacy (sampling 30 frames) ...")
+        verdict, both_pct, green_pct, red_pct = hsv_adequacy_probe(
+            cap, total_frames, hsv_values, ring_tolerance,
+            use_filename_prior=not no_prior, video_path=video_path,
+        )
+        cap.set(cv2.CAP_PROP_POS_FRAMES, 0)   # rewind after sampling
+
+        flag = {"OK": "[OK]", "WARN": "[WARN]", "ABORT": "[ABORT]"}[verdict]
+        print(f"  {flag} both markers: {both_pct:.0f}%   "
+              f"green-only: {green_pct:.0f}%   red-only: {red_pct:.0f}%")
+
+        if verdict == "ABORT":
+            print(f"\nHSV adequacy below {ADEQUACY_ABORT_PCT:.0f}% — "
+                  f"calibration is too poor to track this clip.")
+            print(f"  Re-run: python scripts/processing/hsv_tuner.py "
+                  f"{video_path}")
+            print("  Then re-launch ring_tracker. Pass --skip-probe to "
+                  "override.")
+            cap.release()
+            return
+        if verdict == "WARN" and not yes_to_warn:
+            ans = input(f"\nHSV adequacy below {ADEQUACY_WARN_PCT:.0f}% "
+                        f"({both_pct:.0f}%). Continue anyway? [y/N]: ").strip().lower()
+            if not ans.startswith("y"):
+                print("Cancelled. Suggested next step: hsv_tuner.py on this video.")
+                cap.release()
+                return
+
     # ── Init frame: registry → visual picker ─────────────────────────────
     if existing_entry and existing_entry.get("init_frame") is not None:
         init_frame = int(existing_entry["init_frame"])
@@ -1197,6 +1314,44 @@ def main():
     # ── Per-marker predictors ────────────────────────────────────────────
     pred1 = AngularPredictor()
     pred2 = AngularPredictor()
+
+    # Seed the predictors from green_click_px / red_click_px when the
+    # registry has them (recorded by the video-tagger). Without seeding,
+    # the arc filter is asleep on the very first detection attempt and
+    # the strict pipeline can't fire until a marker has been observed
+    # twice. Seeding gives the strict path a chance from frame 1.
+    #
+    # We only seed when init_frame is at (or right next to) tag_frame —
+    # otherwise the seed angle reflects a moment far from where tracking
+    # actually starts, and the first real observation would compute a
+    # bogus ω from the stale baseline. SEED_MAX_GAP gates this.
+    SEED_MAX_GAP = 3
+    seeded_from  = []
+    if existing_entry:
+        tag_frame = existing_entry.get("tag_frame")
+        gap_ok = (tag_frame is not None
+                  and abs(int(tag_frame) - int(init_frame)) <= SEED_MAX_GAP)
+        gpx = existing_entry.get("green_click_px")
+        rpx = existing_entry.get("red_click_px")
+        if gap_ok and isinstance(gpx, (list, tuple)) and len(gpx) == 2:
+            theta1_seed = compute_angle(PIVOT, tuple(gpx))
+            pred1.observe(theta1_seed, dt)
+            seeded_from.append(
+                f"green_click_px={tuple(gpx)} -> th1={theta1_seed:.1f}")
+        if (gap_ok and isinstance(gpx, (list, tuple)) and len(gpx) == 2
+                and isinstance(rpx, (list, tuple)) and len(rpx) == 2):
+            theta2_seed = compute_angle(tuple(gpx), tuple(rpx))
+            pred2.observe(theta2_seed, dt)
+            seeded_from.append(
+                f"red_click_px={tuple(rpx)} -> th2={theta2_seed:.1f}")
+        if not gap_ok and (gpx or rpx):
+            print(f"\nNote: skipping click_px seeding (tag_frame={tag_frame}, "
+                  f"init_frame={init_frame}, gap > {SEED_MAX_GAP}).")
+    if seeded_from:
+        print(f"\nPredictors seeded from registry click_px (tag-frame "
+              f"and init-frame are within {SEED_MAX_GAP}):")
+        for line in seeded_from:
+            print(f"  {line}")
 
     # ── Counters ────────────────────────────────────────────────────────
     dropout_total = dropout_holding = dropout_free = 0

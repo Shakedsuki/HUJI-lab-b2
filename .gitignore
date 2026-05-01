@@ -39,6 +39,10 @@ data/log_*.txt
 # Tracking-CSV backups created by interpolate_suspects.py
 measurements/*/tracking.csv.bak
 
+# Registry backups created by bulk_track.py
+data/experiments.json.bulk_track_*.bak
+data/experiments.json.*.bak
+
 # Personal VS Code workspace
 *.code-workspace
 
