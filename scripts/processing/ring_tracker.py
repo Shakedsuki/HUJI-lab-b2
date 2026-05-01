@@ -875,6 +875,126 @@ def pick_video_interactive():
 
 
 # ─────────────────────────────────────────────
+# SMART INIT/RELEASE FRAME SUGGESTIONS
+# ─────────────────────────────────────────────
+
+def suggest_frame_candidates(video_path, total_frames, hsv_values,
+                             ring_tolerance, use_filename_prior,
+                             tag_frame_hint=None,
+                             scan_step=3, max_scan=400):
+    """
+    Walk forward from frame 0 (or near tag_frame_hint, if provided) and
+    return suggested (init_frame, release_frame).
+
+    init_frame: first frame where green AND red both detect cleanly with
+                the filename position prior (the picker pre-positions to
+                this).
+
+    release_frame: first frame after init where green's between-frame
+                pixel motion exceeds RELEASE_MOTION_PX_THRESHOLD,
+                signalling the user has let go of the pendulum.
+
+    Returns (init_suggestion, release_suggestion) — either may be None if
+    the scan couldn't find a candidate within `max_scan` evaluated frames.
+    The scan is sparse (every `scan_step`th frame) for speed. The picker
+    can refine from the suggestion.
+    """
+    cap = cv2.VideoCapture(video_path)
+    if not cap.isOpened():
+        return None, None
+    width  = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    pivot_dist, _ = precompute_pivot_grids(width, height, PIVOT)
+    pivot_ring    = make_ring_uint8(pivot_dist, ARM_LENGTH_PX, ring_tolerance)
+
+    initial_angles = (parse_initial_angles(video_path)
+                      if use_filename_prior else None)
+    expected_green = (expected_marker_positions(*initial_angles)[0]
+                      if initial_angles else None)
+
+    # Search anchor: start near tag_frame_hint when provided so we don't
+    # waste cycles on the inevitable pre-tag dropout window.
+    if tag_frame_hint is not None:
+        start_search = max(0, int(tag_frame_hint) - 30)
+    else:
+        start_search = 0
+    end_search = min(total_frames, start_search + max_scan)
+
+    init_suggestion = None
+    last_green_pos  = None
+
+    # Phase 1: find init candidate — first cleanly-detected green+red pair.
+    for idx in range(start_search, end_search, scan_step):
+        cap.set(cv2.CAP_PROP_POS_FRAMES, idx)
+        ret, frame = cap.read()
+        if not ret:
+            continue
+        hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+        green_color = color_mask_green(hsv, hsv_values["green"])
+        green_combined = cv2.bitwise_and(green_color, pivot_ring)
+        green_pos = best_blob(
+            green_combined,
+            anchor=expected_green,
+            max_dist=(PICKER_ANCHOR_MAX_DIST if expected_green else None),
+        )
+        if green_pos is None:
+            continue
+
+        local_dist, _ = precompute_pivot_grids(width, height, green_pos)
+        red_ring  = make_ring_uint8(local_dist, ARM_LENGTH_PX, ring_tolerance)
+        red_color = color_mask_red(hsv, hsv_values["red"])
+        red_pos   = best_blob(cv2.bitwise_and(red_color, red_ring))
+        green_pos_v, red_pos_v = validate_geometry(green_pos, red_pos)
+        if green_pos_v is None or red_pos_v is None:
+            continue
+
+        init_suggestion = idx
+        last_green_pos  = green_pos_v
+        break
+
+    # Phase 2: find release candidate — first frame where green's
+    # between-frame pixel motion exceeds the threshold. We compare green
+    # positions at coarse intervals; once motion is detected, refine to
+    # the exact crossing frame.
+    RELEASE_MOTION_PX_THRESHOLD = 4.0   # green moves ~4 px between scan steps
+    release_suggestion = None
+    if init_suggestion is not None and last_green_pos is not None:
+        prev_pos = last_green_pos
+        prev_idx = init_suggestion
+        for idx in range(init_suggestion + scan_step,
+                          min(total_frames, init_suggestion + 600),
+                          scan_step):
+            cap.set(cv2.CAP_PROP_POS_FRAMES, idx)
+            ret, frame = cap.read()
+            if not ret:
+                continue
+            hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+            green_color = color_mask_green(hsv, hsv_values["green"])
+            green_combined = cv2.bitwise_and(green_color, pivot_ring)
+            green_pos = best_blob(
+                green_combined,
+                anchor=prev_pos,
+                max_dist=PICKER_ANCHOR_MAX_DIST,
+            )
+            if green_pos is None:
+                continue
+            d = float(np.hypot(green_pos[0] - prev_pos[0],
+                               green_pos[1] - prev_pos[1]))
+            if d > RELEASE_MOTION_PX_THRESHOLD:
+                # Motion crossed the threshold sometime between prev_idx
+                # and idx. The first "moving" frame is ≥ prev_idx+1; we
+                # report prev_idx (the last clearly-static frame), so the
+                # picker pre-positions just before motion starts.
+                release_suggestion = prev_idx
+                break
+            prev_pos = green_pos
+            prev_idx = idx
+
+    cap.release()
+    return init_suggestion, release_suggestion
+
+
+# ─────────────────────────────────────────────
 # VISUAL FRAME PICKER  (init_frame / release_frame)
 # ─────────────────────────────────────────────
 
@@ -1251,15 +1371,46 @@ def main():
                 cap.release()
                 return
 
-    # ── Init frame: registry → visual picker ─────────────────────────────
+    # ── Smart pre-positioning for the picker ─────────────────────────────
+    # Compute candidate init/release frames once, before either picker
+    # opens. The picker uses the candidate as its starting frame so the
+    # user typically just confirms with ENTER instead of scrubbing.
+    init_suggestion = release_suggestion = None
+    need_pick_init    = not (existing_entry and
+                              existing_entry.get("init_frame") is not None)
+    need_pick_release = not (existing_entry and
+                              existing_entry.get("release_frame") is not None)
+    if need_pick_init or need_pick_release:
+        tag_hint = (existing_entry or {}).get("tag_frame")
+        print(f"\nScanning for smart init/release suggestions"
+              f"{f' (anchored at tag_frame={tag_hint})' if tag_hint is not None else ''} ...")
+        init_suggestion, release_suggestion = suggest_frame_candidates(
+            video_path, total_frames, hsv_values, ring_tolerance,
+            use_filename_prior=not no_prior,
+            tag_frame_hint=tag_hint,
+        )
+        cap.set(cv2.CAP_PROP_POS_FRAMES, 0)   # rewind after scan
+        if init_suggestion is not None:
+            print(f"  init suggestion: frame {init_suggestion} "
+                  f"(t={init_suggestion / video_fps:.3f}s) — first clean detection")
+        else:
+            print("  init suggestion: none (HSV may need retuning).")
+        if release_suggestion is not None:
+            print(f"  release suggestion: frame {release_suggestion} "
+                  f"(t={release_suggestion / video_fps:.3f}s) — last static frame before motion")
+        else:
+            print("  release suggestion: none (no motion threshold crossed within scan).")
+
+    # ── Init frame: registry → visual picker (pre-positioned) ────────────
     if existing_entry and existing_entry.get("init_frame") is not None:
         init_frame = int(existing_entry["init_frame"])
         print(f"Init frame loaded from registry: {init_frame}")
     else:
-        print("\nOpening visual picker for INIT FRAME ...")
+        start_at = init_suggestion if init_suggestion is not None else 0
+        print(f"\nOpening visual picker for INIT FRAME (start at {start_at}) ...")
         init_frame = pick_frame_interactive(
             video_path, "init frame", video_fps, total_frames,
-            hsv_values, ring_tolerance, start_frame=0,
+            hsv_values, ring_tolerance, start_frame=start_at,
             use_filename_prior=not no_prior,
         )
         if init_frame is None:
@@ -1271,15 +1422,17 @@ def main():
         # refresh ring_tolerance so the rest of the run uses the new value.
         ring_tolerance = int(hsv_values.get("ring_tolerance", DEFAULT_RING_TOL))
 
-    # ── Release frame: registry → visual picker ──────────────────────────
+    # ── Release frame: registry → visual picker (pre-positioned) ─────────
     if existing_entry and existing_entry.get("release_frame") is not None:
         release_frame = int(existing_entry["release_frame"])
         print(f"Release frame loaded from registry: {release_frame}")
     else:
-        print("\nOpening visual picker for RELEASE FRAME ...")
+        start_at = (release_suggestion if release_suggestion is not None
+                    else init_frame)
+        print(f"\nOpening visual picker for RELEASE FRAME (start at {start_at}) ...")
         release_frame = pick_frame_interactive(
             video_path, "release frame", video_fps, total_frames,
-            hsv_values, ring_tolerance, start_frame=init_frame,
+            hsv_values, ring_tolerance, start_frame=start_at,
             use_filename_prior=not no_prior,
         )
         if release_frame is None:
