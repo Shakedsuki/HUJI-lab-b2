@@ -390,8 +390,22 @@ def main():
         track_cmd.append("--yes-to-warn")
     rc, _ = run(track_cmd, label="ring_tracker")
     if rc != 0:
+        # Ring_tracker uses specific non-zero codes for known abort paths:
+        #   2 = HSV adequacy probe ABORT
+        #   3 = User cancelled at WARN prompt
+        # Anything else is an unexpected error (or the user cancelled the
+        # frame picker). Surface the most actionable next step.
+        if rc == 2:
+            reason = (f"HSV adequacy below {40}% — re-run "
+                      f"hsv_tuner.py on this video and try again. "
+                      f"(--skip-probe overrides if needed.)")
+        elif rc == 3:
+            reason = "User cancelled at HSV WARN prompt; no tracking attempted."
+        else:
+            reason = (f"ring_tracker exit {rc} — likely picker cancellation "
+                      f"or unexpected error.")
         emit_card(stem, video_path, key, entry,
-                  status="FAIL", reasons=[f"ring_tracker exit {rc}"],
+                  status="FAIL", reasons=[reason],
                   metrics_pre=None, metrics_post=None,
                   n_interpolated=0,
                   hsv_kind=hsv_kind_for_video(os.path.basename(video_path)),

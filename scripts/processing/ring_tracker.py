@@ -1362,14 +1362,17 @@ def main():
             print("  Then re-launch ring_tracker. Pass --skip-probe to "
                   "override.")
             cap.release()
-            return
+            # Non-zero exit so track_one and bulk_track see this as a
+            # failure and surface the real cause instead of cascading
+            # into a missing-CSV error downstream.
+            sys.exit(2)
         if verdict == "WARN" and not yes_to_warn:
             ans = input(f"\nHSV adequacy below {ADEQUACY_WARN_PCT:.0f}% "
                         f"({both_pct:.0f}%). Continue anyway? [y/N]: ").strip().lower()
             if not ans.startswith("y"):
                 print("Cancelled. Suggested next step: hsv_tuner.py on this video.")
                 cap.release()
-                return
+                sys.exit(3)
 
     # ── Smart pre-positioning for the picker ─────────────────────────────
     # Compute candidate init/release frames once, before either picker
