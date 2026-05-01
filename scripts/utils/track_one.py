@@ -297,6 +297,188 @@ def compute_verdict(metrics, n_suspects_post_interp):
 
 
 # ─────────────────────────────────────────────
+# ACTIONABLE-STEPS BUILDER  (Brief 4)
+# ─────────────────────────────────────────────
+
+def _load_top_suspect_frames(meas_dir, n=5):
+    """Read verification.csv and return the top n suspect rows by |ω₂|
+    where suspect=1 and dropout=0. Each item:
+      {"frame": int, "time_s": float, "phase": str, "om2": float}
+    Returns [] when the file is missing or no suspects exist."""
+    path = os.path.join(meas_dir, "verification.csv")
+    if not os.path.exists(path):
+        return []
+    candidates = []
+    with open(path, "r", newline="") as f:
+        for r in csv.DictReader(f):
+            try:
+                if int(r.get("suspect") or 0) != 1:
+                    continue
+                if int(r.get("dropout") or 0) != 0:
+                    continue
+                om2 = abs(float(r.get("omega2_deg_s") or 0))
+                candidates.append({
+                    "frame":  int(r["frame"]),
+                    "time_s": float(r["time_s"]),
+                    "phase":  r.get("phase", ""),
+                    "om2":    om2,
+                })
+            except (ValueError, TypeError, KeyError):
+                continue
+    candidates.sort(key=lambda c: -c["om2"])
+    return candidates[:n]
+
+
+def build_actionable_steps(stem, metrics_post, reasons, status,
+                           suspect_frames=None):
+    """Translate metrics + verdict into copy-paste-ready guidance.
+
+    Returns a list of dicts:
+      {"priority": "required" | "review" | "info",
+       "category": "suspect_frame" | "dropout" | "arm_length" |
+                   "holding_suspect" | "verified",
+       "text":    str,
+       "command": str | None}
+
+    User-facing commands use the `chaos` wrapper (chaos override / fix /
+    tune / verify) rather than `python scripts/...` paths so the steps
+    stay aligned with the documented user surface.
+    """
+    steps = []
+    metrics_post = metrics_post or {}
+
+    # A) residual suspect frames post-interpolation
+    n_susp_hidden = metrics_post.get("n_suspect_hidden", 0)
+    if n_susp_hidden > 0 and suspect_frames:
+        for f in suspect_frames[:3]:
+            steps.append({
+                "priority": "required",
+                "category": "suspect_frame",
+                "text": (
+                    f"Frame {f['frame']}  "
+                    f"(t = {f['time_s']:.3f}s,  {f['phase']}):  "
+                    f"|ω₂| = {f['om2']:.0f} °/s\n"
+                    f"  Check verification.png at this timestamp.\n"
+                    f"  If the marker position looks wrong, correct it manually."
+                ),
+                # Single-frame fixes go through `chaos override`; the
+                # legacy manual_correction tool is for multi-frame
+                # cluster fixes.
+                "command": f"chaos override {stem} --frame {f['frame']}",
+            })
+        if len(suspect_frames) > 3:
+            steps.append({
+                "priority": "info",
+                "category": "suspect_frame",
+                "text": (f"... and {len(suspect_frames) - 3} more suspect "
+                         f"frames. Run verify_tracking for the full list."),
+                "command": f"chaos verify {stem}",
+            })
+
+    # B) free-swing dropout in WARN band
+    drop = metrics_post.get("free_swing_dropout_pct")
+    n_drop_free = metrics_post.get("n_dropout_free_swing", "?")
+    if drop is not None and PASS_DROPOUT_PCT < drop <= WARN_DROPOUT_PCT:
+        steps.append({
+            "priority": "review",
+            "category": "dropout",
+            "text": (
+                f"{drop:.1f}% free-swing dropout ({n_drop_free} frames).\n"
+                f"  Open verification.png and check for a cluster of red\n"
+                f"  markers in a narrow window — that indicates occlusion\n"
+                f"  or lighting. Even distribution → HSV recalibration."
+            ),
+            "command": f"chaos tune {stem}",
+        })
+
+    # C) free-swing dropout above WARN — auto-FAIL
+    if drop is not None and drop > WARN_DROPOUT_PCT:
+        steps.append({
+            "priority": "required",
+            "category": "dropout",
+            "text": (
+                f"{drop:.1f}% free-swing dropout — exceeds "
+                f"{WARN_DROPOUT_PCT}% FAIL threshold.\n"
+                f"  This run likely cannot be salvaged without re-tracking.\n"
+                f"  Step 1: Recalibrate HSV. Step 2: re-run chaos track."
+            ),
+            "command": f"chaos tune {stem}",
+        })
+
+    # D) arm-length violations
+    n_arm = metrics_post.get("n_arm_violations", 0)
+    arm_dev_max = metrics_post.get("arm_length_dev_max_pct")
+    if n_arm > 0:
+        priority = "required" if (arm_dev_max or 0) > 20 else "review"
+        steps.append({
+            "priority": priority,
+            "category": "arm_length",
+            "text": (
+                f"{n_arm} frame(s) violate rigid-arm constraint "
+                f"(max deviation: {(arm_dev_max or 0):.1f}%).\n"
+                f"  These frames show the tracker latched onto a wrong\n"
+                f"  object. They cannot be fixed by interpolation alone —\n"
+                f"  inspect each frame visually and correct or mark unresolvable."
+            ),
+            "command": f"chaos verify {stem}",
+        })
+
+    # E) holding-phase suspects
+    n_hold = metrics_post.get("n_holding_suspects", 0)
+    if n_hold > 0:
+        steps.append({
+            "priority": "review",
+            "category": "holding_suspect",
+            "text": (
+                f"{n_hold} frame(s) in holding phase have "
+                f"|ω| > {OMEGA_CAP_HOLDING:.0f} °/s.\n"
+                f"  The pendulum should be stationary here — this is\n"
+                f"  tracker noise. Acceptable if 1-2; concerning if > 5."
+            ),
+            "command": None,
+        })
+
+    # F) peak ω₂ above physical rule-of-thumb
+    peak2 = metrics_post.get("peak_omega2", 0.0)
+    if PEAK_OMEGA_PHYSICAL < peak2 <= PEAK_OMEGA_ABSURD:
+        steps.append({
+            "priority": "review",
+            "category": "suspect_frame",
+            "text": (
+                f"Peak |ω₂| = {peak2:.0f} °/s exceeds "
+                f"{PEAK_OMEGA_PHYSICAL:.0f} °/s physical rule-of-thumb.\n"
+                f"  May be physical (extreme chaotic event) or a residual\n"
+                f"  tracking artefact. Check verification.png near peak ω₂."
+            ),
+            "command": None,
+        })
+    if peak2 > PEAK_OMEGA_ABSURD:
+        steps.append({
+            "priority": "required",
+            "category": "suspect_frame",
+            "text": (
+                f"Peak |ω₂| = {peak2:.0f} °/s > {PEAK_OMEGA_ABSURD:.0f} °/s "
+                f"absurd threshold.\n"
+                f"  Almost certainly a tracking error, not physics.\n"
+                f"  Manual correction or re-tracking required."
+            ),
+            "command": f"chaos fix {stem}",
+        })
+
+    # G) PASS — no issues found
+    if status == "PASS" and not steps:
+        steps.append({
+            "priority": "info",
+            "category": "verified",
+            "text": ("All checks passed. tracking_quality has been set to "
+                     "'verified'\nin the registry automatically."),
+            "command": None,
+        })
+
+    return steps
+
+
+# ─────────────────────────────────────────────
 # ORCHESTRATION
 # ─────────────────────────────────────────────
 
@@ -477,13 +659,22 @@ def main():
     n_susp_post = (metrics_post or {}).get("n_suspect_hidden", 0)
     status, reasons = compute_verdict(metrics_post, n_susp_post)
 
-    # ── 5. Emit card + maybe mark verified ─────────────────────────────
+    # ── 5. Build actionable steps + emit card + maybe mark verified ───
+    suspect_frames = _load_top_suspect_frames(meas_dir, n=5)
+    actionable_steps = build_actionable_steps(
+        stem=stem,
+        metrics_post=metrics_post or metrics_pre or {},
+        reasons=reasons,
+        status=status,
+        suspect_frames=suspect_frames,
+    )
     emit_card(stem, video_path, key, entry,
               status=status, reasons=reasons,
               metrics_pre=metrics_pre, metrics_post=metrics_post,
               n_interpolated=n_interp,
               hsv_kind=hsv_kind_for_video(os.path.basename(video_path)),
-              total_elapsed=time.time() - t_total)
+              total_elapsed=time.time() - t_total,
+              actionable_steps=actionable_steps)
     maybe_mark_verified(stem, status, reasons)
     return 0 if status != "FAIL" else 1
 

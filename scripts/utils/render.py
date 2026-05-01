@@ -560,12 +560,18 @@ def render_verdict(stem: str,
         for step in actionable_steps:
             pri = step.get("priority", "info")
             text = step.get("text", "")
+            cmd  = step.get("command")
             badge_cell = {
-                "required": "[bold red]  required [/]",
-                "review":   "[bold yellow]  review  [/]",
-                "info":     "[dim]  info     [/]",
-            }.get(pri, "[dim]  info     [/]")
-            steps_table.add_row(badge_cell, text)
+                "required": "[bold white on red] required [/]",
+                "review":   "[bold black on yellow] review  [/]",
+                "info":     "[dim] info     [/]",
+            }.get(pri, "[dim] info     [/]")
+            # Append the copy-paste command (if present) on a new line
+            # in dim monospace below the instruction text.
+            instruction = text
+            if cmd:
+                instruction = f"{text}\n[dim]  $ {cmd}[/]"
+            steps_table.add_row(badge_cell, instruction)
         body.append(steps_table)
     else:
         body.append(Text(
