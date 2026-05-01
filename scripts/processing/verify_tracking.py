@@ -66,6 +66,10 @@ from render import (  # noqa: E402
     render_suspect_table,
     render_arm_length_violations,
 )
+from thresholds import (  # noqa: E402
+    ARM_LEN_THRESHOLD_PCT,
+    OMEGA_CAP_HOLDING,
+)
 
 
 def parse_args():
@@ -84,6 +88,11 @@ def parse_args():
                    help="skip the matplotlib plot")
     p.add_argument("--no-csv-out", action="store_true",
                    help="skip writing the verification.csv companion")
+    p.add_argument("--arm-len-threshold", type=float,
+                   default=ARM_LEN_THRESHOLD_PCT,
+                   help=f"pixel arm-length deviation %% above which a "
+                        f"clean frame is flagged as a tracker error "
+                        f"(default {ARM_LEN_THRESHOLD_PCT:.0f}%%)")
     return p.parse_args()
 
 
@@ -164,6 +173,12 @@ def main():
     th1 = np.array([to_float_or_nan(r["theta1_deg"]) for r in rows])
     th2 = np.array([to_float_or_nan(r["theta2_deg"]) for r in rows])
 
+    # Load marker pixel positions for the arm-length rigidity check.
+    x_green = np.array([to_float_or_nan(r.get("x_green", "")) for r in rows])
+    y_green = np.array([to_float_or_nan(r.get("y_green", "")) for r in rows])
+    x_red   = np.array([to_float_or_nan(r.get("x_red",   "")) for r in rows])
+    y_red   = np.array([to_float_or_nan(r.get("y_red",   "")) for r in rows])
+
     # ── Per-frame dt (use median to be robust to gaps) ─────────────────
     diffs = np.diff(times)
     dt_med = float(np.median(diffs[diffs > 0])) if np.any(diffs > 0) else 1.0 / 60.0
@@ -176,9 +191,55 @@ def main():
     om1 = dth1 / dt_med   # deg/s
     om2 = dth2 / dt_med
 
-    suspect1 = np.abs(om1) > args.omega_cap
-    suspect2 = np.abs(om2) > args.omega_cap
-    suspect  = suspect1 | suspect2
+    # Arm-length rigidity (pixel distance from green pivot to red tip).
+    # Frames where green or red is missing yield NaN; the median is
+    # taken over clean rows so dropouts don't pull the reference.
+    arm_len = np.sqrt((x_red - x_green) ** 2 + (y_red - y_green) ** 2)
+    clean_arm_mask = (drops == 0) & ~np.isnan(arm_len)
+    if clean_arm_mask.any():
+        arm_median = float(np.nanmedian(arm_len[clean_arm_mask]))
+    else:
+        arm_median = float("nan")
+    if not np.isnan(arm_median) and arm_median > 0:
+        arm_dev_pct = np.abs(arm_len - arm_median) / arm_median * 100.0
+    else:
+        arm_dev_pct = np.full_like(arm_len, np.nan)
+
+    # Phase-separated ω caps. Holding-phase markers should be
+    # stationary, so ANY ω above OMEGA_CAP_HOLDING is tracker noise,
+    # not physics. Free-swing keeps the user-configurable cap (default
+    # 2500 °/s, well above the 1500 °/s physical RoT).
+    suspect = np.zeros(n, dtype=bool)
+    free_mask    = (phase == "free_swing")
+    holding_mask = (phase == "holding")
+    if free_mask.any():
+        suspect[free_mask] = (
+            (np.abs(om1[free_mask]) > args.omega_cap) |
+            (np.abs(om2[free_mask]) > args.omega_cap)
+        )
+    if holding_mask.any():
+        suspect[holding_mask] = (
+            (np.abs(om1[holding_mask]) > OMEGA_CAP_HOLDING) |
+            (np.abs(om2[holding_mask]) > OMEGA_CAP_HOLDING)
+        )
+
+    # Per-arm masks (using the same phase-aware caps) for the breakdown.
+    suspect1 = np.zeros(n, dtype=bool)
+    suspect2 = np.zeros(n, dtype=bool)
+    if free_mask.any():
+        suspect1[free_mask] = np.abs(om1[free_mask]) > args.omega_cap
+        suspect2[free_mask] = np.abs(om2[free_mask]) > args.omega_cap
+    if holding_mask.any():
+        suspect1[holding_mask] = np.abs(om1[holding_mask]) > OMEGA_CAP_HOLDING
+        suspect2[holding_mask] = np.abs(om2[holding_mask]) > OMEGA_CAP_HOLDING
+
+    # Arm-length violations (clean frames only — dropouts have no
+    # arm length to check).
+    arm_violation = np.zeros(n, dtype=bool)
+    if not np.isnan(arm_median):
+        arm_violation = ((arm_dev_pct > args.arm_len_threshold)
+                         & (drops == 0)
+                         & ~np.isnan(arm_dev_pct))
 
     # ── Headline numbers ────────────────────────────────────────────────
     n_drop          = int(np.sum(drops == 1))
@@ -219,24 +280,45 @@ def main():
         idx_sorted = np.argsort(worst_score)[::-1]
         worst = idx_sorted[:min(10, n_clean_suspect)]
         for i in worst:
+            arm_l_val   = (float(arm_len[i])
+                           if not np.isnan(arm_len[i]) else None)
+            arm_dev_val = (float(arm_dev_pct[i])
+                           if not np.isnan(arm_dev_pct[i]) else None)
             suspects_list.append({
-                "frame":  int(rows[i]["frame"]),
-                "time_s": float(times[i]),
-                "phase":  str(phase[i]),
-                "th1":    float(th1[i]),
-                "th2":    float(th2[i]),
-                "om1":    float(abs(om1[i])),
-                "om2":    float(abs(om2[i])),
+                "frame":              int(rows[i]["frame"]),
+                "time_s":             float(times[i]),
+                "phase":              str(phase[i]),
+                "th1":                float(th1[i]),
+                "th2":                float(th2[i]),
+                "om1":                float(abs(om1[i])),
+                "om2":                float(abs(om2[i])),
+                "arm_length_px":      arm_l_val,
+                "arm_length_dev_pct": arm_dev_val,
             })
     render_suspect_table(suspects_list, omega_cap=args.omega_cap)
 
-    # ── Optional: write CSV with a `suspect` column ────────────────────
+    # ── Arm-length violations (rigid-body sanity) ──────────────────────
+    violations_list = []
+    for i in np.where(arm_violation)[0]:
+        violations_list.append({
+            "frame":          int(rows[i]["frame"]),
+            "time_s":         float(times[i]),
+            "phase":          str(phase[i]),
+            "arm_length_px":  float(arm_len[i]),
+            "median_arm_px":  float(arm_median),
+            "dev_pct":        float(arm_dev_pct[i]),
+        })
+    render_arm_length_violations(violations_list)
+
+    # ── Optional: write CSV with extra audit columns ───────────────────
     if not args.no_csv_out:
         os.makedirs(output_dir, exist_ok=True)
         out_csv = os.path.join(output_dir, "verification.csv")
         with open(out_csv, "w", newline="") as f:
             fieldnames = list(rows[0].keys()) + [
-                "omega1_deg_s", "omega2_deg_s", "suspect"]
+                "omega1_deg_s", "omega2_deg_s", "suspect",
+                "arm_length_px", "arm_dev_pct", "omega_cap_applied",
+            ]
             w = csv.DictWriter(f, fieldnames=fieldnames)
             w.writeheader()
             for i, r in enumerate(rows):
@@ -246,6 +328,15 @@ def main():
                 out["omega2_deg_s"] = (
                     f"{om2[i]:.2f}" if not np.isnan(om2[i]) else "")
                 out["suspect"] = 1 if suspect[i] else 0
+                out["arm_length_px"] = (
+                    f"{arm_len[i]:.2f}" if not np.isnan(arm_len[i]) else "")
+                out["arm_dev_pct"] = (
+                    f"{arm_dev_pct[i]:.2f}"
+                    if not np.isnan(arm_dev_pct[i]) else "")
+                out["omega_cap_applied"] = (
+                    f"{OMEGA_CAP_HOLDING:.0f}"
+                    if phase[i] == "holding"
+                    else f"{args.omega_cap:.0f}")
                 w.writerow(out)
         print(f"\nWrote: {out_csv}")
 

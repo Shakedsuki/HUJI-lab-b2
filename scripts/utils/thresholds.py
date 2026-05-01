@@ -37,5 +37,18 @@ OMEGA_BAR_MAX        = 4000.0   # ω bars saturate at the absurd line
 DROPOUT_BAR_MAX      = 15.0     # dropout bars saturate at 1.5× the WARN line
 
 # Holding-phase noise floor: anything above this in holding is tracker
-# noise (markers shouldn't move much before release).
+# noise (markers shouldn't move much before release). OMEGA_HOLD_THRESHOLD
+# is the legacy name kept for the rich-bar tinting; OMEGA_CAP_HOLDING is
+# the per-frame suspect-flagging cap used by verify_tracking. They are
+# the same number, but each name carries a distinct intent so callers
+# pick the one that matches the meaning at the call site.
 OMEGA_HOLD_THRESHOLD = 100.0
+OMEGA_CAP_HOLDING    = 100.0
+
+# Rigid-body sanity: arm 2 is a physical rod, so the pixel distance
+# between the green pivot and the red tip should be approximately
+# constant. A frame whose arm-length deviates by more than this %
+# of the median is flagged as a tracking error (caught even when
+# dropout=0 and |ω| is below cap — different failure mode from the
+# ω check).
+ARM_LEN_THRESHOLD_PCT = 10.0

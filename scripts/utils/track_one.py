@@ -64,6 +64,10 @@ GLOBAL_HSV_FILE = os.path.join(DATA_DIR, "hsv_values.json")
 # is imported from another script (e.g. manual_correction).
 sys.path.insert(0, os.path.join(ROOT, "scripts", "utils"))
 from render import render_verdict  # noqa: E402
+from thresholds import (  # noqa: E402
+    ARM_LEN_THRESHOLD_PCT,
+    OMEGA_CAP_HOLDING,
+)
 
 
 # ─────────────────────────────────────────────
@@ -139,10 +143,14 @@ def resolve_inputs(args):
 
 def read_verification_metrics(meas_dir):
     """
-    Read measurements/<stem>/verification.csv and return a dict:
-      n_total, n_dropout, n_suspect_hidden,
-      peak_omega1, peak_omega2,
-      free_swing_dropout_pct, holding_dropout_pct.
+    Read measurements/<stem>/verification.csv and return a dict of
+    per-stem stats consumed by the verdict-card layer.
+
+    Optional columns added by Brief 3 (arm_length_px, arm_dev_pct) and
+    Brief 5 (delta_omega_suspect, swap_suspect) are read defensively —
+    older verification.csv files without those columns parse cleanly
+    with the corresponding metrics returning None / 0.
+
     Returns None if verification.csv is missing.
     """
     path = os.path.join(meas_dir, "verification.csv")
@@ -150,7 +158,10 @@ def read_verification_metrics(meas_dir):
         return None
     n_total = n_drop_total = n_suspect_hidden = 0
     n_free = n_free_drop = n_hold = n_hold_drop = 0
+    n_hold_susp = 0
     peak_o1 = peak_o2 = 0.0
+    arm_devs = []
+    n_arm_violations = 0
     with open(path, "r", newline="") as f:
         for r in csv.DictReader(f):
             n_total += 1
@@ -171,6 +182,8 @@ def read_verification_metrics(meas_dir):
             if phase == "free_swing": n_free += 1
             if susp and not drop:
                 n_suspect_hidden += 1
+                if phase == "holding":
+                    n_hold_susp += 1
             try:
                 o1 = abs(float(r.get("omega1_deg_s") or 0))
                 if o1 > peak_o1: peak_o1 = o1
@@ -181,6 +194,18 @@ def read_verification_metrics(meas_dir):
                 if o2 > peak_o2: peak_o2 = o2
             except ValueError:
                 pass
+            # Arm-length deviation (Brief 3) — column is optional; only
+            # appears in verifications produced after the upgrade.
+            try:
+                dev_str = r.get("arm_dev_pct") or ""
+                if dev_str:
+                    dev = float(dev_str)
+                    if not math.isnan(dev):
+                        arm_devs.append(dev)
+                        if dev > ARM_LEN_THRESHOLD_PCT:
+                            n_arm_violations += 1
+            except ValueError:
+                pass
     return {
         "n_total":               n_total,
         "n_dropout_total":       n_drop_total,
@@ -189,12 +214,18 @@ def read_verification_metrics(meas_dir):
         "n_holding":             n_hold,
         "n_free_swing":          n_free,
         "n_suspect_hidden":      n_suspect_hidden,
+        "n_holding_suspects":    n_hold_susp,
         "peak_omega1":           peak_o1,
         "peak_omega2":           peak_o2,
         "free_swing_dropout_pct":
             round(100.0 * n_free_drop / n_free, 2) if n_free else None,
         "holding_dropout_pct":
             round(100.0 * n_hold_drop / n_hold, 2) if n_hold else None,
+        "arm_length_dev_max_pct":
+            round(max(arm_devs), 2) if arm_devs else None,
+        "arm_length_dev_mean_pct":
+            round(sum(arm_devs) / len(arm_devs), 2) if arm_devs else None,
+        "n_arm_violations":      n_arm_violations,
     }
 
 
@@ -244,7 +275,23 @@ def compute_verdict(metrics, n_suspects_post_interp):
             f"peak |ω₂| {peak2:.0f}°/s > {PEAK_OMEGA_PHYSICAL:.0f}°/s "
             f"physical rule-of-thumb")
 
+    # Brief 3: holding-phase suspects (markers should be stationary).
+    n_hold_susp = metrics.get("n_holding_suspects", 0)
+    if n_hold_susp > 0:
+        reasons.append(
+            f"{n_hold_susp} holding-phase suspects "
+            f"(|ω| > {OMEGA_CAP_HOLDING:.0f}°/s while stationary)")
+
+    # Brief 3: arm-length rigidity violations (rigid-body sanity).
+    n_arm = metrics.get("n_arm_violations", 0)
+    if n_arm > 0:
+        dev_max = metrics.get("arm_length_dev_max_pct") or 0.0
+        reasons.append(
+            f"{n_arm} arm-length violation(s) "
+            f"(max deviation {dev_max:.1f}%) — tracker latched on wrong object")
+
     if reasons:
+        # Severe holding-phase noise upgrades a would-be PASS to WARN.
         return "WARN", reasons
     return "PASS", ["dropout, suspects, and ω all within thresholds"]
 
