@@ -8,6 +8,7 @@ Subcommands
 ~~~~~~~~~~~
   status            list tracked vs pending; one-line summary
   report            regenerate data/status_report.xlsx
+  roadmap           regenerate docs/tracking_roadmap.md (per-clip dropout/quality table)
   tune <stem>       launch hsv_tuner.py on a clip's video
   track <stem>      standard track + verify + interpolate + verdict
   fix <stem>        interactive manual-seed correction + re-track
@@ -64,6 +65,7 @@ SCRIPT_OVERRIDE   = os.path.join(ROOT, "scripts", "utils", "override_frame.py")
 SCRIPT_BULK       = os.path.join(ROOT, "scripts", "utils", "bulk_track.py")
 SCRIPT_STATUS     = os.path.join(ROOT, "scripts", "utils", "video_status.py")
 SCRIPT_REPORT     = os.path.join(ROOT, "scripts", "utils", "generate_status_report.py")
+SCRIPT_ROADMAP    = os.path.join(ROOT, "scripts", "utils", "generate_roadmap.py")
 
 VIDEO_EXTS = {".mov", ".mp4", ".avi", ".mkv", ".m4v"}
 
@@ -217,6 +219,13 @@ def cmd_bulk(args):
     return run_script(SCRIPT_BULK, *extra)
 
 
+def cmd_roadmap(args):
+    extra = []
+    if args.output: extra += ["--output", args.output]
+    if args.dry_run: extra.append("--dry-run")
+    return run_script(SCRIPT_ROADMAP, *extra)
+
+
 def resolve_video_path_for_stem(stem):
     """Look up Videos/<video_file> for a config_description via registry."""
     reg = load_registry()
@@ -255,6 +264,7 @@ BATCH / DRIVER COMMANDS
 INFO / REPORT COMMANDS
   chaos status               who's tracked, who's pending (one-screen)
   chaos report               regenerate data/status_report.xlsx (Excel)
+  chaos roadmap              regenerate docs/tracking_roadmap.md (per-clip Markdown table)
   chaos help                 this cheat sheet
   chaos <command> --help     full flag list for any subcommand
 
@@ -549,6 +559,13 @@ def build_parser():
     p_bulk.add_argument("--redo", action="store_true",
         help="re-track even clips that already have a verified tracking.csv")
 
+    p_roadmap = sub.add_parser("roadmap",
+        help="regenerate docs/tracking_roadmap.md from registry state")
+    p_roadmap.add_argument("--output", metavar="PATH", default=None,
+        help="alternate output path (default: docs/tracking_roadmap.md)")
+    p_roadmap.add_argument("--dry-run", action="store_true",
+        help="print the markdown to stdout instead of writing")
+
     p_next = sub.add_parser("next",
         help="interactive driver — process pending clips end-to-end")
     p_next.add_argument("--stem", default=None, metavar="<stem>",
@@ -562,6 +579,7 @@ def build_parser():
 HANDLERS = {
     "status":   cmd_status,
     "report":   cmd_report,
+    "roadmap":  cmd_roadmap,
     "tune":     cmd_tune,
     "track":    cmd_track,
     "fix":      cmd_fix,
