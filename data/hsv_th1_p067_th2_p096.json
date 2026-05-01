@@ -1,0 +1,22 @@
+{
+  "green": {
+    "h_min": 18,
+    "h_max": 59,
+    "s_min": 131,
+    "s_max": 255,
+    "v_min": 36,
+    "v_max": 149
+  },
+  "red": {
+    "h_min": 0,
+    "h_max": 36,
+    "s_min": 66,
+    "s_max": 255,
+    "v_min": 42,
+    "v_max": 161,
+    "h_min2": 180,
+    "h_max2": 180
+  },
+  "ring_tolerance": 30,
+  "arm_length_px": 188
+}

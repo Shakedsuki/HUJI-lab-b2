@@ -1,0 +1,17 @@
+{
+  "seeds": [
+    {
+      "frame": 0,
+      "green_xy": [
+        768,
+        377
+      ],
+      "red_xy": [
+        765,
+        540
+      ]
+    }
+  ],
+  "saved_at": "2026-05-01T23:38:48",
+  "notes": "Created by manual_correction.py"
+}

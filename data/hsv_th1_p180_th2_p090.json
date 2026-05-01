@@ -1,0 +1,26 @@
+{
+  "green": {
+    "h_min": 5,
+    "h_max": 54,
+    "s_min": 16,
+    "s_max": 156,
+    "v_min": 80,
+    "v_max": 198
+  },
+  "red": {
+    "h_min": 0,
+    "h_max": 40,
+    "s_min": 14,
+    "s_max": 151,
+    "v_min": 71,
+    "v_max": 194,
+    "h_min2": 180,
+    "h_max2": 180
+  },
+  "ring_tolerance": 30,
+  "arm_length_px": 188,
+  "_copied_from": "th1_m179_th2_p089",
+  "_copied_at": "2026-05-02",
+  "_copied_probe_pct": 73.3,
+  "_copied_probe_verdict": "OK"
+}
