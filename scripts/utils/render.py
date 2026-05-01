@@ -166,9 +166,16 @@ def render_verification_summary(n: int,
                                 n_drop: int,
                                 n_suspect: int,
                                 n_clean_suspect: int,
-                                dt_med: float) -> None:
+                                dt_med: float,
+                                extras: dict | None = None) -> None:
     """Top-of-verify summary table: total frames, dropout %, suspect %,
-    hidden-suspect %, median Δt."""
+    hidden-suspect %, median Δt.
+
+    `extras` (Brief 5+) carries optional new-check counts. Keys:
+      n_accel_suspect : int — frames flagged by Δω cap
+      n_swap_suspect  : int — frames where green/red appear to have swapped
+    Each row is appended only when its key is present and > 0; clean
+    clips don't sprout zero-rows."""
     t = Table(title="Verification — Frame Totals",
               box=rich.box.SIMPLE_HEAD)
     t.add_column("Metric", style="dim")
@@ -190,6 +197,19 @@ def render_verification_summary(n: int,
     t.add_row("hidden suspects",      hidden_str)
     t.add_row("median Δt",
               f"{dt_med * 1000:.2f} ms  ({1.0 / dt_med:.2f} fps)")
+
+    if extras:
+        n_accel = extras.get("n_accel_suspect", 0)
+        if n_accel > 0:
+            t.add_row("accel suspects |Δω| > cap",
+                      f"[red]{n_accel}[/red]  "
+                      f"[dim](unphysical Δω between consecutive frames)[/]")
+        n_swap = extras.get("n_swap_suspect", 0)
+        if n_swap > 0:
+            t.add_row("swap suspects",
+                      f"[red]{n_swap}[/red]  "
+                      f"[dim](green/red markers appear to exchange "
+                      f"positions)[/]")
     console.print(t)
 
 

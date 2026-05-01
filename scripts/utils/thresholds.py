@@ -52,3 +52,17 @@ OMEGA_CAP_HOLDING    = 100.0
 # dropout=0 and |ω| is below cap — different failure mode from the
 # ω check).
 ARM_LEN_THRESHOLD_PCT = 10.0
+
+# Maximum |Δω| between consecutive clean frames in degrees/second.
+# Physical Δω_max ≈ (g/L)·dt ≈ 27 °/s at 60fps; we use 200 to leave
+# generous headroom for close-approach dynamics. Catches a different
+# failure mode from the absolute ω cap: when the tracker latches onto
+# a slow-moving wrong object, ω is small but the transition jump
+# spikes Δω.
+DELTA_OMEGA_CAP = 200.0
+
+# Marker swap detection. If the cross-pairing distance (green→red',
+# red→green') is less than SWAP_RATIO_THRESHOLD × the same-pairing
+# distance (green→green', red→red'), the tracker has more likely
+# swapped the marker labels than continued normal motion.
+SWAP_RATIO_THRESHOLD = 0.7

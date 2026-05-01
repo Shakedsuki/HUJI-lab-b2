@@ -69,6 +69,8 @@ from render import (  # noqa: E402
 from thresholds import (  # noqa: E402
     ARM_LEN_THRESHOLD_PCT,
     OMEGA_CAP_HOLDING,
+    DELTA_OMEGA_CAP,
+    SWAP_RATIO_THRESHOLD,
 )
 
 
@@ -93,6 +95,11 @@ def parse_args():
                    help=f"pixel arm-length deviation %% above which a "
                         f"clean frame is flagged as a tracker error "
                         f"(default {ARM_LEN_THRESHOLD_PCT:.0f}%%)")
+    p.add_argument("--delta-omega-cap", type=float,
+                   default=DELTA_OMEGA_CAP,
+                   help=f"maximum |Δω| per frame in °/s; catches sudden "
+                        f"acceleration spikes that signal a tracker latch "
+                        f"(default {DELTA_OMEGA_CAP:.0f})")
     return p.parse_args()
 
 
@@ -241,13 +248,66 @@ def main():
                          & (drops == 0)
                          & ~np.isnan(arm_dev_pct))
 
+    # Δω post-hoc check (Brief 5). Catches frames where ω itself looks
+    # plausible but the per-frame change in ω is unphysical — typical
+    # signature of a tracker latch onto a slow-moving wrong object.
+    dom1 = np.empty_like(om1)
+    dom2 = np.empty_like(om2)
+    dom1[:] = np.nan
+    dom2[:] = np.nan
+    for i in range(1, n):
+        if (drops[i] == 0 and drops[i - 1] == 0
+                and not np.isnan(om1[i]) and not np.isnan(om1[i - 1])):
+            dom1[i] = abs(om1[i] - om1[i - 1])
+        if (drops[i] == 0 and drops[i - 1] == 0
+                and not np.isnan(om2[i]) and not np.isnan(om2[i - 1])):
+            dom2[i] = abs(om2[i] - om2[i - 1])
+    accel_suspect1 = dom1 > args.delta_omega_cap
+    accel_suspect2 = dom2 > args.delta_omega_cap
+    accel_suspect  = (accel_suspect1 | accel_suspect2) & (drops == 0)
+    # Treat NaN-derived comparisons as False — np.isnan(...) > X is
+    # already False but be explicit.
+    accel_suspect &= ~np.isnan(np.where(accel_suspect1, dom1, dom2))
+
+    # Marker swap detection (Brief 5). Each consecutive pair of clean
+    # frames is checked: if the cross-pairing distance is much smaller
+    # than the same-pairing, the markers have swapped labels.
+    swap_suspect = np.zeros(n, dtype=bool)
+    for i in range(1, n):
+        if drops[i] or drops[i - 1]:
+            continue
+        gx0, gy0 = x_green[i - 1], y_green[i - 1]
+        gx1, gy1 = x_green[i],     y_green[i]
+        rx0, ry0 = x_red[i - 1],   y_red[i - 1]
+        rx1, ry1 = x_red[i],       y_red[i]
+        if any(np.isnan(v) for v in (gx0, gy0, gx1, gy1,
+                                     rx0, ry0, rx1, ry1)):
+            continue
+        d_same  = (np.hypot(gx1 - gx0, gy1 - gy0)
+                 + np.hypot(rx1 - rx0, ry1 - ry0))
+        d_cross = (np.hypot(rx1 - gx0, ry1 - gy0)
+                 + np.hypot(gx1 - rx0, gy1 - ry0))
+        if d_same > 0 and (d_cross / d_same) < SWAP_RATIO_THRESHOLD:
+            swap_suspect[i] = True
+
+    # Merge new flags into the combined suspect mask. They count as
+    # hidden suspects (dropout=0 + suspect=1) for downstream consumers.
+    suspect = suspect | accel_suspect | swap_suspect
+    n_accel_suspect = int(np.sum(accel_suspect))
+    n_swap_suspect  = int(np.sum(swap_suspect))
+
     # ── Headline numbers ────────────────────────────────────────────────
     n_drop          = int(np.sum(drops == 1))
     n_suspect       = int(np.sum(suspect))
     n_drop_suspect  = int(np.sum(suspect & (drops == 1)))
     n_clean_suspect = int(np.sum(suspect & (drops == 0)))
 
-    render_verification_summary(n, n_drop, n_suspect, n_clean_suspect, dt_med)
+    render_verification_summary(
+        n, n_drop, n_suspect, n_clean_suspect, dt_med,
+        extras={
+            "n_accel_suspect": n_accel_suspect,
+            "n_swap_suspect":  n_swap_suspect,
+        })
 
     # ── Per-arm breakdown ──────────────────────────────────────────────
     clean = drops == 0
@@ -318,6 +378,7 @@ def main():
             fieldnames = list(rows[0].keys()) + [
                 "omega1_deg_s", "omega2_deg_s", "suspect",
                 "arm_length_px", "arm_dev_pct", "omega_cap_applied",
+                "delta_omega_suspect", "swap_suspect",
             ]
             w = csv.DictWriter(f, fieldnames=fieldnames)
             w.writeheader()
@@ -337,6 +398,8 @@ def main():
                     f"{OMEGA_CAP_HOLDING:.0f}"
                     if phase[i] == "holding"
                     else f"{args.omega_cap:.0f}")
+                out["delta_omega_suspect"] = 1 if accel_suspect[i] else 0
+                out["swap_suspect"]        = 1 if swap_suspect[i]  else 0
                 w.writerow(out)
         print(f"\nWrote: {out_csv}")
 

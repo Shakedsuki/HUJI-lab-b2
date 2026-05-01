@@ -1757,15 +1757,20 @@ def main():
 
     progress_interval = 500 if total_frames >= 5000 else 100
 
-    # Strict-physics window — frames at which strict mode is active. The
-    # CLI flag --strict-physics keeps it active for the whole run; each
-    # seed extends the window by STRICT_POST_SEED_FRAMES from its frame.
-    # When neither is set, strict mode is off everywhere.
+    # Strict-physics window — frames at which strict mode is active.
+    # Free-swing is ALWAYS strict (the reachability circle is the only
+    # gate that catches silent ghost latches in chaotic motion). The
+    # `strict_until` variable controls strict mode for the holding
+    # phase: --strict-physics flips it on for the whole run; each seed
+    # extends it by STRICT_POST_SEED_FRAMES frames.
     strict_until = -1
     if strict_phys:
         strict_until = total_frames + 1
     fallback_counts_g["fail-strict"] = 0
     fallback_counts_r["fail-strict"] = 0
+    print(f"Strict mode: free_swing (always)  +  {STRICT_POST_SEED_FRAMES}"
+          f" frames after each seed"
+          + ("  +  --strict-physics ALL frames" if strict_phys else ""))
 
     with open(output_csv, "w", newline="") as csvfile:
         fieldnames = ["frame", "time_s", "phase",
@@ -1885,7 +1890,13 @@ def main():
             hsv     = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
             fg_mask = motion_mask(blurred, bg_gray, BG_DIFF_THRESH)
 
-            strict_now = (frame_idx <= strict_until)
+            # Strict gate is now ALWAYS on for free_swing — the physics
+            # cap (reachability circle) is what catches silent ghost
+            # latches. Holding remains permissive because the predictor
+            # has no ω yet and the markers are stationary, so a tighter
+            # gate produces dropouts on legitimate low-motion frames.
+            # --strict-physics still forces strict on for holding too.
+            strict_now = (frame_idx <= strict_until) or (phase == "free_swing")
 
             # ── Detect green ───────────────────────────────────────────
             green_pos, fb_g = detect_green(

@@ -162,6 +162,8 @@ def read_verification_metrics(meas_dir):
     peak_o1 = peak_o2 = 0.0
     arm_devs = []
     n_arm_violations = 0
+    n_accel_suspect = 0
+    n_swap_suspect  = 0
     with open(path, "r", newline="") as f:
         for r in csv.DictReader(f):
             n_total += 1
@@ -206,6 +208,17 @@ def read_verification_metrics(meas_dir):
                             n_arm_violations += 1
             except ValueError:
                 pass
+            # Brief 5 columns — defensive (older verification.csv lacks them).
+            try:
+                if int(r.get("delta_omega_suspect") or 0) == 1:
+                    n_accel_suspect += 1
+            except ValueError:
+                pass
+            try:
+                if int(r.get("swap_suspect") or 0) == 1:
+                    n_swap_suspect += 1
+            except ValueError:
+                pass
     return {
         "n_total":               n_total,
         "n_dropout_total":       n_drop_total,
@@ -226,6 +239,8 @@ def read_verification_metrics(meas_dir):
         "arm_length_dev_mean_pct":
             round(sum(arm_devs) / len(arm_devs), 2) if arm_devs else None,
         "n_arm_violations":      n_arm_violations,
+        "n_accel_suspects":      n_accel_suspect,
+        "n_swap_suspects":       n_swap_suspect,
     }
 
 
@@ -289,6 +304,23 @@ def compute_verdict(metrics, n_suspects_post_interp):
         reasons.append(
             f"{n_arm} arm-length violation(s) "
             f"(max deviation {dev_max:.1f}%) — tracker latched on wrong object")
+
+    # Brief 5: angular-acceleration spikes — unphysical Δω between
+    # consecutive frames. Catches latches onto slow wrong objects that
+    # ω alone misses. > 3 of these tips a borderline PASS into WARN.
+    n_accel = metrics.get("n_accel_suspects", 0)
+    if n_accel > 0:
+        reasons.append(
+            f"{n_accel} frame(s) with |Δω| spike "
+            f"(unphysical acceleration)")
+
+    # Brief 5: marker-swap candidates — green/red appear to exchange
+    # positions between consecutive frames.
+    n_swap = metrics.get("n_swap_suspects", 0)
+    if n_swap > 0:
+        reasons.append(
+            f"{n_swap} frame(s) where green/red markers "
+            f"appear to have swapped labels")
 
     if reasons:
         # Severe holding-phase noise upgrades a would-be PASS to WARN.
