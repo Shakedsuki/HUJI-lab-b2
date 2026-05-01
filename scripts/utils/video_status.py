@@ -4,9 +4,9 @@ video_status.py
 Print which videos in Videos/ have been tracked vs. which are still pending.
 
 A video is "tracked" if it has an entry in data/experiments.json with
-release_frame and theta1_release populated and a csv_file pointing at an
-existing CSV. "Pending" means the file exists in Videos/ but isn't
-recorded as tracked.
+release_frame and theta1_release populated and a tracking.csv at the
+entry's measurements_dir path. "Pending" means the file exists in
+Videos/ but isn't recorded as tracked.
 
 Run on its own to see the breakdown:
 
@@ -30,7 +30,7 @@ from pathlib import Path
 ROOT             = r"C:\dev\chaos"
 VIDEOS_DIR       = os.path.join(ROOT, "Videos")
 EXPERIMENTS_FILE = os.path.join(ROOT, "data", "experiments.json")
-DATA_DIR         = os.path.join(ROOT, "data")
+MEASUREMENTS_DIR = os.path.join(ROOT, "measurements")
 
 VIDEO_EXTS = {".mov", ".mp4", ".avi", ".mkv", ".m4v"}
 
@@ -62,24 +62,46 @@ def load_registry(path=EXPERIMENTS_FILE):
         return {}
 
 
-def is_tracked(stem, registry, data_dir=DATA_DIR):
+def is_tracked(stem, registry, root=ROOT):
     """
     A video is "tracked" if its registry entry has:
       - release_frame populated
       - theta1_release populated (i.e. ICs were extracted from a real run)
-      - a csv_file that still exists on disk
+      - a measurements_dir whose tracking.csv exists on disk
     """
-    entry = registry.get(stem)
+    entry = _resolve_entry(stem, registry)
     if not entry:
         return False
     if entry.get("release_frame") is None:
         return False
     if entry.get("theta1_release") is None:
         return False
-    csv_file = entry.get("csv_file")
-    if not csv_file:
+    meas_dir = entry.get("measurements_dir")
+    if not meas_dir:
         return False
-    return os.path.exists(os.path.join(data_dir, csv_file))
+    csv_basename = entry.get("csv_file") or "tracking.csv"
+    return os.path.exists(os.path.join(root, meas_dir, csv_basename))
+
+
+def _resolve_entry(stem, registry):
+    """
+    Return the registry entry for `stem`, looking it up by either the
+    legacy registry key (e.g. DSC_0136) or the video filename stem
+    (which after migration is the config_description for most entries).
+    Returns None if no match.
+    """
+    # Direct key hit (legacy DSC-style keys).
+    if stem in registry:
+        return registry[stem]
+    # Otherwise scan: a video named th1_p044_th2_m001.mov can be
+    # registered under key DSC_0136 with video_file=th1_p044_th2_m001.mov.
+    for entry in registry.values():
+        video_file = entry.get("video_file") or ""
+        if Path(video_file).stem == stem:
+            return entry
+        if entry.get("config_description") == stem:
+            return entry
+    return None
 
 
 def status_breakdown(videos_dir=VIDEOS_DIR, registry_path=EXPERIMENTS_FILE):
@@ -115,13 +137,15 @@ def print_status(videos_dir=VIDEOS_DIR, registry_path=EXPERIMENTS_FILE):
         registry = load_registry(registry_path)
         for v in tracked:
             stem  = Path(v).stem
-            entry = registry.get(stem, {})
+            entry = _resolve_entry(stem, registry) or {}
             th1   = entry.get("theta1_release", 0)
             th2   = entry.get("theta2_release", 0)
             drop  = entry.get("dropout_rate_pct", "?")
             drop_str = f"{drop}%" if isinstance(drop, (int, float)) else str(drop)
+            meas_dir = entry.get("measurements_dir", "?")
             print(f"    [+] {os.path.basename(v):<42}  "
-                  f"th1={th1:>7.2f}  th2={th2:>7.2f}  drop={drop_str}")
+                  f"th1={th1:>7.2f}  th2={th2:>7.2f}  drop={drop_str}  "
+                  f"({meas_dir})")
     else:
         print("    (none)")
 

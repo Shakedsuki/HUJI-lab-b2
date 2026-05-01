@@ -16,24 +16,26 @@ above ~2500 °/s is almost certainly a tracking jump rather than physics.
 
 Usage
 ~~~~~
-    python scripts/processing/verify_tracking.py
-    python scripts/processing/verify_tracking.py data/long_recording_tracking.csv
-    python scripts/processing/verify_tracking.py data/long_recording_tracking.csv --omega-cap 2000
+    python scripts/processing/verify_tracking.py --stem th1_p180_th2_m179
+    python scripts/processing/verify_tracking.py measurements/th1_p180_th2_m179/tracking.csv
+    python scripts/processing/verify_tracking.py --omega-cap 2000 --stem th1_p044_th2_m001
 
 Outputs
 ~~~~~~~
-    Console: summary of suspect rows split by phase, plus the
-             cross-tab with the existing `dropout` flag.
-    output/<stem>_verification.png : θ1 / θ2 over time with suspect
-                                     frames highlighted in red. Also
-                                     overlays the apparent ω.
-    data/<stem>_verification.csv  : same rows as the input + a
-                                     `suspect` column (0/1).
+    Console:                                summary of suspect rows split
+                                            by phase, plus the cross-tab
+                                            with the existing `dropout`
+                                            flag.
+    measurements/<config>/verification.png  : θ1 / θ2 over time with suspect
+                                              frames in red, plus the apparent ω.
+    measurements/<config>/verification.csv  : same rows as the input + a
+                                              `suspect` column (0/1).
 """
 
 import csv
 import os
 import sys
+import json
 import argparse
 import numpy as np
 
@@ -48,22 +50,59 @@ except (AttributeError, OSError):
 
 
 ROOT = r"C:\dev\chaos"
-DEFAULT_CSV = os.path.join(ROOT, r"data\long_recording_tracking.csv")
+EXPERIMENTS_FILE = os.path.join(ROOT, "data", "experiments.json")
+DEFAULT_CSV = os.path.join(ROOT, "measurements", "th1_p180_th2_m179",
+                           "tracking.csv")
 
 
 def parse_args():
     p = argparse.ArgumentParser(
         description="Sanity-check a pendulum tracking CSV.")
-    p.add_argument("csv", nargs="?", default=DEFAULT_CSV,
-                   help="path to tracking CSV (default: long_recording_tracking.csv)")
+    p.add_argument("csv", nargs="?", default=None,
+                   help="path to tracking CSV (positional)")
+    p.add_argument("--stem", default=None,
+                   help="config_description, e.g. th1_p180_th2_m179. "
+                        "Resolves the CSV and output dir from "
+                        "measurements/<stem>/.")
     p.add_argument("--omega-cap", type=float, default=2500.0,
                    help="deg/s above which |Δθ/dt| is flagged as suspect "
                         "(default 2500; arm-2 chaos peaks ~1500)")
     p.add_argument("--no-plot", action="store_true",
                    help="skip the matplotlib plot")
     p.add_argument("--no-csv-out", action="store_true",
-                   help="skip writing data/<stem>_verification.csv")
+                   help="skip writing the verification.csv companion")
     return p.parse_args()
+
+
+def resolve_paths(args):
+    """
+    Returns (csv_path, output_dir, stem_label).
+    Priority: --stem > positional csv > DEFAULT_CSV.
+    output_dir is where verification.csv / verification.png are written.
+    """
+    if args.stem:
+        meas_dir = os.path.join(ROOT, "measurements", args.stem)
+        csv_path = os.path.join(meas_dir, "tracking.csv")
+        if not os.path.exists(csv_path):
+            print(f"ERROR: tracking.csv not found for stem '{args.stem}'")
+            print(f"  Expected: {csv_path}")
+            sys.exit(1)
+        return csv_path, meas_dir, args.stem
+
+    if args.csv:
+        csv_path = args.csv
+        if not os.path.isabs(csv_path):
+            csv_path = os.path.join(ROOT, csv_path)
+        # Write outputs next to the CSV — i.e., into the measurement folder.
+        output_dir = os.path.dirname(csv_path)
+        stem_label = os.path.basename(output_dir) or \
+                     os.path.splitext(os.path.basename(csv_path))[0]
+        return csv_path, output_dir, stem_label
+
+    csv_path = DEFAULT_CSV
+    output_dir = os.path.dirname(csv_path)
+    stem_label = os.path.basename(output_dir)
+    return csv_path, output_dir, stem_label
 
 
 def wrap_diff(angle_series):
@@ -86,21 +125,14 @@ def wrap_diff(angle_series):
 def main():
     args = parse_args()
 
-    csv_path = args.csv
-    if not os.path.isabs(csv_path):
-        csv_path = os.path.join(ROOT, csv_path)
+    csv_path, output_dir, stem = resolve_paths(args)
     if not os.path.exists(csv_path):
         print(f"ERROR: CSV not found: {csv_path}")
         sys.exit(1)
 
-    # Strip the trailing `_tracking` so outputs read e.g.
-    # `long_recording_verification.csv`, not `long_recording_tracking_verification.csv`.
-    stem = os.path.splitext(os.path.basename(csv_path))[0]
-    if stem.endswith("_tracking"):
-        stem = stem[: -len("_tracking")]
-
     print(f"verify_tracking.py")
-    print(f"CSV : {csv_path}")
+    print(f"CSV    : {csv_path}")
+    print(f"Folder : {output_dir}")
     print(f"|ω| threshold: {args.omega_cap:.0f} deg/s")
     print()
 
@@ -181,7 +213,8 @@ def main():
 
     # ── Optional: write CSV with a `suspect` column ────────────────────
     if not args.no_csv_out:
-        out_csv = os.path.join(ROOT, "data", f"{stem}_verification.csv")
+        os.makedirs(output_dir, exist_ok=True)
+        out_csv = os.path.join(output_dir, "verification.csv")
         with open(out_csv, "w", newline="") as f:
             fieldnames = list(rows[0].keys()) + [
                 "omega1_deg_s", "omega2_deg_s", "suspect"]
@@ -251,8 +284,8 @@ def main():
                      f"({100*n_clean_suspect/n:.2f}%)")
         plt.tight_layout()
 
-        out_png = os.path.join(ROOT, "output", f"{stem}_verification.png")
-        os.makedirs(os.path.dirname(out_png), exist_ok=True)
+        os.makedirs(output_dir, exist_ok=True)
+        out_png = os.path.join(output_dir, "verification.png")
         plt.savefig(out_png, dpi=140)
         print(f"Plot: {out_png}")
 

@@ -14,8 +14,14 @@ Parameter strip along the bottom of the right panel shows:
 Output: 1920×720 MP4 at source framerate.
 
 Usage:
+  # Mode 1 — measurement folder (preferred for pipeline use):
+  python scripts/analysis/combined_video.py --stem th1_p044_th2_m001
+
+  # Mode 2 — explicit CSV + video:
+  python scripts/analysis/combined_video.py measurements/th1_p044_th2_m001/tracking.csv Videos/th1_p044_th2_m001.mov
+
+  # Mode 3 — defaults to long_recording:
   python scripts/analysis/combined_video.py
-  python scripts/analysis/combined_video.py path/to/tracking.csv path/to/video.mov
 """
 
 import sys
@@ -27,6 +33,8 @@ except (AttributeError, OSError):
     pass
 import os
 import csv
+import json
+import argparse
 import numpy as np
 import cv2
 import matplotlib
@@ -40,10 +48,89 @@ from scipy.signal import savgol_filter
 # CONFIG
 # ─────────────────────────────────────────────
 
-DEFAULT_CSV   = r"C:\dev\chaos\data\long_recording_tracking.csv"
-DEFAULT_VIDEO = r"C:\dev\chaos\Videos\long_recording.mov"
-OUTPUT_DIR    = r"C:\dev\chaos\data\figures"
-OUTPUT_MP4    = r"C:\dev\chaos\data\figures\long_recording_combined.mp4"
+ROOT          = r"C:\dev\chaos"
+EXPERIMENTS_FILE = os.path.join(ROOT, "data", "experiments.json")
+DEFAULT_CSV   = os.path.join(ROOT, "measurements", "th1_p180_th2_m179",
+                             "tracking.csv")
+DEFAULT_VIDEO = os.path.join(ROOT, "Videos", "long_recording.mov")
+LEGACY_OUT    = os.path.join(ROOT, "data", "figures")
+
+
+def parse_args():
+    p = argparse.ArgumentParser(
+        description="Render side-by-side video + phase panels MP4.")
+    p.add_argument("csv", nargs="?", default=None,
+                   help="Path to tracking CSV (positional, optional).")
+    p.add_argument("video", nargs="?", default=None,
+                   help="Path to source video (positional, optional).")
+    p.add_argument("--stem", default=None,
+                   help="config_description, e.g. th1_p044_th2_m001. "
+                        "Resolves CSV, video (via experiments.json), and "
+                        "output dir from measurements/.")
+    return p.parse_args()
+
+
+def video_for_stem(stem):
+    """
+    Look up the source .mov for a given config_description by scanning
+    experiments.json. Returns an absolute path, or exits with an error
+    if no entry matches the stem.
+    """
+    if not os.path.exists(EXPERIMENTS_FILE):
+        print(f"ERROR: registry missing: {EXPERIMENTS_FILE}")
+        sys.exit(1)
+    with open(EXPERIMENTS_FILE, "r", encoding="utf-8") as f:
+        reg = json.load(f)
+    for entry in reg.values():
+        if entry.get("config_description") == stem:
+            video_file = entry.get("video_file")
+            if not video_file:
+                continue
+            return os.path.join(ROOT, "Videos", video_file)
+    print(f"ERROR: no registry entry has config_description '{stem}'.")
+    print(f"       Add an entry to {EXPERIMENTS_FILE} or supply video "
+          f"path positionally.")
+    sys.exit(1)
+
+
+def resolve_paths(args):
+    """
+    Returns (csv_path, video_path, output_mp4, output_dir).
+    --stem mode is non-interactive and writes combined.mp4 directly into
+    the measurement folder.
+    """
+    if args.stem:
+        meas_dir = os.path.join(ROOT, "measurements", args.stem)
+        csv_path = os.path.join(meas_dir, "tracking.csv")
+        if not os.path.exists(csv_path):
+            print(f"ERROR: tracking.csv not found for stem '{args.stem}'")
+            print(f"  Expected: {csv_path}")
+            sys.exit(1)
+        video_path = video_for_stem(args.stem)
+        return (csv_path, video_path,
+                os.path.join(meas_dir, "combined.mp4"), meas_dir)
+
+    csv_path = args.csv if args.csv else DEFAULT_CSV
+    if not os.path.isabs(csv_path):
+        csv_path = os.path.join(ROOT, csv_path)
+
+    video_path = args.video if args.video else DEFAULT_VIDEO
+    if not os.path.isabs(video_path):
+        video_path = os.path.join(ROOT, video_path)
+
+    # When the CSV lives inside a measurements folder, drop the output
+    # next to it as combined.mp4. Otherwise fall back to the legacy
+    # data/figures naming so existing flows still work.
+    csv_dir = os.path.dirname(csv_path)
+    if os.path.basename(os.path.dirname(csv_dir)) == "measurements":
+        return (csv_path, video_path,
+                os.path.join(csv_dir, "combined.mp4"), csv_dir)
+    stem = os.path.splitext(os.path.basename(csv_path))[0]
+    if stem.endswith("_tracking"):
+        stem = stem[:-len("_tracking")]
+    return (csv_path, video_path,
+            os.path.join(LEGACY_OUT, f"{stem}_combined.mp4"),
+            LEGACY_OUT)
 
 PANEL_W   = 960     # width of each half panel
 PANEL_H   = 720     # height of both panels
@@ -302,17 +389,14 @@ def make_left_panel(frame, phase, t, th1, th2, om1, om2,
 # ─────────────────────────────────────────────
 
 def main():
-    args = sys.argv[1:]
-    csv_path   = args[0] if len(args) > 0 else DEFAULT_CSV
-    video_path = args[1] if len(args) > 1 else DEFAULT_VIDEO
+    args = parse_args()
+    csv_path, video_path, output_mp4, output_dir = resolve_paths(args)
 
     csv_ext = os.path.splitext(csv_path)[1].lower()
     if csv_ext != ".csv":
         print(f"ERROR: first argument must be a tracking CSV, got '{csv_path}' "
               f"(extension '{csv_ext}').")
-        print("       Usage:")
-        print(f"         python {os.path.basename(__file__)}                                                # defaults")
-        print(f"         python {os.path.basename(__file__)} data/long_recording_tracking.csv Videos/long_recording.mov")
+        print(f"       Try:  python {os.path.basename(__file__)} --stem <config_description>")
         sys.exit(2)
 
     video_ext = os.path.splitext(video_path)[1].lower()
@@ -320,8 +404,9 @@ def main():
         print(f"WARN: second argument doesn't look like a video ('{video_path}'). "
               f"Continuing anyway.")
 
-    print(f"CSV:   {csv_path}")
-    print(f"Video: {video_path}")
+    print(f"CSV    : {csv_path}")
+    print(f"Video  : {video_path}")
+    print(f"Output : {output_mp4}")
 
     # ── Load data ──
     print("Loading CSV ...")
@@ -369,13 +454,13 @@ def main():
     video_fps = cap.get(cv2.CAP_PROP_FPS) or FPS_OUT
 
     # ── Set up writer ──
-    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    os.makedirs(output_dir, exist_ok=True)
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    writer = cv2.VideoWriter(OUTPUT_MP4, fourcc, video_fps,
+    writer = cv2.VideoWriter(output_mp4, fourcc, video_fps,
                              (PANEL_W * 2, PANEL_H))
 
     # ── Render loop ──
-    print(f"Rendering {N} frames → {OUTPUT_MP4}")
+    print(f"Rendering {N} frames → {output_mp4}")
     print("(This will take several minutes)\n")
 
     step = max(1, N // 40)   # progress update every 2.5%
@@ -430,7 +515,7 @@ def main():
     writer.release()
     plt.close(fig)
 
-    print(f"\n\nDone. Saved to: {OUTPUT_MP4}")
+    print(f"\n\nDone. Saved to: {output_mp4}")
 
 
 if __name__ == "__main__":

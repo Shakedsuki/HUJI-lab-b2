@@ -12,11 +12,17 @@ The trajectory builds up frame by frame, with a bright dot marking the
 current state and a fading trail showing recent history.
 
 Usage:
-  python scripts/analysis/phase_animation.py
-  python scripts/analysis/phase_animation.py path/to/tracking.csv
+  # Mode 1 — measurement folder (preferred for pipeline use):
+  python scripts/analysis/phase_animation.py --stem th1_p044_th2_m001
 
-Optional: save to MP4 (requires ffmpeg):
-  python scripts/analysis/phase_animation.py --save
+  # Mode 2 — explicit CSV path:
+  python scripts/analysis/phase_animation.py measurements/th1_p044_th2_m001/tracking.csv
+
+  # Mode 3 — interactive plt.show() (no args):
+  python scripts/analysis/phase_animation.py
+
+Save MP4 (requires ffmpeg) — implicit when --stem is used; pass --save
+to force when in mode 2.
 """
 
 import sys
@@ -28,6 +34,7 @@ except (AttributeError, OSError):
     pass
 import os
 import csv
+import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
@@ -38,9 +45,10 @@ from scipy.signal import savgol_filter
 # CONFIG
 # ─────────────────────────────────────────────
 
-DEFAULT_CSV  = r"C:\dev\chaos\data\long_recording_tracking.csv"
-OUTPUT_DIR   = r"C:\dev\chaos\data\figures"
-OUTPUT_MP4   = r"C:\dev\chaos\data\figures\long_recording_phase_animation.mp4"
+ROOT         = r"C:\dev\chaos"
+DEFAULT_CSV  = os.path.join(ROOT, "measurements", "th1_p180_th2_m179",
+                            "tracking.csv")
+LEGACY_OUT   = os.path.join(ROOT, "data", "figures")
 
 SG_WINDOW    = 11
 SG_POLY      = 3
@@ -48,7 +56,40 @@ SG_POLY      = 3
 INTERVAL_MS  = 16     # ~60fps playback (matches 59.94fps source)
 SKIP         = 1      # process every Nth frame (1 = all frames, 2 = half speed)
 
-SAVE_MP4     = "--save" in sys.argv
+
+def parse_args():
+    p = argparse.ArgumentParser(
+        description="Animated phase-space visualisation.")
+    p.add_argument("csv", nargs="?", default=None,
+                   help="Path to tracking CSV (positional, optional).")
+    p.add_argument("--stem", default=None,
+                   help="config_description, e.g. th1_p044_th2_m001. "
+                        "Resolves CSV and output dir from measurements/.")
+    p.add_argument("--save", action="store_true",
+                   help="Save MP4 instead of plt.show().")
+    return p.parse_args()
+
+
+def resolve_paths(args):
+    """Returns (csv_path, output_dir, stem_label, force_save)."""
+    if args.stem:
+        meas_dir = os.path.join(ROOT, "measurements", args.stem)
+        csv_path = os.path.join(meas_dir, "tracking.csv")
+        if not os.path.exists(csv_path):
+            print(f"ERROR: tracking.csv not found for stem '{args.stem}'")
+            print(f"  Expected: {csv_path}")
+            sys.exit(1)
+        return csv_path, meas_dir, args.stem, True
+
+    if args.csv:
+        csv_path = args.csv if os.path.isabs(args.csv) \
+                   else os.path.join(ROOT, args.csv)
+        output_dir = os.path.dirname(csv_path) or LEGACY_OUT
+        stem_label = os.path.basename(output_dir) or \
+                     os.path.splitext(os.path.basename(csv_path))[0]
+        return csv_path, output_dir, stem_label, args.save
+
+    return DEFAULT_CSV, LEGACY_OUT, "long_recording", args.save
 
 # ── Canonical color scheme ──────────────────────────────────────────────
 COLOR_CONFIG = 'tab:blue'    # configuration space (θ₁ vs θ₂)
@@ -103,7 +144,7 @@ def break_arrays(arrays, wrap_mask):
 # ANIMATION
 # ─────────────────────────────────────────────
 
-def animate(path):
+def animate(path, output_dir, stem_label, force_save):
     print(f"Loading {path} ...")
     t, th1, th2, om1, om2 = load(path)
     N = len(t)
@@ -212,17 +253,25 @@ def animate(path):
         blit=False,
     )
 
-    if SAVE_MP4:
-        os.makedirs(OUTPUT_DIR, exist_ok=True)
+    if force_save:
+        os.makedirs(output_dir, exist_ok=True)
+        # Use canonical filename when output_dir is a measurements/ folder;
+        # otherwise (legacy --save with a positional CSV) keep the older
+        # <stem>_phase_animation.mp4 naming.
+        if os.path.basename(os.path.dirname(output_dir)) == "measurements":
+            output_mp4 = os.path.join(output_dir, "phase_animation.mp4")
+        else:
+            output_mp4 = os.path.join(output_dir,
+                                      f"{stem_label}_phase_animation.mp4")
         writer = animation.FFMpegWriter(fps=int(1000 / INTERVAL_MS),
                                         bitrate=2000)
-        print(f"Saving {N} frames to {OUTPUT_MP4} ...")
+        print(f"Saving {N} frames to {output_mp4} ...")
         print("This may take a few minutes.")
 
         # Progress callback — print every 5%
         step = max(1, N // 20)
 
-        with writer.saving(fig, OUTPUT_MP4, dpi=150):
+        with writer.saving(fig, output_mp4, dpi=150):
             for i in range(N):
                 update(i)
                 writer.grab_frame()
@@ -232,7 +281,7 @@ def animate(path):
                     print(f"  [{bar}] {pct:3d}%  frame {i+1}/{N}",
                           end='\r', flush=True)
 
-        print(f"\nSaved to: {OUTPUT_MP4}")
+        print(f"\nSaved to: {output_mp4}")
     else:
         plt.show()
 
@@ -242,8 +291,8 @@ def animate(path):
 # ─────────────────────────────────────────────
 
 if __name__ == "__main__":
-    args = [a for a in sys.argv[1:] if not a.startswith("--")]
-    csv_path = args[0] if args else DEFAULT_CSV
+    args = parse_args()
+    csv_path, output_dir, stem_label, force_save = resolve_paths(args)
 
     if not os.path.exists(csv_path):
         print(f"ERROR: CSV not found: {csv_path}")
@@ -253,7 +302,7 @@ if __name__ == "__main__":
     if ext != ".csv":
         print(f"ERROR: expected a tracking CSV, got '{csv_path}' (extension '{ext}').")
         print("       This script reads the per-frame angle CSV, not videos.")
-        print(f"       Try:  python {os.path.basename(__file__)}    (uses default CSV)")
+        print(f"       Try:  python {os.path.basename(__file__)} --stem <config_description>")
         sys.exit(2)
 
-    animate(csv_path)
+    animate(csv_path, output_dir, stem_label, force_save)

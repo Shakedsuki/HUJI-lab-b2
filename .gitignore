@@ -19,6 +19,24 @@ output/vlcsnap-*.png
 # Large MP4s, regenerable from CSV
 data/figures/*.mp4
 
+# ── Per-measurement outputs ──────────────────────
+# Large/regenerable artefacts produced inside measurements/<config>/.
+# Small human-readable artefacts (tracking.csv, the PNG figures) stay
+# tracked so the repo always shows what's been measured at a glance.
+measurements/*/tracking.csv
+measurements/*/verification.csv
+measurements/*/debug.mp4
+measurements/*/phase_3d_rotation.mp4
+measurements/*/phase_animation.mp4
+measurements/*/combined.mp4
+
+# Migration / bulk-tracking sidecar logs
+data/migration_log.txt
+data/bulk_tracking_log.json
+
+# Tracking-CSV backups created by interpolate_suspects.py
+measurements/*/tracking.csv.bak
+
 # ── Claude worktrees ─────────────────────────────
 .claude/
 

@@ -14,9 +14,14 @@ Produces a 6-panel figure:
 Angular velocities computed via Savitzky-Golay derivative (window=11, poly=3).
 
 Usage:
+  # Mode 1 — measurement folder (preferred for pipeline use):
+  python scripts/analysis/phase_panels.py --stem th1_p044_th2_m001
+
+  # Mode 2 — explicit CSV path:
+  python scripts/analysis/phase_panels.py measurements/th1_p044_th2_m001/tracking.csv
+
+  # Mode 3 — interactive plt.show() (no args):
   python scripts/analysis/phase_panels.py
-  Optionally pass a CSV path as argument:
-  python scripts/analysis/phase_panels.py C:/dev/chaos/data/long_recording_tracking.csv
 """
 
 import sys
@@ -28,6 +33,7 @@ except (AttributeError, OSError):
     pass
 import os
 import csv
+import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
@@ -38,8 +44,45 @@ from scipy.signal import savgol_filter
 # CONFIG
 # ─────────────────────────────────────────────
 
-DEFAULT_CSV = r"C:\dev\chaos\data\long_recording_tracking.csv"
-OUTPUT_DIR  = r"C:\dev\chaos\data\figures"
+ROOT        = r"C:\dev\chaos"
+DEFAULT_CSV = os.path.join(ROOT, "measurements", "th1_p180_th2_m179",
+                           "tracking.csv")
+LEGACY_OUT  = os.path.join(ROOT, "data", "figures")
+
+
+def parse_args():
+    p = argparse.ArgumentParser(
+        description="6-panel physics sanity figure.")
+    p.add_argument("csv", nargs="?", default=None,
+                   help="Path to tracking CSV (positional, optional).")
+    p.add_argument("--stem", default=None,
+                   help="config_description, e.g. th1_p044_th2_m001. "
+                        "Resolves CSV and output dir from measurements/.")
+    p.add_argument("--save", action="store_true",
+                   help="Save PNG instead of plt.show().")
+    return p.parse_args()
+
+
+def resolve_paths(args):
+    """Returns (csv_path, output_dir, stem_label, force_save)."""
+    if args.stem:
+        meas_dir = os.path.join(ROOT, "measurements", args.stem)
+        csv_path = os.path.join(meas_dir, "tracking.csv")
+        if not os.path.exists(csv_path):
+            print(f"ERROR: tracking.csv not found for stem '{args.stem}'")
+            print(f"  Expected: {csv_path}")
+            sys.exit(1)
+        return csv_path, meas_dir, args.stem, True
+
+    if args.csv:
+        csv_path = args.csv if os.path.isabs(args.csv) \
+                   else os.path.join(ROOT, args.csv)
+        output_dir = os.path.dirname(csv_path) or LEGACY_OUT
+        stem_label = os.path.basename(output_dir) or \
+                     os.path.splitext(os.path.basename(csv_path))[0]
+        return csv_path, output_dir, stem_label, args.save
+
+    return DEFAULT_CSV, LEGACY_OUT, "long_recording", args.save
 
 # Savitzky-Golay parameters
 SG_WINDOW = 11   # must be odd
@@ -169,7 +212,7 @@ def poincare_crossings(th1, om1):
 # PLOT
 # ─────────────────────────────────────────────
 
-def make_figure(t, th1, th2, om1, om2, label, out_path):
+def make_figure(t, th1, th2, om1, om2, label, out_path, force_save):
     fig = plt.figure(figsize=(16, 10))
 
     gs = gridspec.GridSpec(2, 3, figure=fig,
@@ -262,11 +305,13 @@ def make_figure(t, th1, th2, om1, om2, label, out_path):
                  fontsize=11, color='gray')
         ax6.set_title('Poincaré return map')
 
-    # ── Save ────────────────────────────────────
-    os.makedirs(os.path.dirname(out_path), exist_ok=True)
-    plt.savefig(out_path, dpi=150, bbox_inches='tight')
-    print(f"Figure saved to: {out_path}")
-    plt.show()
+    # ── Save / show ─────────────────────────────
+    if force_save:
+        os.makedirs(os.path.dirname(out_path), exist_ok=True)
+        plt.savefig(out_path, dpi=150, bbox_inches='tight')
+        print(f"Figure saved to: {out_path}")
+    else:
+        plt.show()
 
 
 # ─────────────────────────────────────────────
@@ -274,7 +319,8 @@ def make_figure(t, th1, th2, om1, om2, label, out_path):
 # ─────────────────────────────────────────────
 
 def main():
-    csv_path = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_CSV
+    args = parse_args()
+    csv_path, output_dir, stem, force_save = resolve_paths(args)
 
     if not os.path.exists(csv_path):
         print(f"ERROR: CSV not found: {csv_path}")
@@ -284,9 +330,7 @@ def main():
     if ext != ".csv":
         print(f"ERROR: expected a tracking CSV, got '{csv_path}' (extension '{ext}').")
         print("       This script reads the per-frame angle CSV, not videos.")
-        print("       Try:")
-        print(f"         python {os.path.basename(__file__)}                                # default CSV")
-        print(f"         python {os.path.basename(__file__)} data/long_recording_tracking.csv")
+        print(f"       Try:  python {os.path.basename(__file__)} --stem <config_description>")
         sys.exit(2)
 
     print(f"Loading {csv_path} ...")
@@ -300,10 +344,16 @@ def main():
     print(f"  ω₁: [{om1.min():.0f}, {om1.max():.0f}] deg/s")
     print(f"  ω₂: [{om2.min():.0f}, {om2.max():.0f}] deg/s")
 
-    label    = os.path.basename(csv_path)
-    out_path = os.path.join(OUTPUT_DIR, label.replace('.csv', '_sanity.png'))
+    # Canonical filename when output_dir is a measurements/ folder;
+    # otherwise keep the legacy <stem>_sanity.png naming.
+    if force_save and (args.stem or
+                       os.path.basename(os.path.dirname(output_dir))
+                       == "measurements"):
+        out_path = os.path.join(output_dir, "phase_panels.png")
+    else:
+        out_path = os.path.join(output_dir, f"{stem}_sanity.png")
 
-    make_figure(t, th1, th2, om1, om2, label, out_path)
+    make_figure(t, th1, th2, om1, om2, stem, out_path, force_save)
 
 
 if __name__ == "__main__":

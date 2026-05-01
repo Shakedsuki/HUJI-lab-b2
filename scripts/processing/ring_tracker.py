@@ -31,11 +31,14 @@ Why this works for our specific rig:
 
 I/O:
     Reads:   data/hsv_values.json,  data/experiments.json
-    Writes:  data/<stem>_tracking.csv     (frame, time_s, phase, x_green,
-                                            y_green, x_red, y_red, theta1_deg,
-                                            theta2_deg, dropout)
-             output/<stem>_debug.mp4      (annotated debug video)
-             data/experiments.json        (entry updated, tracker='ring')
+    Writes:  measurements/<config_description>/tracking.csv
+                                            (frame, time_s, phase, x_green,
+                                             y_green, x_red, y_red, theta1_deg,
+                                             theta2_deg, dropout)
+             measurements/<config_description>/debug.mp4
+                                            (annotated debug video)
+             data/experiments.json          (entry updated, tracker='ring',
+                                             measurements_dir set)
 
 Usage:
     python scripts/processing/ring_tracker.py                            # opens a file picker rooted at Videos/
@@ -82,8 +85,38 @@ from video_status import (         # noqa: E402  (after sys.path tweak)
 ROOT             = r"C:\dev\chaos"
 VIDEOS_DIR       = os.path.join(ROOT, "Videos")
 DATA_DIR         = os.path.join(ROOT, "data")
+MEASUREMENTS_DIR = os.path.join(ROOT, "measurements")
 EXPERIMENTS_FILE = os.path.join(DATA_DIR, "experiments.json")
 GLOBAL_HSV_FILE  = os.path.join(DATA_DIR, "hsv_values.json")
+
+
+def measurements_dir_for(config_description):
+    """
+    Absolute path to the measurements folder for a given
+    config_description. Creates the folder if it doesn't exist.
+    Example: measurements_dir_for("th1_p044_th2_m001")
+             -> "C:\\dev\\chaos\\measurements\\th1_p044_th2_m001"
+    """
+    d = os.path.join(MEASUREMENTS_DIR, config_description)
+    os.makedirs(d, exist_ok=True)
+    return d
+
+
+def derive_config_description(stem, video_path, existing_entry):
+    """
+    Resolve the canonical config_description for a tracking run.
+    Precedence:
+      1. existing_entry["config_description"] when non-empty
+      2. video filename stem when it matches th1_[pm]NNN_th2_[pm]NNN[_rN]
+      3. fall back to the stem itself (so we always have a folder name)
+    """
+    if existing_entry:
+        cd = existing_entry.get("config_description")
+        if cd:
+            return cd
+    if FILENAME_ANGLE_PATTERN.search(stem):
+        return stem
+    return stem
 
 
 def hsv_file_for_video(video_path):
@@ -194,7 +227,7 @@ def save_registry(reg):
 
 
 def update_registry(reg, key, video_file, init_frame, release_frame,
-                    csv_file, ring_tolerance,
+                    config_description, ring_tolerance,
                     th1_rel, th2_rel, om1_rel, om2_rel,
                     n_free, dropout_pct, duration_s,
                     video_fps, existing_entry=None):
@@ -204,34 +237,41 @@ def update_registry(reg, key, video_file, init_frame, release_frame,
     energy_proxy = round(float(om1r**2 + om2r**2
                                - 2 * np.cos(th1r) - np.cos(th2r)), 4)
 
-    entry = {
-        "video_file":       os.path.basename(video_file),
-        "init_frame":       init_frame,
-        "release_frame":    release_frame,
-        "green_roi":        None,
-        "red_roi":          None,
-        "tracker":          "ring",
-        "arm_length_px":    ARM_LENGTH_PX,
-        "ring_tolerance":   ring_tolerance,
-        "theta1_release":   round(th1_rel, 4),
-        "theta2_release":   round(th2_rel, 4),
-        "omega1_release":   round(om1_rel, 4),
-        "omega2_release":   round(om2_rel, 4),
-        "energy_proxy":     energy_proxy,
-        "t0_offset_s":      t0_offset_s,
-        "duration_s":       round(duration_s, 3),
-        "n_free_frames":    n_free,
-        "dropout_rate_pct": round(dropout_pct, 2),
-        "arm_length_cm":    ARM_LENGTH_CM,
-        "pivot_px":         list(PIVOT),
-        "scale_cm_per_px":  SCALE_CM_PER_PX,
-        "csv_file":         os.path.basename(csv_file),
-        "config_description": (existing_entry or {}).get("config_description", ""),
-        "tracking_quality":   (existing_entry or {}).get("tracking_quality", "good"),
-        "notes":              (existing_entry or {}).get("notes", ""),
-    }
-    reg[key] = entry
-    return entry
+    # Preserve any caller-supplied fields that aren't computed here
+    # (theta1_measured, theta2_measured, repeat_number, video_label,
+    # tag_frame, green_click_px, red_click_px). They're set by other
+    # tools (ring_picker, manual editing) and shouldn't be lost.
+    base = dict(existing_entry) if existing_entry else {}
+
+    base.update({
+        "video_file":         os.path.basename(video_file),
+        "init_frame":         init_frame,
+        "release_frame":      release_frame,
+        "green_roi":          None,
+        "red_roi":            None,
+        "tracker":            "ring",
+        "arm_length_px":      ARM_LENGTH_PX,
+        "ring_tolerance":     ring_tolerance,
+        "theta1_release":     round(th1_rel, 4),
+        "theta2_release":     round(th2_rel, 4),
+        "omega1_release":     round(om1_rel, 4),
+        "omega2_release":     round(om2_rel, 4),
+        "energy_proxy":       energy_proxy,
+        "t0_offset_s":        t0_offset_s,
+        "duration_s":         round(duration_s, 3),
+        "n_free_frames":      n_free,
+        "dropout_rate_pct":   round(dropout_pct, 2),
+        "arm_length_cm":      ARM_LENGTH_CM,
+        "pivot_px":           list(PIVOT),
+        "scale_cm_per_px":    SCALE_CM_PER_PX,
+        "csv_file":           "tracking.csv",
+        "measurements_dir":   f"measurements/{config_description}",
+        "config_description": config_description,
+        "tracking_quality":   base.get("tracking_quality", "good"),
+        "notes":              base.get("notes", ""),
+    })
+    reg[key] = base
+    return base
 
 
 # ─────────────────────────────────────────────
@@ -1032,17 +1072,26 @@ def main():
         print(f"ERROR: video not found: {video_path}")
         return
 
-    stem       = os.path.splitext(os.path.basename(video_path))[0]
-    output_csv = os.path.join(ROOT, "data",   f"{stem}_tracking.csv")
-    debug_mp4  = os.path.join(ROOT, "output", f"{stem}_debug.mp4")
+    stem = os.path.splitext(os.path.basename(video_path))[0]
+
+    # Resolve config_description before computing output paths so all
+    # outputs land in the canonical measurements/<config> folder.
+    reg_preview     = load_registry()
+    existing_preview = reg_preview.get(stem)
+    config_desc     = derive_config_description(stem, video_path,
+                                                existing_preview)
+    meas_dir        = measurements_dir_for(config_desc)
+    output_csv      = os.path.join(meas_dir, "tracking.csv")
+    debug_mp4       = os.path.join(meas_dir, "debug.mp4")
 
     print("ring_tracker.py")
-    print(f"Video : {video_path}")
-    print(f"CSV   : {output_csv}")
+    print(f"Video  : {video_path}")
+    print(f"Folder : {meas_dir}")
+    print(f"CSV    : {output_csv}")
 
     # ── Already tracked? Confirm re-run unless --force was passed. ──
     reg = load_registry()
-    if is_tracked(stem, reg) and not force_run:
+    if is_tracked(stem, reg, root=ROOT) and not force_run:
         e = reg[stem]
         print(f"\n[+] '{stem}' is already tracked")
         print(f"    init_frame    = {e.get('init_frame')}")
@@ -1368,7 +1417,7 @@ def main():
     update_registry(
         reg, stem, video_path,
         init_frame, release_frame,
-        output_csv, ring_tolerance,
+        config_desc, ring_tolerance,
         th1r, th2r, om1r, om2r,
         n_free, d_pct, dur,
         video_fps, existing_entry=reg.get(stem),
