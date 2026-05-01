@@ -9,6 +9,7 @@ Subcommands
   status            list tracked vs pending; one-line summary
   report            regenerate data/status_report.xlsx
   roadmap           regenerate docs/tracking_roadmap.md (per-clip dropout/quality table)
+  hsv-probe         probe every existing HSV file vs every HSV-ABORT clip
   tune <stem>       launch hsv_tuner.py on a clip's video
   track <stem>      standard track + verify + interpolate + verdict
   fix <stem>        interactive manual-seed correction + re-track
@@ -66,6 +67,7 @@ SCRIPT_BULK       = os.path.join(ROOT, "scripts", "utils", "bulk_track.py")
 SCRIPT_STATUS     = os.path.join(ROOT, "scripts", "utils", "video_status.py")
 SCRIPT_REPORT     = os.path.join(ROOT, "scripts", "utils", "generate_status_report.py")
 SCRIPT_ROADMAP    = os.path.join(ROOT, "scripts", "utils", "generate_roadmap.py")
+SCRIPT_HSV_PROBE  = os.path.join(ROOT, "scripts", "utils", "hsv_probe_matrix.py")
 
 VIDEO_EXTS = {".mov", ".mp4", ".avi", ".mkv", ".m4v"}
 
@@ -226,6 +228,14 @@ def cmd_roadmap(args):
     return run_script(SCRIPT_ROADMAP, *extra)
 
 
+def cmd_hsv_probe(args):
+    extra = []
+    if args.filter:    extra += ["--filter", args.filter]
+    if args.apply:     extra.append("--apply")
+    if args.warn_also: extra.append("--warn-also")
+    return run_script(SCRIPT_HSV_PROBE, *extra)
+
+
 def resolve_video_path_for_stem(stem):
     """Look up Videos/<video_file> for a config_description via registry."""
     reg = load_registry()
@@ -265,6 +275,8 @@ INFO / REPORT COMMANDS
   chaos status               who's tracked, who's pending (one-screen)
   chaos report               regenerate data/status_report.xlsx (Excel)
   chaos roadmap              regenerate docs/tracking_roadmap.md (per-clip Markdown table)
+  chaos hsv-probe            probe every existing HSV file vs every HSV-ABORT clip
+                             (--apply: copy the best OK match per clip)
   chaos help                 this cheat sheet
   chaos <command> --help     full flag list for any subcommand
 
@@ -566,6 +578,15 @@ def build_parser():
     p_roadmap.add_argument("--dry-run", action="store_true",
         help="print the markdown to stdout instead of writing")
 
+    p_hsv_probe = sub.add_parser("hsv-probe",
+        help="probe every existing HSV file against every HSV-ABORT clip")
+    p_hsv_probe.add_argument("--filter", metavar="SUBSTR",
+        help="only probe clips whose stem contains SUBSTR")
+    p_hsv_probe.add_argument("--apply", action="store_true",
+        help="copy the best-scoring OK match into hsv_<stem>.json per clip")
+    p_hsv_probe.add_argument("--warn-also", action="store_true",
+        help="also recommend WARN-band matches (default: OK only)")
+
     p_next = sub.add_parser("next",
         help="interactive driver — process pending clips end-to-end")
     p_next.add_argument("--stem", default=None, metavar="<stem>",
@@ -577,10 +598,11 @@ def build_parser():
 
 
 HANDLERS = {
-    "status":   cmd_status,
-    "report":   cmd_report,
-    "roadmap":  cmd_roadmap,
-    "tune":     cmd_tune,
+    "status":     cmd_status,
+    "report":     cmd_report,
+    "roadmap":    cmd_roadmap,
+    "hsv-probe":  cmd_hsv_probe,
+    "tune":       cmd_tune,
     "track":    cmd_track,
     "fix":      cmd_fix,
     "override": cmd_override,
