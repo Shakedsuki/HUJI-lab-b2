@@ -108,8 +108,8 @@ are there for when you need surgical control.
 
 | Key | Action |
 |---|---|
-| `LEFT-CLICK` | Sample one pixel under the cursor |
-| `SHIFT + LEFT-DRAG` | Region sample — drag a circle around the marker; tool keeps pixels matching the centre's HSV |
+| `LEFT-CLICK` | Sample a circle of the current radius around the cursor; HSV-similarity filter keeps only matching pixels |
+| `[` / `]` | Shrink / grow the click sample radius (5 → 60 px in steps of 5) |
 | `G` / `R` | Switch active marker (GREEN ↔ RED) |
 | `M` | Cycle overlay level: FULL → MINIMAL → CLEAN |
 | `Z` | Toggle zoom loupe (top-left corner, follows cursor) |
@@ -121,11 +121,14 @@ are there for when you need surgical control.
 | `S` | Save → writes `data/hsv_<clip stem>.json` |
 | `Q` / `ESC` | Quit |
 
-**Best practice**: sample 6–12 pixels per marker, **across 3–4 frames**
-covering different lighting (well-lit holding frame, motion-blurred
-chaotic frame, late-clip settling). Diversity > redundancy. The
-shift-drag region sample shortcut captures spatial variation in one
-gesture.
+**How sampling works**: hover the cursor over a marker — a circle of
+the current click radius previews what would be sampled. Click. The
+tool keeps every pixel in the circle whose HSV is close to the centre
+pixel's, so the radius can be generous (default 25 px) without
+polluting the bucket with background. The script auto-advances to the
+next of 4 reference frames spread across the clip after each
+successful sample, so a single G/click → R/click pass naturally
+covers lighting variation.
 
 ## Manual fix-up — keyboard reference
 

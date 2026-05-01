@@ -29,16 +29,19 @@ Usage:
   python scripts/processing/hsv_tuner.py Videos/long_recording.mov --global    # force save to global
 
 Keys
-  marker     : G green   R red   LEFT-CLICK sample 1 px   SHIFT-DRAG sample circle region
+  marker     : G green   R red   LEFT-CLICK sample circle around cursor
   navigate   : a/d ±1   ←/→ ±50   SPACE pause/play
   view       : Z zoom loupe   +/- magnification 2x..8x   M overlay (full/min/clean)
-  edit       : C clear samples   T cycle ring tolerance (20→30→40 px)
+  edit       : [/] shrink/grow click radius   C clear samples   T cycle ring tolerance
   commit     : S save HSV file   Q/ESC quit (prompts if unsaved)
 
-LEFT-CLICK samples the HSV under the cursor; auto-suggests once ≥5
-points exist for the active marker. SHIFT-DRAG draws a circle and
-keeps pixels close to the centre's HSV, capturing spatial diversity
-that would otherwise take 5–8 individual clicks.
+LEFT-CLICK draws a circle of the current radius (default 25 px,
+adjustable with [ and ]) around the click point and keeps every
+pixel whose HSV is close to the centre's. The HSV-similarity filter
+discards background, so a generous radius is fine. The cursor shows
+a live preview circle so you see what would be sampled before
+clicking. Auto-advances to the next reference frame after each
+successful sample.
 """
 
 import cv2
@@ -119,15 +122,25 @@ OVERLAY_LABELS = {OVERLAY_FULL: "FULL", OVERLAY_MINIMAL: "MIN",
 CIRCLE_DELTA_H        = 12
 CIRCLE_DELTA_S        = 50
 CIRCLE_DELTA_V        = 50
-CIRCLE_MAX_SAMPLES    = 80          # cap so one drag doesn't drown out
-                                    # earlier point samples
-CIRCLE_MIN_RADIUS_PX  = 4           # ignore tiny accidental drags
+CIRCLE_MAX_SAMPLES    = 80          # cap so one click doesn't drown out
+                                    # earlier samples
+CIRCLE_MIN_RADIUS_PX  = 4           # safety floor (used only if state
+                                    # somehow ends up below it)
+
+# Click-to-sample circle. LEFT-CLICK draws a circle of `click_radius`
+# around the click and keeps every pixel whose HSV is close to the
+# centre's. Cursor hover previews the circle so the user sees exactly
+# what will be sampled before clicking. [ and ] adjust the radius.
+CLICK_RADIUS_DEFAULT  = 25
+CLICK_RADIUS_MIN      = 5
+CLICK_RADIUS_MAX      = 60
+CLICK_RADIUS_STEP     = 5
 
 # Auto-advance reference frames — distributed across the clip so a
 # single sampling pass naturally captures lighting variation. After
-# every successful shift-drag we jump to the next entry in this queue;
-# after the last entry we stop auto-advancing. Mode switch (G/R) and
-# the C clear-key reset the queue to entry 0.
+# every successful click sample we jump to the next entry in this
+# queue; after the last entry we stop auto-advancing. Mode switch
+# (G/R) and the C clear-key reset the queue to entry 0.
 AUTO_ADVANCE_FRACTIONS = [0.10, 0.35, 0.65, 0.90]
 SAMPLE_TARGET          = 6          # min samples per marker before "ready"
 
@@ -435,12 +448,12 @@ class TunerState:
         self.zoom_on            = False
         self.zoom_idx           = DEFAULT_ZOOM_IDX
         self.overlay_level      = OVERLAY_FULL
-        # Circle / region sampling state (active during shift-drag).
-        self.circle_dragging    = False
-        self.circle_center_orig = None    # (ox, oy) in original frame coords
-        self.circle_radius_orig = 0       # radius in original-frame pixels
+        # Click-to-sample radius. LEFT-CLICK samples a circle of this
+        # radius (in original-frame pixels) around the click point.
+        # [ and ] adjust it; the cursor preview shows the current value.
+        self.click_radius       = CLICK_RADIUS_DEFAULT
         # Auto-advance reference queue. Populated in main() once total_frames
-        # is known. Each successful shift-drag advances the pointer.
+        # is known. Each successful click sample advances the pointer.
         self.ref_queue          = []
         self.ref_queue_idx      = 0
         # Where this session reads from / saves to. Per-video by default;
@@ -583,23 +596,23 @@ def main():
     print("  the tracker can find them. (Run when HSV adequacy ABORTed.)")
     print()
     print("Steps")
-    print(f"  1. SHIFT-DRAG a circle over the GREEN marker. Auto-advances")
-    print(f"     to the next reference frame after each drag "
-          f"({len(AUTO_ADVANCE_FRACTIONS)} frames total).")
-    print(f"  2. After ≥{SAMPLE_TARGET} green samples, press R and repeat for RED.")
-    print(f"  3. Scrub the clip; rings should lock on the markers.")
+    print(f"  1. Hover the cursor over the GREEN marker — a {CLICK_RADIUS_DEFAULT}px circle")
+    print(f"     previews what would be sampled. Adjust with [/] if needed.")
+    print(f"  2. LEFT-CLICK to sample. Auto-advances to the next reference")
+    print(f"     frame ({len(AUTO_ADVANCE_FRACTIONS)} total — covers lighting variation).")
+    print(f"  3. After ≥{SAMPLE_TARGET} green samples, press R and repeat for RED.")
+    print(f"  4. Scrub the clip; rings should lock on the markers.")
     print()
     print("Done when")
     print(f"  GREEN ≥{SAMPLE_TARGET}, RED ≥{SAMPLE_TARGET}, rings track during scrub. Then S → Q.")
     print()
     print("Keys")
-    print("  marker     : G green   R red   LEFT-CLICK sample 1 px   "
-          "SHIFT-DRAG sample circle region")
+    print("  marker     : G green   R red   LEFT-CLICK sample circle around cursor")
     print("  navigate   : a/d ±1   ←/→ ±50   SPACE pause/play")
     print("  view       : Z zoom loupe   +/- magnification 2x..8x   "
           "M overlay (full/min/clean)")
-    print("  edit       : C clear samples   T cycle ring tolerance "
-          "(20→30→40 px)")
+    print("  edit       : [/] shrink/grow click radius   C clear samples   "
+          "T cycle ring tolerance")
     print("  commit     : S save HSV file   Q/ESC quit")
     print()
     print("Status")
@@ -632,10 +645,8 @@ def main():
     state.current_hsv = None
 
     def on_mouse(event, x, y, flags, _userdata):
-        shift_held = bool(flags & cv2.EVENT_FLAG_SHIFTKEY)
-
-        # Always track cursor position for the zoom loupe — the position
-        # is consumed by the render loop, no other side effects.
+        # Always track cursor position so the hover preview + loupe
+        # follow the cursor.
         mapped = display_to_frame(x, y)
         if mapped is not None:
             state.cursor_disp = (x, y)
@@ -644,88 +655,47 @@ def main():
             state.cursor_disp = None
             state.cursor_orig = None
 
-        # ── Circle / region sampling (shift + left-drag) ──────────────
-        if event == cv2.EVENT_LBUTTONDOWN and shift_held and mapped:
-            state.circle_dragging    = True
-            state.circle_center_orig = mapped
-            state.circle_radius_orig = 0
+        # Sample on a left-click. Centre = click point, radius =
+        # state.click_radius. The HSV-similarity filter inside
+        # sample_circle_region drops pixels far from the centre's HSV,
+        # so the radius can be generous without polluting the bucket.
+        if event != cv2.EVENT_LBUTTONDOWN or mapped is None:
             return
-
-        if event == cv2.EVENT_MOUSEMOVE and state.circle_dragging:
-            if mapped is None:
-                return
-            cx, cy = state.circle_center_orig
-            ox, oy = mapped
-            state.circle_radius_orig = int(round(
-                ((ox - cx) ** 2 + (oy - cy) ** 2) ** 0.5))
-            return
-
-        if event == cv2.EVENT_LBUTTONUP and state.circle_dragging:
-            state.circle_dragging = False
-            cc, rr = state.circle_center_orig, state.circle_radius_orig
-            state.circle_center_orig = None
-            state.circle_radius_orig = 0
-            if cc is None or state.current_hsv is None:
-                return
-            samples, n_kept = sample_circle_region(state.current_hsv, cc, rr)
-            if not samples:
-                if rr < CIRCLE_MIN_RADIUS_PX:
-                    print(f"  circle too small (r={rr}px) — ignored")
-                else:
-                    print(f"  circle @ ({cc[0]},{cc[1]}) r={rr}px — "
-                          f"no pixels matched the centre's HSV")
-                return
-            bucket = (state.green_samples if state.mode == "green"
-                      else state.red_samples)
-            bucket.extend(samples)
-            state.last_click        = cc
-            state.last_sample_frame = state.frame_idx
-            print(f"  circle @ ({cc[0]},{cc[1]}) r={rr}px — "
-                  f"{n_kept} pixels matched, {len(samples)} added "
-                  f"({state.mode} count: {len(bucket)})")
-
-            suggestion = suggest_from_samples(bucket, state.mode)
-            if suggestion is not None:
-                print(f"  auto-suggest ({state.mode}): {suggestion}")
-                state.data[state.mode].update(suggestion)
-                push_cfg_to_trackbars(state.data[state.mode], state.mode)
-                state.dirty = True
-
-            # Auto-advance to the next reference frame, if any remain.
-            if (state.ref_queue
-                    and state.ref_queue_idx + 1 < len(state.ref_queue)):
-                state.ref_queue_idx += 1
-                state.frame_idx = state.ref_queue[state.ref_queue_idx]
-                print(f"  → auto-advance to reference frame "
-                      f"{state.frame_idx} "
-                      f"({state.ref_queue_idx + 1}/{len(state.ref_queue)})")
-            return
-
-        # ── Single-click sampling (existing behaviour) ────────────────
-        if event != cv2.EVENT_LBUTTONDOWN:
-            return
-        if mapped is None:
-            return
-        ox, oy = mapped
-        state.last_click        = (ox, oy)
-        state.last_sample_frame = state.frame_idx
         if state.current_hsv is None:
             return
-        h, s, v = state.current_hsv[oy, ox]
-        sample  = (int(h), int(s), int(v))
-        bucket  = (state.green_samples if state.mode == "green"
-                   else state.red_samples)
-        bucket.append(sample)
-        print(f"  sampled @ ({ox},{oy})  H={h}  S={s}  V={v}  "
+
+        cc = mapped
+        rr = max(CIRCLE_MIN_RADIUS_PX, int(state.click_radius))
+        samples, n_kept = sample_circle_region(state.current_hsv, cc, rr)
+        if not samples:
+            print(f"  click @ ({cc[0]},{cc[1]}) r={rr}px — "
+                  f"no pixels matched the centre's HSV "
+                  f"(try a different spot or adjust [/])")
+            return
+        bucket = (state.green_samples if state.mode == "green"
+                  else state.red_samples)
+        bucket.extend(samples)
+        state.last_click        = cc
+        state.last_sample_frame = state.frame_idx
+        print(f"  click @ ({cc[0]},{cc[1]}) r={rr}px — "
+              f"{n_kept} pixels matched, {len(samples)} added "
               f"({state.mode} count: {len(bucket)})")
 
-        # Auto-suggest once we have enough points.
         suggestion = suggest_from_samples(bucket, state.mode)
         if suggestion is not None:
             print(f"  auto-suggest ({state.mode}): {suggestion}")
             state.data[state.mode].update(suggestion)
             push_cfg_to_trackbars(state.data[state.mode], state.mode)
             state.dirty = True
+
+        # Auto-advance to the next reference frame, if any remain.
+        if (state.ref_queue
+                and state.ref_queue_idx + 1 < len(state.ref_queue)):
+            state.ref_queue_idx += 1
+            state.frame_idx = state.ref_queue[state.ref_queue_idx]
+            print(f"  → auto-advance to reference frame "
+                  f"{state.frame_idx} "
+                  f"({state.ref_queue_idx + 1}/{len(state.ref_queue)})")
 
     cv2.setMouseCallback(WINDOW_MAIN, on_mouse)
 
@@ -829,16 +799,16 @@ def main():
             cv2.drawMarker(overlay, (cx, cy), (255, 255, 255),
                            cv2.MARKER_CROSS, 18, 2)
 
-        # Live circle preview while shift-dragging.
-        if (state.circle_dragging
-                and state.circle_center_orig is not None
-                and state.circle_radius_orig > 0):
+        # Hover preview — show the click-sample circle at the cursor so
+        # the user sees exactly what would be sampled before clicking.
+        # Drawn in mode colour with a thin outline; suppressed at CLEAN
+        # so the user can verify mask quality unobstructed.
+        if (state.overlay_level != OVERLAY_CLEAN
+                and state.cursor_orig is not None):
             ring_color = ((0, 255, 0) if state.mode == "green"
                           else (0, 0, 255))
-            cv2.circle(overlay, state.circle_center_orig,
-                       state.circle_radius_orig, ring_color, 2)
-            cv2.drawMarker(overlay, state.circle_center_orig,
-                           (255, 255, 255), cv2.MARKER_CROSS, 14, 2)
+            cv2.circle(overlay, state.cursor_orig,
+                       int(state.click_radius), ring_color, 1)
 
         # Frame number / timestamp at the BOTTOM of the frame (per spec).
         ts = state.frame_idx / fps
@@ -877,25 +847,14 @@ def main():
             cv2.drawMarker(inset, (mid, mid), (255, 255, 255),
                            cv2.MARKER_CROSS, 24, 1)
 
-            # While shift-dragging, also project the live circle into the
-            # inset so the user can see what they're tracing without
-            # taking their eye off the marker. The inset is built from
-            # raw pixels (no overlay), so we have to redraw the circle
-            # here in inset coordinates: original-frame point (px, py)
-            # maps to inset point ((px - x0) * zf, (py - y0) * zf), and
-            # an original-frame pixel radius rr maps to rr * zf.
-            if (state.circle_dragging
-                    and state.circle_center_orig is not None
-                    and state.circle_radius_orig > 0):
-                ccx, ccy = state.circle_center_orig
-                rr = state.circle_radius_orig
-                ring_color = ((0, 255, 0) if state.mode == "green"
-                              else (0, 0, 255))
-                ix_c = int(round((ccx - x0) * zf))
-                iy_c = int(round((ccy - y0) * zf))
-                cv2.circle(inset, (ix_c, iy_c), rr * zf, ring_color, 2)
-                cv2.drawMarker(inset, (ix_c, iy_c), (255, 255, 255),
-                               cv2.MARKER_CROSS, 14, 2)
+            # Project the click-sample preview circle into the loupe so
+            # the user can see exactly what pixels would be sampled,
+            # zoomed. The circle is centred on the cursor, which is
+            # exactly the inset's middle (mid, mid) by construction.
+            ring_color = ((0, 255, 0) if state.mode == "green"
+                          else (0, 0, 255))
+            cv2.circle(inset, (mid, mid),
+                       int(state.click_radius) * zf, ring_color, 1)
 
             cv2.rectangle(inset, (0, 0),
                           (INSET_PX - 1, INSET_PX - 1), (255, 255, 255), 2)
@@ -917,9 +876,11 @@ def main():
         n_r = len(state.red_samples)
         ready = n_g >= SAMPLE_TARGET and n_r >= SAMPLE_TARGET
         if state.mode == "green":
-            goal_text = "GOAL: SHIFT-DRAG over the GREEN marker"
+            goal_text = (f"GOAL: click the GREEN marker  "
+                         f"(circle r={int(state.click_radius)}px, [/] adjust)")
         else:
-            goal_text = "GOAL: SHIFT-DRAG over the RED marker"
+            goal_text = (f"GOAL: click the RED marker  "
+                         f"(circle r={int(state.click_radius)}px, [/] adjust)")
         if ready:
             goal_text = "READY: scrub the clip — rings should lock on markers"
 
@@ -1133,6 +1094,18 @@ def main():
         if k in (ord("-"), ord("_")):
             state.zoom_idx = max(0, state.zoom_idx - 1)
             print(f"Zoom magnification -> {state.zoom_factor}x")
+            continue
+
+        if k == ord("["):
+            state.click_radius = max(CLICK_RADIUS_MIN,
+                                     state.click_radius - CLICK_RADIUS_STEP)
+            print(f"Click sample radius -> {state.click_radius}px")
+            continue
+
+        if k == ord("]"):
+            state.click_radius = min(CLICK_RADIUS_MAX,
+                                     state.click_radius + CLICK_RADIUS_STEP)
+            print(f"Click sample radius -> {state.click_radius}px")
             continue
 
     cap.release()
