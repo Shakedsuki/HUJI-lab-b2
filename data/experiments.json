@@ -102,7 +102,9 @@
       615
     ],
     "measurements_dir": "measurements/th1_p056_th2_m001",
-    "csv_file": "tracking.csv"
+    "csv_file": "tracking.csv",
+    "init_frame": 27,
+    "release_frame": 27
   },
   "DSC_0141": {
     "video_file": "th1_p079_th2_p000.mov",
@@ -121,7 +123,33 @@
       552
     ],
     "measurements_dir": "measurements/th1_p079_th2_p000",
-    "csv_file": "tracking.csv"
+    "csv_file": "tracking.csv",
+    "init_frame": 119,
+    "release_frame": 119,
+    "green_roi": null,
+    "red_roi": null,
+    "tracker": "ring",
+    "arm_length_px": 188,
+    "ring_tolerance": 30,
+    "theta1_release": 78.275,
+    "theta2_release": 88.127,
+    "omega1_release": -0.0835,
+    "omega2_release": -0.3558,
+    "energy_proxy": -0.4391,
+    "t0_offset_s": 1.98532,
+    "duration_s": 2.953,
+    "n_free_frames": 178,
+    "dropout_rate_pct": 0.0,
+    "arm_length_cm": 35.0,
+    "pivot_px": [
+      608,
+      355
+    ],
+    "scale_cm_per_px": 0.186,
+    "tracking_quality": "good",
+    "notes": "",
+    "suspect_frames_interpolated": 6,
+    "interpolation_date": "2026-05-01"
   },
   "DSC_0143": {
     "video_file": "th1_p116_th2_m001.mov",
@@ -140,7 +168,9 @@
       449
     ],
     "measurements_dir": "measurements/th1_p116_th2_m001",
-    "csv_file": "tracking.csv"
+    "csv_file": "tracking.csv",
+    "init_frame": 119,
+    "release_frame": 119
   },
   "DSC_0144": {
     "video_file": "th1_p138_th2_m002.mov",
@@ -159,7 +189,9 @@
       396
     ],
     "measurements_dir": "measurements/th1_p138_th2_m002",
-    "csv_file": "tracking.csv"
+    "csv_file": "tracking.csv",
+    "init_frame": 119,
+    "release_frame": 119
   },
   "DSC_0145": {
     "video_file": "th1_p160_th2_m001.mov",
@@ -178,7 +210,9 @@
       362
     ],
     "measurements_dir": "measurements/th1_p160_th2_m001",
-    "csv_file": "tracking.csv"
+    "csv_file": "tracking.csv",
+    "init_frame": 74,
+    "release_frame": 74
   },
   "DSC_0146": {
     "video_file": "th1_p180_th2_p090.mov",
@@ -197,7 +231,9 @@
       189
     ],
     "measurements_dir": "measurements/th1_p180_th2_p090",
-    "csv_file": "tracking.csv"
+    "csv_file": "tracking.csv",
+    "init_frame": 73,
+    "release_frame": 73
   },
   "DSC_0148": {
     "video_file": "th1_p037_th2_p094.mov",
@@ -216,7 +252,33 @@
       471
     ],
     "measurements_dir": "measurements/th1_p037_th2_p094",
-    "csv_file": "tracking.csv"
+    "csv_file": "tracking.csv",
+    "init_frame": 66,
+    "release_frame": 66,
+    "green_roi": null,
+    "red_roi": null,
+    "tracker": "ring",
+    "arm_length_px": 188,
+    "ring_tolerance": 30,
+    "theta1_release": 35.538,
+    "theta2_release": 90.582,
+    "omega1_release": 3.8726,
+    "omega2_release": 342.9829,
+    "energy_proxy": 34.2216,
+    "t0_offset_s": 1.1011,
+    "duration_s": 17.651,
+    "n_free_frames": 1059,
+    "dropout_rate_pct": 1.51,
+    "arm_length_cm": 35.0,
+    "pivot_px": [
+      608,
+      355
+    ],
+    "scale_cm_per_px": 0.186,
+    "tracking_quality": "verified",
+    "notes": "",
+    "verification_date": "2026-05-01",
+    "verification_notes": "dropout, suspects, and \u03c9 all within thresholds"
   },
   "DSC_0150": {
     "video_file": "th1_p067_th2_p096.mov",
@@ -235,7 +297,9 @@
       400
     ],
     "measurements_dir": "measurements/th1_p067_th2_p096",
-    "csv_file": "tracking.csv"
+    "csv_file": "tracking.csv",
+    "init_frame": 65,
+    "release_frame": 65
   },
   "long_recording": {
     "video_file": "long_recording.mov",
@@ -267,7 +331,7 @@
     "notes": "",
     "measurements_dir": "measurements/th1_p180_th2_m179",
     "verification_notes": "verify_tracking @ 2500 deg/s cap, post-interpolation: 2 dropout=1 frames (0.01%), 20 hidden suspects in free_swing (0.06%), all on arm 2 with |w2| 2685-5278 deg/s. Down from pre-fix 23 suspects with peak |w2|=10676. Residual 20 are boundary artifacts where an interpolated frame meets a clean neighbour in genuine high-energy motion; physically plausible but above the conservative 2500 deg/s cap. Tracking_quality kept at \"good\" (not promoted to \"verified\" since per-arm \u03c9 peak exceeds the 1500 deg/s rule-of-thumb). Backup at tracking.csv.bak.",
-    "suspect_frames_interpolated": 23,
+    "suspect_frames_interpolated": 20,
     "interpolation_date": "2026-05-01"
   },
   "DSC_0151": {
@@ -287,7 +351,9 @@
       234
     ],
     "measurements_dir": "measurements/th1_p140_th2_p089",
-    "csv_file": "tracking.csv"
+    "csv_file": "tracking.csv",
+    "init_frame": 52,
+    "release_frame": 52
   },
   "DSC_0152": {
     "video_file": "th1_p153_th2_p090.mov",
@@ -306,7 +372,9 @@
       212
     ],
     "measurements_dir": "measurements/th1_p153_th2_p090",
-    "csv_file": "tracking.csv"
+    "csv_file": "tracking.csv",
+    "init_frame": 90,
+    "release_frame": 90
   },
   "DSC_0153": {
     "video_file": "th1_m179_th2_p089.mov",
@@ -325,7 +393,9 @@
       196
     ],
     "measurements_dir": "measurements/th1_m179_th2_p089",
-    "csv_file": "tracking.csv"
+    "csv_file": "tracking.csv",
+    "init_frame": 74,
+    "release_frame": 74
   },
   "DSC_0154": {
     "video_file": "th1_p176_th2_p180.mov",
@@ -344,7 +414,9 @@
       37
     ],
     "measurements_dir": "measurements/th1_p176_th2_p180",
-    "csv_file": "tracking.csv"
+    "csv_file": "tracking.csv",
+    "init_frame": 117,
+    "release_frame": 117
   },
   "DSC_0156": {
     "video_file": "th1_p093_th2_m002.mov",
@@ -363,7 +435,9 @@
       513
     ],
     "measurements_dir": "measurements/th1_p093_th2_m002",
-    "csv_file": "tracking.csv"
+    "csv_file": "tracking.csv",
+    "init_frame": 62,
+    "release_frame": 62
   },
   "DSC_0157": {
     "video_file": "th1_p093_th2_m000.mov",
@@ -382,7 +456,9 @@
       512
     ],
     "measurements_dir": "measurements/th1_p093_th2_m000",
-    "csv_file": "tracking.csv"
+    "csv_file": "tracking.csv",
+    "init_frame": 84,
+    "release_frame": 84
   },
   "DSC_0158": {
     "video_file": "th1_p094_th2_p000.mov",
@@ -401,7 +477,9 @@
       508
     ],
     "measurements_dir": "measurements/th1_p094_th2_p000",
-    "csv_file": "tracking.csv"
+    "csv_file": "tracking.csv",
+    "init_frame": 28,
+    "release_frame": 28
   },
   "DSC_0159": {
     "video_file": "th1_p092_th2_p000.mov",
@@ -420,7 +498,9 @@
       508
     ],
     "measurements_dir": "measurements/th1_p092_th2_p000",
-    "csv_file": "tracking.csv"
+    "csv_file": "tracking.csv",
+    "init_frame": 66,
+    "release_frame": 66
   },
   "DSC_0160": {
     "video_file": "th1_p090_th2_p000.mov",
@@ -439,7 +519,33 @@
       520
     ],
     "measurements_dir": "measurements/th1_p090_th2_p000",
-    "csv_file": "tracking.csv"
+    "csv_file": "tracking.csv",
+    "init_frame": 98,
+    "release_frame": 98,
+    "green_roi": null,
+    "red_roi": null,
+    "tracker": "ring",
+    "arm_length_px": 188,
+    "ring_tolerance": 30,
+    "theta1_release": 91.061,
+    "theta2_release": 1.414,
+    "omega1_release": 0.0,
+    "omega2_release": -791.4508,
+    "energy_proxy": 189.848,
+    "t0_offset_s": 1.63497,
+    "duration_s": 1.451,
+    "n_free_frames": 88,
+    "dropout_rate_pct": 0.0,
+    "arm_length_cm": 35.0,
+    "pivot_px": [
+      608,
+      355
+    ],
+    "scale_cm_per_px": 0.186,
+    "tracking_quality": "good",
+    "notes": "",
+    "suspect_frames_interpolated": 7,
+    "interpolation_date": "2026-05-01"
   },
   "DSC_0161": {
     "video_file": "th1_p092_th2_m002.mov",
@@ -458,7 +564,9 @@
       511
     ],
     "measurements_dir": "measurements/th1_p092_th2_m002",
-    "csv_file": "tracking.csv"
+    "csv_file": "tracking.csv",
+    "init_frame": 52,
+    "release_frame": 52
   },
   "DSC_0162": {
     "video_file": "th1_p091_th2_m001.mov",
@@ -477,7 +585,9 @@
       515
     ],
     "measurements_dir": "measurements/th1_p091_th2_m001",
-    "csv_file": "tracking.csv"
+    "csv_file": "tracking.csv",
+    "init_frame": 85,
+    "release_frame": 85
   },
   "DSC_0165": {
     "video_file": "DSC_0165.mov",
@@ -560,7 +670,33 @@
       506
     ],
     "measurements_dir": "measurements/th1_p001_th2_p093",
-    "csv_file": "tracking.csv"
+    "csv_file": "tracking.csv",
+    "init_frame": 73,
+    "release_frame": 73,
+    "green_roi": null,
+    "red_roi": null,
+    "tracker": "ring",
+    "arm_length_px": 188,
+    "ring_tolerance": 30,
+    "theta1_release": 0.707,
+    "theta2_release": 84.806,
+    "omega1_release": 0.0,
+    "omega2_release": -95.0882,
+    "energy_proxy": 0.6639,
+    "t0_offset_s": 1.21788,
+    "duration_s": 16.383,
+    "n_free_frames": 983,
+    "dropout_rate_pct": 2.14,
+    "arm_length_cm": 35.0,
+    "pivot_px": [
+      608,
+      355
+    ],
+    "scale_cm_per_px": 0.186,
+    "tracking_quality": "good",
+    "notes": "",
+    "suspect_frames_interpolated": 1,
+    "interpolation_date": "2026-05-01"
   },
   "th1_p082_th2_p001": {
     "video_file": "th1_p082_th2_p001.mov",
@@ -579,7 +715,9 @@
       534
     ],
     "measurements_dir": "measurements/th1_p082_th2_p001",
-    "csv_file": "tracking.csv"
+    "csv_file": "tracking.csv",
+    "init_frame": 29,
+    "release_frame": 29
   },
   "th1_p090_th2_p000_r2": {
     "video_file": "th1_p090_th2_p000_2.mov",

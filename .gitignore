@@ -37,6 +37,8 @@ data/bulk_tracking_log.json
 data/log_*.txt
 # Per-video verdict-card transcript appended by track_one.py
 data/track_one_log.txt
+# Bulk-run streaming logs (one per chaos bulk invocation)
+data/bulk_run_*.log
 
 # Tracking-CSV backups created by interpolate_suspects.py
 measurements/*/tracking.csv.bak
