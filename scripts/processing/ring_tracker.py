@@ -233,13 +233,14 @@ def hsv_adequacy_probe(cap, total_frames, hsv_values, ring_tolerance,
     pivot_dist, _ = precompute_pivot_grids(width, height, PIVOT)
     pivot_ring    = make_ring_uint8(pivot_dist, ARM_LENGTH_PX, ring_tolerance)
 
-    initial_angles = (parse_initial_angles(video_path)
-                      if use_filename_prior else None)
-    if initial_angles is not None:
-        expected_green, _ = expected_marker_positions(*initial_angles)
-    else:
-        expected_green = None
-
+    # Adequacy probe samples 30 frames spread across the whole clip,
+    # most of which are post-release. The pendulum's green marker has
+    # swung far from its filename-prior initial position by then, so
+    # anchoring detection to that position rejects nearly every valid
+    # post-release frame. Run unanchored — match what the tracker does
+    # in free-swing (HSV ∩ ring, no positional prior). The use_filename_prior
+    # / video_path arguments are kept for API compatibility with callers
+    # but no longer influence the result.
     sample_indices = np.linspace(0, total_frames - 1,
                                  min(ADEQUACY_SAMPLES, total_frames),
                                  dtype=int)
@@ -255,11 +256,7 @@ def hsv_adequacy_probe(cap, total_frames, hsv_values, ring_tolerance,
 
         green_color = color_mask_green(hsv, hsv_values["green"])
         green_combined = cv2.bitwise_and(green_color, pivot_ring)
-        green_pos = best_blob(
-            green_combined,
-            anchor=expected_green,
-            max_dist=(PICKER_ANCHOR_MAX_DIST if expected_green else None),
-        )
+        green_pos = best_blob(green_combined)
         if green_pos is None:
             continue
         n_green += 1

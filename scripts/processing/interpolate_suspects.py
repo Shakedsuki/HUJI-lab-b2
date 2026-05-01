@@ -95,42 +95,15 @@ def write_csv_rows(path, rows, fieldnames):
             w.writerow(r)
 
 
-def to_float(v):
-    """Parse a CSV cell to float; empty string → math.nan."""
-    if v is None or v == "":
-        return math.nan
-    return float(v)
-
-
-def is_clean_row(row):
-    """A row is 'clean' if it's not a dropout AND not a suspect AND has
-    a θ₂ value. Used when picking interpolation neighbours."""
-    if str(row.get("dropout", "")).strip() == "1":
-        return False
-    if str(row.get("suspect", "")).strip() == "1":
-        return False
-    if not str(row.get("theta2_deg", "")).strip():
-        return False
-    return True
-
-
-def find_neighbours(rows, target_idx):
-    """
-    Walk outward from target_idx, returning (prev_idx, next_idx) where
-    each is the nearest clean neighbour, or None when no such neighbour
-    exists in that direction.
-    """
-    prev_idx = None
-    for j in range(target_idx - 1, -1, -1):
-        if is_clean_row(rows[j]):
-            prev_idx = j
-            break
-    next_idx = None
-    for j in range(target_idx + 1, len(rows)):
-        if is_clean_row(rows[j]):
-            next_idx = j
-            break
-    return prev_idx, next_idx
+# to_float / is_clean_row / find_neighbours moved to scripts/utils/
+# csv_helpers.py so render.py can share the same predicates without
+# importing interpolate_suspects (which would create a layering cycle).
+sys.path.insert(0, os.path.join(ROOT, "scripts", "utils"))
+from csv_helpers import (  # noqa: E402
+    to_float,
+    is_clean_row,
+    find_neighbours,
+)
 
 
 def linear_interp(t, t0, v0, t1, v1):

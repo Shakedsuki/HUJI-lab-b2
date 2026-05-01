@@ -196,14 +196,16 @@ def read_verification_metrics(meas_dir):
 # VERDICT
 # ─────────────────────────────────────────────
 
-# Thresholds for the PASS/WARN/FAIL bucket. Free-swing dropout is the
-# headline number the user actually cares about — holding-phase dropouts
-# are uninteresting (the pendulum hasn't moved yet). Hidden suspects are
-# only counted post-interpolation; the pre-interp count is informational.
-PASS_DROPOUT_PCT     = 5.0
-WARN_DROPOUT_PCT     = 10.0
-PEAK_OMEGA_PHYSICAL  = 1500.0   # rule-of-thumb max ω for arm 2 chaos
-PEAK_OMEGA_ABSURD    = 4000.0   # above this it's almost surely tracking error
+# Verdict-band thresholds live in scripts/utils/thresholds.py — single
+# source of truth shared with the render layer. Re-exported here so
+# legacy callers that imported these constants from track_one keep
+# working without churning their imports.
+from thresholds import (  # noqa: E402
+    PASS_DROPOUT_PCT,
+    WARN_DROPOUT_PCT,
+    PEAK_OMEGA_PHYSICAL,
+    PEAK_OMEGA_ABSURD,
+)
 
 
 def compute_verdict(metrics, n_suspects_post_interp):
