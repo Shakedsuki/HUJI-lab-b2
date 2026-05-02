@@ -511,8 +511,8 @@
     "audit_date": "2026-05-02",
     "audit_old_status": "verified",
     "audit_new_status": "PASS",
-    "frames_overridden": 6,
-    "last_override_frame": 627,
+    "frames_overridden": 8,
+    "last_override_frame": 792,
     "last_override_date": "2026-05-02",
     "verified_under_brief_version": 14
   },
