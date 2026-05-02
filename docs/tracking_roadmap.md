@@ -1,6 +1,6 @@
 # Tracking Roadmap
 
-_Generated 2026-05-02 14:07._ Re-run with `chaos roadmap`.
+_Generated 2026-05-02 14:09._ Re-run with `chaos roadmap`.
 
 Lives at [`docs/tracking_roadmap.md`](tracking_roadmap.md). Every row reflects the current state of `data/experiments.json` plus the latest `data/bulk_tracking_log.json` and per-clip `measurements/<stem>/verification.csv`.
 
@@ -8,8 +8,8 @@ Lives at [`docs/tracking_roadmap.md`](tracking_roadmap.md). Every row reflects t
 
 | Status | Count | Meaning |
 |---|---|---|
-| **PASS** | 3 | passed verification, in registry as verified |
-| **WARN** | 16 | tracking.csv exists, dropout/peak ω in WARN band |
+| **PASS** | 4 | passed verification, in registry as verified |
+| **WARN** | 15 | tracking.csv exists, dropout/peak ω in WARN band |
 | **FAIL** | 9 | tracking.csv exists but dropout > 10% or peak ω absurd |
 | **HSV-ABORT** | 0 | ring_tracker bailed on the HSV adequacy probe — needs `chaos tune` |
 | **NEEDS-PICKER** | 0 | no init/release/tag_frame in registry — needs interactive picker |
@@ -23,6 +23,7 @@ Lives at [`docs/tracking_roadmap.md`](tracking_roadmap.md). Every row reflects t
 | `th1_p044_th2_m001` | PASS | 0.00% | 619 | 0 | 0/0 | 0 | 0/0 | 2.8px | 1075 | 2026-05-02 | dropout, suspects, and ω all within thresholds |
 | `th1_p056_th2_m001` | PASS | 0.00% | 773 | 0 | 0/0 | 0 | 0/0 | 2.8px | 1512 | 2026-05-02 | dropout, suspects, and ω all within thresholds |
 | `th1_p082_th2_p001` | PASS | 0.00% | 1042 | 0 | 0/0 | 0 | 0/0 | 3.1px | 1573 | 2026-05-02 | dropout, suspects, and ω all within thresholds |
+| `th1_p180_th2_m179` | PASS | 0.00% | 2710 | 232 | 0/0 | 138 | 0/28 | 1.2px | 30897 | 2026-05-02 | Manually accepted via chaos triage on 2026-05-02 (visually clean despite: 17 ω-c… |
 | `th1_p001_th2_p093` | WARN | 7.12% | 2015 | 17 | 0/0 | 11 | 10/13 | 0.7px | 983 | 2026-05-01 | dropout 7.1%; interp 1 |
 | `th1_p037_th2_p094` | WARN | 0.38% | 727 | 4 | 0/0 | 2 | 4/4 | 4.0px | 1059 | 2026-05-01 | interp 8 |
 | `th1_p047_th2_m002` | WARN | 0.53% | 653 | 3 | 0/0 | 0 | 0/3 | 0.9px | 2652 | 2026-05-01 | review verification.png |
@@ -37,7 +38,6 @@ Lives at [`docs/tracking_roadmap.md`](tracking_roadmap.md). Every row reflects t
 | `th1_p094_th2_p000_r2` | WARN | 0.15% | 1306 | 15 | 0/0 | 2 | 0/0 | 4.8px | 1353 | 2026-05-02 | interp 12 |
 | `th1_p116_th2_m001` | WARN | 0.00% | 1274 | 3 | 0/0 | 0 | 0/3 | 4.7px | 1966 | 2026-05-02 | interp 95 |
 | `th1_p138_th2_m002` | WARN | 0.00% | 1370 | 4 | 0/0 | 0 | 0/3 | 6.0px | 2587 | 2026-05-02 | interp 186 |
-| `th1_p180_th2_m179` | WARN | 0.00% | 2710 | 232 | 0/0 | 138 | 0/28 | 1.2px | 30897 | 2026-05-02 | interp 20 |
 | `th1_p180_th2_p180` | WARN | 5.04% | 1769 | 54 | 0/0 | 15 | 0/9 | 19.8px | 1390 | 2026-05-01 | dropout 5.0%; interp 2 |
 | `th1_m001_th2_p001` | FAIL | 22.18% | 81 | 19 | 0/0 | 0 | 0/19 | 1.4px | 983 | — | dropout 22.18% — re-track or HSV tune |
 | `th1_m179_th2_p089` | FAIL | 0.64% | 10221 | 2617 | 2450/47 | 1567 | 253/590 | 20.5px | 2647 | 2026-05-01 | dropout 0.64% — re-track or HSV tune |
@@ -51,5 +51,5 @@ Lives at [`docs/tracking_roadmap.md`](tracking_roadmap.md). Every row reflects t
 
 ## What to do next
 
-- **16 clips landed in WARN.** Inspect `measurements/<stem>/verification.png`; if acceptable, mark verified; otherwise `chaos fix <stem>`.
+- **15 clips landed in WARN.** Inspect `measurements/<stem>/verification.png`; if acceptable, mark verified; otherwise `chaos fix <stem>`.
 - **9 clips landed in FAIL.** Re-tune HSV or run `chaos fix <stem>` with seeds.

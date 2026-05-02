@@ -163,6 +163,9 @@ def read_peak_omega_and_suspects(meas_dir):
     return m["peak_omega2"], m["n_suspect_hidden"]
 
 
+CURRENT_BRIEF_VERSION = 14   # bump when verdict logic changes
+
+
 def classify(entry, bulk_entry, meas_dir=None):
     """
     Return (bucket_id, label) for this clip. Order matters — see BUCKETS.
@@ -171,14 +174,21 @@ def classify(entry, bulk_entry, meas_dir=None):
     config_description, or None if the clip wasn't part of the latest
     bulk pass.
 
-    Brief 14b: when a verification.csv is on disk, use the live
-    verdict from compute_verdict() instead of the cached
-    tracking_quality field. This keeps the roadmap honest after a
-    verdict-logic change — clips that newly pass under updated checks
-    show as PASS even if `chaos audit --apply` hasn't been run yet,
-    and clips that were once verified but no longer pass surface
-    immediately as WARN/FAIL.
+    Priority order:
+      1. If the registry says verified AND verified_under_brief_version
+         is current, trust the human/track_one decision. This honours
+         both auto-verifies (track_one stamps brief 14 on PASS) and
+         manual verifies (chaos triage [v] also stamps brief 14).
+      2. Else if a verification.csv is on disk, run compute_verdict()
+         live — keeps stale verifies honest after a logic change.
+      3. Else fall back to the registry's cached dropout %.
     """
+    quality      = entry.get("tracking_quality")
+    brief_ver    = entry.get("verified_under_brief_version")
+    if (quality == "verified" and brief_ver is not None
+            and int(brief_ver) >= CURRENT_BRIEF_VERSION):
+        return "verified", "PASS"
+
     if has_tracking_csv(entry) and meas_dir is not None:
         try:
             # Lazy import — avoids forcing roadmap consumers to bring
@@ -199,7 +209,7 @@ def classify(entry, bulk_entry, meas_dir=None):
         except (ImportError, OSError, ValueError):
             pass   # fall through to the legacy registry-based path
 
-    if entry.get("tracking_quality") == "verified":
+    if quality == "verified":
         return "verified", "PASS"
 
     if has_tracking_csv(entry):
