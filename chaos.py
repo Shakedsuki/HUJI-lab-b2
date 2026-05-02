@@ -73,6 +73,7 @@ SCRIPT_AUDIT      = os.path.join(ROOT, "scripts", "utils", "audit.py")
 SCRIPT_TRIAGE     = os.path.join(ROOT, "scripts", "utils", "triage.py")
 SCRIPT_SUSPECTS   = os.path.join(ROOT, "scripts", "utils", "suspects_summary.py")
 SCRIPT_AUTO_SEED  = os.path.join(ROOT, "scripts", "utils", "auto_seed.py")
+SCRIPT_COMBINED   = os.path.join(ROOT, "scripts", "analysis", "combined_video.py")
 
 VIDEO_EXTS = {".mov", ".mp4", ".avi", ".mkv", ".m4v"}
 
@@ -293,6 +294,15 @@ def cmd_auto_seed(args):
     return run_script(SCRIPT_AUTO_SEED, *extra)
 
 
+def cmd_render(args):
+    """Render the original video with the existing tracking overlaid
+    on top, plus phase-space plots. Reads tracking.csv only — no
+    re-tracking, no risk to existing fixes/seeds. Output goes to
+    measurements/<stem>/combined.mp4."""
+    extra = ["--stem", args.stem]
+    return run_script(SCRIPT_COMBINED, *extra)
+
+
 def resolve_video_path_for_stem(stem):
     """Look up Videos/<video_file> for a config_description via registry."""
     reg = load_registry()
@@ -345,6 +355,10 @@ BATCH / DRIVER COMMANDS
                              tracker is only slightly off
                              --dry-run    show plan without writing
                              --no-track   write seeds.json, skip re-track
+  chaos render <stem>        render the original video with marker rings +
+                             phase plots overlaid (uses existing tracking;
+                             no re-track). Output: measurements/<stem>/
+                             combined.mp4
 
 INFO / REPORT COMMANDS
   chaos status               who's tracked, who's pending (one-screen)
@@ -775,6 +789,12 @@ def build_parser():
         metavar="DEG_PER_S",
         help="ω cap for verify step (default 2500)")
 
+    p_render = sub.add_parser("render",
+        help="render the source video with existing tracking overlaid; "
+             "no re-tracking, just visualization")
+    p_render.add_argument("stem", metavar="<stem>",
+        help="config_description, e.g. th1_p044_th2_m001")
+
     sub.add_parser("help", help="one-page cheat sheet for all subcommands")
 
     return p
@@ -796,6 +816,7 @@ HANDLERS = {
     "triage":   cmd_triage,
     "suspects":  cmd_suspects,
     "auto-seed": cmd_auto_seed,
+    "render":    cmd_render,
     "help":      cmd_help,
 }
 

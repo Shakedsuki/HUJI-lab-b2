@@ -10,7 +10,7 @@
   ],
   "energy_release_J": 10.66678457921828,
   "n_trend_arm_windows": 0,
-  "n_residual_suspects": 3,
+  "n_residual_suspects": 2,
   "n_energy_suspects": 0,
   "n_energy_ceiling_suspects": 0,
   "n_energy_rolling_spikes": 0,
