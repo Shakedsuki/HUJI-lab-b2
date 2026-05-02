@@ -70,6 +70,7 @@ SCRIPT_REPORT     = os.path.join(ROOT, "scripts", "utils", "generate_status_repo
 SCRIPT_ROADMAP    = os.path.join(ROOT, "scripts", "utils", "generate_roadmap.py")
 SCRIPT_HSV_PROBE  = os.path.join(ROOT, "scripts", "utils", "hsv_probe_matrix.py")
 SCRIPT_AUDIT      = os.path.join(ROOT, "scripts", "utils", "audit.py")
+SCRIPT_TRIAGE     = os.path.join(ROOT, "scripts", "utils", "triage.py")
 
 VIDEO_EXTS = {".mov", ".mp4", ".avi", ".mkv", ".m4v"}
 
@@ -262,6 +263,14 @@ def cmd_audit(args):
     return run_script(SCRIPT_AUDIT, *extra)
 
 
+def cmd_triage(args):
+    extra = []
+    if args.auto:   extra.append("--auto")
+    if args.once:   extra.append("--once")
+    if args.filter: extra += ["--filter", args.filter]
+    return run_script(SCRIPT_TRIAGE, *extra)
+
+
 def resolve_video_path_for_stem(stem):
     """Look up Videos/<video_file> for a config_description via registry."""
     reg = load_registry()
@@ -300,6 +309,11 @@ BATCH / DRIVER COMMANDS
   chaos next --stem <stem>   same loop but only one clip
   chaos bulk                 sequential bulk pass over plannable pendings
   chaos bulk --dry-run       show the plan without tracking anything
+  chaos triage               walk non-PASS clips, dispatch the right
+                             repair tool per clip (override / fix / tune)
+                             --auto      auto-apply override-bucket fixes
+                             --once      dispatch a single clip and exit
+                             --filter S  only consider clips matching S
 
 INFO / REPORT COMMANDS
   chaos status               who's tracked, who's pending (one-screen)
@@ -695,6 +709,16 @@ def build_parser():
     p_next.add_argument("--stem", default=None, metavar="<stem>",
         help="optional: process only this stem instead of the full queue")
 
+    p_triage = sub.add_parser("triage",
+        help="walk through non-PASS clips, dispatch the right repair tool per clip")
+    p_triage.add_argument("--auto", action="store_true",
+        help="auto-apply override-bucket fixes; still prompts for "
+             "fix/tune/review buckets")
+    p_triage.add_argument("--once", action="store_true",
+        help="dispatch a single clip and exit (default: loop)")
+    p_triage.add_argument("--filter", metavar="SUBSTR",
+        help="only consider clips whose stem matches SUBSTR")
+
     sub.add_parser("help", help="one-page cheat sheet for all subcommands")
 
     return p
@@ -713,6 +737,7 @@ HANDLERS = {
     "verify":   cmd_verify,
     "bulk":     cmd_bulk,
     "next":     cmd_next,
+    "triage":   cmd_triage,
     "help":     cmd_help,
 }
 
