@@ -59,9 +59,9 @@
     ],
     "measurements_dir": "measurements/th1_p047_th2_m002",
     "csv_file": "tracking.csv",
-    "tracking_quality": "verified",
+    "tracking_quality": "review",
     "verification_date": "2026-05-01",
-    "verification_notes": "PASS via manual_correction strict-physics flow.",
+    "verification_notes": "DOWNGRADED via chaos audit on 2026-05-02: was 'verified'; new verdict WARN. Reasons: 3 frame(s) show rolling energy spike (>2.0\u00d7 baseline) \u2014 tracker likely jumped briefly to wrong object",
     "init_frame": 0,
     "release_frame": 123,
     "green_roi": null,
@@ -83,7 +83,10 @@
       608,
       355
     ],
-    "scale_cm_per_px": 0.186
+    "scale_cm_per_px": 0.186,
+    "audit_date": "2026-05-02",
+    "audit_old_status": "verified",
+    "audit_new_status": "WARN"
   },
   "DSC_0140": {
     "video_file": "th1_p056_th2_m001.mov",
@@ -110,28 +113,29 @@
     "tracker": "ring",
     "arm_length_px": 188,
     "ring_tolerance": 30,
-    "theta1_release": 55.037,
-    "theta2_release": -2.108,
-    "omega1_release": -8.8283,
-    "omega2_release": 7.213,
-    "energy_proxy": -2.1058,
+    "theta1_release": 48.662,
+    "theta2_release": -1.746,
+    "omega1_release": -3.6193,
+    "omega2_release": 2.0458,
+    "energy_proxy": -2.3153,
     "t0_offset_s": 0.45045,
     "duration_s": 25.209,
     "n_free_frames": 1512,
     "dropout_rate_pct": 0.0,
     "arm_length_cm": 35.0,
     "pivot_px": [
-      608,
-      355
+      607,
+      330
     ],
     "scale_cm_per_px": 0.186,
-    "tracking_quality": "review",
+    "tracking_quality": "verified",
     "notes": "",
-    "verification_date": "2026-05-01",
-    "verification_notes": "DOWNGRADED via chaos audit on 2026-05-02: was 'verified'; new verdict WARN. Reasons: 1 residual suspects post-interpolation; 1 frame(s) with |\u0394\u03c9| spike (unphysical acceleration)",
+    "verification_date": "2026-05-02",
+    "verification_notes": "dropout, suspects, and \u03c9 all within thresholds",
     "audit_date": "2026-05-02",
     "audit_old_status": "verified",
-    "audit_new_status": "WARN"
+    "audit_new_status": "WARN",
+    "verified_under_brief_version": 14
   },
   "DSC_0141": {
     "video_file": "th1_p079_th2_p000.mov",

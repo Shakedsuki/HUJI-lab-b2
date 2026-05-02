@@ -254,6 +254,7 @@ def cmd_hsv_probe(args):
 def cmd_audit(args):
     extra = []
     if args.apply:         extra.append("--apply")
+    if args.upgrade:       extra.append("--upgrade")
     if args.filter:        extra += ["--filter", args.filter]
     if args.skip_reverify: extra.append("--skip-reverify")
     if args.omega_cap is not None:
@@ -678,6 +679,9 @@ def build_parser():
         help="re-validate verified clips against current verdict logic")
     p_audit.add_argument("--apply", action="store_true",
         help="downgrade tracking_quality on clips whose new verdict isn't PASS")
+    p_audit.add_argument("--upgrade", action="store_true",
+        help="also audit non-verified clips with tracking.csv; with "
+             "--apply, mark new PASSes as verified")
     p_audit.add_argument("--filter", metavar="SUBSTR",
         help="only audit clips whose stem contains SUBSTR")
     p_audit.add_argument("--skip-reverify", action="store_true",

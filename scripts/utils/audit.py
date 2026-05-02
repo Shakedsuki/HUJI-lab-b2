@@ -108,6 +108,19 @@ def gather_verified_clips(reg, filter_substr=None):
         yield key, entry
 
 
+def gather_all_tracked_clips(reg, filter_substr=None):
+    """Yield (key, entry) for every clip with a tracking.csv on disk —
+    regardless of tracking_quality. Used by --upgrade to find clips
+    that should be promoted to verified after Brief 14 logic landed."""
+    for key, entry in reg.items():
+        if not has_tracking_csv(entry):
+            continue
+        cd = entry.get("config_description") or key
+        if filter_substr and filter_substr not in cd:
+            continue
+        yield key, entry
+
+
 def reverify(stem, omega_cap=2500.0):
     """Run verify_tracking --no-plot for this stem. Returns rc."""
     cmd = [sys.executable, VERIFY_SCRIPT,
@@ -126,11 +139,17 @@ def reverify(stem, omega_cap=2500.0):
                           env=env).returncode
 
 
-def audit_one(stem, *, skip_reverify=False, omega_cap=2500.0):
+def audit_one(stem, *, skip_reverify=False, omega_cap=2500.0,
+              old_status="PASS"):
     """
     Returns a dict per-clip with:
       stem, old_status, new_status, reasons, metrics
     or {"stem": stem, "error": "..."} on failure.
+
+    `old_status` is the bucket the clip currently sits in:
+      "PASS" when tracking_quality=verified
+      "WARN" or "FAIL" when audited via --upgrade (so the table can
+      show the would-be promotion arrow).
     """
     meas_dir = os.path.join(MEAS_DIR, stem)
     if not os.path.exists(os.path.join(meas_dir, "tracking.csv")):
@@ -151,7 +170,7 @@ def audit_one(stem, *, skip_reverify=False, omega_cap=2500.0):
 
     return {
         "stem":        stem,
-        "old_status":  "PASS",   # by definition — only verified clips audited
+        "old_status":  old_status,
         "new_status":  new_status,
         "reasons":     reasons,
         "metrics":     metrics,
@@ -274,6 +293,24 @@ def downgrade_clip(reg, key, new_status, reasons):
     entry["audit_new_status"]   = new_status
 
 
+def upgrade_clip(reg, key, reasons, brief_version=14):
+    """Mark a previously-non-verified clip as verified, with audit
+    provenance so the upgrade is traceable. Used by --upgrade."""
+    entry = reg[key]
+    today = datetime.datetime.now().strftime("%Y-%m-%d")
+    old_quality = entry.get("tracking_quality", "good")
+    note = (f"UPGRADED via chaos audit on {today}: was '{old_quality}'; "
+            f"new verdict PASS under brief version {brief_version}. "
+            f"Reasons: {'; '.join(reasons)}")
+    entry["tracking_quality"]            = "verified"
+    entry["verification_date"]           = today
+    entry["verification_notes"]          = note
+    entry["audit_date"]                  = today
+    entry["audit_old_status"]            = old_quality
+    entry["audit_new_status"]            = "PASS"
+    entry["verified_under_brief_version"] = brief_version
+
+
 # ─────────────────────────────────────────────
 # CLI
 # ─────────────────────────────────────────────
@@ -284,6 +321,11 @@ def parse_args():
     p.add_argument("--apply", action="store_true",
                    help="downgrade tracking_quality on clips whose new "
                         "verdict is no longer PASS (read-only by default)")
+    p.add_argument("--upgrade", action="store_true",
+                   help="also audit non-verified clips with tracking.csv; "
+                        "with --apply, mark new PASSes as verified. "
+                        "Use after a verdict-logic change so newly-passing "
+                        "clips get promoted in one shot.")
     p.add_argument("--filter", metavar="SUBSTR",
                    help="only audit clips whose stem contains SUBSTR")
     p.add_argument("--skip-reverify", action="store_true",
@@ -294,16 +336,34 @@ def parse_args():
     return p.parse_args()
 
 
+def _bucket(entry):
+    """Old-status bucket for the audit table — what the registry
+    currently says about this clip before re-evaluation."""
+    if entry.get("tracking_quality") == "verified":
+        return "PASS"
+    drop = entry.get("dropout_rate_pct")
+    if drop is not None and drop > 10:
+        return "FAIL"
+    return "WARN"
+
+
 def main():
     args = parse_args()
 
     reg = load_registry()
-    targets = list(gather_verified_clips(reg, filter_substr=args.filter))
+    if args.upgrade:
+        # Audit every clip with a tracking.csv so we can promote new
+        # PASSes alongside downgrading stale ones.
+        targets = list(gather_all_tracked_clips(reg, filter_substr=args.filter))
+        scope = "all tracked"
+    else:
+        targets = list(gather_verified_clips(reg, filter_substr=args.filter))
+        scope = "verified"
     if not targets:
-        print("No verified clips matched.")
+        print(f"No {scope} clips matched.")
         return 0
 
-    print(f"Auditing {len(targets)} verified clips "
+    print(f"Auditing {len(targets)} {scope} clips "
           f"({'in-place verify' if not args.skip_reverify else 'no re-verify'})…")
     print()
 
@@ -313,13 +373,14 @@ def main():
         print(f"  [{i}/{len(targets)}]  {stem}", end="", flush=True)
         result = audit_one(stem,
                            skip_reverify=args.skip_reverify,
-                           omega_cap=args.omega_cap)
+                           omega_cap=args.omega_cap,
+                           old_status=_bucket(entry))
         result["key"] = key
         rows.append(result)
         if "error" in result:
             print(f"   [ERROR: {result['error']}]")
         else:
-            print(f"   {result['new_status']}")
+            print(f"   {result['old_status']} → {result['new_status']}")
 
     print()
     render_audit_table(rows)
@@ -329,16 +390,22 @@ def main():
         # Re-load the registry in case anything mutated it during audit
         # (background tracker subprocesses might still be running).
         reg = load_registry()
-        n_downgraded = 0
+        n_down = n_up = 0
         for r in rows:
             if "error" in r:
                 continue
-            if r["new_status"] == "PASS":
-                continue
-            downgrade_clip(reg, r["key"], r["new_status"], r["reasons"])
-            n_downgraded += 1
+            old, new = r["old_status"], r["new_status"]
+            if old == "PASS" and new != "PASS":
+                downgrade_clip(reg, r["key"], new, r["reasons"])
+                n_down += 1
+            elif args.upgrade and old != "PASS" and new == "PASS":
+                upgrade_clip(reg, r["key"], r["reasons"])
+                n_up += 1
         save_registry(reg)
-        print(f"\n  Applied: {n_downgraded} clip(s) downgraded.")
+        msg = f"  Applied: {n_down} downgraded"
+        if args.upgrade:
+            msg += f", {n_up} upgraded"
+        print(f"\n{msg}.")
     elif any(r.get("new_status") in ("WARN", "FAIL") for r in rows
              if "error" not in r):
         print("\n  Re-run with [bold]--apply[/] to downgrade clips that no "

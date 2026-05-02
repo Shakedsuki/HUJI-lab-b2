@@ -163,19 +163,48 @@ def read_peak_omega_and_suspects(meas_dir):
     return m["peak_omega2"], m["n_suspect_hidden"]
 
 
-def classify(entry, bulk_entry):
+def classify(entry, bulk_entry, meas_dir=None):
     """
     Return (bucket_id, label) for this clip. Order matters — see BUCKETS.
 
     `bulk_entry` is the row from data/bulk_tracking_log.json keyed by
     config_description, or None if the clip wasn't part of the latest
     bulk pass.
+
+    Brief 14b: when a verification.csv is on disk, use the live
+    verdict from compute_verdict() instead of the cached
+    tracking_quality field. This keeps the roadmap honest after a
+    verdict-logic change — clips that newly pass under updated checks
+    show as PASS even if `chaos audit --apply` hasn't been run yet,
+    and clips that were once verified but no longer pass surface
+    immediately as WARN/FAIL.
     """
+    if has_tracking_csv(entry) and meas_dir is not None:
+        try:
+            # Lazy import — avoids forcing roadmap consumers to bring
+            # in track_one when they don't need verdict computation.
+            sys.path.insert(0, os.path.join(ROOT, "scripts", "utils"))
+            from track_one import (  # noqa: E402
+                read_verification_metrics, compute_verdict,
+            )
+            metrics = read_verification_metrics(meas_dir)
+            if metrics is not None:
+                status, _ = compute_verdict(
+                    metrics, metrics.get("n_suspect_hidden", 0))
+                if status == "PASS":
+                    return "verified", "PASS"
+                if status == "FAIL":
+                    return "tracked-fail", "FAIL"
+                return "tracked-warn", "WARN"
+        except (ImportError, OSError, ValueError):
+            pass   # fall through to the legacy registry-based path
+
     if entry.get("tracking_quality") == "verified":
         return "verified", "PASS"
 
     if has_tracking_csv(entry):
-        # Has a CSV; bin by free-swing dropout % which is in the registry.
+        # Has a CSV but no fresh verification.csv — bin by registry's
+        # cached free-swing dropout %.
         d = entry.get("dropout_rate_pct")
         if d is not None and d > 10:
             return "tracked-fail", "FAIL"
@@ -237,9 +266,12 @@ def build_table_rows(reg, bulk_log):
     for key, entry in reg.items():
         stem = entry.get("config_description") or key
         bulk_entry = bulk_log.get(stem)
-        bucket, label = classify(entry, bulk_entry)
         meas_dir = os.path.join(ROOT, entry.get("measurements_dir") or
                                 f"measurements/{stem}")
+        # Brief 14b: classify() needs meas_dir so it can read the
+        # current verification.csv and apply compute_verdict() instead
+        # of trusting the registry's cached tracking_quality field.
+        bucket, label = classify(entry, bulk_entry, meas_dir=meas_dir)
         m = read_verification_metrics(meas_dir)
         # Brief 8: clips PASS-verified before Brief 5 are unverified
         # against the current physics checks. Mark them visually so the
