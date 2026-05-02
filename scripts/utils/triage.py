@@ -103,12 +103,23 @@ def classify_issue(metrics, reasons):
     n_om   = metrics.get("n_omega_cap_suspects", 0) or 0
     n_ceil = metrics.get("n_energy_ceiling_suspects", 0) or 0
     n_roll = metrics.get("n_energy_rolling_spikes", 0) or 0
+    n_trend = metrics.get("n_trend_arm_suspects", 0) or 0
     drift  = metrics.get("pivot_drift_px") or 0.0
 
-    # Override: single-frame absurd-ω₂ teleport — fastest fix.
+    # Override is ONLY valid when peak |ω₂| is absurd AND only a small
+    # number of frames are flagged. Many ω-cap or trend-arm suspects
+    # indicate a sustained wrong-target latch — overriding the worst
+    # frame just shifts the peak to the second-worst, ad infinitum.
+    # That's a re-tune problem, not an override problem.
     if peak2 > PEAK_OMEGA_ABSURD:
-        return ("override", PRIORITY["override"],
-                f"peak |ω₂| = {peak2:.0f} °/s — single-frame teleport")
+        if n_om <= 5 and n_trend == 0:
+            return ("override", PRIORITY["override"],
+                    f"peak |ω₂| = {peak2:.0f} °/s — single-frame teleport "
+                    f"({n_om} ω-cap suspects)")
+        return ("tune-fail", PRIORITY["tune-fail"],
+                f"peak |ω₂| = {peak2:.0f} °/s with {n_om} ω-cap + "
+                f"{n_trend} trend-arm suspects — sustained "
+                f"wrong-target latch, not a single frame")
 
     # Tune: dropout band. >10% is FAIL, 5-10% is WARN.
     if drop > WARN_DROPOUT_PCT:
