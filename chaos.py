@@ -74,6 +74,7 @@ SCRIPT_TRIAGE     = os.path.join(ROOT, "scripts", "utils", "triage.py")
 SCRIPT_SUSPECTS   = os.path.join(ROOT, "scripts", "utils", "suspects_summary.py")
 SCRIPT_AUTO_SEED  = os.path.join(ROOT, "scripts", "utils", "auto_seed.py")
 SCRIPT_COMBINED   = os.path.join(ROOT, "scripts", "analysis", "combined_video.py")
+SCRIPT_ANALYZE    = os.path.join(ROOT, "scripts", "analysis", "chaos_analyze.py")
 SCRIPT_FRICTION   = os.path.join(ROOT, "scripts", "analysis", "friction_fit.py")
 SCRIPT_FRIC_CMP   = os.path.join(ROOT, "scripts", "analysis", "friction_compare.py")
 
@@ -305,6 +306,17 @@ def cmd_render(args):
     return run_script(SCRIPT_COMBINED, *extra)
 
 
+def cmd_analyze(args):
+    """Physics chaos analysis: 0-1 test, spectral entropy, inversion stats.
+    Verdict: CHAOTIC / BORDERLINE / REGULAR.  Writes chaos_analyze.png."""
+    extra = [args.stem]
+    if args.no_plot:
+        extra.append("--no-plot")
+    if args.n_c is not None:
+        extra += ["--n-c", str(args.n_c)]
+    return run_script(SCRIPT_ANALYZE, *extra)
+
+
 def cmd_friction_fit(args):
     """Fit a friction model to the clip's mechanical-energy decay.
     Compares exponential (Stokes drag) and power-law fits; writes
@@ -384,6 +396,10 @@ BATCH / DRIVER COMMANDS
                              phase plots overlaid (uses existing tracking;
                              no re-track). Output: measurements/<stem>/
                              combined.mp4
+  chaos analyze <stem>       chaos physics analysis: 0-1 test (Gottwald &
+                             Melbourne 2004), spectral entropy, inversion
+                             stats. Verdict: CHAOTIC / BORDERLINE / REGULAR.
+                             Flags: --no-plot  --n-c N
   chaos friction-fit <stem>  fit exponential / power-law friction models to
                              the clip's energy decay. Reports best model +
                              writes friction_fit.png
@@ -823,6 +839,16 @@ def build_parser():
     p_render.add_argument("stem", metavar="<stem>",
         help="config_description, e.g. th1_p044_th2_m001")
 
+    p_analyze = sub.add_parser("analyze",
+        help="physics analysis: 0-1 test, spectral entropy, inversion stats → "
+             "CHAOTIC / BORDERLINE / REGULAR")
+    p_analyze.add_argument("stem", metavar="<stem>",
+        help="config_description, e.g. th1_p180_th2_m179")
+    p_analyze.add_argument("--no-plot", action="store_true",
+        help="skip writing measurements/<stem>/chaos_analyze.png")
+    p_analyze.add_argument("--n-c", type=int, default=None, metavar="N",
+        help="random c values for the 0-1 test (default 50)")
+
     p_fric = sub.add_parser("friction-fit",
         help="fit a friction model (exponential / power-law) to the "
              "clip's mechanical-energy decay")
@@ -865,6 +891,7 @@ HANDLERS = {
     "suspects":  cmd_suspects,
     "auto-seed":    cmd_auto_seed,
     "render":       cmd_render,
+    "analyze":          cmd_analyze,
     "friction-fit":     cmd_friction_fit,
     "friction-compare": cmd_friction_compare,
     "help":             cmd_help,
