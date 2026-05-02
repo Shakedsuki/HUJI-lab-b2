@@ -32,8 +32,9 @@ Physics
 
 Output
 ------
-  - 2D scatter plot  (matplotlib, coloured by sweep direction)
-  - 3D interactive   (plotly HTML, axes: time / amplitude / peak voltage)
+  - 2D scatter plot  (matplotlib PNG, saved next to data in DATA_DIR)
+  - 3D interactive   (plotly HTML, saved next to this script — tracked by git
+                      and served via GitHub Pages)
 
 @author: cohen + claude
 """
@@ -46,6 +47,10 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from scipy.signal import find_peaks, hilbert
 from scipy.ndimage import uniform_filter1d
+
+# Directory containing this script — used for HTML output so it stays
+# tracked by git and is not buried inside the gitignored samples/ tree.
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # ── CONFIGURATION ─────────────────────────────────────────────────────────────
 
@@ -262,10 +267,14 @@ def main():
             width=1100, height=700,
         )
 
-        out_3d = os.path.join(DATA_DIR, 'bifurcation_continuous_3D.html')
-        fig3d.write_html(out_3d)
+        # Save next to this script (tracked by git, served via GitHub Pages).
+        # include_plotlyjs='cdn' keeps the file ~130 KB instead of ~3 MB by
+        # loading plotly.js from CDN rather than embedding it inline.
+        out_3d = os.path.join(SCRIPT_DIR, 'bifurcation_continuous_3D.html')
+        fig3d.write_html(out_3d, include_plotlyjs='cdn')
         print(f"Saved 3D interactive plot → {out_3d}")
-        print("Open the HTML file in any browser and drag to rotate.")
+        print("Commit this file and it will be live at:")
+        print("  https://shakedsuki.github.io/HUJI-lab-b2/chaos/chaos/part2/bifurcation_continuous_3D.html")
 
     except ImportError:
         print("plotly not installed — skipping 3D plot.")
