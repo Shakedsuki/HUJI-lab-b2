@@ -114,8 +114,16 @@ def reverify(stem, omega_cap=2500.0):
            "--stem", stem,
            "--omega-cap", str(omega_cap),
            "--no-plot"]
+    # verify_tracking emits θ/ω/Δ unicode chars on stdout, which break
+    # subprocess's default cp1252 decoder on Windows. Force UTF-8 on
+    # both reads and pass it via the child's PYTHONIOENCODING so
+    # nothing in the chain crashes on these glyphs.
+    env = os.environ.copy()
+    env["PYTHONIOENCODING"] = "utf-8"
     return subprocess.run(cmd, cwd=ROOT,
-                          capture_output=True, text=True).returncode
+                          capture_output=True, text=True,
+                          encoding="utf-8", errors="replace",
+                          env=env).returncode
 
 
 def audit_one(stem, *, skip_reverify=False, omega_cap=2500.0):
