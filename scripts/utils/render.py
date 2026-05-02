@@ -59,8 +59,14 @@ from thresholds import (  # noqa: E402
     OMEGA_BAR_MAX,
     DROPOUT_BAR_MAX,
     OMEGA_HOLD_THRESHOLD,
+    PIVOT_DRIFT_WARN_PX,
+    PIVOT_DRIFT_FAIL_PX,
 )
 from csv_helpers import is_clean_row, find_neighbours  # noqa: E402,F401
+
+# math.isnan handles plain floats and numpy scalars without forcing a
+# numpy dependency on this module's import time.
+import math as _math
 
 
 # Module-level Console — callers can replace with their own (e.g.
@@ -210,6 +216,105 @@ def render_verification_summary(n: int,
                       f"[red]{n_swap}[/red]  "
                       f"[dim](green/red markers appear to exchange "
                       f"positions)[/]")
+        # Brief 6 — physics checks. Each row only appears when its
+        # count is > 0 so clean clips don't sprout zero-rows.
+        n_res = extras.get("n_residual_suspect", 0)
+        if n_res > 0:
+            t.add_row(
+                "θ-residual suspects",
+                f"[red]{n_res}[/red]  "
+                f"[dim](θ[i] vs θ[i-1]+ω[i-1]·dt — catches slow drifts "
+                f"near ω zero-crossings that escape the Δω cap)[/]")
+
+        n_eng       = extras.get("n_energy_suspect", 0)
+        n_eng_ceil  = extras.get("n_energy_ceiling_suspect", 0)
+        n_eng_roll  = extras.get("n_energy_rolling_spike", 0)
+        if n_eng > 0:
+            t.add_row(
+                "energy suspects (total)",
+                f"[red]{n_eng}[/red]  "
+                f"[dim](E > E_release×headroom = stable latch; "
+                f"E/baseline > factor = transition teleport)[/]")
+            ceil_color = "red" if n_eng_ceil > 0 else "dim"
+            roll_color = "red" if n_eng_roll > 0 else "dim"
+            t.add_row(
+                "  ↳ above release ceiling",
+                f"[{ceil_color}]{n_eng_ceil}[/]")
+            t.add_row(
+                "  ↳ rolling spike",
+                f"[{roll_color}]{n_eng_roll}[/]")
+
+        n_trend_susp = extras.get("n_trend_arm_suspect", 0)
+        n_trend_win  = extras.get("n_trend_windows", 0)
+        if n_trend_win > 0:
+            from thresholds import ARM_LENGTH_TREND_WINDOW as _TW
+            t.add_row(
+                "trend arm-length suspects",
+                f"[red]{n_trend_susp}[/red]  "
+                f"[dim]({n_trend_win} window(s) of {_TW} frames "
+                f"drifted from reference)[/]")
+            t.add_row(
+                "",
+                "[dim](sliding-window arm-length median drift — catches "
+                "stable wrong-target episodes missed by per-frame check)[/]")
+    console.print(t)
+
+
+def render_pivot_check(hardcoded: tuple,
+                       inferred: tuple,
+                       drift_px: float,
+                       max_arm_dev_pct: float | None = None) -> None:
+    """
+    Print a single kv-table row summarising pivot consistency.
+    Called from verify_tracking after the arm-length block.
+
+    Brief 11b — when MAX arm-length deviation across clean frames
+    exceeds 15%, the back-projected pivot is meaningless because
+    green_pos and θ₁ are both corrupted on the violating frames and
+    the median pulls the implied-pivot estimate around. Render a
+    "check unreliable" row instead of a misleading drift number.
+
+    Mean arm-deviation is not a useful proxy here — it stays under 2%
+    even on heavily corrupted clips because the global-median normaliser
+    used by the per-frame check biases toward the majority object.
+    """
+    if drift_px is None or (isinstance(drift_px, float)
+                            and _math.isnan(drift_px)):
+        console.print("[dim]  pivot check  — insufficient clean frames[/]")
+        return
+
+    if (max_arm_dev_pct is not None
+            and not (isinstance(max_arm_dev_pct, float)
+                     and _math.isnan(max_arm_dev_pct))
+            and max_arm_dev_pct > 15.0):
+        t = _kv_table()
+        t.add_row(
+            "pivot check",
+            f"[dim]inferred ({inferred[0]:.1f}, {inferred[1]:.1f}), "
+            f"drift {drift_px:.1f} px[/]  "
+            f"[yellow]unreliable — max arm deviation "
+            f"{max_arm_dev_pct:.1f}% indicates corrupted tracking; "
+            f"fix tracking first[/]"
+        )
+        console.print(t)
+        return
+
+    if drift_px < PIVOT_DRIFT_WARN_PX:
+        color, note = "green", ""
+    elif drift_px < PIVOT_DRIFT_FAIL_PX:
+        color, note = "yellow", "  [dim]minor camera shift[/]"
+    else:
+        color, note = "red", (
+            "  [red]ring geometry may be wrong — "
+            "update PIVOT in thresholds.py[/]")
+
+    t = _kv_table()
+    t.add_row(
+        "pivot check",
+        f"hardcoded {hardcoded}  →  "
+        f"inferred ({inferred[0]:.1f}, {inferred[1]:.1f})  "
+        f"[{color}]drift {drift_px:.1f} px[/]{note}"
+    )
     console.print(t)
 
 
@@ -465,7 +570,8 @@ def render_verdict(stem: str,
                    n_interpolated: int,
                    hsv_kind: str,
                    total_elapsed: float,
-                   actionable_steps: list | None = None) -> str:
+                   actionable_steps: list | None = None,
+                   energy_omega_cap: float | None = None) -> str:
     """Render the verdict panel and return its plain-text export so the
     caller can append it to the verdict log file."""
     badge, border = _STATUS_BADGE.get(status, _STATUS_BADGE["FAIL"])
@@ -529,16 +635,31 @@ def render_verdict(stem: str,
     peak1 = (metrics_post or metrics_pre or {}).get("peak_omega1", 0.0)
     peak2 = (metrics_post or metrics_pre or {}).get("peak_omega2", 0.0)
 
-    def omega_value(peak_val):
+    def omega_value(peak_val, ic_cap=None):
         color = _omega_color(peak_val)
         bar   = _make_omega_bar(peak_val)
-        note  = ("  [dim]⚠ > 1500 physical limit[/]"
+        note  = ("  [dim]⚠ > 1500 limit[/]"
                  if peak_val > PEAK_OMEGA_PHYSICAL else "")
+        if ic_cap is not None and peak_val > ic_cap:
+            note += f"  [red]⚠ > {ic_cap:.0f} IC cap[/]"
         return f"[{color}]{peak_val:.0f} °/s[/]  {bar}{note}"
 
     pd_table = _kv_table()
     pd_table.add_row("peak |ω₁|", omega_value(peak1))
-    pd_table.add_row("peak |ω₂|", omega_value(peak2))
+    pd_table.add_row("peak |ω₂|",
+                     omega_value(peak2, ic_cap=energy_omega_cap))
+
+    if energy_omega_cap is not None:
+        if peak2 <= energy_omega_cap:
+            cap_color = "green"
+        elif peak2 <= energy_omega_cap * 1.2:
+            cap_color = "yellow"
+        else:
+            cap_color = "red"
+        pd_table.add_row(
+            "IC energy cap",
+            f"[{cap_color}]{energy_omega_cap:.0f} °/s[/]  "
+            f"[dim](from release ICs)[/]")
 
     arm_dev = (metrics_post or {}).get("arm_length_dev_max_pct")
     if arm_dev is not None:
@@ -708,11 +829,29 @@ if __name__ == "__main__":
          "arm_length_px": 231.4, "median_arm_px": 188.0, "dev_pct": 23.1},
     ]
 
-    render_verification_summary(1056, 143, 71, 1, 1.0 / 60.0)
+    render_verification_summary(
+        1056, 143, 71, 1, 1.0 / 60.0,
+        extras={
+            "n_accel_suspect":           4,
+            "n_swap_suspect":            0,
+            "n_residual_suspect":        2,
+            "n_energy_suspect":          7,
+            "n_energy_ceiling_suspect":  6,
+            "n_energy_rolling_spike":    1,
+            "n_trend_arm_suspect":      150,
+            "n_trend_windows":           3,
+        })
     render_arm_breakdown({"arm1_only": 0, "arm2_only": 1, "both": 0})
     render_phase_summary(mock_phase_data)
     render_suspect_table(mock_suspects, omega_cap=2500.0)
     render_arm_length_violations(mock_violations)
+    from thresholds import PIVOT as _PIVOT_DEMO
+    render_pivot_check(_PIVOT_DEMO, (_PIVOT_DEMO[0] + 2.3,
+                                    _PIVOT_DEMO[1] + 3.1), 3.8)
+    render_pivot_check(_PIVOT_DEMO, (_PIVOT_DEMO[0] + 7.0,
+                                    _PIVOT_DEMO[1] + 10.0), 12.2)
+    render_pivot_check(_PIVOT_DEMO, (_PIVOT_DEMO[0] + 32.0,
+                                    _PIVOT_DEMO[1] + 25.0), 40.6)
     txt = render_verdict(
         stem="th1_p001_th2_p093",
         video_path=r"C:\dev\chaos\Videos\th1_p001_th2_p093.mov",
@@ -730,6 +869,7 @@ if __name__ == "__main__":
         hsv_kind="global",
         total_elapsed=42.0,
         actionable_steps=None,
+        energy_omega_cap=1820.0,
     )
     print(f"\n[exported text length: {len(txt)} chars, locked width "
           f"{LOG_CONSOLE_WIDTH}]\n")

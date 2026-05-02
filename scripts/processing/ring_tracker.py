@@ -76,6 +76,12 @@ from video_status import (         # noqa: E402  (after sys.path tweak)
     status_summary,
     print_status,
 )
+# Brief 10b: PIVOT and ARM_LENGTH_PX are defined in thresholds.py as
+# the sole source of truth. Do NOT redeclare them here.
+from thresholds import (           # noqa: E402  (after sys.path tweak)
+    PIVOT,
+    ARM_LENGTH_PX,
+)
 
 
 # ─────────────────────────────────────────────
@@ -155,8 +161,7 @@ def hsv_file_for_video(video_path):
     stem = os.path.splitext(os.path.basename(video_path))[0]
     return os.path.join(DATA_DIR, f"hsv_{stem}.json")
 
-PIVOT            = (608, 355)
-ARM_LENGTH_PX    = 188
+# PIVOT and ARM_LENGTH_PX are imported from thresholds.py above.
 ARM_TOLERANCE_PX = 50
 ARM_LENGTH_CM    = 35.0
 SCALE_CM_PER_PX  = 0.186

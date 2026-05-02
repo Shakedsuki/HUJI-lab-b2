@@ -54,8 +54,9 @@ EXPERIMENTS_FILE = os.path.join(DATA_DIR, "experiments.json")
 
 VERIFY_SCRIPT = os.path.join(ROOT, "scripts", "processing", "verify_tracking.py")
 
-PIVOT          = (608, 355)
-ARM_LENGTH_PX  = 188
+# Brief 10b: PIVOT and ARM_LENGTH_PX live in thresholds.py.
+sys.path.insert(0, os.path.join(ROOT, "scripts", "utils"))
+from thresholds import PIVOT, ARM_LENGTH_PX  # noqa: E402
 
 FRAME_W = 1280
 FRAME_H = 720
