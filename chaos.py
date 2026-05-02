@@ -74,6 +74,7 @@ SCRIPT_TRIAGE     = os.path.join(ROOT, "scripts", "utils", "triage.py")
 SCRIPT_SUSPECTS   = os.path.join(ROOT, "scripts", "utils", "suspects_summary.py")
 SCRIPT_AUTO_SEED  = os.path.join(ROOT, "scripts", "utils", "auto_seed.py")
 SCRIPT_COMBINED   = os.path.join(ROOT, "scripts", "analysis", "combined_video.py")
+SCRIPT_FRICTION   = os.path.join(ROOT, "scripts", "analysis", "friction_fit.py")
 
 VIDEO_EXTS = {".mov", ".mp4", ".avi", ".mkv", ".m4v"}
 
@@ -303,6 +304,18 @@ def cmd_render(args):
     return run_script(SCRIPT_COMBINED, *extra)
 
 
+def cmd_friction_fit(args):
+    """Fit a friction model to the clip's mechanical-energy decay.
+    Compares exponential (Stokes drag) and power-law fits; writes
+    measurements/<stem>/friction_fit.png."""
+    extra = ["--stem", args.stem]
+    if args.smooth_window is not None:
+        extra += ["--smooth-window", str(args.smooth_window)]
+    if args.no_plot:
+        extra.append("--no-plot")
+    return run_script(SCRIPT_FRICTION, *extra)
+
+
 def resolve_video_path_for_stem(stem):
     """Look up Videos/<video_file> for a config_description via registry."""
     reg = load_registry()
@@ -359,6 +372,9 @@ BATCH / DRIVER COMMANDS
                              phase plots overlaid (uses existing tracking;
                              no re-track). Output: measurements/<stem>/
                              combined.mp4
+  chaos friction-fit <stem>  fit exponential / power-law friction models to
+                             the clip's energy decay. Reports best model +
+                             writes friction_fit.png
 
 INFO / REPORT COMMANDS
   chaos status               who's tracked, who's pending (one-screen)
@@ -795,6 +811,17 @@ def build_parser():
     p_render.add_argument("stem", metavar="<stem>",
         help="config_description, e.g. th1_p044_th2_m001")
 
+    p_fric = sub.add_parser("friction-fit",
+        help="fit a friction model (exponential / power-law) to the "
+             "clip's mechanical-energy decay")
+    p_fric.add_argument("stem", metavar="<stem>",
+        help="config_description, e.g. th1_p044_th2_m001")
+    p_fric.add_argument("--smooth-window", type=float, default=None,
+        metavar="SECONDS",
+        help="moving-mean window for the energy envelope (default 0.5s)")
+    p_fric.add_argument("--no-plot", action="store_true",
+        help="skip writing friction_fit.png")
+
     sub.add_parser("help", help="one-page cheat sheet for all subcommands")
 
     return p
@@ -815,9 +842,10 @@ HANDLERS = {
     "next":     cmd_next,
     "triage":   cmd_triage,
     "suspects":  cmd_suspects,
-    "auto-seed": cmd_auto_seed,
-    "render":    cmd_render,
-    "help":      cmd_help,
+    "auto-seed":    cmd_auto_seed,
+    "render":       cmd_render,
+    "friction-fit": cmd_friction_fit,
+    "help":         cmd_help,
 }
 
 

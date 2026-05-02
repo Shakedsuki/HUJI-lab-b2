@@ -137,10 +137,11 @@ def parse_args():
     p = argparse.ArgumentParser(
         description="Fit a friction model to a clip's energy decay.")
     p.add_argument("--stem", required=True, metavar="<stem>")
-    p.add_argument("--smooth-window", type=float, default=0.5,
+    p.add_argument("--smooth-window", type=float, default=2.0,
                    metavar="SECONDS",
                    help="moving-mean window for the energy envelope "
-                        "(default 0.5s; smooths the PE↔KE oscillation)")
+                        "(default 2.0s; should be 1-2 swing periods to "
+                        "fully average out PE↔KE oscillation)")
     p.add_argument("--no-plot", action="store_true",
                    help="skip writing friction_fit.png")
     return p.parse_args()
