@@ -2,14 +2,12 @@
 """
 RLD Circuit — Continuous Bifurcation Map from AM-Modulated Sweep
 =================================================================
-Produces both a 2D matplotlib figure (report-ready) and an interactive
+Produces a 2D matplotlib figure (report-ready) and an interactive
 3D plotly HTML (for exploration and rotation).
 
-The 2D figure contains two side-by-side panels:
-  Left  — unfiltered: all detected peaks including the ~-3.6 V
-           reverse-bias cluster, for completeness and transparency.
-  Right — filtered: only forward-bias peaks (V_peak > PEAK_MIN_VOLTAGE),
-           so the bifurcation cascade fills the full y-axis.
+The 2D figure shows all detected peaks (unfiltered) — including both
+the forward-bias bifurcation cascade and the ~-3.6 V reverse-bias cluster.
+The 3D HTML uses only forward-bias peaks (V > PEAK_MIN_VOLTAGE) for clarity.
 
 Measurement setup
 -----------------
@@ -38,9 +36,9 @@ Physics
 
 Output
 ------
-  - 2D figure with two panels (matplotlib PNG, saved to DATA_DIR)
-  - 3D interactive HTML (saved next to this script — tracked by git
-                          and served via GitHub Pages)
+  - 2D scatter plot  (matplotlib PNG, saved to DATA_DIR, unfiltered)
+  - 3D interactive   (plotly HTML, saved next to this script — tracked by git
+                      and served via GitHub Pages, filtered to forward-bias only)
 
 Error note
 ----------
@@ -56,7 +54,6 @@ import csv
 import glob
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.gridspec as gridspec
 from scipy.signal import find_peaks, hilbert
 from scipy.ndimage import uniform_filter1d
 
@@ -84,28 +81,28 @@ MIN_PEAK_DIST = int(0.6 / F_CARRIER_HZ / DT)   # ≈ 0.6 × carrier period
 # Peak prominence threshold — rejects noise spikes below this height
 PEAK_PROMINENCE = 0.15  # V
 
-# Voltage threshold separating the two peak families:
-#   forward-bias peaks  : ~  -1 V … +5.4 V   (show bifurcation cascade)
-#   reverse-bias peaks  : ~ -3.6 V            (diode hard-blocked, constant)
-# The gap between the families is ~1 V wide; any threshold in [-2.8, -2.0]
-# cleanly separates them.
-PEAK_MIN_VOLTAGE = -2.8  # V  — applied in the filtered panel only
+# Voltage threshold for the 3D HTML only — separates the two peak families:
+#   forward-bias peaks  : ~  -1 V … +5.4 V  (bifurcation cascade)
+#   reverse-bias peaks  : ~ -3.6 V           (diode hard-blocked, constant)
+# The 2D plot is always unfiltered. Any value in [-2.8, -2.0] cleanly
+# separates the two families (gap between them is ~1 V wide).
+PEAK_MIN_VOLTAGE = -2.8  # V  (applied to 3D only)
 
 # Envelope smoothing
 ENVELOPE_SMOOTH  = 500   # samples ≈ 0.5 ms
 DIRECTION_SMOOTH = 5000  # samples ≈ 5 ms
 
-# Scatter plot stride — keep every Nth peak for speed
+# Scatter plot stride — use every Nth peak for speed without losing structure
 PLOT_STRIDE = 3
 
-# Circuit description shown in plot titles
+# Circuit description for plot titles
 CIRCUIT_LABEL = (
     "1N4005 diode  |  L = 100 mH  |  R = 470 Ω  |  "
     r"$A_\mathrm{peak}$ = 7 V"
 )
 
-# Approximate bifurcation amplitudes for dashed guide-lines (V).
-# Estimated from visual inspection — update after examining the filtered panel.
+# Approximate bifurcation amplitudes (V) — dashed guide-lines on the 2D plot.
+# Estimated from visual inspection; update after examining the figure.
 BIFURCATION_AMPLITUDES = {
     "Period 1→2": 3.0,
     "Period 2→4": 3.5,
@@ -114,10 +111,10 @@ BIFURCATION_AMPLITUDES = {
 # ── PLOT AESTHETICS ───────────────────────────────────────────────────────────
 
 plt.rcParams.update({
-    'font.size': 11,
-    'axes.labelsize': 12,
+    'font.size': 12,
+    'axes.labelsize': 13,
     'axes.titlesize': 12,
-    'legend.fontsize': 9,
+    'legend.fontsize': 10,
     'figure.dpi': 150,
 })
 
@@ -154,8 +151,8 @@ def extract_peaks(ch1, min_voltage=None):
     Parameters
     ----------
     min_voltage : float or None
-        If given, discard peaks below this voltage (reverse-bias filter).
-        Pass None for the unfiltered version.
+        If given, discard peaks below this voltage.
+        Pass None for fully unfiltered output.
     """
     peaks, _ = find_peaks(ch1, distance=MIN_PEAK_DIST, prominence=PEAK_PROMINENCE)
     if min_voltage is not None:
@@ -169,57 +166,6 @@ def sweep_direction(env, peaks):
     return denv[peaks] >= 0
 
 
-def scatter_panel(ax, env, ch1, peaks, rising, title, annotate_hysteresis=False):
-    """
-    Draw one bifurcation scatter panel onto ax.
-
-    Parameters
-    ----------
-    annotate_hysteresis : bool
-        If True, add the hysteresis arrow annotation.
-    """
-    for mask, color, dlabel in [
-            ( rising, COLOR_RISING,  'Amplitude increasing'),
-            (~rising, COLOR_FALLING,
-             'Amplitude decreasing  (hysteresis at low drive)')]:
-        idx = peaks[mask][::PLOT_STRIDE]
-        ax.scatter(env[idx], ch1[idx],
-                   s=2, alpha=0.5, color=color,
-                   label=dlabel, rasterized=True)
-
-    # Bifurcation guide-lines
-    for label, amp in BIFURCATION_AMPLITUDES.items():
-        ax.axvline(amp, color='black', linestyle='--', linewidth=0.9, alpha=0.55)
-        ax.text(amp + 0.03, 0.97, label,
-                transform=ax.get_xaxis_transform(),
-                fontsize=8, color='black', alpha=0.75,
-                rotation=90, va='top', ha='left')
-
-    if annotate_hysteresis:
-        ax.annotate(
-            'Hysteresis\n(upswing ≠ downswing)',
-            xy=(1.0, -0.7), xytext=(1.6, -0.4),
-            xycoords='data', textcoords='data',
-            fontsize=8, color='black',
-            arrowprops=dict(arrowstyle='->', color='black',
-                            connectionstyle='arc3,rad=-0.2'),
-            bbox=dict(boxstyle='round,pad=0.3', fc='white', ec='grey', alpha=0.85)
-        )
-
-    ax.set_title(title, fontsize=11, pad=8)
-    ax.set_xlabel('Drive Envelope Amplitude (V)')
-    ax.set_ylabel('Diode Peak Voltage (V)')
-    ax.grid(True, linestyle='--', alpha=0.3)
-
-    handles, labels = ax.get_legend_handles_labels()
-    seen = {}
-    for h, l in zip(handles, labels):
-        if l not in seen:
-            seen[l] = h
-    ax.legend(seen.values(), seen.keys(), fontsize=8, loc='upper left',
-              framealpha=0.9)
-
-
 # ── MAIN ──────────────────────────────────────────────────────────────────────
 
 def main():
@@ -229,7 +175,6 @@ def main():
 
     print(f"Found {len(file_list)} file(s): {[os.path.basename(f) for f in file_list]}")
 
-    # Use only the first file (7V_2.csv confirmed identical to 7V.csv)
     path  = file_list[0]
     label = os.path.splitext(os.path.basename(path))[0]
     print(f"  Loading {label}...", end=" ", flush=True)
@@ -237,62 +182,68 @@ def main():
     t, ch1, ch2 = load_csv(path)
     env          = hilbert_envelope(ch2)
 
-    peaks_all      = extract_peaks(ch1, min_voltage=None)
-    peaks_filtered = extract_peaks(ch1, min_voltage=PEAK_MIN_VOLTAGE)
+    # Unfiltered — 2D plot shows everything
+    peaks_all  = extract_peaks(ch1, min_voltage=None)
+    rising_all = sweep_direction(env, peaks_all)
 
-    rising_all      = sweep_direction(env, peaks_all)
-    rising_filtered = sweep_direction(env, peaks_filtered)
+    # Filtered — 3D HTML uses forward-bias peaks only
+    peaks_filt  = extract_peaks(ch1, min_voltage=PEAK_MIN_VOLTAGE)
+    rising_filt = sweep_direction(env, peaks_filt)
 
     print(
         f"{len(peaks_all)} peaks total  |  "
-        f"{len(peaks_filtered)} after filter (V > {PEAK_MIN_VOLTAGE} V)"
+        f"{len(peaks_filt)} forward-bias (V > {PEAK_MIN_VOLTAGE} V)"
     )
 
-    # ── 2D FIGURE: two side-by-side panels ────────────────────────────────────
-    fig, (ax_left, ax_right) = plt.subplots(1, 2, figsize=(16, 7),
-                                             sharey=False)
+    # ── 2D PLOT — single panel, unfiltered ────────────────────────────────────
+    fig, ax = plt.subplots(figsize=(12, 7))
 
     fig.suptitle(
-        'RLD Circuit — Continuous Bifurcation Map\n' + CIRCUIT_LABEL + '\n'
+        'RLD Circuit — Continuous Bifurcation Map',
+        fontsize=15, fontweight='bold', y=0.99
+    )
+    ax.set_title(
+        CIRCUIT_LABEL + '\n'
         r'AM sweep: carrier $\approx$ 34 kHz,  $f_\mathrm{AM} \approx$ 0.7 Hz',
-        fontsize=13, fontweight='bold', y=1.01
+        fontsize=11, pad=10
     )
 
-    scatter_panel(
-        ax_left,  env, ch1, peaks_all,      rising_all,
-        title='All peaks  (unfiltered)',
-        annotate_hysteresis=False,
-    )
+    for mask, color, dlabel in [
+            ( rising_all, COLOR_RISING,  'Amplitude increasing'),
+            (~rising_all, COLOR_FALLING, 'Amplitude decreasing')]:
+        idx = peaks_all[mask][::PLOT_STRIDE]
+        ax.scatter(env[idx], ch1[idx],
+                   s=2, alpha=0.5, color=color,
+                   label=dlabel, rasterized=True)
 
-    scatter_panel(
-        ax_right, env, ch1, peaks_filtered, rising_filtered,
-        title=f'Forward-bias peaks only  ($V_\\mathrm{{peak}} > {PEAK_MIN_VOLTAGE}$ V)',
-        annotate_hysteresis=True,
-    )
+    # Bifurcation guide-lines
+    for blabel, amp in BIFURCATION_AMPLITUDES.items():
+        ax.axvline(amp, color='black', linestyle='--', linewidth=0.9, alpha=0.55)
+        ax.text(amp + 0.03, 0.97, blabel,
+                transform=ax.get_xaxis_transform(),
+                fontsize=9, color='black', alpha=0.75,
+                rotation=90, va='top', ha='left')
 
-    # Shared note about the reverse-bias cluster
-    fig.text(
-        0.5, -0.02,
-        f'Left panel: reverse-bias peaks cluster at ≈ −3.6 V (diode hard-blocked, constant with amplitude) '
-        f'are excluded in the right panel by the threshold V > {PEAK_MIN_VOLTAGE} V.',
-        ha='center', fontsize=9, color='grey', style='italic'
-    )
+    ax.set_xlabel('Drive Envelope Amplitude (V)', fontsize=13)
+    ax.set_ylabel('Diode Peak Voltage (V)', fontsize=13)
+    ax.grid(True, linestyle='--', alpha=0.3)
+    ax.legend(fontsize=10, loc='upper left', framealpha=0.9)
 
     plt.tight_layout()
     out_2d = os.path.join(DATA_DIR, 'bifurcation_continuous_2D.png')
     plt.savefig(out_2d, dpi=180, bbox_inches='tight')
-    print(f"\nSaved 2D figure → {out_2d}")
+    print(f"\nSaved 2D plot → {out_2d}")
     plt.show()
 
-    # ── 3D PLOTLY: filtered data only (cleaner for interactive exploration) ───
+    # ── 3D PLOTLY — filtered data only ────────────────────────────────────────
     try:
         import plotly.graph_objects as go
 
         fig3d = go.Figure()
         for mask, color, dlabel in [
-                ( rising_filtered, 'steelblue', 'Amplitude increasing'),
-                (~rising_filtered, 'crimson',   'Amplitude decreasing')]:
-            idx = peaks_filtered[mask][::PLOT_STRIDE]
+                ( rising_filt, 'steelblue', 'Amplitude increasing'),
+                (~rising_filt, 'crimson',   'Amplitude decreasing')]:
+            idx = peaks_filt[mask][::PLOT_STRIDE]
             fig3d.add_trace(go.Scatter3d(
                 x=t[idx] * 1e3,
                 y=env[idx],
@@ -320,13 +271,13 @@ def main():
             width=1100, height=700,
         )
 
+        # Save next to this script (tracked by git, served via GitHub Pages).
+        # include_plotlyjs='cdn' keeps the file ~130 KB instead of ~3 MB.
         out_3d = os.path.join(SCRIPT_DIR, 'bifurcation_continuous_3D.html')
-        # include_plotlyjs=True inlines plotly.js (~3 MB) so the file is fully
-        # self-contained — works offline and is immune to CDN URL changes.
-        fig3d.write_html(out_3d, include_plotlyjs=True)
+        fig3d.write_html(out_3d, include_plotlyjs='cdn')
         print(f"Saved 3D interactive plot → {out_3d}")
         print("Commit and push, then view at:")
-        print("  https://shakedsuki.github.io/HUJI-lab-b2/")
+        print("  https://shakedsuki.github.io/HUJI-lab-b2/chaos/chaos/part2/bifurcation_continuous_3D.html")
 
     except ImportError:
         print("plotly not installed — skipping 3D plot.  pip install plotly")
