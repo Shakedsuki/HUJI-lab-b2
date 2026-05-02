@@ -67,6 +67,11 @@ from render import render_verdict  # noqa: E402
 from thresholds import (  # noqa: E402
     ARM_LEN_THRESHOLD_PCT,
     OMEGA_CAP_HOLDING,
+    THETA_RESIDUAL_CAP_DEG,
+    ENERGY_SPIKE_FACTOR,
+    ARM_LENGTH_TREND_WINDOW,
+    PIVOT_DRIFT_FAIL_PX,
+    ARM_LENGTH_CM,
 )
 
 
@@ -164,6 +169,16 @@ def read_verification_metrics(meas_dir):
     n_arm_violations = 0
     n_accel_suspect = 0
     n_swap_suspect  = 0
+    # Brief 6 — defensive read of new columns; older verification.csv
+    # files lack them and parse cleanly with these counters at 0.
+    n_residual_suspect       = 0
+    n_energy_suspect         = 0
+    n_energy_ceiling_suspect = 0
+    n_energy_rolling_spike   = 0
+    n_trend_arm_suspect      = 0
+    # Brief 13 — ω-cap-only count (interpolation-resistant tracking
+    # errors), distinct from the union-of-all-checks suspect mask.
+    n_omega_cap_suspect      = 0
     with open(path, "r", newline="") as f:
         for r in csv.DictReader(f):
             n_total += 1
@@ -219,6 +234,54 @@ def read_verification_metrics(meas_dir):
                     n_swap_suspect += 1
             except ValueError:
                 pass
+            # Brief 6 columns — defensive.
+            for col, counter_name in (
+                ("residual_suspect",       "n_residual_suspect"),
+                ("energy_suspect",         "n_energy_suspect"),
+                ("energy_ceiling_suspect", "n_energy_ceiling_suspect"),
+                ("energy_rolling_spike",   "n_energy_rolling_spike"),
+                ("trend_arm_suspect",      "n_trend_arm_suspect"),
+                ("omega_cap_suspect",      "n_omega_cap_suspect"),
+            ):
+                try:
+                    if int(r.get(col) or 0) == 1:
+                        # Bump the local var by name without eval/exec.
+                        if counter_name == "n_residual_suspect":
+                            n_residual_suspect += 1
+                        elif counter_name == "n_energy_suspect":
+                            n_energy_suspect += 1
+                        elif counter_name == "n_energy_ceiling_suspect":
+                            n_energy_ceiling_suspect += 1
+                        elif counter_name == "n_energy_rolling_spike":
+                            n_energy_rolling_spike += 1
+                        elif counter_name == "n_trend_arm_suspect":
+                            n_trend_arm_suspect += 1
+                        elif counter_name == "n_omega_cap_suspect":
+                            # Brief 13 — only count clean (dropout=0)
+                            # frames; ω is undefined on dropout rows.
+                            if not drop:
+                                n_omega_cap_suspect += 1
+                except (ValueError, TypeError):
+                    pass
+
+    # Brief 6 sidecar — pivot drift, E_release, and trend-window count
+    # don't fit the per-frame CSV; verify_tracking writes them to
+    # verification_meta.json. Read defensively so older runs without
+    # the sidecar still parse cleanly.
+    meta_path = os.path.join(meas_dir, "verification_meta.json")
+    pivot_drift_px      = None
+    energy_release_J    = None
+    n_trend_arm_windows = 0
+    if os.path.exists(meta_path):
+        try:
+            with open(meta_path, "r", encoding="utf-8") as f:
+                meta = json.load(f)
+            pivot_drift_px      = meta.get("pivot_drift_px")
+            energy_release_J    = meta.get("energy_release_J")
+            n_trend_arm_windows = int(meta.get("n_trend_arm_windows") or 0)
+        except (OSError, ValueError, json.JSONDecodeError):
+            pass
+
     return {
         "n_total":               n_total,
         "n_dropout_total":       n_drop_total,
@@ -241,6 +304,17 @@ def read_verification_metrics(meas_dir):
         "n_arm_violations":      n_arm_violations,
         "n_accel_suspects":      n_accel_suspect,
         "n_swap_suspects":       n_swap_suspect,
+        # Brief 6
+        "n_residual_suspects":         n_residual_suspect,
+        "n_energy_suspects":           n_energy_suspect,
+        "n_energy_ceiling_suspects":   n_energy_ceiling_suspect,
+        "n_energy_rolling_spikes":     n_energy_rolling_spike,
+        "n_trend_arm_suspects":        n_trend_arm_suspect,
+        "n_trend_arm_windows":         n_trend_arm_windows,
+        "pivot_drift_px":              pivot_drift_px,
+        "energy_release_J":            energy_release_J,
+        # Brief 13
+        "n_omega_cap_suspects":        n_omega_cap_suspect,
     }
 
 
@@ -263,6 +337,16 @@ from thresholds import (  # noqa: E402
 def compute_verdict(metrics, n_suspects_post_interp):
     """
     Returns (status, reasons_list) where status ∈ {PASS, WARN, FAIL}.
+
+    Brief 13: the legacy `n_suspects_post_interp` parameter is the
+    union of ω-cap + every Brief 5/6 physics check. That double-counts
+    physics suspects (each check has its own dedicated reason below)
+    and inflates WARN verdicts on otherwise-clean tracking. We now
+    prefer `metrics["n_omega_cap_suspects"]` — the count of frames
+    flagged ONLY by the ω-cap mask, which is what
+    interpolate_suspects.py can actually fix. The parameter is kept
+    for callers that haven't migrated; it's only used as a fallback
+    when the new metric is absent (older verification.csv).
     """
     reasons = []
     drop = metrics.get("free_swing_dropout_pct")
@@ -282,9 +366,18 @@ def compute_verdict(metrics, n_suspects_post_interp):
 
     if drop > PASS_DROPOUT_PCT:
         reasons.append(f"free-swing dropout {drop:.1f}% in 5–10% band")
-    if n_suspects_post_interp > 0:
+
+    # Brief 13: report only ω-cap suspects under "residual suspects
+    # post-interpolation" — interpolation only acts on the ω-cap mask,
+    # so physics-check suspects don't belong in this count. Fall back
+    # to the union count when the new column is missing (older CSVs).
+    n_omega_cap_post = metrics.get("n_omega_cap_suspects")
+    if n_omega_cap_post is None:
+        n_omega_cap_post = n_suspects_post_interp
+    if n_omega_cap_post > 0:
         reasons.append(
-            f"{n_suspects_post_interp} residual suspects post-interpolation")
+            f"{n_omega_cap_post} ω-cap suspects survived interpolation")
+
     if peak2 > PEAK_OMEGA_PHYSICAL:
         reasons.append(
             f"peak |ω₂| {peak2:.0f}°/s > {PEAK_OMEGA_PHYSICAL:.0f}°/s "
@@ -322,9 +415,72 @@ def compute_verdict(metrics, n_suspects_post_interp):
             f"{n_swap} frame(s) where green/red markers "
             f"appear to have swapped labels")
 
+    # ── Brief 6 — physics checks ──────────────────────────────────────
+    # State track for the running verdict status. We may need to
+    # upgrade WARN→FAIL when the energy-ceiling fraction or trend-arm
+    # fraction is high, so threading status through these branches.
+    status = "PASS" if not reasons else "WARN"
+
+    # Trend arm-length runs first because a high trend-window count
+    # signals a long, stable wrong-target episode that interpolation
+    # cannot fix — should usually FAIL.
+    n_tw = metrics.get("n_trend_arm_windows",  0)
+    n_ts = metrics.get("n_trend_arm_suspects", 0)
+    n_free = metrics.get("n_free_swing", 1) or 1
+    if n_tw > 0:
+        frac = n_ts / max(n_free, 1)
+        reasons.append(
+            f"{n_tw} window(s) of {ARM_LENGTH_TREND_WINDOW} frames "
+            f"show arm-length drift from the reference window "
+            f"({100*frac:.1f}% of free_swing affected) — "
+            f"stable wrong-target episode suspected")
+        status = "FAIL" if frac > 0.15 else "WARN"
+
+    # θ-residual: a few are reviewable; many means systematic.
+    n_res = metrics.get("n_residual_suspects", 0)
+    if n_res > 0:
+        reasons.append(
+            f"{n_res} frame(s) with θ-prediction residual "
+            f"> {THETA_RESIDUAL_CAP_DEG:.1f}° "
+            f"(position inconsistent with recent velocity)")
+        if n_res > 5 and status == "PASS":
+            status = "WARN"
+
+    # Energy ceiling — strong signal of stable wrong-target latch.
+    n_ceil = metrics.get("n_energy_ceiling_suspects", 0)
+    n_roll = metrics.get("n_energy_rolling_spikes",   0)
+    if n_ceil > 0:
+        frac = n_ceil / max(n_free, 1)
+        reasons.append(
+            f"{n_ceil} frame(s) exceed release-energy ceiling "
+            f"({100*frac:.1f}% of free_swing) — "
+            f"probable stable wrong-target latch")
+        if frac > 0.10:
+            status = "FAIL"
+        elif status != "FAIL":
+            status = "WARN"
+
+    if n_roll > 0 and status != "FAIL":
+        reasons.append(
+            f"{n_roll} frame(s) show rolling energy spike "
+            f"(>{ENERGY_SPIKE_FACTOR:.1f}× baseline) — "
+            f"tracker likely jumped briefly to wrong object")
+        if status == "PASS":
+            status = "WARN"
+
+    # Pivot drift — run-level geometry check.
+    drift = metrics.get("pivot_drift_px")
+    if (drift is not None
+            and not (isinstance(drift, float) and math.isnan(drift))
+            and drift >= PIVOT_DRIFT_FAIL_PX):
+        reasons.append(
+            f"inferred pivot drifts {drift:.1f}px from hardcoded "
+            f"PIVOT — ring geometry may be miscalibrated")
+        if status == "PASS":
+            status = "WARN"
+
     if reasons:
-        # Severe holding-phase noise upgrades a would-be PASS to WARN.
-        return "WARN", reasons
+        return status, reasons
     return "PASS", ["dropout, suspects, and ω all within thresholds"]
 
 
@@ -361,8 +517,45 @@ def _load_top_suspect_frames(meas_dir, n=5):
     return candidates[:n]
 
 
+def compute_energy_omega_cap(entry: dict):
+    """
+    Brief 7 — IC-aware energy cap.
+    Derives the physical upper bound on |ω₂| from release ICs.
+    Conservative: assumes all release energy concentrates in arm-2
+    rotation. Returns °/s, or None if release ICs are unavailable.
+    """
+    th1 = entry.get("theta1_release")
+    th2 = entry.get("theta2_release")
+    if th1 is None or th2 is None:
+        return None
+
+    L = ARM_LENGTH_CM / 100.0
+    g = 9.8
+
+    th1_r     = math.radians(float(th1))
+    th2_abs_r = math.radians(float(th1) + float(th2))
+
+    # PE at release (both arms, reference = hanging straight down).
+    PE = g * L * (1 - math.cos(th1_r)) + g * L * (1 - math.cos(th2_abs_r))
+
+    KE = 0.0
+    w1 = entry.get("omega1_release")
+    w2 = entry.get("omega2_release")
+    if w1 is not None and w2 is not None:
+        w1_r = math.radians(abs(float(w1)))
+        w2_r = math.radians(abs(float(w2)))
+        KE = 0.5 * (L * w1_r) ** 2 + 0.5 * (L * (w1_r + w2_r)) ** 2
+
+    E_total = PE + KE
+    if E_total <= 0:
+        return None
+
+    return math.degrees(math.sqrt(2.0 * E_total) / L)
+
+
 def build_actionable_steps(stem, metrics_post, reasons, status,
-                           suspect_frames=None):
+                           suspect_frames=None, *, entry=None,
+                           energy_cap=None):
     """Translate metrics + verdict into copy-paste-ready guidance.
 
     Returns a list of dicts:
@@ -497,6 +690,97 @@ def build_actionable_steps(stem, metrics_post, reasons, status,
             "command": f"chaos fix {stem}",
         })
 
+    # ── Brief 6 ──────────────────────────────────────────────────────
+    n_tw = metrics_post.get("n_trend_arm_windows", 0)
+    n_ts = metrics_post.get("n_trend_arm_suspects", 0)
+    if n_tw > 0:
+        steps.append({
+            "priority": "required",
+            "category": "arm_length",
+            "text": (
+                f"{n_tw} window(s) of {ARM_LENGTH_TREND_WINDOW} frames "
+                f"show sustained arm-length drift ({n_ts} frames total).\n"
+                f"  The tracker likely latched onto a non-marker object "
+                f"for an extended run. The per-frame arm check cannot "
+                f"catch this because the global median was corrupted.\n"
+                f"  Interpolation will not fix a run this long.\n"
+                f"  Add a seed at the latch entry point, or recalibrate "
+                f"HSV and re-track."
+            ),
+            "command": f"chaos fix {stem}",
+        })
+
+    n_res = metrics_post.get("n_residual_suspects", 0)
+    if n_res > 0:
+        steps.append({
+            "priority": "review",
+            "category": "suspect_frame",
+            "text": (
+                f"{n_res} frame(s) show θ position inconsistent with "
+                f"recent velocity (residual > "
+                f"{THETA_RESIDUAL_CAP_DEG:.1f}°).\n"
+                f"  Likely: slow background object near the ring during "
+                f"low-velocity phase.\n"
+                f"  Check verification.png for position scatter near "
+                f"ω zero-crossings."
+            ),
+            "command": f"chaos verify {stem}",
+        })
+
+    n_ceil = metrics_post.get("n_energy_ceiling_suspects", 0)
+    n_roll = metrics_post.get("n_energy_rolling_spikes",   0)
+    if n_ceil > 0:
+        n_free = max(metrics_post.get("n_free_swing", 1) or 1, 1)
+        frac = n_ceil / n_free
+        steps.append({
+            "priority": "required",
+            "category": "suspect_frame",
+            "text": (
+                f"{n_ceil} frames ({100*frac:.1f}% of free_swing) exceed "
+                f"the release-energy ceiling.\n"
+                f"  Signature of a sustained wrong-target latch — the "
+                f"tracker followed a non-marker object for an extended run.\n"
+                f"  Single-frame interpolation cannot fix this. "
+                f"Add a seed at the latch entry point or recalibrate HSV."
+            ),
+            "command": f"chaos fix {stem}",
+        })
+
+    if n_roll > 0 and n_ceil == 0:
+        steps.append({
+            "priority": "review",
+            "category": "suspect_frame",
+            "text": (
+                f"{n_roll} frame(s) show brief energy spikes above the "
+                f"rolling baseline.\n"
+                f"  Likely: tracker briefly latched onto a wrong object "
+                f"and returned. Interpolation may fix these."
+            ),
+            "command": f"chaos override {stem}",
+        })
+
+    # ── Brief 7 — IC-aware energy cap ────────────────────────────────
+    peak2 = metrics_post.get("peak_omega2", 0.0)
+    if energy_cap is not None and peak2 > energy_cap * 1.2:
+        ic_th1 = (entry or {}).get("theta1_release")
+        ic_th2 = (entry or {}).get("theta2_release")
+        ic_str = (f"θ₁={float(ic_th1):.1f}°, θ₂={float(ic_th2):.1f}°"
+                  if ic_th1 is not None and ic_th2 is not None
+                  else "(release ICs unavailable)")
+        steps.append({
+            "priority": "required",
+            "category": "suspect_frame",
+            "text": (
+                f"Peak |ω₂| = {peak2:.0f} °/s exceeds the IC-derived "
+                f"energy cap of {energy_cap:.0f} °/s.\n"
+                f"  Release: {ic_str}.\n"
+                f"  A pendulum released from this configuration physically "
+                f"cannot reach {peak2:.0f} °/s.\n"
+                f"  This is a tracking error, not chaotic motion."
+            ),
+            "command": f"chaos override {stem}",
+        })
+
     # G) PASS — no issues found
     if status == "PASS" and not steps:
         steps.append({
@@ -538,7 +822,8 @@ def emit_card(stem, video_path, key, entry, *,
               status, reasons,
               metrics_pre, metrics_post,
               n_interpolated, hsv_kind, total_elapsed,
-              actionable_steps=None):
+              actionable_steps=None,
+              energy_omega_cap=None):
     """Print and append the one-page verdict card. Delegates the
     presentation layer to render.render_verdict; only the log-file
     append stays here."""
@@ -555,6 +840,7 @@ def emit_card(stem, video_path, key, entry, *,
         hsv_kind=hsv_kind,
         total_elapsed=total_elapsed,
         actionable_steps=actionable_steps,
+        energy_omega_cap=energy_omega_cap,
     )
     os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
     with open(LOG_FILE, "a", encoding="utf-8") as f:
@@ -574,6 +860,13 @@ def maybe_mark_verified(stem, status, reasons):
     entry["tracking_quality"]  = "verified"
     entry["verification_date"] = datetime.datetime.now().strftime("%Y-%m-%d")
     entry["verification_notes"] = " ".join(reasons)
+    # Brief 8: stamp the brief version this verdict was issued under so
+    # generate_roadmap.py can flag pre-Brief-5 PASSes as needing a
+    # re-audit. Bump this integer whenever the verdict logic changes.
+    # Brief 14 (rod formula + p99 reference + SG-smoothed ω + ω-cap-only
+    # post-interp count + tuned ENERGY_SPIKE_FACTOR) is the current
+    # verdict logic.
+    entry["verified_under_brief_version"] = 14
     with open(EXPERIMENTS_FILE, "w", encoding="utf-8") as f:
         json.dump(reg, f, indent=2)
 
@@ -693,12 +986,15 @@ def main():
 
     # ── 5. Build actionable steps + emit card + maybe mark verified ───
     suspect_frames = _load_top_suspect_frames(meas_dir, n=5)
+    energy_cap = compute_energy_omega_cap(entry)
     actionable_steps = build_actionable_steps(
         stem=stem,
         metrics_post=metrics_post or metrics_pre or {},
         reasons=reasons,
         status=status,
         suspect_frames=suspect_frames,
+        entry=entry,
+        energy_cap=energy_cap,
     )
     emit_card(stem, video_path, key, entry,
               status=status, reasons=reasons,
@@ -706,7 +1002,8 @@ def main():
               n_interpolated=n_interp,
               hsv_kind=hsv_kind_for_video(os.path.basename(video_path)),
               total_elapsed=time.time() - t_total,
-              actionable_steps=actionable_steps)
+              actionable_steps=actionable_steps,
+              energy_omega_cap=energy_cap)
     maybe_mark_verified(stem, status, reasons)
     return 0 if status != "FAIL" else 1
 

@@ -72,8 +72,12 @@ def hsv_file_for_video(video_path, force_global=False):
     stem = os.path.splitext(os.path.basename(video_path))[0]
     return os.path.join(DATA_DIR, f"hsv_{stem}.json")
 
-PIVOT          = (608, 355)        # fixed pivot in original 1280x720 coords
-ARM_LENGTH_PX  = 188               # default — override with --arm-length N
+# Brief 10b: PIVOT and ARM_LENGTH_PX imported from thresholds.py.
+# (--arm-length N still overrides ARM_LENGTH_PX at the CLI layer below.)
+_HSV_TUNER_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.abspath(
+    os.path.join(_HSV_TUNER_DIR, os.pardir, "utils")))
+from thresholds import PIVOT, ARM_LENGTH_PX  # noqa: E402
 
 # Original frame dimensions (we know the rig: 1280x720 @ 59.94fps).
 FRAME_W = 1280

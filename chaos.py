@@ -211,6 +211,19 @@ def cmd_verify(args):
         extra += ["--omega-cap", str(args.omega_cap)]
     if args.no_plot:
         extra.append("--no-plot")
+    # Brief 5+6 — pass through threshold overrides when set.
+    for attr, flag in (
+        ("delta_omega_cap",   "--delta-omega-cap"),
+        ("theta_residual_cap", "--theta-residual-cap"),
+        ("energy_spike_factor", "--energy-spike-factor"),
+        ("energy_headroom",   "--energy-headroom"),
+        ("arm_len_threshold", "--arm-len-threshold"),
+        ("arm_trend_window",  "--arm-trend-window"),
+        ("arm_trend_dev",     "--arm-trend-dev"),
+    ):
+        v = getattr(args, attr, None)
+        if v is not None:
+            extra += [flag, str(v)]
     return run_script(SCRIPT_VERIFY, *extra)
 
 
@@ -276,6 +289,10 @@ PIPELINE COMMANDS  (per clip, in typical order)
   chaos override <stem>      surgical single-row CSV edit (no re-track)
         --frame N            (frame-local; for one isolated bad frame)
   chaos verify <stem>        standalone QA on an existing tracking.csv
+                             flags: --delta-omega-cap, --theta-residual-cap,
+                                    --energy-spike-factor, --energy-headroom,
+                                    --arm-len-threshold, --arm-trend-window,
+                                    --arm-trend-dev
 
 BATCH / DRIVER COMMANDS
   chaos next                 god-mode loop — drive pending queue end-to-end
@@ -289,8 +306,8 @@ INFO / REPORT COMMANDS
   chaos roadmap              regenerate docs/tracking_roadmap.md (per-clip Markdown table)
   chaos hsv-probe            probe every existing HSV file vs every HSV-ABORT clip
                              (--apply: copy the best OK match per clip)
-  chaos audit                re-validate verified clips against current verdict logic
-                             (--apply: downgrade clips that no longer PASS)
+  chaos audit                re-validate verified clips against current thresholds
+                             --apply  downgrade clips that no longer pass
   chaos help                 this cheat sheet
   chaos <command> --help     full flag list for any subcommand
 
@@ -604,6 +621,31 @@ def build_parser():
         help="ω threshold above which |Δθ/dt| is suspect (default 2500)")
     p_verify.add_argument("--no-plot", action="store_true",
         help="skip writing measurements/<stem>/verification.png")
+    # Brief 5+6 — physics-check threshold overrides. Defaults are
+    # supplied by verify_tracking.py from thresholds.py; passing None
+    # here means "don't override".
+    p_verify.add_argument("--delta-omega-cap", type=float, default=None,
+        metavar="DEG_PER_S",
+        help="max |Δω| per frame; catches sudden tracker latches")
+    p_verify.add_argument("--theta-residual-cap", type=float, default=None,
+        metavar="DEG",
+        help="θ vs (θ+ω·dt) prediction-residual gate (default 5°)")
+    p_verify.add_argument("--energy-spike-factor", type=float, default=None,
+        metavar="RATIO",
+        help="E[i] / rolling baseline ratio above which a frame is "
+             "flagged (default 1.3)")
+    p_verify.add_argument("--energy-headroom", type=float, default=None,
+        metavar="RATIO",
+        help="E[i] ≤ E_release × this before flagging (default 1.15)")
+    p_verify.add_argument("--arm-len-threshold", type=float, default=None,
+        metavar="PCT",
+        help="per-frame arm-length deviation %% gate (default 10)")
+    p_verify.add_argument("--arm-trend-window", type=int, default=None,
+        metavar="FRAMES",
+        help="sliding-window size for arm-length trend (default 100)")
+    p_verify.add_argument("--arm-trend-dev", type=float, default=None,
+        metavar="PCT",
+        help="trend window %% deviation that flags the window (default 5)")
 
     p_bulk = sub.add_parser("bulk",
         help="sequential bulk pass over plannable pending clips")

@@ -59,10 +59,10 @@ EXPERIMENTS_FILE = os.path.join(ROOT, "data", "experiments.json")
 VERIFY_SCRIPT    = os.path.join(ROOT, "scripts", "processing",
                                 "verify_tracking.py")
 
-ARM_LENGTH_PX    = 188
-
 sys.path.insert(0, os.path.join(ROOT, "scripts", "utils"))
 from render import render_interpolation_plan  # noqa: E402
+# Brief 10b: ARM_LENGTH_PX lives in thresholds.py.
+from thresholds import ARM_LENGTH_PX  # noqa: E402
 
 
 # ─────────────────────────────────────────────

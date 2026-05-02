@@ -121,13 +121,51 @@ Internally runs `track_one.py`, which is:
 7. **Auto-mark** on PASS — `tracking_quality=verified`,
    `verification_date` are written to the registry.
 
+### Verification checks — execution order
+
+`chaos verify` runs the following checks in order. Each merges into the
+combined `suspect` mask (except pivot drift, which is run-level only).
+
+| # | Check | Threshold source | CSV column |
+|---|-------|------------------|------------|
+| 1 | ω-cap (phase-separated)  | `thresholds.OMEGA_CAP_HOLDING` / `--omega-cap`                                                                          | `suspect`                                                                            |
+| 2 | Arm-length per-frame     | `thresholds.ARM_LEN_THRESHOLD_PCT` / `--arm-len-threshold`                                                              | `arm_dev_pct`, `arm_length_px`                                                       |
+| 3 | Δω acceleration          | `thresholds.DELTA_OMEGA_CAP` / `--delta-omega-cap`                                                                      | `delta_omega_suspect`                                                                |
+| 4 | Marker swap              | `thresholds.SWAP_RATIO_THRESHOLD`                                                                                       | `swap_suspect`                                                                       |
+| 5 | Trend arm-length         | `thresholds.ARM_LENGTH_TREND_WINDOW`, `ARM_LENGTH_TREND_DEV_PCT` / `--arm-trend-window`, `--arm-trend-dev`              | `trend_arm_suspect`                                                                  |
+| 6 | θ-residual               | `thresholds.THETA_RESIDUAL_CAP_DEG` / `--theta-residual-cap`                                                            | `residual_suspect`                                                                   |
+| 7 | Energy monotonicity      | `thresholds.ENERGY_SPIKE_FACTOR`, `ENERGY_RELEASE_HEADROOM` / `--energy-spike-factor`, `--energy-headroom`              | `energy_J`, `energy_suspect`, `energy_ceiling_suspect`, `energy_rolling_spike`       |
+| 8 | Pivot drift              | `thresholds.PIVOT_DRIFT_WARN_PX`, `PIVOT_DRIFT_FAIL_PX`                                                                 | (run-level — see `verification_meta.json`)                                           |
+
+Trend arm-length runs before energy because it validates the arm-length
+median used by the per-frame check; energy ceiling uses E at the first
+clean free-swing frame as its absolute reference.
+
 ### Verdict bands
 
 | Verdict | Conditions | Action |
 |---------|-----------|--------|
-| **PASS** | dropout < 5% AND no residual suspects AND peak \|ω₂\| ≤ 1500 °/s | done; auto-verified |
-| **WARN** | dropout 5–10% OR residual suspects OR peak \|ω₂\| 1500–4000 | review verification.png; manually accept or fix |
-| **FAIL** | dropout > 10% OR peak \|ω₂\| > 4000 OR a subprocess errored | fix-up required |
+| **PASS** | `free_swing_dropout_pct < PASS_DROPOUT_PCT` AND no suspects across all checks AND peak \|ω₂\| within IC energy cap | done; auto-verified |
+| **WARN** | dropout in `PASS–WARN` band, OR ≤5 θ-residual suspects, OR peak \|ω₂\| > physical RoT, OR pivot drift ≥ `PIVOT_DRIFT_FAIL_PX`, OR holding-phase suspects, OR trend-arm-windows > 0 with frac ≤ 15%, OR energy-ceiling-suspects with frac ≤ 10% | review verification.png; manually accept or fix |
+| **FAIL** | `free_swing_dropout_pct > WARN_DROPOUT_PCT`, OR > 10% of free_swing frames flagged as energy-ceiling-suspect, OR > 15% of free_swing frames covered by trend-arm windows, OR a subprocess errored | fix-up required |
+
+Numeric values live in `scripts/utils/thresholds.py` — not duplicated
+here. **All PASS verdicts issued before Brief 5 are unverified against
+the current physics checks and should be re-run with `chaos verify`
+before being used in downstream analysis.**
+
+### New CSV columns (Briefs 3–6)
+
+| Column                             | Source                                |
+|------------------------------------|---------------------------------------|
+| `arm_length_px`, `arm_dev_pct`, `omega_cap_applied` | Brief 3                  |
+| `delta_omega_suspect`, `swap_suspect`               | Brief 5                  |
+| `residual_suspect`                                  | Brief 6 Check A          |
+| `energy_J`, `energy_ceiling_suspect`, `energy_rolling_spike`, `energy_suspect` | Brief 6 Check B |
+| `trend_arm_suspect`                                 | Brief 6 Check D          |
+
+Run-level metrics (pivot drift, E_release reference) live in
+`measurements/<stem>/verification_meta.json` alongside `verification.csv`.
 
 ## Stage 3 — Manual fix-up (`chaos fix <stem>`)
 
@@ -186,9 +224,24 @@ mode kicks in from frame 130.
 ## Stage 4 — Status / report
 
 ```bash
-chaos status     # one-screen text summary
-chaos report     # writes data/status_report.xlsx (Excel)
+chaos status         # one-screen text summary
+chaos report         # writes data/status_report.xlsx (Excel)
+chaos audit          # re-validate verified clips against current verdict logic
+chaos audit --apply  # downgrade clips that no longer pass
 ```
+
+`chaos audit` walks every registry entry with
+`tracking_quality=verified`, re-runs `compute_verdict` against its
+existing `verification.csv` + `verification_meta.json` under the
+current `thresholds.py`, and lists clips whose verdict has changed.
+With `--apply`, the registry is mutated in place and the
+`tracking_quality` field is downgraded.
+
+> **All PASS verdicts issued before Brief 3+5 (i.e.
+> `verified_under_brief_version < 5`) should be considered unverified**
+> against the current physics checks and re-run with
+> `chaos verify` (or audited with `chaos audit`) before being used in
+> downstream analysis.
 
 The Excel report has two sheets:
 
@@ -198,6 +251,40 @@ The Excel report has two sheets:
 - **long_recording** — separate row for the long recording with extra
   columns (duration, free-swing frame count, suspect frame count,
   energy proxy).
+
+## Geometric calibration
+
+`PIVOT` and `ARM_LENGTH_PX` are defined in
+[`scripts/utils/thresholds.py`](../scripts/utils/thresholds.py) and are
+the **sole source of truth** for all geometry in the pipeline. Do not
+redefine them locally in any script — every consumer
+(`ring_tracker.py`, `verify_tracking.py`, `hsv_tuner.py`,
+`manual_correction.py`, `override_frame.py`, `interpolate_suspects.py`,
+and the analysis-side `combined_video.py`) imports from there.
+
+### Re-measuring `PIVOT`
+
+When the camera shifts between recording sessions, the inferred pivot
+on clean clips will drift away from the hardcoded `PIVOT`. The Brief 6
+pivot-drift check surfaces this in `verification.png` and in
+`verification_meta.json`.
+
+Procedure:
+
+1. Run `chaos verify` on at least two known-clean clips.
+2. Read `pivot_inferred_px` from each `measurements/<stem>/verification_meta.json`.
+3. If the two clips agree to within **3 px** on each coordinate, take
+   their average and round to integer pixels.
+4. Update `PIVOT` in [`scripts/utils/thresholds.py`](../scripts/utils/thresholds.py).
+5. Re-track every clip with `chaos bulk --redo` (the existing
+   `tracking.csv` data was generated against the old ring centre, so
+   re-verification alone does not fix it).
+6. Run `chaos audit --apply` to downgrade clips whose verdict no
+   longer holds under the new geometry.
+
+**Current `PIVOT`: (607, 330)** — measured 2026-05-02 from clean clips
+`th1_p044_th2_m001` and `th1_p047_th2_m002`.
+Previous value `(608, 355)` was 25 px off in y — deprecated Brief 10b.
 
 ## Troubleshooting cheat sheet
 

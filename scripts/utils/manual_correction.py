@@ -69,6 +69,9 @@ TRACK_ONE      = os.path.join(ROOT, "scripts", "utils",       "track_one.py")
 # emits the same verdict card and auto-marks tracking_quality on PASS.
 sys.path.insert(0, os.path.join(ROOT, "scripts", "utils"))
 import track_one as _track_one_mod  # noqa: E402
+# Brief 10b: PIVOT and ARM_LENGTH_PX live in thresholds.py — sole
+# source of truth. Do not redeclare locally.
+from thresholds import PIVOT, ARM_LENGTH_PX  # noqa: E402
 
 # Frame display dimensions (mirrors the picker in ring_tracker / hsv_tuner).
 FRAME_W   = 1280
@@ -87,9 +90,7 @@ OVERLAY_FULL, OVERLAY_MINIMAL, OVERLAY_CLEAN = 0, 1, 2
 OVERLAY_LABELS = {OVERLAY_FULL: "FULL", OVERLAY_MINIMAL: "MIN",
                   OVERLAY_CLEAN: "CLEAN"}
 
-# Pivot + arm geometry constants (mirror ring_tracker.py).
-PIVOT          = (608, 355)
-ARM_LENGTH_PX  = 188
+# PIVOT + ARM_LENGTH_PX imported from thresholds.py above.
 
 
 # ─────────────────────────────────────────────

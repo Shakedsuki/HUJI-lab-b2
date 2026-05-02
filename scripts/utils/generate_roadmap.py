@@ -80,31 +80,87 @@ def has_tracking_csv(entry):
     return os.path.exists(os.path.join(ROOT, md, "tracking.csv"))
 
 
+def read_verification_metrics(meas_dir):
+    """Brief 6 — return a dict with the per-clip fields the roadmap
+    needs. Falls back gracefully when verification.csv or
+    verification_meta.json is absent or malformed.
+
+    Schema: {peak_omega2, n_suspect_hidden, n_trend_arm_suspects,
+             n_trend_arm_windows, n_residual_suspects,
+             n_energy_suspects, n_energy_ceiling_suspects,
+             pivot_drift_px}
+    """
+    out = {
+        "peak_omega2":               None,
+        "n_suspect_hidden":          None,
+        "n_trend_arm_suspects":      0,
+        "n_trend_arm_windows":       0,
+        "n_residual_suspects":       0,
+        "n_energy_suspects":         0,
+        "n_energy_ceiling_suspects": 0,
+        "pivot_drift_px":            None,
+    }
+    csv_path = os.path.join(meas_dir, "verification.csv")
+    if os.path.exists(csv_path):
+        peak = 0.0
+        n_susp = 0
+        n_trend = n_res = n_eng = n_eng_ceil = 0
+        try:
+            with open(csv_path, "r", newline="") as f:
+                for r in csv.DictReader(f):
+                    try:
+                        o2 = abs(float(r.get("omega2_deg_s") or 0))
+                        if o2 > peak:
+                            peak = o2
+                    except ValueError:
+                        pass
+                    try:
+                        if (int(r.get("suspect") or 0)
+                                and not int(r.get("dropout") or 0)):
+                            n_susp += 1
+                    except ValueError:
+                        pass
+                    # Brief 6 columns — defensive (older CSVs lack them).
+                    for col, key in (
+                        ("trend_arm_suspect",      "n_trend_arm_suspects"),
+                        ("residual_suspect",       "n_residual_suspects"),
+                        ("energy_suspect",         "n_energy_suspects"),
+                        ("energy_ceiling_suspect", "n_energy_ceiling_suspects"),
+                    ):
+                        try:
+                            if int(r.get(col) or 0) == 1:
+                                if key == "n_trend_arm_suspects":      n_trend  += 1
+                                elif key == "n_residual_suspects":       n_res    += 1
+                                elif key == "n_energy_suspects":         n_eng    += 1
+                                elif key == "n_energy_ceiling_suspects": n_eng_ceil += 1
+                        except (ValueError, TypeError):
+                            pass
+        except (OSError, csv.Error):
+            return out
+        out["peak_omega2"]               = peak
+        out["n_suspect_hidden"]          = n_susp
+        out["n_trend_arm_suspects"]      = n_trend
+        out["n_residual_suspects"]       = n_res
+        out["n_energy_suspects"]         = n_eng
+        out["n_energy_ceiling_suspects"] = n_eng_ceil
+
+    meta_path = os.path.join(meas_dir, "verification_meta.json")
+    if os.path.exists(meta_path):
+        try:
+            with open(meta_path, "r", encoding="utf-8") as f:
+                m = json.load(f)
+            out["pivot_drift_px"]      = m.get("pivot_drift_px")
+            out["n_trend_arm_windows"] = int(m.get("n_trend_arm_windows") or 0)
+        except (OSError, ValueError, json.JSONDecodeError):
+            pass
+    return out
+
+
 def read_peak_omega_and_suspects(meas_dir):
-    """Return (peak_omega2, n_suspect_hidden) from verification.csv.
-    Returns (None, None) when the file is missing or malformed."""
-    path = os.path.join(meas_dir, "verification.csv")
-    if not os.path.exists(path):
-        return None, None
-    peak = 0.0
-    n_susp = 0
-    try:
-        with open(path, "r", newline="") as f:
-            for r in csv.DictReader(f):
-                try:
-                    o2 = abs(float(r.get("omega2_deg_s") or 0))
-                    if o2 > peak:
-                        peak = o2
-                except ValueError:
-                    pass
-                try:
-                    if int(r.get("suspect") or 0) and not int(r.get("dropout") or 0):
-                        n_susp += 1
-                except ValueError:
-                    pass
-    except (OSError, csv.Error):
-        return None, None
-    return peak, n_susp
+    """Backwards-compatible wrapper. Call sites that only need the two
+    headline numbers can keep using this signature."""
+    m = read_verification_metrics(meas_dir)
+    return m["peak_omega2"], m["n_suspect_hidden"]
 
 
 def classify(entry, bulk_entry):
@@ -184,15 +240,21 @@ def build_table_rows(reg, bulk_log):
         bucket, label = classify(entry, bulk_entry)
         meas_dir = os.path.join(ROOT, entry.get("measurements_dir") or
                                 f"measurements/{stem}")
-        peak_o2, n_susp = read_peak_omega_and_suspects(meas_dir)
+        m = read_verification_metrics(meas_dir)
+        # Brief 8: clips PASS-verified before Brief 5 are unverified
+        # against the current physics checks. Mark them visually so the
+        # engineer knows to re-audit.
+        brief_ver = entry.get("verified_under_brief_version")
+        needs_reaudit = (entry.get("tracking_quality") == "verified"
+                         and (brief_ver is None or int(brief_ver) < 5))
         rows.append({
             "stem":     stem,
             "key":      key,
             "bucket":   bucket,
             "label":    label,
             "drop_pct": entry.get("dropout_rate_pct"),
-            "peak_o2":  peak_o2,
-            "n_susp":   n_susp,
+            "peak_o2":  m["peak_omega2"],
+            "n_susp":   m["n_suspect_hidden"],
             "n_free":   entry.get("n_free_frames"),
             "duration": entry.get("duration_s"),
             "th1_rel":  entry.get("theta1_release"),
@@ -201,6 +263,16 @@ def build_table_rows(reg, bulk_log):
             "release":  entry.get("release_frame"),
             "last":     first_attempt_iso(entry, bulk_entry),
             "note":     short_note(entry, bulk_entry, bucket),
+            # Brief 6 — physics-check counts
+            "n_trend_arm_susp":      m["n_trend_arm_suspects"],
+            "n_trend_arm_win":       m["n_trend_arm_windows"],
+            "n_residual_susp":       m["n_residual_suspects"],
+            "n_energy_susp":         m["n_energy_suspects"],
+            "n_energy_ceil_susp":    m["n_energy_ceiling_suspects"],
+            "pivot_drift_px":        m["pivot_drift_px"],
+            # Brief 8 — re-audit flag
+            "brief_version":         brief_ver,
+            "needs_reaudit":         needs_reaudit,
         })
     rows.sort(key=lambda r: (bucket_order[r["bucket"]], r["stem"]))
     return rows
@@ -248,23 +320,49 @@ def render_markdown(rows, reg, bulk_log):
     lines.append(f"| _total_ | {len(rows)} | every entry in `experiments.json` |")
     lines.append("")
 
-    # Per-clip table
+    # Per-clip table — Brief 6 columns added; rows that need a Brief 6
+    # re-audit are visually flagged in the Status cell.
     lines.append("## Per-clip status")
     lines.append("")
-    lines.append("| Stem | Status | Drop% (free) | Peak ω₂ (°/s) | "
-                 "Suspects | Free frames | Last touched | Notes |")
-    lines.append("|---|---|---|---|---|---|---|---|")
+    lines.append("| Stem | Status | Drop% | Peak ω₂ | Susp | "
+                 "Trend (susp/win) | θ-resid | E-ceil/total | "
+                 "Pivot drift | Free | Last | Notes |")
+    lines.append("|---|---|---|---|---|---|---|---|---|---|---|---|")
+    n_reaudit = 0
     for r in rows:
+        label = r["label"]
+        if r.get("needs_reaudit"):
+            label = f"⚠ {label} _(pre-Brief-5)_"
+            n_reaudit += 1
+        trend_cell = (f"{r['n_trend_arm_susp']}/{r['n_trend_arm_win']}"
+                      if r['n_trend_arm_win'] else "0/0")
+        eng_cell = (f"{r['n_energy_ceil_susp']}/{r['n_energy_susp']}"
+                    if r['n_energy_susp'] else "0/0")
+        drift = r.get("pivot_drift_px")
+        drift_cell = f"{drift:.1f}px" if drift is not None else "—"
         lines.append(
-            f"| `{r['stem']}` | {r['label']} | "
+            f"| `{r['stem']}` | {label} | "
             f"{fmt(r['drop_pct'], 'pct')} | "
             f"{fmt(r['peak_o2'], 'omega')} | "
             f"{fmt(r['n_susp'], 'int')} | "
+            f"{trend_cell} | "
+            f"{r['n_residual_susp']} | "
+            f"{eng_cell} | "
+            f"{drift_cell} | "
             f"{fmt(r['n_free'], 'int')} | "
             f"{r['last']} | "
             f"{r['note']} |"
         )
     lines.append("")
+
+    if n_reaudit:
+        lines.append(
+            f"> **{n_reaudit} clip(s) marked ⚠** were verified before the "
+            f"Brief 5+6 physics checks landed (i.e. "
+            f"`verified_under_brief_version < 5`). Run `chaos audit "
+            f"--apply` or `chaos verify <stem>` to re-validate them "
+            f"against the current thresholds.")
+        lines.append("")
 
     # What to do next
     lines.append("## What to do next")

@@ -15,6 +15,13 @@ For each new recording, in order:
 The single command **`chaos next`** drives all three steps for every
 pending clip, prompting only when human input is genuinely required.
 
+> `chaos verify` now runs **7 physics checks** in addition to dropout:
+> arm-length rigidity, angular acceleration (Δω), marker swap, arm-length
+> trend, θ-prediction residual, energy monotonicity, and pivot drift.
+> A 0%-dropout clip can still fail if any of these checks detects a
+> wrong-target latch. After updating `thresholds.py`, run **`chaos
+> audit`** to re-validate previously-verified clips.
+
 ## Setup (once)
 
 ```bash
@@ -49,6 +56,7 @@ chaos next --stem <stem>      drive just one clip through the pipeline
 
 chaos status                  who's tracked, who's pending
 chaos report                  regenerate data/status_report.xlsx
+chaos audit [--apply]         re-validate verified clips against current physics thresholds
 
 chaos tune <stem>             open the HSV tuner for one clip
 chaos track <stem>            track + verify + interpolate + verdict

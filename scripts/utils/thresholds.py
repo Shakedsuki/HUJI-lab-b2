@@ -59,6 +59,9 @@ ARM_LEN_THRESHOLD_PCT = 10.0
 # failure mode from the absolute ω cap: when the tracker latches onto
 # a slow-moving wrong object, ω is small but the transition jump
 # spikes Δω.
+# Brief 6 calibration: 99th-percentile |Δω| on clean clips
+# th1_p044_th2_m001 and th1_p047_th2_m002 measured at 102.9 and
+# 94.2 °/s respectively — comfortably below 200, so the cap stays.
 DELTA_OMEGA_CAP = 200.0
 
 # Marker swap detection. If the cross-pairing distance (green→red',
@@ -66,3 +69,42 @@ DELTA_OMEGA_CAP = 200.0
 # distance (green→green', red→red'), the tracker has more likely
 # swapped the marker labels than continued normal motion.
 SWAP_RATIO_THRESHOLD = 0.7
+
+# Brief 6 — physics checks
+THETA_RESIDUAL_CAP_DEG    = 5.0    # ° prediction residual gate
+# Brief 14 calibration (2026-05-02): on clean clips with SG-smoothed
+# ω, p99 of E[i] / median(E[i-5:i]) is 1.38–1.68 and the maximum
+# observed is 2.24. The previous 1.3 threshold flagged 3–6% of clean
+# frames as spurious "spikes." Bumped to 2.0 — catches real
+# wrong-target jumps (3-10× inflation) without firing on natural
+# pendulum oscillation through swing extremes.
+ENERGY_SPIKE_FACTOR       = 2.0
+ENERGY_SMOOTH_WINDOW      = 5      # frames for rolling median baseline
+ENERGY_RELEASE_HEADROOM   = 1.15   # E[i] ≤ E_release * this before flagging
+PIVOT_DRIFT_WARN_PX       = 5.0    # px
+PIVOT_DRIFT_FAIL_PX       = 15.0   # px
+
+# Brief 6 Check D — trend arm-length
+ARM_LENGTH_TREND_WINDOW   = 100    # frames per sliding window
+ARM_LENGTH_TREND_DEV_PCT  = 5.0    # % deviation from reference window
+
+# Brief 7 (absorbed) — IC-aware energy cap
+ARM_LENGTH_CM             = 35.0   # physical arm length in cm
+                                   # (mirror of ring_tracker constant —
+                                   # note duplication, keep in sync)
+
+# Fixed pivot pixel location and arm length — sole source of truth
+# for all geometry in the pipeline. Imported by ring_tracker.py and
+# verify_tracking.py; do not redefine locally.
+#
+# Brief 10b (2026-05-02): PIVOT re-measured from Brief-6 pivot drift
+# back-projection on two clean clips:
+#   th1_p044_th2_m001 → (605.5, 329.7)
+#   th1_p047_th2_m002 → (607.5, 329.3)
+# Both agree within 3 px on each coordinate. Average rounded to int:
+PIVOT                     = (607, 330)
+# Previous value (608, 355) was 25 px off in y — deprecated.
+#
+# ARM_LENGTH_PX is the radius of the green-marker ring around PIVOT
+# and the red-marker ring around the green marker.
+ARM_LENGTH_PX             = 188

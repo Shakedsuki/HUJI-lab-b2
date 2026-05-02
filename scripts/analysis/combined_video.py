@@ -139,8 +139,12 @@ FPS_OUT   = 59.94   # output framerate
 SG_WINDOW = 11
 SG_POLY   = 3
 
-# Pivot pixel coordinates in original 1280×720 video
-PIVOT_ORIG = (608, 355)
+# Pivot pixel coordinates in original 1280×720 video.
+# Brief 10b: imported from thresholds.py (sole source of truth).
+_COMBINED_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.abspath(
+    os.path.join(_COMBINED_DIR, os.pardir, "utils")))
+from thresholds import PIVOT as PIVOT_ORIG  # noqa: E402
 
 # ── Canonical color scheme ──────────────────────────────────────────────
 # Matches physical markers and is consistent across all analysis scripts.
