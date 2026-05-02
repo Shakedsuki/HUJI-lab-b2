@@ -1,6 +1,6 @@
 # Tracking Roadmap
 
-_Generated 2026-05-02 05:28._ Re-run with `chaos roadmap`.
+_Generated 2026-05-02 14:07._ Re-run with `chaos roadmap`.
 
 Lives at [`docs/tracking_roadmap.md`](tracking_roadmap.md). Every row reflects the current state of `data/experiments.json` plus the latest `data/bulk_tracking_log.json` and per-clip `measurements/<stem>/verification.csv`.
 
@@ -37,7 +37,7 @@ Lives at [`docs/tracking_roadmap.md`](tracking_roadmap.md). Every row reflects t
 | `th1_p094_th2_p000_r2` | WARN | 0.15% | 1306 | 15 | 0/0 | 2 | 0/0 | 4.8px | 1353 | 2026-05-02 | interp 12 |
 | `th1_p116_th2_m001` | WARN | 0.00% | 1274 | 3 | 0/0 | 0 | 0/3 | 4.7px | 1966 | 2026-05-02 | interp 95 |
 | `th1_p138_th2_m002` | WARN | 0.00% | 1370 | 4 | 0/0 | 0 | 0/3 | 6.0px | 2587 | 2026-05-02 | interp 186 |
-| `th1_p180_th2_m179` | WARN | 0.00% | 2710 | 221 | 0/0 | 128 | 0/28 | 1.2px | 30897 | 2026-05-01 | interp 20 |
+| `th1_p180_th2_m179` | WARN | 0.00% | 2710 | 232 | 0/0 | 138 | 0/28 | 1.2px | 30897 | 2026-05-02 | interp 20 |
 | `th1_p180_th2_p180` | WARN | 5.04% | 1769 | 54 | 0/0 | 15 | 0/9 | 19.8px | 1390 | 2026-05-01 | dropout 5.0%; interp 2 |
 | `th1_m001_th2_p001` | FAIL | 22.18% | 81 | 19 | 0/0 | 0 | 0/19 | 1.4px | 983 | — | dropout 22.18% — re-track or HSV tune |
 | `th1_m179_th2_p089` | FAIL | 0.64% | 10221 | 2617 | 2450/47 | 1567 | 253/590 | 20.5px | 2647 | 2026-05-01 | dropout 0.64% — re-track or HSV tune |

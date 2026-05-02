@@ -420,16 +420,19 @@ def confirm_dispatch(bucket, *, auto=False):
     if auto and bucket == "override":
         print("  (auto-mode: applying override without prompt)")
         return "apply"
-    print(f"  apply this fix?  [y] yes   [n] skip   [q] quit triage")
+    print(f"  apply this fix?  [y] yes   [v] mark verified anyway   "
+          f"[n] skip   [q] quit")
     while True:
         ans = input("  > ").strip().lower()
         if ans in ("y", "yes"):
             return "apply"
+        if ans in ("v", "verify", "verified"):
+            return "verify"
         if ans in ("n", "no", "skip", "s"):
             return "skip"
         if ans in ("q", "quit"):
             return "quit"
-        print("  please answer y / n / q")
+        print("  please answer y / v / n / q")
 
 
 # ─────────────────────────────────────────────
@@ -523,6 +526,16 @@ def main():
         if action == "quit":
             break
         if action == "skip":
+            skipped.add(stem)
+            if args.once: break
+            continue
+        if action == "verify":
+            # Force-mark this clip as verified despite the WARN.
+            # Useful when the user has visually confirmed the tracking
+            # is sound and the physics-check flags are noise rather
+            # than real tracker errors.
+            if mark_verified_manual(stem, reasons):
+                print(f"  marked verified.")
             skipped.add(stem)
             if args.once: break
             continue
