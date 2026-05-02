@@ -321,7 +321,10 @@
     "tracking_quality": "good",
     "notes": "",
     "suspect_frames_interpolated": 250,
-    "interpolation_date": "2026-05-02"
+    "interpolation_date": "2026-05-02",
+    "frames_overridden": 1,
+    "last_override_frame": 580,
+    "last_override_date": "2026-05-02"
   },
   "DSC_0146": {
     "video_file": "th1_p180_th2_p090.mov",
@@ -366,7 +369,10 @@
     "tracking_quality": "good",
     "notes": "",
     "suspect_frames_interpolated": 264,
-    "interpolation_date": "2026-05-02"
+    "interpolation_date": "2026-05-02",
+    "frames_overridden": 1,
+    "last_override_frame": 1497,
+    "last_override_date": "2026-05-02"
   },
   "DSC_0148": {
     "video_file": "th1_p037_th2_p094.mov",
@@ -593,7 +599,10 @@
     "tracking_quality": "good",
     "notes": "",
     "suspect_frames_interpolated": 317,
-    "interpolation_date": "2026-05-02"
+    "interpolation_date": "2026-05-02",
+    "frames_overridden": 1,
+    "last_override_frame": 1750,
+    "last_override_date": "2026-05-02"
   },
   "DSC_0153": {
     "video_file": "th1_m179_th2_p089.mov",
@@ -638,7 +647,10 @@
     "tracking_quality": "good",
     "notes": "",
     "suspect_frames_interpolated": 366,
-    "interpolation_date": "2026-05-01"
+    "interpolation_date": "2026-05-01",
+    "frames_overridden": 1,
+    "last_override_frame": 650,
+    "last_override_date": "2026-05-02"
   },
   "DSC_0154": {
     "video_file": "th1_p176_th2_p180.mov",
@@ -683,7 +695,10 @@
     "tracking_quality": "good",
     "notes": "",
     "suspect_frames_interpolated": 317,
-    "interpolation_date": "2026-05-02"
+    "interpolation_date": "2026-05-02",
+    "frames_overridden": 1,
+    "last_override_frame": 1155,
+    "last_override_date": "2026-05-02"
   },
   "DSC_0156": {
     "video_file": "th1_p093_th2_m002.mov",
@@ -1225,23 +1240,23 @@
     "tracker": "ring",
     "arm_length_px": 188,
     "ring_tolerance": 30,
-    "theta1_release": 88.939,
-    "theta2_release": 72.705,
-    "omega1_release": -109.0027,
-    "omega2_release": 2455.4714,
-    "energy_proxy": 1839.927,
+    "theta1_release": 80.826,
+    "theta2_release": -86.781,
+    "omega1_release": -112.4962,
+    "omega2_release": 11.394,
+    "energy_proxy": 3.5196,
     "t0_offset_s": 1.4014,
     "duration_s": 22.556,
     "n_free_frames": 1353,
     "dropout_rate_pct": 0.0,
     "arm_length_cm": 35.0,
     "pivot_px": [
-      608,
-      355
+      607,
+      330
     ],
     "scale_cm_per_px": 0.186,
     "tracking_quality": "good",
-    "suspect_frames_interpolated": 16,
+    "suspect_frames_interpolated": 11,
     "interpolation_date": "2026-05-02"
   }
 }

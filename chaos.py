@@ -71,6 +71,7 @@ SCRIPT_ROADMAP    = os.path.join(ROOT, "scripts", "utils", "generate_roadmap.py"
 SCRIPT_HSV_PROBE  = os.path.join(ROOT, "scripts", "utils", "hsv_probe_matrix.py")
 SCRIPT_AUDIT      = os.path.join(ROOT, "scripts", "utils", "audit.py")
 SCRIPT_TRIAGE     = os.path.join(ROOT, "scripts", "utils", "triage.py")
+SCRIPT_SUSPECTS   = os.path.join(ROOT, "scripts", "utils", "suspects_summary.py")
 
 VIDEO_EXTS = {".mov", ".mp4", ".avi", ".mkv", ".m4v"}
 
@@ -271,6 +272,13 @@ def cmd_triage(args):
     return run_script(SCRIPT_TRIAGE, *extra)
 
 
+def cmd_suspects(args):
+    extra = [args.stem]
+    if args.gap is not None:
+        extra += ["--gap", str(args.gap)]
+    return run_script(SCRIPT_SUSPECTS, *extra)
+
+
 def resolve_video_path_for_stem(stem):
     """Look up Videos/<video_file> for a config_description via registry."""
     reg = load_registry()
@@ -314,6 +322,10 @@ BATCH / DRIVER COMMANDS
                              --auto      auto-apply override-bucket fixes
                              --once      dispatch a single clip and exit
                              --filter S  only consider clips matching S
+  chaos suspects <stem>      decompose a clip's suspect count into per-check
+                             buckets + cluster sizes; tells you whether to
+                             seed every frame (rare) or just hit the
+                             clusters (typical)
 
 INFO / REPORT COMMANDS
   chaos status               who's tracked, who's pending (one-screen)
@@ -719,6 +731,13 @@ def build_parser():
     p_triage.add_argument("--filter", metavar="SUBSTR",
         help="only consider clips whose stem matches SUBSTR")
 
+    p_susp = sub.add_parser("suspects",
+        help="decompose a clip's suspect count into per-check buckets and clusters")
+    p_susp.add_argument("stem", metavar="<stem>",
+        help="config_description, e.g. th1_p180_th2_m179")
+    p_susp.add_argument("--gap", type=int, default=None, metavar="FRAMES",
+        help="cluster gap in frames (default 10)")
+
     sub.add_parser("help", help="one-page cheat sheet for all subcommands")
 
     return p
@@ -738,6 +757,7 @@ HANDLERS = {
     "bulk":     cmd_bulk,
     "next":     cmd_next,
     "triage":   cmd_triage,
+    "suspects": cmd_suspects,
     "help":     cmd_help,
 }
 

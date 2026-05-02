@@ -12,7 +12,7 @@
   "n_trend_arm_windows": 0,
   "n_residual_suspects": 987,
   "n_energy_suspects": 347,
-  "n_energy_ceiling_suspects": 16,
+  "n_energy_ceiling_suspects": 14,
   "n_energy_rolling_spikes": 347,
   "n_trend_arm_suspects": 0
 }
