@@ -23,8 +23,7 @@ data/figures/*.mp4
 # Large/regenerable artefacts produced inside measurements/<config>/.
 # Small human-readable artefacts (tracking.csv, the PNG figures) stay
 # tracked so the repo always shows what's been measured at a glance.
-measurements/*/tracking.csv
-measurements/*/verification.csv
+
 measurements/*/debug.mp4
 measurements/*/phase_3d_rotation.mp4
 measurements/*/phase_animation.mp4
