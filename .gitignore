@@ -28,7 +28,6 @@ measurements/*/verification.csv
 measurements/*/debug.mp4
 measurements/*/phase_3d_rotation.mp4
 measurements/*/phase_animation.mp4
-measurements/*/combined.mp4
 
 # Migration / bulk-tracking sidecar logs
 data/migration_log.txt
