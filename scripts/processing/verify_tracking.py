@@ -582,19 +582,28 @@ def main():
     n_trend_arm_suspect      = int(np.sum(trend_arm_suspect))
 
     # ── Brief 6 Check C — pivot drift (run-level only) ─────────────────
-    # ring_tracker convention: 0°=down, dx=L*sin(θ), dy=L*cos(θ). Back-
-    # project the implied pivot from each clean frame and compare the
-    # median against the hardcoded PIVOT. Does NOT merge into the
-    # suspect mask — this is a run-level geometry check.
-    th1_r_pivot = np.radians(th1)
-    implied_px = x_green - ARM_LENGTH_PX * np.sin(th1_r_pivot)
-    implied_py = y_green - ARM_LENGTH_PX * np.cos(th1_r_pivot)
-
+    # Independent estimate of the rotation center from green-marker
+    # positions, via least-squares circle fit. Compared against the
+    # hardcoded PIVOT to flag camera shifts or miscalibration. Does NOT
+    # merge into the suspect mask — this is a run-level geometry check.
+    #
+    # The earlier "back-projection" approach (gx − L·sin(θ₁), …) was
+    # mathematically circular: θ₁ itself was computed from PIVOT, so
+    # the implied pivot always converged to PIVOT regardless of where
+    # the marker actually rotates. A circle fit uses only (x_green,
+    # y_green) and is unbiased.
     pivot_clean = ((drops == 0)
-                   & ~np.isnan(x_green) & ~np.isnan(th1))
-    if pivot_clean.any():
-        med_px = float(np.nanmedian(implied_px[pivot_clean]))
-        med_py = float(np.nanmedian(implied_py[pivot_clean]))
+                   & ~np.isnan(x_green) & ~np.isnan(y_green))
+    if pivot_clean.sum() >= 3:
+        xs = x_green[pivot_clean].astype(float)
+        ys = y_green[pivot_clean].astype(float)
+        # Linear circle fit: solve A·[cx, cy, c]ᵀ = b where
+        # 2·gx·cx + 2·gy·cy + c = gx² + gy²  and  c = r² − cx² − cy².
+        A = np.column_stack([2 * xs, 2 * ys, np.ones_like(xs)])
+        b = xs * xs + ys * ys
+        sol, *_ = np.linalg.lstsq(A, b, rcond=None)
+        med_px = float(sol[0])
+        med_py = float(sol[1])
         pivot_drift_px = float(
             np.hypot(med_px - PIVOT[0], med_py - PIVOT[1]))
     else:
