@@ -1,6 +1,94 @@
 {
   "seeds": [
     {
+      "frame": 57,
+      "green_xy": [
+        771,
+        347
+      ],
+      "red_xy": [
+        608,
+        355
+      ]
+    },
+    {
+      "frame": 58,
+      "green_xy": [
+        769,
+        348
+      ],
+      "red_xy": [
+        608,
+        352
+      ]
+    },
+    {
+      "frame": 59,
+      "green_xy": [
+        771,
+        347
+      ],
+      "red_xy": [
+        608,
+        351
+      ]
+    },
+    {
+      "frame": 60,
+      "green_xy": [
+        771,
+        345
+      ],
+      "red_xy": [
+        611,
+        352
+      ]
+    },
+    {
+      "frame": 61,
+      "green_xy": [
+        769,
+        345
+      ],
+      "red_xy": [
+        608,
+        352
+      ]
+    },
+    {
+      "frame": 62,
+      "green_xy": [
+        769,
+        347
+      ],
+      "red_xy": [
+        609,
+        353
+      ]
+    },
+    {
+      "frame": 63,
+      "green_xy": [
+        769,
+        347
+      ],
+      "red_xy": [
+        609,
+        351
+      ]
+    },
+    {
+      "frame": 64,
+      "green_xy": [
+        771,
+        345
+      ],
+      "red_xy": [
+        608,
+        352
+      ]
+    },
+    {
       "frame": 65,
       "green_xy": [
         769,
@@ -277,7 +365,10 @@
     },
     {
       "frame": 90,
-      "green_xy": null,
+      "green_xy": [
+        759,
+        415
+      ],
       "red_xy": [
         595,
         424
@@ -285,7 +376,10 @@
     },
     {
       "frame": 91,
-      "green_xy": null,
+      "green_xy": [
+        753,
+        431
+      ],
       "red_xy": [
         588,
         441
@@ -293,7 +387,10 @@
     },
     {
       "frame": 92,
-      "green_xy": null,
+      "green_xy": [
+        743,
+        445
+      ],
       "red_xy": [
         580,
         459
@@ -301,7 +398,10 @@
     },
     {
       "frame": 93,
-      "green_xy": null,
+      "green_xy": [
+        733,
+        457
+      ],
       "red_xy": [
         572,
         480
@@ -309,7 +409,10 @@
     },
     {
       "frame": 94,
-      "green_xy": null,
+      "green_xy": [
+        724,
+        469
+      ],
       "red_xy": [
         563,
         504
@@ -317,7 +420,10 @@
     },
     {
       "frame": 95,
-      "green_xy": null,
+      "green_xy": [
+        709,
+        483
+      ],
       "red_xy": [
         553,
         529
@@ -325,7 +431,10 @@
     },
     {
       "frame": 96,
-      "green_xy": null,
+      "green_xy": [
+        695,
+        493
+      ],
       "red_xy": [
         543,
         557
@@ -436,6 +545,6 @@
       ]
     }
   ],
-  "saved_at": "2026-05-02T05:07:37",
+  "saved_at": "2026-05-02T05:24:17",
   "notes": "Created by manual_correction.py"
 }

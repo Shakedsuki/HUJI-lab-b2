@@ -199,6 +199,18 @@
       ]
     },
     {
+      "frame": 121,
+      "green_xy": [
+        770,
+        354
+      ],
+      "red_xy": [
+        763,
+        518
+      ],
+      "source": "auto-seed"
+    },
+    {
       "frame": 123,
       "green_xy": [
         771,
@@ -362,6 +374,18 @@
         773,
         516
       ]
+    },
+    {
+      "frame": 156,
+      "green_xy": [
+        770,
+        352
+      ],
+      "red_xy": [
+        772,
+        515
+      ],
+      "source": "auto-seed"
     },
     {
       "frame": 157,
@@ -540,6 +564,18 @@
       ]
     },
     {
+      "frame": 179,
+      "green_xy": [
+        770,
+        352
+      ],
+      "red_xy": [
+        762,
+        513
+      ],
+      "source": "auto-seed"
+    },
+    {
       "frame": 180,
       "green_xy": [
         769,
@@ -584,6 +620,6 @@
       ]
     }
   ],
-  "saved_at": "2026-05-02T03:51:07",
-  "notes": "Created by manual_correction.py"
+  "saved_at": "2026-05-02T05:25:44",
+  "notes": "Created by auto_seed.py (some seeds may be interpolated from violation clusters; manual seeds preserved verbatim)"
 }

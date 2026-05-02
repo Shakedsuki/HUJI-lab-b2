@@ -10,8 +10,332 @@
         767,
         513
       ]
+    },
+    {
+      "frame": 143,
+      "green_xy": [
+        668,
+        502
+      ],
+      "red_xy": [
+        761,
+        611
+      ],
+      "source": "auto-seed"
+    },
+    {
+      "frame": 171,
+      "green_xy": [
+        478,
+        452
+      ],
+      "red_xy": [
+        638,
+        436
+      ],
+      "source": "auto-seed"
+    },
+    {
+      "frame": 182,
+      "green_xy": [
+        521,
+        484
+      ],
+      "red_xy": [
+        474,
+        619
+      ],
+      "source": "auto-seed"
+    },
+    {
+      "frame": 284,
+      "green_xy": [
+        618,
+        514
+      ],
+      "red_xy": [
+        596,
+        672
+      ],
+      "source": "auto-seed"
+    },
+    {
+      "frame": 375,
+      "green_xy": [
+        578,
+        514
+      ],
+      "red_xy": [
+        428,
+        565
+      ],
+      "source": "auto-seed"
+    },
+    {
+      "frame": 432,
+      "green_xy": [
+        533,
+        498
+      ],
+      "red_xy": [
+        376,
+        526
+      ],
+      "source": "auto-seed"
+    },
+    {
+      "frame": 462,
+      "green_xy": [
+        667,
+        505
+      ],
+      "red_xy": [
+        810,
+        577
+      ],
+      "source": "auto-seed"
+    },
+    {
+      "frame": 522,
+      "green_xy": [
+        673,
+        502
+      ],
+      "red_xy": [
+        826,
+        554
+      ],
+      "source": "auto-seed"
+    },
+    {
+      "frame": 548,
+      "green_xy": [
+        512,
+        483
+      ],
+      "red_xy": [
+        398,
+        590
+      ],
+      "source": "auto-seed"
+    },
+    {
+      "frame": 581,
+      "green_xy": [
+        694,
+        490
+      ],
+      "red_xy": [
+        744,
+        642
+      ],
+      "source": "auto-seed"
+    },
+    {
+      "frame": 639,
+      "green_xy": [
+        680,
+        500
+      ],
+      "red_xy": [
+        833,
+        548
+      ],
+      "source": "auto-seed"
+    },
+    {
+      "frame": 756,
+      "green_xy": [
+        714,
+        471
+      ],
+      "red_xy": [
+        760,
+        610
+      ],
+      "source": "auto-seed"
+    },
+    {
+      "frame": 793,
+      "green_xy": [
+        588,
+        514
+      ],
+      "red_xy": [
+        464,
+        616
+      ],
+      "source": "auto-seed"
+    },
+    {
+      "frame": 822,
+      "green_xy": [
+        678,
+        499
+      ],
+      "red_xy": [
+        764,
+        633
+      ],
+      "source": "auto-seed"
+    },
+    {
+      "frame": 1001,
+      "green_xy": [
+        638,
+        514
+      ],
+      "red_xy": [
+        800,
+        520
+      ],
+      "source": "auto-seed"
+    },
+    {
+      "frame": 1030,
+      "green_xy": [
+        528,
+        494
+      ],
+      "red_xy": [
+        512,
+        652
+      ],
+      "source": "auto-seed"
+    },
+    {
+      "frame": 1185,
+      "green_xy": [
+        612,
+        516
+      ],
+      "red_xy": [
+        716,
+        638
+      ],
+      "source": "auto-seed"
+    },
+    {
+      "frame": 1366,
+      "green_xy": [
+        658,
+        504
+      ],
+      "red_xy": [
+        671,
+        653
+      ],
+      "source": "auto-seed"
+    },
+    {
+      "frame": 1399,
+      "green_xy": [
+        569,
+        510
+      ],
+      "red_xy": [
+        578,
+        669
+      ],
+      "source": "auto-seed"
+    },
+    {
+      "frame": 1436,
+      "green_xy": [
+        546,
+        504
+      ],
+      "red_xy": [
+        660,
+        618
+      ],
+      "source": "auto-seed"
+    },
+    {
+      "frame": 1466,
+      "green_xy": [
+        631,
+        514
+      ],
+      "red_xy": [
+        552,
+        654
+      ],
+      "source": "auto-seed"
+    },
+    {
+      "frame": 1645,
+      "green_xy": [
+        582,
+        512
+      ],
+      "red_xy": [
+        582,
+        672
+      ],
+      "source": "auto-seed"
+    },
+    {
+      "frame": 1713,
+      "green_xy": [
+        668,
+        505
+      ],
+      "red_xy": [
+        618,
+        658
+      ],
+      "source": "auto-seed"
+    },
+    {
+      "frame": 1775,
+      "green_xy": [
+        676,
+        501
+      ],
+      "red_xy": [
+        738,
+        647
+      ],
+      "source": "auto-seed"
+    },
+    {
+      "frame": 2035,
+      "green_xy": [
+        638,
+        511
+      ],
+      "red_xy": [
+        677,
+        659
+      ],
+      "source": "auto-seed"
+    },
+    {
+      "frame": 2190,
+      "green_xy": [
+        664,
+        506
+      ],
+      "red_xy": [
+        716,
+        656
+      ],
+      "source": "auto-seed"
+    },
+    {
+      "frame": 2392,
+      "green_xy": [
+        591,
+        516
+      ],
+      "red_xy": [
+        690,
+        642
+      ],
+      "source": "auto-seed"
     }
   ],
-  "saved_at": "2026-05-02T03:40:07",
-  "notes": "Created by manual_correction.py"
+  "saved_at": "2026-05-02T05:25:57",
+  "notes": "Created by auto_seed.py (some seeds may be interpolated from violation clusters; manual seeds preserved verbatim)"
 }
