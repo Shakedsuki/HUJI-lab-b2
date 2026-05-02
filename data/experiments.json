@@ -510,7 +510,10 @@
     "verification_date": "2026-05-01",
     "audit_date": "2026-05-02",
     "audit_old_status": "verified",
-    "audit_new_status": "WARN"
+    "audit_new_status": "WARN",
+    "frames_overridden": 4,
+    "last_override_frame": 791,
+    "last_override_date": "2026-05-02"
   },
   "DSC_0151": {
     "video_file": "th1_p140_th2_p089.mov",
