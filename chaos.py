@@ -75,6 +75,7 @@ SCRIPT_SUSPECTS   = os.path.join(ROOT, "scripts", "utils", "suspects_summary.py"
 SCRIPT_AUTO_SEED  = os.path.join(ROOT, "scripts", "utils", "auto_seed.py")
 SCRIPT_COMBINED   = os.path.join(ROOT, "scripts", "analysis", "combined_video.py")
 SCRIPT_FRICTION   = os.path.join(ROOT, "scripts", "analysis", "friction_fit.py")
+SCRIPT_FRIC_CMP   = os.path.join(ROOT, "scripts", "analysis", "friction_compare.py")
 
 VIDEO_EXTS = {".mov", ".mp4", ".avi", ".mkv", ".m4v"}
 
@@ -314,6 +315,17 @@ def cmd_friction_fit(args):
     if args.no_plot:
         extra.append("--no-plot")
     return run_script(SCRIPT_FRICTION, *extra)
+
+
+def cmd_friction_compare(args):
+    """Run friction_fit on every clip and compare τ vs initial
+    amplitude. Outputs data/friction_comparison.{csv,png}."""
+    extra = []
+    if args.filter:    extra += ["--filter", args.filter]
+    if args.pass_only: extra.append("--pass-only")
+    if args.smooth_window is not None:
+        extra += ["--smooth-window", str(args.smooth_window)]
+    return run_script(SCRIPT_FRIC_CMP, *extra)
 
 
 def resolve_video_path_for_stem(stem):
@@ -822,6 +834,15 @@ def build_parser():
     p_fric.add_argument("--no-plot", action="store_true",
         help="skip writing friction_fit.png")
 
+    p_fcmp = sub.add_parser("friction-compare",
+        help="run friction_fit across every clip; compare τ vs initial amplitude")
+    p_fcmp.add_argument("--filter", metavar="SUBSTR",
+        help="only clips whose stem contains SUBSTR")
+    p_fcmp.add_argument("--pass-only", action="store_true",
+        help="only include currently-PASS clips")
+    p_fcmp.add_argument("--smooth-window", type=float, default=None,
+        metavar="SECONDS")
+
     sub.add_parser("help", help="one-page cheat sheet for all subcommands")
 
     return p
@@ -844,8 +865,9 @@ HANDLERS = {
     "suspects":  cmd_suspects,
     "auto-seed":    cmd_auto_seed,
     "render":       cmd_render,
-    "friction-fit": cmd_friction_fit,
-    "help":         cmd_help,
+    "friction-fit":     cmd_friction_fit,
+    "friction-compare": cmd_friction_compare,
+    "help":             cmd_help,
 }
 
 
