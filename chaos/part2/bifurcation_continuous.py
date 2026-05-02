@@ -66,7 +66,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # ── CONFIGURATION ─────────────────────────────────────────────────────────────
 
-DATA_DIR      = r"samples\AM"
+DATA_DIR      = r"chaos\part2\samples\AM"
 FILE_PATTERN  = "7V.csv"          # single recording (7V_2.csv is identical)
 
 # Oscilloscope Yzero offsets (read from CSV metadata, row 13)
