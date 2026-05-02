@@ -5,7 +5,8 @@ Turn fixed-camera videos of a double pendulum into per-frame angles + angular ve
 ## Setup
 
 ```bash
-git clone <this repo> && cd chaos
+git clone <this repo>
+cd chaos
 pip install -r requirements.txt
 python scripts/utils/download_videos.py    # raw .mov files from Drive
 ```
