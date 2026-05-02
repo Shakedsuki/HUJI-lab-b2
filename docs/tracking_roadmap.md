@@ -1,6 +1,6 @@
 # Tracking Roadmap
 
-_Generated 2026-05-02 05:00._ Re-run with `chaos roadmap`.
+_Generated 2026-05-02 05:12._ Re-run with `chaos roadmap`.
 
 Lives at [`docs/tracking_roadmap.md`](tracking_roadmap.md). Every row reflects the current state of `data/experiments.json` plus the latest `data/bulk_tracking_log.json` and per-clip `measurements/<stem>/verification.csv`.
 
@@ -34,7 +34,7 @@ Lives at [`docs/tracking_roadmap.md`](tracking_roadmap.md). Every row reflects t
 | `th1_p093_th2_m000` | WARN | 0.15% | 1022 | 0 | 0/0 | 0 | 0/0 | 2.2px | 2037 | 2026-05-02 | interp 82 |
 | `th1_p093_th2_m002` | WARN | 0.04% | 1137 | 15 | 0/0 | 9 | 0/3 | 1.7px | 2599 | 2026-05-02 | interp 141 |
 | `th1_p094_th2_p000` | WARN | 0.00% | 1022 | 0 | 0/0 | 0 | 0/0 | 2.4px | 2351 | 2026-05-02 | interp 73 |
-| `th1_p094_th2_p000_r2` | WARN | 0.00% | 1286 | 15 | 0/0 | 3 | 0/0 | 4.8px | 1353 | 2026-05-02 | interp 11 |
+| `th1_p094_th2_p000_r2` | WARN | 4.66% | 1210 | 15 | 0/0 | 3 | 0/0 | 4.7px | 1353 | 2026-05-02 | interp 11 |
 | `th1_p116_th2_m001` | WARN | 0.00% | 1274 | 3 | 0/0 | 0 | 0/3 | 4.7px | 1966 | 2026-05-02 | interp 95 |
 | `th1_p138_th2_m002` | WARN | 0.00% | 1370 | 4 | 0/0 | 0 | 0/3 | 6.0px | 2587 | 2026-05-02 | interp 186 |
 | `th1_p180_th2_m179` | WARN | 0.00% | 2710 | 221 | 0/0 | 128 | 0/28 | 1.2px | 30897 | 2026-05-01 | interp 20 |

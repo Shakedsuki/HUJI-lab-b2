@@ -1,6 +1,127 @@
 {
   "seeds": [
     {
+      "frame": 65,
+      "green_xy": [
+        769,
+        345
+      ],
+      "red_xy": [
+        608,
+        352
+      ]
+    },
+    {
+      "frame": 66,
+      "green_xy": [
+        769,
+        347
+      ],
+      "red_xy": [
+        609,
+        353
+      ]
+    },
+    {
+      "frame": 67,
+      "green_xy": [
+        769,
+        347
+      ],
+      "red_xy": [
+        609,
+        352
+      ]
+    },
+    {
+      "frame": 68,
+      "green_xy": [
+        769,
+        348
+      ],
+      "red_xy": [
+        609,
+        353
+      ]
+    },
+    {
+      "frame": 69,
+      "green_xy": [
+        769,
+        347
+      ],
+      "red_xy": [
+        609,
+        352
+      ]
+    },
+    {
+      "frame": 70,
+      "green_xy": [
+        769,
+        345
+      ],
+      "red_xy": [
+        609,
+        352
+      ]
+    },
+    {
+      "frame": 71,
+      "green_xy": [
+        768,
+        347
+      ],
+      "red_xy": [
+        609,
+        353
+      ]
+    },
+    {
+      "frame": 72,
+      "green_xy": [
+        769,
+        348
+      ],
+      "red_xy": [
+        608,
+        351
+      ]
+    },
+    {
+      "frame": 73,
+      "green_xy": [
+        768,
+        347
+      ],
+      "red_xy": [
+        608,
+        352
+      ]
+    },
+    {
+      "frame": 74,
+      "green_xy": [
+        769,
+        347
+      ],
+      "red_xy": [
+        608,
+        352
+      ]
+    },
+    {
+      "frame": 75,
+      "green_xy": [
+        768,
+        347
+      ],
+      "red_xy": [
+        609,
+        351
+      ]
+    },
+    {
       "frame": 76,
       "green_xy": [
         771,
@@ -56,6 +177,17 @@
       ]
     },
     {
+      "frame": 81,
+      "green_xy": [
+        768,
+        348
+      ],
+      "red_xy": [
+        611,
+        356
+      ]
+    },
+    {
       "frame": 82,
       "green_xy": [
         771,
@@ -86,6 +218,17 @@
       "red_xy": [
         608,
         365
+      ]
+    },
+    {
+      "frame": 85,
+      "green_xy": [
+        769,
+        364
+      ],
+      "red_xy": [
+        608,
+        372
       ]
     },
     {
@@ -130,6 +273,78 @@
       "red_xy": [
         600,
         412
+      ]
+    },
+    {
+      "frame": 90,
+      "green_xy": null,
+      "red_xy": [
+        595,
+        424
+      ]
+    },
+    {
+      "frame": 91,
+      "green_xy": null,
+      "red_xy": [
+        588,
+        441
+      ]
+    },
+    {
+      "frame": 92,
+      "green_xy": null,
+      "red_xy": [
+        580,
+        459
+      ]
+    },
+    {
+      "frame": 93,
+      "green_xy": null,
+      "red_xy": [
+        572,
+        480
+      ]
+    },
+    {
+      "frame": 94,
+      "green_xy": null,
+      "red_xy": [
+        563,
+        504
+      ]
+    },
+    {
+      "frame": 95,
+      "green_xy": null,
+      "red_xy": [
+        553,
+        529
+      ]
+    },
+    {
+      "frame": 96,
+      "green_xy": null,
+      "red_xy": [
+        543,
+        557
+      ]
+    },
+    {
+      "frame": 97,
+      "green_xy": null,
+      "red_xy": [
+        533,
+        589
+      ]
+    },
+    {
+      "frame": 98,
+      "green_xy": null,
+      "red_xy": [
+        529,
+        621
       ]
     },
     {
@@ -221,6 +436,6 @@
       ]
     }
   ],
-  "saved_at": "2026-05-02T04:42:39",
+  "saved_at": "2026-05-02T05:07:37",
   "notes": "Created by manual_correction.py"
 }

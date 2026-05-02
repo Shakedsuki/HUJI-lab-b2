@@ -72,6 +72,7 @@ SCRIPT_HSV_PROBE  = os.path.join(ROOT, "scripts", "utils", "hsv_probe_matrix.py"
 SCRIPT_AUDIT      = os.path.join(ROOT, "scripts", "utils", "audit.py")
 SCRIPT_TRIAGE     = os.path.join(ROOT, "scripts", "utils", "triage.py")
 SCRIPT_SUSPECTS   = os.path.join(ROOT, "scripts", "utils", "suspects_summary.py")
+SCRIPT_AUTO_SEED  = os.path.join(ROOT, "scripts", "utils", "auto_seed.py")
 
 VIDEO_EXTS = {".mov", ".mp4", ".avi", ".mkv", ".m4v"}
 
@@ -279,6 +280,19 @@ def cmd_suspects(args):
     return run_script(SCRIPT_SUSPECTS, *extra)
 
 
+def cmd_auto_seed(args):
+    extra = [args.stem]
+    if args.dry_run:  extra.append("--dry-run")
+    if args.no_track: extra.append("--no-track")
+    if args.gap is not None:
+        extra += ["--gap", str(args.gap)]
+    if args.max_clean_distance is not None:
+        extra += ["--max-clean-distance", str(args.max_clean_distance)]
+    if args.omega_cap is not None:
+        extra += ["--omega-cap", str(args.omega_cap)]
+    return run_script(SCRIPT_AUTO_SEED, *extra)
+
+
 def resolve_video_path_for_stem(stem):
     """Look up Videos/<video_file> for a config_description via registry."""
     reg = load_registry()
@@ -326,6 +340,11 @@ BATCH / DRIVER COMMANDS
                              buckets + cluster sizes; tells you whether to
                              seed every frame (rare) or just hit the
                              clusters (typical)
+  chaos auto-seed <stem>     interpolate seeds from violation clusters and
+                             re-track — bypasses manual clicking when the
+                             tracker is only slightly off
+                             --dry-run    show plan without writing
+                             --no-track   write seeds.json, skip re-track
 
 INFO / REPORT COMMANDS
   chaos status               who's tracked, who's pending (one-screen)
@@ -738,6 +757,24 @@ def build_parser():
     p_susp.add_argument("--gap", type=int, default=None, metavar="FRAMES",
         help="cluster gap in frames (default 10)")
 
+    p_auto = sub.add_parser("auto-seed",
+        help="auto-derive chaos fix seeds from violation clusters via "
+             "interpolation; re-track with strict-physics")
+    p_auto.add_argument("stem", metavar="<stem>",
+        help="config_description, e.g. th1_p138_th2_m002")
+    p_auto.add_argument("--dry-run", action="store_true",
+        help="print the seed plan; don't write seeds.json or re-track")
+    p_auto.add_argument("--no-track", action="store_true",
+        help="write seeds.json but skip the re-track + verify")
+    p_auto.add_argument("--gap", type=int, default=None, metavar="FRAMES",
+        help="cluster gap in frames (default 10)")
+    p_auto.add_argument("--max-clean-distance", type=int, default=None,
+        metavar="FRAMES",
+        help="max distance to search for clean anchor (default 20)")
+    p_auto.add_argument("--omega-cap", type=float, default=None,
+        metavar="DEG_PER_S",
+        help="ω cap for verify step (default 2500)")
+
     sub.add_parser("help", help="one-page cheat sheet for all subcommands")
 
     return p
@@ -757,8 +794,9 @@ HANDLERS = {
     "bulk":     cmd_bulk,
     "next":     cmd_next,
     "triage":   cmd_triage,
-    "suspects": cmd_suspects,
-    "help":     cmd_help,
+    "suspects":  cmd_suspects,
+    "auto-seed": cmd_auto_seed,
+    "help":      cmd_help,
 }
 
 
