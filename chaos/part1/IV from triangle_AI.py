@@ -84,7 +84,7 @@ for i, file_path in tqdm(enumerate(file_list[:1])):
         i_sorted = i_sweep[sort_idx]
         err_sorted = err_sweep[sort_idx]
         
-        label_text = f'f: {freq} | V: {v_value/1000} | Res: {res_value} ({sweep_name})'
+        label_text = f'Data'
         
         # THE FIX: Plot only the filled region (the cloud) and assign the label to it
         ax.fill_between(v_sorted, 
@@ -94,7 +94,7 @@ for i, file_path in tqdm(enumerate(file_list[:1])):
 
     # Plot the separated sweeps (I bumped the alphas slightly so the clouds are bolder)
     plot_sweep(forward_mask, "Forward Sweep", 0.4)
-    plot_sweep(reverse_mask, "Reverse Sweep", 0.2) 
+    # plot_sweep(reverse_mask, "Reverse Sweep", 0.2) 
 
     # --- 4. SHOCKLEY CURVE FIT ---
     v_fit_data = v_plot[forward_mask]
@@ -113,7 +113,7 @@ for i, file_path in tqdm(enumerate(file_list[:1])):
         i_fit_line = shockley_equation(v_fit_line, I_S_opt, n_opt)
         
         ax.plot(v_fit_line, i_fit_line, 'k--', linewidth=2, zorder=3, 
-                label=f'Shockley Fit\n$n$={n_opt:.2f}, $I_S$={I_S_opt:.2e} A')
+                label=f'Shockley Fit')
     except Exception as e:
         print(f"Warning: Could not compute Shockley fit. Error: {e}")
 

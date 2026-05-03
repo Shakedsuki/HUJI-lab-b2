@@ -81,11 +81,11 @@ plt.show()
 plt.figure()
 plt.title("RLD Circuit Bifurcation Diagram")
 plt.xlabel("Driving Voltage Amplitude (V)")
-plt.ylabel("Peak Diode Voltage ($V_D$)")
+plt.ylabel("Peak Diode Voltage (V)")
 
 # The secret to a good bifurcation diagram is using tiny markers (markersize=1)
 # and high transparency (alpha=0.1) so density naturally creates darker regions.
-plt.plot(bifurcation_V, bifurcation_peaks, '.', markersize=1, color='black', alpha=0.1)
+plt.plot(bifurcation_V, bifurcation_peaks, '.', markersize=3, color='black', alpha=1)#0.1)
 
 plt.grid(True, linestyle='--', alpha=0.5)
 plt.tight_layout()

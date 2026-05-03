@@ -32,7 +32,7 @@ p=r"samples\triangle"
 file_list = glob.glob(p + '\\f_*_V_*_res_*.csv')
 
 fig, ax = plt.subplots()
-ax.set_title("Diode I-V Continuous Characteristic Curve")
+ax.set_title("Diode I-V Characteristic Curve From Triangle Wave Voltage")
 ax.set_xlabel("Diode Voltage (V)")
 ax.set_ylabel("Diode Current (A)")
 ax.grid(True, linestyle='--', alpha=0.7)
@@ -74,7 +74,7 @@ for i, file_path in tqdm(enumerate(file_list[:1])):
         i_fit = shockley(v_fit, *popt)
         
         # Plot the fit as a dashed black line
-        plt.plot(v_fit, i_fit, 'k--', linewidth=2, label=f'Shockley Fit (n={popt[1]:.2f}, $I_S$={popt[0]:.2e}A)')
+        plt.plot(v_fit, i_fit, 'k--', linewidth=2, label=f'Shockley Fit')
     except Exception as e:
         print(f"Fit failed for {filename}: {e}")
     # === ADDED FOR FIT: End ===
