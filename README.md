@@ -1,8 +1,66 @@
-# Chaos — Double-Pendulum Tracking Lab
+# Chaos — Double-Pendulum Tracking Lab & RLD Circuit Chaos
 
-Turn fixed-camera videos of a double pendulum into per-frame angles + angular velocities, with verdicts on tracking quality.
+Turn fixed-camera videos of a double pendulum into per-frame angles + angular velocities, with verdicts on tracking quality. Also includes analysis of an RLD (Resistor-Inductor-Diode) circuit exhibiting period-doubling and chaotic behaviour.
 
-## Setup
+---
+
+## Part 1 — Diode Characterisation (`chaos/part1/`)  ← Week 1
+
+### What it does
+Characterises a silicon diode (1N4005): measures the I-V characteristic, fits the Shockley equation, and extracts the junction capacitance C(V).
+
+### Scripts
+
+| Script | Input data | Output |
+|--------|-----------|--------|
+| `IV graph.py` | `samples/square/*.csv` | Discrete I-V characteristic (one point per source amplitude) |
+| `IV graph_AI.py` | `samples/square/*.csv` | Same + error bars + Shockley fit |
+| `IV from triangle.py` | `samples/triangle/f_*.csv` | Continuous I-V curve (triangle wave sweep) + Shockley fit |
+| `IV from triangle_AI.py` | `samples/triangle/f_*.csv` | Same + error clouds (rolling std) + forward/reverse sweep separation |
+| `IV from triangle window.py` | `samples/triangle/f_*.csv` | Rolling-window exploration (smoothing sanity check) |
+| `dischargetimes.py` | `samples/square discharge/*.csv` | Junction capacitance C(V) from RC discharge time constant; fit: C ~ a/√V + c |
+
+### Key physics
+- **Shockley equation**: $I = I_S(e^{V/nV_T} - 1)$ — extracted parameters: ideality factor $n$, saturation current $I_S$
+- **Junction capacitance**: $C_j \propto 1/\sqrt{V}$ — abrupt one-sided PN junction under reverse bias
+
+### Data (not tracked — too large)
+Raw oscilloscope CSVs live in `chaos/part1/samples/` (gitignored). Acquire from the lab Google Drive.
+
+---
+
+## Part 2 — RLD Circuit Chaos (`chaos/part2/`)  ← Week 2
+
+### What it does
+Studies nonlinear dynamics in an RLD circuit (R = 470 Ω, L = 100 mH, 1N4005 diode): period-doubling cascade and chaotic behaviour as a function of drive amplitude.
+
+### Interactive 3D Bifurcation Map
+View the continuous bifurcation map online (GitHub Pages):
+**[→ Open interactive 3D plot](https://shakedsuki.github.io/HUJI-lab-b2/chaos/chaos/part2/bifurcation_continuous_3D.html)**
+*(Enable GitHub Pages in repo Settings → Pages → master / root to activate this link)*
+
+### Scripts
+
+| Script | Input data | Output |
+|--------|-----------|--------|
+| `get_cycles.py` | `samples/*.csv` | Discrete bifurcation map (one fixed amplitude per file) |
+| `bifurcation_continuous.py` | `samples/AM/7V.csv` | Continuous bifurcation map via Hilbert envelope + peak detection; 2D matplotlib PNG (unfiltered) + interactive 3D plotly HTML (forward-bias only) |
+
+### Key physics
+- **Period-doubling cascade**: RLD circuit driven at ~34 kHz with 0.7 Hz AM amplitude sweep shows period-1 → period-2 → period-4 → chaos
+- **Hysteresis**: bifurcation transitions occur at different amplitudes on upswing vs downswing (finite relaxation time)
+- **Carrier frequency**: ~34 kHz confirmed by FFT; corresponds to LC resonance with effective junction capacitance
+
+### Data (not tracked — too large)
+Raw oscilloscope CSVs live in `chaos/part2/samples/` (gitignored). Acquire from the lab Google Drive.
+- `samples/AM/7V.csv` — 1 s AM-sweep recording (1 MS/s, 7 V peak, 0.7 Hz envelope)
+- `samples/*.csv` — discrete amplitude steps for the traditional bifurcation map
+
+---
+
+## Double-Pendulum Tracking (`scripts/`, `measurements/`, `data/`)
+
+### Setup
 
 ```bash
 git clone <this repo>
@@ -15,7 +73,7 @@ Drive: [כאוס on Google Drive](https://drive.google.com/drive/folders/1nB9rrp
 
 PowerShell needs `.\chaos <cmd>`; cmd / Bash use `chaos <cmd>` or `./chaos.sh <cmd>`. To drop the `.\` in PowerShell, add `function chaos { & "C:\dev\chaos\chaos.ps1" @args }` to your `$PROFILE`.
 
-## Commands
+### Commands
 
 ```
 PIPELINE
@@ -53,13 +111,13 @@ ANALYSIS
 
 `<stem>` is the `config_description` (e.g. `th1_p047_th2_m002`) — the folder name under `measurements/`.
 
-## Verdict bands
+### Verdict bands
 
 - **PASS** — auto-marks `tracking_quality=verified`; ready for downstream analysis
 - **WARN** — tracking probably fine but a physics check fired; review or run `chaos triage`
 - **FAIL** — broken; needs `chaos fix`, `chaos tune` + `chaos track`, or `chaos override`
 
-## Outputs per clip
+### Outputs per clip
 
 `measurements/<stem>/`:
 
@@ -77,7 +135,7 @@ ANALYSIS
 
 Plus the cross-clip rollup at `data/status_report.xlsx` (`chaos report`) and `docs/tracking_roadmap.md` (`chaos roadmap`).
 
-## More
+### More
 
 - [`docs/PIPELINE.md`](docs/PIPELINE.md) — keystroke-level walkthrough, HSV/fix-up keyboard refs, geometry calibration, troubleshooting
 - `chaos help` — same cheat sheet on stdout

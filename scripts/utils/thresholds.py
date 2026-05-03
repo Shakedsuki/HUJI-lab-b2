@@ -97,14 +97,24 @@ ARM_LENGTH_CM             = 35.0   # physical arm length in cm
 # for all geometry in the pipeline. Imported by ring_tracker.py and
 # verify_tracking.py; do not redefine locally.
 #
-# Brief 10b (2026-05-02): PIVOT re-measured from Brief-6 pivot drift
-# back-projection on two clean clips:
-#   th1_p044_th2_m001 → (605.5, 329.7)
-#   th1_p047_th2_m002 → (607.5, 329.3)
-# Both agree within 3 px on each coordinate. Average rounded to int:
-PIVOT                     = (607, 330)
-# Previous value (608, 355) was 25 px off in y — deprecated.
+# Calibration (2026-05-02): PIVOT and ARM_LENGTH_PX measured by
+# least-squares circle fit on tracked green-marker positions across
+# three clips:
+#   th1_p044_th2_m001  → center (607.91, 357.06)  r = 158.85 px
+#   th1_p047_th2_m002  → center (608.64, 355.13)  r = 161.21 px
+#   th1_p180_th2_m179  → center (608.44, 355.43)  r = 161.94 px  (std 0.46 px)
+# All three agree on the center to ≤ 1 px. Values below are rounded
+# from the long-recording fit (highest angular coverage).
 #
+# Why the previous Brief-10b value (607, 330) was wrong: that "calibration"
+# used the back-projection formula in verify_tracking — but that formula is
+# mathematically circular (it uses PIVOT to compute θ₁, then back-projects
+# with PIVOT-derived θ₁), so it always converges to whatever PIVOT was
+# set to as input and cannot detect an absolute offset. A proper circle
+# fit on (x_green, y_green) is the only reliable way to recalibrate.
+PIVOT                     = (608, 355)
+
 # ARM_LENGTH_PX is the radius of the green-marker ring around PIVOT
-# and the red-marker ring around the green marker.
-ARM_LENGTH_PX             = 188
+# and the red-marker ring around the green marker. Both arms measure
+# ~162-163 px in the rig (green→red median 163.3 px, std 1.5 px).
+ARM_LENGTH_PX             = 162

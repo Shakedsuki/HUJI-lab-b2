@@ -56,8 +56,9 @@ __pycache__/
 *.pyc
 *.pyo
 
-# ── Part 1 samples (large data files) ────────────
-chaos/part1/samples
+# ── Part 1 & 2 samples (large oscilloscope data, not tracked) ────
+chaos/part1/samples/
+chaos/part2/samples/
 
 # ── Windows OS files ─────────────────────────────
 Thumbs.db

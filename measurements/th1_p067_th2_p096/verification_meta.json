@@ -1,14 +1,14 @@
 {
-  "pivot_drift_px": 5.5323294523420286,
+  "pivot_drift_px": 0.9207364407266361,
   "pivot_inferred_px": [
-    606.9893894172488,
-    324.4676807228085
+    608.1800448303137,
+    355.9029614899647
   ],
   "pivot_hardcoded_px": [
-    607,
-    330
+    608,
+    355
   ],
-  "energy_release_J": 7.378245244689949,
+  "energy_release_J": 8.919438788708044,
   "n_trend_arm_windows": 0,
   "n_residual_suspects": 1,
   "n_energy_suspects": 0,

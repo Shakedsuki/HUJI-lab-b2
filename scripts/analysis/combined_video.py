@@ -144,7 +144,7 @@ SG_POLY   = 3
 _COMBINED_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.abspath(
     os.path.join(_COMBINED_DIR, os.pardir, "utils")))
-from thresholds import PIVOT as PIVOT_ORIG  # noqa: E402
+from thresholds import PIVOT as PIVOT_ORIG, ARM_LENGTH_PX  # noqa: E402
 
 # ── Canonical color scheme ──────────────────────────────────────────────
 # Matches physical markers and is consistent across all analysis scripts.
@@ -318,8 +318,8 @@ def make_left_panel(frame, phase, t, th1, th2, om1, om2,
     def sp(x, y):
         return (int(x * sx), int(y * sy))
 
-    # Dashed circle search zone
-    cv2.circle(panel, pivot, int(376 * sx), (80, 80, 80), 1,
+    # Dashed circle search zone (red-marker outer reach = 2·ARM_LENGTH_PX)
+    cv2.circle(panel, pivot, int(2 * ARM_LENGTH_PX * sx), (80, 80, 80), 1,
                lineType=cv2.LINE_AA)
 
     # Yellow pivot
