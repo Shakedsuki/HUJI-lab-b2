@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-RLD Circuit Bifurcation Analysis
+RLD Circuit Bifurcation Analysis (Return Maps with Colorbar)
 """
 
 import glob
@@ -8,9 +8,10 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import os
 import matplotlib.cm as cm
+import matplotlib.colors as mcolors # ADDED FOR COLORBAR
 import numpy as np
 from tqdm import tqdm
-from scipy.signal import find_peaks # ADDED FOR PEAK EXTRACTION
+from scipy.signal import find_peaks
 
 # --- Plot Aesthetics ---
 plt.rcParams.update({
@@ -22,19 +23,35 @@ plt.rcParams.update({
 })
 
 p = r"samples"
-file_list = glob.glob(os.path.join(p, '5700*.csv'))
+file_list = glob.glob(os.path.join(p, '*.csv'))
 
-# Lists to hold data for the bifurcation diagram
-bifurcation_V = []
-bifurcation_peaks = []
+def extract_v_value(file_path):
+    filename = os.path.basename(file_path)
+    parts = filename.split('.')
+    try:
+        return int(parts[0][:-2]) / 1000
+    except ValueError:
+        return float('inf')
 
-# Figure 1: Waveforms (Optional, kept for your verification)
-plt.figure()
-plt.title("Return maps for various driving voltages")
-plt.xlabel("$V_n$")
-plt.ylabel("$V_{n+1}$")
+# Sort the list using the custom function
+file_list = sorted(file_list, key=extract_v_value)
 
-for i, file_path in enumerate(tqdm(file_list)):
+# --- NEW: Setup Colorbar Normalization ---
+# Extract all valid voltages to find the minimum and maximum for the colorbar scale
+v_values = [extract_v_value(f) for f in file_list if extract_v_value(f) != float('inf')]
+min_v, max_v = min(v_values), max(v_values)
+
+# Create a normalizer and set the colormap
+norm = mcolors.Normalize(vmin=min_v, vmax=max_v)
+cmap = cm.turbo
+
+# Figure Setup
+fig, ax = plt.subplots()
+ax.set_title("Return maps for various driving voltages")
+ax.set_xlabel("$V_n$")
+ax.set_ylabel("$V_{n+1}$")
+
+for j, file_path in enumerate(tqdm(file_list)):
     filename = os.path.basename(file_path)
     
     parts = filename.split('.')
@@ -46,58 +63,51 @@ for i, file_path in enumerate(tqdm(file_list)):
     # Read data
     df = pd.read_csv(file_path, header=None, usecols=[3, 4, 9, 10])
 
-    # Smooth the data and DROP NaNs (find_peaks will crash if it sees NaNs)
+    # Smooth the data and DROP NaNs
     diode_V = df[4].rolling(window=100).mean().dropna()
 
     # --- 1. PEAK EXTRACTION ---
-    # Adjust 'prominence' if it picks up micro-spikes. 
-    # Prominence of 0.05 ensures it only grabs distinct structural peaks.
     peaks, _ = find_peaks(diode_V, prominence=0.05) 
-    cutoff = np.median(np.diff(peaks))
-    p=diode_V.iloc[[peaks[0]]].values
-    i=1
-    while i<len(peaks):
-        if peaks[i]-peaks[i-1]>cutoff/2.0:
-            if peaks[i]-peaks[i-1]>3.0*cutoff/2:
-                p=np.concatenate((p,[np.min(diode_V)]))
-            p=np.concatenate((p,diode_V.iloc[[peaks[i]]].values))
-        i+=1
     
-    plt.plot(p[:-1],p[1:],'.')
-    
-    # # Get the actual voltage values at those peak indices
-    # peak_values = diode_V.iloc[peaks].values
-    
-    # # --- 2. TRANSIENT REMOVAL ---
-    # # Discard the first 20% of peaks to let the chaotic circuit settle
-    # if len(peak_values) > 0:
-    #     transient_cutoff = int(0.2 * len(peak_values))
-    #     stable_peaks = peak_values[transient_cutoff:]
+    # Safety check: if the signal has no peaks, skip to prevent a crash
+    if len(peaks) < 2:
+        continue
         
-    #     # Store for the bifurcation plot
-    #     bifurcation_V.extend([v_value] * len(stable_peaks))
-    #     bifurcation_peaks.extend(stable_peaks)
+    cutoff = np.median(np.diff(peaks))
+    min_diode_v = np.min(diode_V) 
+    
+    # FIX 2: Convert Pandas Series to a raw NumPy array for lightning-fast indexing
+    diode_v_array = diode_V.to_numpy()
+    
+    # FIX 3: Use a standard Python list to append items (np.concatenate is an O(N^2) memory killer)
+    p_vals_list = [diode_v_array[peaks[0]]]
+    
+    for i in range(1, len(peaks)):
+        peak_diff = peaks[i] - peaks[i-1]
+        
+        if peak_diff > cutoff / 2.0:
+            if peak_diff > 3.0 * cutoff / 2.0:
+                p_vals_list.append(min_diode_v)
+                
+            p_vals_list.append(diode_v_array[peaks[i]])
 
-    # # Plot only a subset of the waveforms so it doesn't become a solid block of ink
-    # if i % max(1, len(file_list) // 10) == 0:
-    #     color = cm.turbo(i / max(1, len(file_list) - 1))
-    #     # Plotting just the first 5000 points so you can actually see the waves
-    #     plt.plot(diode_V.values[:5000], label=f'V: {v_value}', color=color, alpha=0.7)
+    # Convert back to a NumPy array exactly once at the very end
+    p_vals = np.array(p_vals_list)
+    
+    # --- NEW: Assign Color by Voltage ---
+    # Instead of mapping color by loop index 'j', we map it to the actual voltage value.
+    # This prevents color stretching if your files aren't perfectly linearly spaced!
+    color = cmap(norm(v_value))
 
-plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=10)
-plt.tight_layout()
-plt.show()
+    # Plotted with a slightly smaller marker and alpha for a cleaner scatter plot
+    ax.plot(p_vals[:-1], p_vals[1:], '.', color=color, markersize=5)
 
-# --- 3. BIFURCATION DIAGRAM PLOT ---
-plt.figure()
-plt.title("RLD Circuit Bifurcation Diagram")
-plt.xlabel("Driving Voltage Amplitude (V)")
-plt.ylabel("Peak Diode Voltage (V)")
+# --- NEW: Add the Colorbar ---
+# We use ScalarMappable to link the colormap and our min/max normalizer to the colorbar
+sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+sm.set_array([]) # Required for older matplotlib versions
+cbar = fig.colorbar(sm, ax=ax)
+cbar.set_label('Driving Voltage Amplitude (V)')
 
-# The secret to a good bifurcation diagram is using tiny markers (markersize=1)
-# and high transparency (alpha=0.1) so density naturally creates darker regions.
-plt.plot(bifurcation_V, bifurcation_peaks, '.', markersize=3, color='black', alpha=1)#0.1)
-
-plt.grid(True, linestyle='--', alpha=0.5)
 plt.tight_layout()
 plt.show()
