@@ -11,7 +11,7 @@ The 3D HTML uses only forward-bias peaks (V > PEAK_MIN_VOLTAGE) for clarity.
 
 Measurement setup
 -----------------
-  - Circuit    : R (470 Ω) + L (100 mH) + diode (1N4005) in series
+  - Circuit    : R (1 kΩ) + L (100 mH) + diode (1N4005) in series
   - Source     : sinusoidal carrier (~34 kHz) with slowly varying
                  amplitude modulated by a 0.7 Hz triangle envelope
   - Peak amp.  : 7 V  (filename encodes this)
@@ -97,7 +97,7 @@ PLOT_STRIDE = 3
 
 # Circuit description for plot titles
 CIRCUIT_LABEL = (
-    "1N4005 diode  |  L = 100 mH  |  R = 470 Ω  |  "
+    "1N4005 diode  |  L = 100 mH  |  R = 1 kΩ  |  "
     r"$A_\mathrm{peak}$ = 7 V"
 )
 
@@ -256,7 +256,7 @@ def main():
         fig3d.update_layout(
             title=(
                 'RLD Circuit — Continuous Bifurcation Map<br>'
-                '<sup>1N4005 | L = 100 mH | R = 470 Ω | '
+                '<sup>1N4005 | L = 100 mH | R = 1 kΩ | '
                 'Carrier ≈ 34 kHz | AM ≈ 0.7 Hz | A_peak = 7 V | '
                 f'forward-bias peaks only (V > {PEAK_MIN_VOLTAGE} V)</sup>'
             ),
