@@ -27,7 +27,7 @@ plt.rcParams.update({
 # --- Shockley Diode Equation ---
 # V_T is the thermal voltage (approx 25.85 mV at 300K)
 def shockley_equation(V_D, I_S, n):
-    V_T = 0.02585 
+    V_T = 0.02569 # Thermal voltage at 25c
     return I_S * (np.exp(V_D / (n * V_T)) - 1)
 
 p = r"samples\square"
@@ -75,7 +75,8 @@ for i, file_path in tqdm(enumerate(file_list)):
     mask = df.index.isin(samples_range_list)
     diode_V = df.loc[mask, 4]
     circuit_V = df.loc[mask, 10]
-    
+    diode_V = diode_V.rolling(window=50, center=True).mean().dropna()
+    circuit_V = circuit_V.rolling(window=50, center=True).mean().dropna()
     resistor_V = diode_V - circuit_V
     resistor_I = resistor_V / 470.0
     

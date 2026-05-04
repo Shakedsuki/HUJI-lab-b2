@@ -89,7 +89,7 @@ for file_path in tqdm(file_list[:1]):
 
     # Using marker=',' (pixel) and an incredibly low alpha to create physical ink density
     ax.plot(x_fwd, y_fwd, 
-            marker=',', linestyle='none', color='black', alpha=0.05, label="Amplitude Increasing")
+            marker=',', linestyle='none', color='black', alpha=1, label="Amplitude Increasing")
 
     leg = ax.legend(loc='upper left', fontsize=10)
     for legobj in leg.legend_handles:

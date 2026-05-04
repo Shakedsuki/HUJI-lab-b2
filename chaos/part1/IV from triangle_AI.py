@@ -23,7 +23,7 @@ plt.rcParams.update({
 
 # --- Theoretical Model ---
 def shockley_equation(V_D, I_S, n):
-    V_T = 0.02585 # Thermal voltage at 300K
+    V_T = 0.02569 # Thermal voltage at 25c
     return I_S * (np.exp(V_D / (n * V_T)) - 1)
 
 p = r"samples\triangle"

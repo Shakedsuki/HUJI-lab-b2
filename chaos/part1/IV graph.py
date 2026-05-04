@@ -33,13 +33,13 @@ for i, file_path in tqdm(enumerate(file_list)):
 
     df = pd.read_csv(file_path,header=None, usecols=[3, 4, 9, 10])
     samples_range=itertools.chain(range(100000,200000),range(380000,480000),range(660000,760000))
-    diode_V=df[4][samples_range]#.rolling(window=100).mean()#[samples_range]
+    diode_V=df[4][samples_range].rolling(window=100).mean()[100:]#[samples_range]
     samples_range=itertools.chain(range(100000,200000),range(380000,480000),range(660000,760000))
-    circuit_V=df[10][samples_range]#.rolling(window=100).mean()
+    circuit_V=df[10][samples_range].rolling(window=100).mean()[100:]
     resistor_V=diode_V-circuit_V#[samples_range]
     resistor_I=resistor_V/470.0
     
-    I.append(np.average(resistor_I))
+    I.append(np.average(diode_V)-np.average(circuit_V))#np.average(resistor_I))
     V.append(-np.average(diode_V))
     
     color = cm.turbo(i / max(1, len(file_list) - 1))
