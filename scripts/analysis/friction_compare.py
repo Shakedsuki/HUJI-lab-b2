@@ -37,7 +37,8 @@ import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 
 
-ROOT     = r"C:\dev\chaos"
+ROOT     = os.path.dirname(os.path.dirname(os.path.dirname(
+              os.path.abspath(__file__))))
 DATA_DIR = os.path.join(ROOT, "data")
 MEAS_DIR = os.path.join(ROOT, "measurements")
 EXPERIMENTS_FILE = os.path.join(DATA_DIR, "experiments.json")
