@@ -55,6 +55,7 @@ data/experiments.json.*.bak
 
 # Personal VS Code workspace
 *.code-workspace
+.vscode/
 
 # ── Claude worktrees ─────────────────────────────
 .claude/
