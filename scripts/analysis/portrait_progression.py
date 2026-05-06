@@ -61,9 +61,16 @@ from figures_paths import aggregate_path, mirror_to_ready  # noqa: E402
 # clip can still display interesting (if noisy) phase-space structure;
 # these clips can't. Bypass with --include-excluded.
 EXCLUDE_FROM_PROGRESSION = {
-    "th1_m001_th2_p001": "release |θ₁|≈0° — no oscillation to portray",
-    "th1_p090_th2_p000": "tracker froze (vertical strip artefact); "
-                         "superseded by p090_th2_p000_r2",
+    "th1_m001_th2_p001":  "release |θ₁|≈0° — no oscillation to portray",
+    "th1_p090_th2_p000":  "tracker froze (vertical strip artefact); "
+                          "superseded by p090_th2_p000_r2",
+    # Tracking failures producing physically impossible |ω| or empty data.
+    # |ω| ~ several thousand deg/s for an arm with L≈30cm is non-physical.
+    "th1_p079_th2_p000":  "tracking failure — empty / near-empty trajectory",
+    "th1_p140_th2_p089":  "tracking failure — non-physical horizontal smear",
+    "th1_p153_th2_p090":  "tracking failure — |ω| reaches 10⁴ deg/s",
+    "th1_p176_th2_p180":  "tracking failure — |ω| reaches 8×10³ deg/s",
+    "th1_p180_th2_p090":  "tracking failure — |ω| reaches 7.5×10³ deg/s",
 }
 
 
@@ -195,9 +202,7 @@ def main():
                    s=1.2, alpha=0.55)
         ax.set_title(f"{r['stem'].replace('th1_', '')}  "
                      f"|θ₁|={r['amplitude']:.0f}°",
-                     fontsize=8.5,
-                     color={"PASS": "tab:green", "WARN": "black",
-                            "FAIL": "tab:red"}[r["status"]])
+                     fontsize=8.5, color="black")
         ax.axhline(0, color="gray", lw=0.4, ls="--")
         ax.axvline(0, color="gray", lw=0.4, ls="--")
         ax.tick_params(labelsize=7)
@@ -214,7 +219,6 @@ def main():
     fig.suptitle(
         f"Phase portrait progression — {arm_label} vs ω{args.arm}, "
         f"sorted by initial |θ₁_release|.\n"
-        f"Title colour: green=PASS, black=WARN, red=FAIL.  "
         f"Border colour: amplitude band.  "
         f"Points coloured by time within each clip.",
         fontsize=11, y=0.998)
