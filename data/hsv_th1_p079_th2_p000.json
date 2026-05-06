@@ -1,19 +1,19 @@
 {
   "green": {
-    "h_min": 17,
-    "h_max": 59,
-    "s_min": 88,
+    "h_min": 14,
+    "h_max": 61,
+    "s_min": 136,
     "s_max": 255,
-    "v_min": 33,
-    "v_max": 134
+    "v_min": 13,
+    "v_max": 138
   },
   "red": {
     "h_min": 0,
     "h_max": 33,
-    "s_min": 45,
-    "s_max": 249,
-    "v_min": 40,
-    "v_max": 168,
+    "s_min": 155,
+    "s_max": 255,
+    "v_min": 22,
+    "v_max": 123,
     "h_min2": 180,
     "h_max2": 180
   },

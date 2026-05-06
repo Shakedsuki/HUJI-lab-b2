@@ -8,11 +8,11 @@
     608,
     355
   ],
-  "energy_release_J": 41.87805602291303,
+  "energy_release_J": 36.96851481547049,
   "n_trend_arm_windows": 0,
-  "n_residual_suspects": 139,
-  "n_energy_suspects": 27,
+  "n_residual_suspects": 18,
+  "n_energy_suspects": 10,
   "n_energy_ceiling_suspects": 0,
-  "n_energy_rolling_spikes": 27,
+  "n_energy_rolling_spikes": 10,
   "n_trend_arm_suspects": 0
 }
