@@ -210,25 +210,55 @@ def color_mask_red(hsv_img, cfg):
     return cv2.bitwise_or(m1, m2)
 
 
-def largest_centroid(mask_uint8, min_area=10):
+def largest_centroid(mask_uint8, min_area=10, max_radius=35):
     """
     Find the largest connected component in `mask_uint8` (0/255) and return
     its centroid (cx, cy) plus area, or (None, 0) if nothing meaningful.
+
+    Uses connectedComponentsWithStats so we get the *true* pixel area of
+    each blob and the moment-based centroid of those pixels. The earlier
+    findContours + cv2.contourArea + cv2.moments(contour) approach had a
+    silent failure mode for annular (ring-shaped) blobs: when the green or
+    red HSV mask was permissive enough to fire on background pixels around
+    the entire search ring, the resulting connected component traced an
+    annulus. RETR_EXTERNAL returned a single outer contour whose enclosed
+    polygon area = π·r² (pivot-to-outer-radius squared) — orders of magnitude
+    larger than the actual lit-pixel count — and the moments of that polygon
+    placed the centroid at the geometric center of the ring (i.e., the
+    pivot). Both markers then collapsed to the pivot in the preview, the
+    "th2" angle was meaningless, and the user couldn't tell from the overlay
+    alone what had gone wrong.
+
+    `max_radius` rejects blobs whose smallest enclosing circle is wider
+    than this (px). Markers on this rig are ≤ ~25 px across, so 35 px is
+    a safe ceiling that excludes annular-noise blobs (which would have
+    radius ≥ ARM_LENGTH_PX + tolerance) without affecting real markers.
     """
-    contours, _ = cv2.findContours(mask_uint8, cv2.RETR_EXTERNAL,
-                                   cv2.CHAIN_APPROX_SIMPLE)
-    if not contours:
+    n_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(
+        mask_uint8, connectivity=8)
+    if n_labels < 2:  # only background
         return None, 0
-    best = max(contours, key=cv2.contourArea)
-    area = cv2.contourArea(best)
-    if area < min_area:
+
+    best_idx = -1
+    best_area = 0
+    for i in range(1, n_labels):  # skip background (label 0)
+        area = int(stats[i, cv2.CC_STAT_AREA])
+        if area < min_area:
+            continue
+        # Reject sprawling annular blobs by extent.
+        w = stats[i, cv2.CC_STAT_WIDTH]
+        h = stats[i, cv2.CC_STAT_HEIGHT]
+        bbox_radius = 0.5 * float(np.hypot(w, h))
+        if bbox_radius > max_radius:
+            continue
+        if area > best_area:
+            best_area = area
+            best_idx = i
+
+    if best_idx < 0:
         return None, 0
-    M = cv2.moments(best)
-    if M["m00"] == 0:
-        return None, 0
-    cx = int(M["m10"] / M["m00"])
-    cy = int(M["m01"] / M["m00"])
-    return (cx, cy), int(area)
+    cx, cy = centroids[best_idx]
+    return (int(round(cx)), int(round(cy))), best_area
 
 
 # ─────────────────────────────────────────────
