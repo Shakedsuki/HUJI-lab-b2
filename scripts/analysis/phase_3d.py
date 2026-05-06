@@ -39,6 +39,10 @@ from mpl_toolkits.mplot3d.art3d import Line3DCollection
 from scipy.signal import savgol_filter
 from matplotlib.collections import LineCollection
 
+_THIS_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(_THIS_DIR, "..", "utils"))
+from figures_paths import figure_path, mirror_to_journal  # noqa: E402
+
 
 # ─────────────────────────────────────────────
 # CONFIG
@@ -214,6 +218,7 @@ def plot_3d(t, th1, th2, om1, label, out_path, output_dir):
     os.makedirs(output_dir, exist_ok=True)
     plt.savefig(out_path, dpi=150, bbox_inches='tight',
                 facecolor=fig.get_facecolor())
+    mirror_to_journal(out_path)
     print(f"Static figure saved to: {out_path}")
     return fig, ax, lc, norm, cmap
 
@@ -279,12 +284,18 @@ def main():
     print(f"  theta2: [{th2.min():.1f}, {th2.max():.1f}] deg")
     print(f"  omega1: [{om1.min():.0f}, {om1.max():.0f}] deg/s")
 
-    # When called via --stem (or --save) we use the canonical output
-    # filenames inside output_dir; otherwise (interactive fallback) we
-    # keep the legacy <stem>_3d_*.{png,mp4} naming for backward compat.
-    if force_save and (args.stem or args.save):
-        png_path = os.path.join(output_dir, "phase_3d_trajectory.png")
-        mp4_path = os.path.join(output_dir, "phase_3d_rotation.mp4")
+    # When called via --stem (or --save) we write to the canonical
+    # figures/ directory; otherwise (interactive fallback) we keep the
+    # legacy <stem>_3d_*.{png,mp4} naming inside output_dir.
+    if force_save and args.stem:
+        png_path = figure_path("phase_3d_trajectory", args.stem)
+        mp4_path = figure_path("phase_3d_rotation", args.stem, ext="mp4")
+    elif force_save and args.save:
+        # save without --stem: derive stem from output_dir if it's a
+        # measurements/<stem>/ folder.
+        derived_stem = os.path.basename(output_dir)
+        png_path = figure_path("phase_3d_trajectory", derived_stem)
+        mp4_path = figure_path("phase_3d_rotation", derived_stem, ext="mp4")
     else:
         png_path = os.path.join(output_dir, f"{stem}_3d_trajectory.png")
         mp4_path = os.path.join(output_dir, f"{stem}_3d_rotation.mp4")

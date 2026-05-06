@@ -39,6 +39,10 @@ import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from scipy.signal import savgol_filter
 
+_THIS_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(_THIS_DIR, "..", "utils"))
+from figures_paths import figure_path, mirror_to_journal  # noqa: E402
+
 
 # ─────────────────────────────────────────────
 # CONFIG
@@ -309,6 +313,7 @@ def make_figure(t, th1, th2, om1, om2, label, out_path, force_save):
     if force_save:
         os.makedirs(os.path.dirname(out_path), exist_ok=True)
         plt.savefig(out_path, dpi=150, bbox_inches='tight')
+        mirror_to_journal(out_path)
         print(f"Figure saved to: {out_path}")
     else:
         plt.show()
@@ -344,12 +349,15 @@ def main():
     print(f"  ω₁: [{om1.min():.0f}, {om1.max():.0f}] deg/s")
     print(f"  ω₂: [{om2.min():.0f}, {om2.max():.0f}] deg/s")
 
-    # Canonical filename when output_dir is a measurements/ folder;
-    # otherwise keep the legacy <stem>_sanity.png naming.
-    if force_save and (args.stem or
-                       os.path.basename(os.path.dirname(output_dir))
-                       == "measurements"):
-        out_path = os.path.join(output_dir, "phase_panels.png")
+    # Canonical figure path: figures/phase_panels/<stem>_phase_panels.png.
+    # Falls back to the local output_dir for ad-hoc CSV-only invocations
+    # that don't have a stem/registry entry.
+    if force_save and args.stem:
+        out_path = figure_path("phase_panels", args.stem)
+    elif force_save and (os.path.basename(os.path.dirname(output_dir))
+                         == "measurements"):
+        out_path = figure_path("phase_panels",
+                               os.path.basename(output_dir))
     else:
         out_path = os.path.join(output_dir, f"{stem}_sanity.png")
 

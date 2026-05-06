@@ -15,19 +15,24 @@ output/*.mp4
 # ── VLC snapshots ────────────────────────────────
 output/vlcsnap-*.png
 
-# ── Animation exports ────────────────────────────
-# Large MP4s, regenerable from CSV
-data/figures/*.mp4
-
 # ── Per-measurement outputs ──────────────────────
 # Large/regenerable artefacts produced inside measurements/<config>/.
-# Small human-readable artefacts (tracking.csv, the PNG figures) stay
-# tracked so the repo always shows what's been measured at a glance.
+# Small human-readable artefacts (tracking.csv, etc.) stay tracked
+# so the repo always shows what's been measured at a glance.
+# Legacy paths (pre-figures-reorg); kept so git ignores any stragglers
+# left behind by older branches.
 measurements/*/debug.mp4
 measurements/*/phase_3d_rotation.mp4
 measurements/*/phase_animation.mp4
-
 measurements/*/combined.mp4
+
+# ── Figures layout ───────────────────────────────
+# Per-clip MP4s (rendered animations) regenerable from CSV — too big
+# to track. PNG figures stay tracked for at-a-glance browsing.
+figures/phase_3d_rotation/*.mp4
+figures/phase_animation/*.mp4
+figures/combined/*.mp4
+figures/debug/*.mp4
 # Migration / bulk-tracking sidecar logs
 data/migration_log.txt
 data/bulk_tracking_log.json

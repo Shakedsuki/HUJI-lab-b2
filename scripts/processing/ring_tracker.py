@@ -82,6 +82,7 @@ from thresholds import (           # noqa: E402  (after sys.path tweak)
     PIVOT,
     ARM_LENGTH_PX,
 )
+from figures_paths import figure_path  # noqa: E402
 
 
 # ─────────────────────────────────────────────
@@ -1448,7 +1449,7 @@ def main():
                                                 existing_preview)
     meas_dir   = measurements_dir_for(config_desc)
     output_csv = os.path.join(meas_dir, "tracking.csv")
-    debug_mp4  = os.path.join(meas_dir, "debug.mp4")
+    debug_mp4  = figure_path("debug", config_desc, ext="mp4")
 
     print("ring_tracker.py")
     print(f"Video  : {video_path}")

@@ -47,6 +47,9 @@ ROOT     = os.path.dirname(os.path.dirname(os.path.dirname(
               os.path.abspath(__file__))))
 MEAS_DIR = os.path.join(ROOT, "measurements")
 
+sys.path.insert(0, os.path.join(ROOT, "scripts", "utils"))
+from figures_paths import figure_path, mirror_to_journal  # noqa: E402
+
 
 def parse_args():
     p = argparse.ArgumentParser(
@@ -232,6 +235,7 @@ def make_figure(t, th1, th2, om1, om2,
 
     fig.suptitle(f"Poincare section — {label}", fontsize=14, y=0.995)
     fig.savefig(out_path, dpi=130)
+    mirror_to_journal(out_path)
     plt.close(fig)
 
 
@@ -255,7 +259,7 @@ def main():
         print(f"  wrote {out_csv}")
 
     if not args.no_plot:
-        out_png = os.path.join(out_dir, "poincare.png")
+        out_png = figure_path("poincare", label)
         make_figure(t, th1, th2, om1, om2,
                     t_p, th1_p, om1_p, label, out_png)
         print(f"  wrote {out_png}")

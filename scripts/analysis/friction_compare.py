@@ -44,6 +44,7 @@ EXPERIMENTS_FILE = os.path.join(DATA_DIR, "experiments.json")
 
 sys.path.insert(0, os.path.join(ROOT, "scripts", "utils"))
 from track_one import read_verification_metrics, compute_verdict  # noqa: E402
+from figures_paths import aggregate_path, mirror_to_journal  # noqa: E402
 
 
 def E_per_frame(th1_deg, th2_deg, om1_dps, om2_dps, L=0.35, g=9.8):
@@ -209,7 +210,7 @@ def main():
               f"{r['fit_r2']:5.2f}  {r['drift_pct']:+6.1f}%")
 
     # ── Plot τ vs initial amplitude ──────────────────────────────────
-    out_png = os.path.join(DATA_DIR, "friction_comparison.png")
+    out_png = aggregate_path("friction_comparison.png")
     fig, axes = plt.subplots(1, 2, figsize=(14, 5.5))
     color_for = {"PASS": "#2ca02c", "WARN": "#d4a017", "FAIL": "#d62728"}
 
@@ -236,6 +237,7 @@ def main():
     fig.suptitle("Energy decay τ vs initial amplitude", fontsize=14)
     plt.tight_layout()
     plt.savefig(out_png, dpi=140)
+    mirror_to_journal(out_png)
     plt.close(fig)
     print(f"\n  Plot: {out_png}")
 

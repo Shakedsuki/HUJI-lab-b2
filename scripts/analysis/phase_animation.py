@@ -40,6 +40,10 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from scipy.signal import savgol_filter
 
+_THIS_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(_THIS_DIR, "..", "utils"))
+from figures_paths import figure_path  # noqa: E402
+
 
 # ─────────────────────────────────────────────
 # CONFIG
@@ -254,15 +258,15 @@ def animate(path, output_dir, stem_label, force_save):
     )
 
     if force_save:
-        os.makedirs(output_dir, exist_ok=True)
-        # Use canonical filename when output_dir is a measurements/ folder;
-        # otherwise (legacy --save with a positional CSV) keep the older
-        # <stem>_phase_animation.mp4 naming.
+        # Canonical: figures/phase_animation/<stem>_phase_animation.mp4.
+        # When called from a measurements/<stem>/ context, derive the stem
+        # from the folder name. Otherwise fall back to stem_label (which
+        # is the CSV stem) for ad-hoc invocations.
         if os.path.basename(os.path.dirname(output_dir)) == "measurements":
-            output_mp4 = os.path.join(output_dir, "phase_animation.mp4")
+            derived = os.path.basename(output_dir)
+            output_mp4 = figure_path("phase_animation", derived, ext="mp4")
         else:
-            output_mp4 = os.path.join(output_dir,
-                                      f"{stem_label}_phase_animation.mp4")
+            output_mp4 = figure_path("phase_animation", stem_label, ext="mp4")
         writer = animation.FFMpegWriter(fps=int(1000 / INTERVAL_MS),
                                         bitrate=2000)
         print(f"Saving {N} frames to {output_mp4} ...")

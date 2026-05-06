@@ -38,6 +38,10 @@ import argparse
 import numpy as np
 import cv2
 import matplotlib
+
+_THIS_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(_THIS_DIR, "..", "utils"))
+from figures_paths import figure_path  # noqa: E402
 matplotlib.use('Agg')          # non-interactive backend — much faster offscreen
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
@@ -108,7 +112,7 @@ def resolve_paths(args):
             sys.exit(1)
         video_path = video_for_stem(args.stem)
         return (csv_path, video_path,
-                os.path.join(meas_dir, "combined.mp4"), meas_dir)
+                figure_path("combined", args.stem, ext="mp4"), meas_dir)
 
     csv_path = args.csv if args.csv else DEFAULT_CSV
     if not os.path.isabs(csv_path):
@@ -118,13 +122,14 @@ def resolve_paths(args):
     if not os.path.isabs(video_path):
         video_path = os.path.join(ROOT, video_path)
 
-    # When the CSV lives inside a measurements folder, drop the output
-    # next to it as combined.mp4. Otherwise fall back to the legacy
-    # data/figures naming so existing flows still work.
+    # When the CSV lives inside a measurements folder, derive the stem
+    # from the folder name and write the output to the canonical figures
+    # directory. Otherwise fall back to the legacy data/figures naming.
     csv_dir = os.path.dirname(csv_path)
     if os.path.basename(os.path.dirname(csv_dir)) == "measurements":
+        derived = os.path.basename(csv_dir)
         return (csv_path, video_path,
-                os.path.join(csv_dir, "combined.mp4"), csv_dir)
+                figure_path("combined", derived, ext="mp4"), csv_dir)
     stem = os.path.splitext(os.path.basename(csv_path))[0]
     if stem.endswith("_tracking"):
         stem = stem[:-len("_tracking")]

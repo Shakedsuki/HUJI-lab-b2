@@ -40,6 +40,9 @@ from scipy.optimize import curve_fit
 ROOT     = r"C:\dev\chaos"
 MEAS_DIR = os.path.join(ROOT, "measurements")
 
+sys.path.insert(0, os.path.join(ROOT, "scripts", "utils"))
+from figures_paths import figure_path, mirror_to_journal  # noqa: E402
+
 
 # Rod-pendulum total mechanical energy. Mirrors verify_tracking's
 # compute_frame_energy so the fit is consistent with the verdict
@@ -219,7 +222,7 @@ def main():
                   f"{100*(1 - np.exp(-t[-1]/tau)):.1f}%")
 
     if not args.no_plot:
-        out_png = os.path.join(MEAS_DIR, args.stem, "friction_fit.png")
+        out_png = figure_path("friction_fit", args.stem)
         fig, ax = plt.subplots(figsize=(10, 5))
         ax.plot(t, e, lw=0.5, color="lightgray", label="raw E(t)")
         ax.plot(t, e_smooth, lw=1.0, color="black",
@@ -237,6 +240,7 @@ def main():
         ax.grid(alpha=0.3)
         plt.tight_layout()
         plt.savefig(out_png, dpi=140)
+        mirror_to_journal(out_png)
         plt.close(fig)
         print(f"\n  Plot: {out_png}")
 
