@@ -77,6 +77,8 @@ SCRIPT_COMBINED   = os.path.join(ROOT, "scripts", "analysis", "combined_video.py
 SCRIPT_ANALYZE    = os.path.join(ROOT, "scripts", "analysis", "chaos_analyze.py")
 SCRIPT_FRICTION   = os.path.join(ROOT, "scripts", "analysis", "friction_fit.py")
 SCRIPT_FRIC_CMP   = os.path.join(ROOT, "scripts", "analysis", "friction_compare.py")
+SCRIPT_POINCARE   = os.path.join(ROOT, "scripts", "analysis", "poincare.py")
+SCRIPT_LYAPUNOV   = os.path.join(ROOT, "scripts", "analysis", "lyapunov.py")
 
 VIDEO_EXTS = {".mov", ".mp4", ".avi", ".mkv", ".m4v"}
 
@@ -340,6 +342,29 @@ def cmd_friction_compare(args):
     return run_script(SCRIPT_FRIC_CMP, *extra)
 
 
+def cmd_poincare(args):
+    """Phase 2 — true 2D Poincaré section at theta1+theta2=0 (upward).
+    Writes measurements/<stem>/poincare.{png,csv}."""
+    extra = ["--stem", args.stem]
+    if args.no_plot: extra.append("--no-plot")
+    if args.no_csv:  extra.append("--no-csv")
+    return run_script(SCRIPT_POINCARE, *extra)
+
+
+def cmd_lyapunov(args):
+    """Phase 2 — largest Lyapunov exponent via Rosenstein algorithm.
+    Writes measurements/<stem>/lyapunov.png."""
+    extra = ["--stem", args.stem]
+    if args.emb_dim is not None: extra += ["--emb-dim", str(args.emb_dim)]
+    if args.tau is not None:     extra += ["--tau", str(args.tau)]
+    if args.k_max is not None:   extra += ["--k-max", str(args.k_max)]
+    if args.theiler is not None: extra += ["--theiler", str(args.theiler)]
+    if args.fit_range:           extra += ["--fit-range", args.fit_range]
+    if args.use_omega:           extra.append("--use-omega")
+    if args.no_plot:             extra.append("--no-plot")
+    return run_script(SCRIPT_LYAPUNOV, *extra)
+
+
 def resolve_video_path_for_stem(stem):
     """Look up Videos/<video_file> for a config_description via registry."""
     reg = load_registry()
@@ -403,6 +428,12 @@ BATCH / DRIVER COMMANDS
   chaos friction-fit <stem>  fit exponential / power-law friction models to
                              the clip's energy decay. Reports best model +
                              writes friction_fit.png
+  chaos poincare <stem>      Phase 2 — true 2D Poincaré section at
+                             theta1+theta2=0 (upward). Writes poincare.png
+                             and poincare.csv
+  chaos lyapunov <stem>      Phase 2 — largest Lyapunov exponent via
+                             Rosenstein 1993 algorithm (delay-embedding +
+                             nearest-neighbor divergence). Writes lyapunov.png
 
 INFO / REPORT COMMANDS
   chaos status               who's tracked, who's pending (one-screen)
@@ -869,6 +900,33 @@ def build_parser():
     p_fcmp.add_argument("--smooth-window", type=float, default=None,
         metavar="SECONDS")
 
+    p_poin = sub.add_parser("poincare",
+        help="Phase 2 — true 2D Poincaré section at theta2_abs=0, upward")
+    p_poin.add_argument("stem", metavar="<stem>",
+        help="config_description, e.g. th1_p044_th2_m001")
+    p_poin.add_argument("--no-plot", action="store_true",
+        help="skip writing poincare.png")
+    p_poin.add_argument("--no-csv", action="store_true",
+        help="skip writing poincare.csv")
+
+    p_lyap = sub.add_parser("lyapunov",
+        help="Phase 2 — largest Lyapunov exponent via Rosenstein 1993")
+    p_lyap.add_argument("stem", metavar="<stem>",
+        help="config_description, e.g. th1_p180_th2_m179")
+    p_lyap.add_argument("--emb-dim", type=int, default=None, metavar="M",
+        help="embedding dimension (default 5)")
+    p_lyap.add_argument("--tau", type=int, default=None, metavar="FRAMES",
+        help="embedding delay (default: 1/e of autocorrelation, capped 3..30)")
+    p_lyap.add_argument("--k-max", type=int, default=None, metavar="FRAMES",
+        help="divergence horizon (default 120; lower for fast-saturating clips)")
+    p_lyap.add_argument("--theiler", type=int, default=None, metavar="FRAMES",
+        help="Theiler exclusion window (default ~1 period, capped at 200)")
+    p_lyap.add_argument("--fit-range", default=None, metavar="LO-HI",
+        help="manual fit window in frames, e.g. '5-40'")
+    p_lyap.add_argument("--use-omega", action="store_true",
+        help="embed omega1 instead of theta1")
+    p_lyap.add_argument("--no-plot", action="store_true")
+
     sub.add_parser("help", help="one-page cheat sheet for all subcommands")
 
     return p
@@ -894,6 +952,8 @@ HANDLERS = {
     "analyze":          cmd_analyze,
     "friction-fit":     cmd_friction_fit,
     "friction-compare": cmd_friction_compare,
+    "poincare":         cmd_poincare,
+    "lyapunov":         cmd_lyapunov,
     "help":             cmd_help,
 }
 
