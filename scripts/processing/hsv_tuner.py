@@ -24,9 +24,9 @@ to motion blur (no temporal model, no appearance drift).
 
 Usage:
   python scripts/processing/hsv_tuner.py                                       # default video, save to global
-  python scripts/processing/hsv_tuner.py Videos/long_recording.mov             # save to per-video file
-  python scripts/processing/hsv_tuner.py Videos/long_recording.mov 200         # start at frame 200
-  python scripts/processing/hsv_tuner.py Videos/long_recording.mov --global    # force save to global
+  python scripts/processing/hsv_tuner.py data/videos/long_recording.mov             # save to per-video file
+  python scripts/processing/hsv_tuner.py data/videos/long_recording.mov 200         # start at frame 200
+  python scripts/processing/hsv_tuner.py data/videos/long_recording.mov --global    # force save to global
 
 Keys
   marker     : G green   R red   LEFT-CLICK sample circle around cursor

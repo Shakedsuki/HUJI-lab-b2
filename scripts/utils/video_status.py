@@ -1,12 +1,12 @@
 """
 video_status.py
 ---------------
-Print which videos in Videos/ have been tracked vs. which are still pending.
+Print which videos in data/videos/ have been tracked vs. which are still pending.
 
 A video is "tracked" if it has an entry in data/experiments.json with
 release_frame and theta1_release populated and a tracking.csv at the
 entry's measurements_dir path. "Pending" means the file exists in
-Videos/ but isn't recorded as tracked.
+data/videos/ but isn't recorded as tracked.
 
 Run on its own to see the breakdown:
 
@@ -28,7 +28,7 @@ from pathlib import Path
 # ─────────────────────────────────────────────
 
 ROOT             = r"C:\dev\chaos"
-VIDEOS_DIR       = os.path.join(ROOT, "Videos")
+VIDEOS_DIR       = os.path.join(ROOT, "data", "videos")
 EXPERIMENTS_FILE = os.path.join(ROOT, "data", "experiments.json")
 MEASUREMENTS_DIR = os.path.join(ROOT, "measurements")
 

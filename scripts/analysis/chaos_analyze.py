@@ -52,7 +52,7 @@ from matplotlib.colors import Normalize
 
 _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(_THIS_DIR, "..", "utils"))
-from figures_paths import figure_path, mirror_to_journal  # noqa: E402
+from figures_paths import figure_path, mirror_to_ready  # noqa: E402
 
 
 # scripts/analysis/ → scripts/ → repo root
@@ -468,7 +468,7 @@ def make_plot(stem, topo, stat, out_path):
 
     plt.tight_layout()
     plt.savefig(out_path, dpi=140)
-    mirror_to_journal(out_path)
+    mirror_to_ready(out_path)
     plt.close(fig)
 
 

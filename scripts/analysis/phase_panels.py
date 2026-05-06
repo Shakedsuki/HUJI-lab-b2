@@ -41,7 +41,7 @@ from scipy.signal import savgol_filter
 
 _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(_THIS_DIR, "..", "utils"))
-from figures_paths import figure_path, mirror_to_journal  # noqa: E402
+from figures_paths import figure_path, mirror_to_ready  # noqa: E402
 
 
 # ─────────────────────────────────────────────
@@ -313,7 +313,7 @@ def make_figure(t, th1, th2, om1, om2, label, out_path, force_save):
     if force_save:
         os.makedirs(os.path.dirname(out_path), exist_ok=True)
         plt.savefig(out_path, dpi=150, bbox_inches='tight')
-        mirror_to_journal(out_path)
+        mirror_to_ready(out_path)
         print(f"Figure saved to: {out_path}")
     else:
         plt.show()

@@ -34,7 +34,7 @@ ROOT        = os.path.dirname(os.path.dirname(os.path.dirname(
                   os.path.abspath(__file__))))
 FIGURES_DIR = os.path.join(ROOT, "figures")
 AGGREGATE   = os.path.join(FIGURES_DIR, "aggregate")
-JOURNAL     = os.path.join(FIGURES_DIR, "journal")
+READY       = os.path.join(ROOT, "measurements", "ready")
 
 
 # Canonical figure type names.  Keep the set deliberately small — adding
@@ -91,20 +91,21 @@ def aggregate_path(filename):
     return os.path.join(AGGREGATE, filename)
 
 
-def mirror_to_journal(saved_path):
-    """If a curated copy of this figure exists in figures/journal/,
+def mirror_to_ready(saved_path):
+    """If a curated copy of this figure exists in measurements/ready/,
     overwrite it with the freshly-saved file.
 
-    Curation workflow: move any figure into figures/journal/ to mark it
-    as publication-bound. From then on, every regeneration mirrors there
-    automatically — keeping the journal copy in sync with the latest
-    data without forcing the user to remember which paths to update.
+    Curation workflow: move any figure into measurements/ready/ to mark
+    it as publication-bound. From then on, every regeneration mirrors
+    there automatically — keeping the ready copy in sync with the
+    latest data without forcing the user to remember which paths to
+    update.
 
-    No-op if no same-named file exists in figures/journal/, so this is
-    safe to call after every savefig.
+    No-op if no same-named file exists in measurements/ready/, so this
+    is safe to call after every savefig.
     """
-    if not os.path.isdir(JOURNAL):
+    if not os.path.isdir(READY):
         return
-    target = os.path.join(JOURNAL, os.path.basename(saved_path))
+    target = os.path.join(READY, os.path.basename(saved_path))
     if os.path.exists(target):
         shutil.copyfile(saved_path, target)

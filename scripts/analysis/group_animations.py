@@ -59,7 +59,7 @@ ROOT     = os.path.dirname(os.path.dirname(os.path.dirname(
 MEAS_DIR = os.path.join(ROOT, "measurements")
 
 sys.path.insert(0, os.path.join(ROOT, "scripts", "utils"))
-from figures_paths import aggregate_path, mirror_to_journal  # noqa: E402
+from figures_paths import aggregate_path, mirror_to_ready  # noqa: E402
 
 GROUPS = {
     # th1_p093_th2_m002 dropped 2026-05-06 — residual ω at release.
@@ -283,7 +283,7 @@ def render_ghost(rows, out_path, fps_out, speed):
           f"({len(frame_idx)/fps_out:.1f}s output)...")
     anim.save(out_path, writer=writer, dpi=120)
     plt.close(fig)
-    mirror_to_journal(out_path)
+    mirror_to_ready(out_path)
     print(f"  wrote {out_path}")
 
 
@@ -356,7 +356,7 @@ def render_phase(rows, out_path, fps_out, speed):
           f"({len(frame_idx)/fps_out:.1f}s output)...")
     anim.save(out_path, writer=writer, dpi=120)
     plt.close(fig)
-    mirror_to_journal(out_path)
+    mirror_to_ready(out_path)
     print(f"  wrote {out_path}")
 
 
@@ -437,7 +437,7 @@ def render_3d(rows, out_path, fps_out, speed):
           f"({len(frame_idx)/fps_out:.1f}s output)...")
     anim.save(out_path, writer=writer, dpi=120)
     plt.close(fig)
-    mirror_to_journal(out_path)
+    mirror_to_ready(out_path)
     print(f"  wrote {out_path}")
 
 

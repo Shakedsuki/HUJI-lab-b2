@@ -41,7 +41,7 @@ import numpy as np
 from scipy.optimize import curve_fit
 from scipy.signal import find_peaks
 
-import tek_csv_v2 as tek
+import tek_csv as tek
 
 V_T = 0.02585
 R_RES = 470.0

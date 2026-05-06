@@ -41,10 +41,10 @@ I/O:
                                              measurements_dir set)
 
 Usage:
-    python scripts/processing/ring_tracker.py                            # opens a file picker rooted at Videos/
-    python scripts/processing/ring_tracker.py Videos/long_recording.mov  # explicit path
+    python scripts/processing/ring_tracker.py                            # opens a file picker rooted at data/videos/
+    python scripts/processing/ring_tracker.py data/videos/long_recording.mov  # explicit path
     python scripts/processing/ring_tracker.py --browse                   # force the picker even if a path is given
-    python scripts/processing/ring_tracker.py Videos/long_recording.mov --no-debug
+    python scripts/processing/ring_tracker.py data/videos/long_recording.mov --no-debug
 
 Sources behind the design choices:
     PyImageSearch ball-tracking (GaussianBlur + erode/dilate + minEnclosingCircle)
@@ -90,7 +90,7 @@ from figures_paths import figure_path  # noqa: E402
 # ─────────────────────────────────────────────
 
 ROOT             = r"C:\dev\chaos"
-VIDEOS_DIR       = os.path.join(ROOT, "Videos")
+VIDEOS_DIR       = os.path.join(ROOT, "data", "videos")
 DATA_DIR         = os.path.join(ROOT, "data")
 MEASUREMENTS_DIR = os.path.join(ROOT, "measurements")
 EXPERIMENTS_FILE = os.path.join(DATA_DIR, "experiments.json")
@@ -963,7 +963,7 @@ def extract_ic_from_csv(csv_path, release_frame, video_fps):
 
 def pick_video_interactive():
     """
-    Open a Tk file dialog rooted at Videos/. Returns the chosen absolute
+    Open a Tk file dialog rooted at data/videos/. Returns the chosen absolute
     path or None if the user cancelled. Falls back gracefully (returns
     None with a printed hint) on systems where Tk isn't available.
     """

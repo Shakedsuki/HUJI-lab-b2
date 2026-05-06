@@ -53,7 +53,7 @@ MEAS_DIR         = os.path.join(ROOT, "measurements")
 EXPERIMENTS_FILE = os.path.join(ROOT, "data", "experiments.json")
 
 sys.path.insert(0, os.path.join(ROOT, "scripts", "utils"))
-from figures_paths import aggregate_path, mirror_to_journal  # noqa: E402
+from figures_paths import aggregate_path, mirror_to_ready  # noqa: E402
 
 
 # Hard-exclude list — clips for which a phase portrait simply isn't
@@ -221,7 +221,7 @@ def main():
     plt.tight_layout(rect=[0, 0, 1, 0.97])
     out_path = aggregate_path(f"portrait_progression_arm{args.arm}.png")
     plt.savefig(out_path, dpi=140)
-    mirror_to_journal(out_path)
+    mirror_to_ready(out_path)
     plt.close(fig)
     print(f"  wrote {out_path}")
 

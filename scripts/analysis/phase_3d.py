@@ -41,7 +41,7 @@ from matplotlib.collections import LineCollection
 
 _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(_THIS_DIR, "..", "utils"))
-from figures_paths import figure_path, mirror_to_journal  # noqa: E402
+from figures_paths import figure_path, mirror_to_ready  # noqa: E402
 
 
 # ─────────────────────────────────────────────
@@ -218,7 +218,7 @@ def plot_3d(t, th1, th2, om1, label, out_path, output_dir):
     os.makedirs(output_dir, exist_ok=True)
     plt.savefig(out_path, dpi=150, bbox_inches='tight',
                 facecolor=fig.get_facecolor())
-    mirror_to_journal(out_path)
+    mirror_to_ready(out_path)
     print(f"Static figure saved to: {out_path}")
     return fig, ax, lc, norm, cmap
 

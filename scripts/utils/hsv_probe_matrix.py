@@ -62,7 +62,7 @@ except (AttributeError, OSError):
 
 ROOT             = r"C:\dev\chaos"
 DATA_DIR         = os.path.join(ROOT, "data")
-VIDEOS_DIR       = os.path.join(ROOT, "Videos")
+VIDEOS_DIR       = os.path.join(ROOT, "data", "videos")
 EXPERIMENTS_FILE = os.path.join(DATA_DIR, "experiments.json")
 BULK_LOG_FILE    = os.path.join(DATA_DIR, "bulk_tracking_log.json")
 GLOBAL_HSV_FILE  = os.path.join(DATA_DIR, "hsv_values.json")

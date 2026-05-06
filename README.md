@@ -13,12 +13,11 @@ Characterises a silicon diode (1N4005): measures the I-V characteristic, fits th
 
 | Script | Input data | Output |
 |--------|-----------|--------|
-| `IV graph.py` | `samples/square/*.csv` | Discrete I-V characteristic (one point per source amplitude) |
-| `IV graph_AI.py` | `samples/square/*.csv` | Same + error bars + Shockley fit |
-| `IV from triangle.py` | `samples/triangle/f_*.csv` | Continuous I-V curve (triangle wave sweep) + Shockley fit |
-| `IV from triangle_AI.py` | `samples/triangle/f_*.csv` | Same + error clouds (rolling std) + forward/reverse sweep separation |
-| `IV from triangle window.py` | `samples/triangle/f_*.csv` | Rolling-window exploration (smoothing sanity check) |
-| `dischargetimes.py` | `samples/square discharge/*.csv` | Junction capacitance C(V) from RC discharge time constant; fit: C ~ a/√V + c |
+| `iv_graph.py` | `samples/square/*.csv` | Square-wave I-V with full Shockley + series-resistance fit |
+| `iv_from_triangle.py` | `samples/triangle/f_*.csv` | Triangle-wave I-V with per-cycle ensemble Shockley fit |
+| `dischargetimes.py` | `samples/square discharge/*.csv` | Junction capacitance C(V) from direct exponential discharge fit; C ~ a/√V + c |
+| `run_fits.py` | — | Canonical runner: regenerates Fig 1 + Fig 2 + Fig 3 PNGs + JSONs |
+| `tek_csv.py` | — | Tektronix DPO CSV loader (helper module) |
 
 ### Key physics
 - **Shockley equation**: $I = I_S(e^{V/nV_T} - 1)$ — extracted parameters: ideality factor $n$, saturation current $I_S$
@@ -36,7 +35,7 @@ Studies nonlinear dynamics in an RLD circuit (R = 470 Ω, L = 100 mH, 1N4005 dio
 
 ### Interactive 3D Bifurcation Map
 View the continuous bifurcation map online (GitHub Pages):
-**[→ Open interactive 3D plot](https://shakedsuki.github.io/HUJI-lab-b2/chaos/chaos/part2/bifurcation_continuous_3D.html)**
+**[→ Open interactive 3D plot](https://shakedsuki.github.io/HUJI-lab-b2/chaos/chaos/part2/bifurcation_continuous_3d.html)**
 *(Enable GitHub Pages in repo Settings → Pages → master / root to activate this link)*
 
 ### Scripts
@@ -44,6 +43,7 @@ View the continuous bifurcation map online (GitHub Pages):
 | Script | Input data | Output |
 |--------|-----------|--------|
 | `get_cycles.py` | `samples/*.csv` | Discrete bifurcation map (one fixed amplitude per file) |
+| `get_return_map.py` | `samples/*.csv` | Return maps with colorbar |
 | `bifurcation_continuous.py` | `samples/AM/7V.csv` | Continuous bifurcation map via Hilbert envelope + peak detection; 2D matplotlib PNG (unfiltered) + interactive 3D plotly HTML (forward-bias only) |
 
 ### Key physics
@@ -66,7 +66,7 @@ Raw oscilloscope CSVs live in `chaos/part2/samples/` (gitignored). Acquire from 
 git clone <this repo>
 cd chaos
 pip install -r requirements.txt
-python scripts/utils/download_videos.py    # raw .mov files from Drive
+python scripts/utils/download_videos.py    # raw .mov files from Drive → data/videos/
 ```
 
 Drive: [כאוס on Google Drive](https://drive.google.com/drive/folders/1nB9rrpZ1UTdLrKEJudptLbawavkvXWj-). Tested on Python 3.13 / Windows 11 (macOS + Linux work).
