@@ -1,0 +1,396 @@
+{
+  "th1_m179_th2_p089": [
+    {
+      "cluster": [
+        649,
+        650
+      ],
+      "n_frames": 2,
+      "peak_frame": 650,
+      "peak_omega2": -10221.02,
+      "jump_px": 374.6,
+      "jump_marker": "green",
+      "verdict": "CONFIRMED_SWAP"
+    },
+    {
+      "cluster": [
+        874,
+        875
+      ],
+      "n_frames": 2,
+      "peak_frame": 874,
+      "peak_omega2": 4160.97,
+      "jump_px": 346.6,
+      "jump_marker": "green",
+      "verdict": "CONFIRMED_SWAP"
+    },
+    {
+      "cluster": [
+        1049,
+        1049
+      ],
+      "n_frames": 1,
+      "peak_frame": 1049,
+      "peak_omega2": 5273.11,
+      "jump_px": 290.9,
+      "jump_marker": "green",
+      "verdict": "CONFIRMED_SWAP"
+    },
+    {
+      "cluster": [
+        1547,
+        1548
+      ],
+      "n_frames": 2,
+      "peak_frame": 1547,
+      "peak_omega2": -6412.98,
+      "jump_px": 359.1,
+      "jump_marker": "green",
+      "verdict": "CONFIRMED_SWAP"
+    },
+    {
+      "cluster": [
+        1640,
+        1642
+      ],
+      "n_frames": 2,
+      "peak_frame": 1642,
+      "peak_omega2": -6668.77,
+      "jump_px": 335.4,
+      "jump_marker": "green",
+      "verdict": "CONFIRMED_SWAP"
+    },
+    {
+      "cluster": [
+        1858,
+        1858
+      ],
+      "n_frames": 1,
+      "peak_frame": 1858,
+      "peak_omega2": -4227.94,
+      "jump_px": 359.0,
+      "jump_marker": "green",
+      "verdict": "CONFIRMED_SWAP"
+    },
+    {
+      "cluster": [
+        2195,
+        2195
+      ],
+      "n_frames": 1,
+      "peak_frame": 2195,
+      "peak_omega2": 5276.46,
+      "jump_px": 383.5,
+      "jump_marker": "green",
+      "verdict": "CONFIRMED_SWAP"
+    }
+  ],
+  "th1_p160_th2_m001": [
+    {
+      "cluster": [
+        161,
+        161
+      ],
+      "n_frames": 1,
+      "peak_frame": 161,
+      "peak_omega2": -4082.13,
+      "jump_px": 345.3,
+      "jump_marker": "green",
+      "verdict": "CONFIRMED_SWAP"
+    },
+    {
+      "cluster": [
+        580,
+        581
+      ],
+      "n_frames": 2,
+      "peak_frame": 580,
+      "peak_omega2": -8715.41,
+      "jump_px": 385.9,
+      "jump_marker": "green",
+      "verdict": "CONFIRMED_SWAP"
+    },
+    {
+      "cluster": [
+        651,
+        651
+      ],
+      "n_frames": 1,
+      "peak_frame": 651,
+      "peak_omega2": 5075.27,
+      "jump_px": 377.9,
+      "jump_marker": "green",
+      "verdict": "CONFIRMED_SWAP"
+    },
+    {
+      "cluster": [
+        1041,
+        1041
+      ],
+      "n_frames": 1,
+      "peak_frame": 1041,
+      "peak_omega2": -4458.27,
+      "jump_px": 343.3,
+      "jump_marker": "green",
+      "verdict": "CONFIRMED_SWAP"
+    },
+    {
+      "cluster": [
+        1099,
+        1100
+      ],
+      "n_frames": 2,
+      "peak_frame": 1099,
+      "peak_omega2": 4461.27,
+      "jump_px": 396.0,
+      "jump_marker": "green",
+      "verdict": "CONFIRMED_SWAP"
+    },
+    {
+      "cluster": [
+        1205,
+        1205
+      ],
+      "n_frames": 1,
+      "peak_frame": 1205,
+      "peak_omega2": -4180.85,
+      "jump_px": 350.5,
+      "jump_marker": "green",
+      "verdict": "CONFIRMED_SWAP"
+    },
+    {
+      "cluster": [
+        1923,
+        1923
+      ],
+      "n_frames": 1,
+      "peak_frame": 1923,
+      "peak_omega2": 5283.14,
+      "jump_px": 384.4,
+      "jump_marker": "green",
+      "verdict": "CONFIRMED_SWAP"
+    }
+  ],
+  "th1_p180_th2_p090": [
+    {
+      "cluster": [
+        671,
+        671
+      ],
+      "n_frames": 1,
+      "peak_frame": 671,
+      "peak_omega2": 4120.0,
+      "jump_px": 381.0,
+      "jump_marker": "red",
+      "verdict": "CONFIRMED_SWAP"
+    },
+    {
+      "cluster": [
+        1087,
+        1087
+      ],
+      "n_frames": 1,
+      "peak_frame": 1087,
+      "peak_omega2": -5330.44,
+      "jump_px": 302.2,
+      "jump_marker": "green",
+      "verdict": "CONFIRMED_SWAP"
+    },
+    {
+      "cluster": [
+        1288,
+        1288
+      ],
+      "n_frames": 1,
+      "peak_frame": 1288,
+      "peak_omega2": 5116.7,
+      "jump_px": 377.3,
+      "jump_marker": "green",
+      "verdict": "CONFIRMED_SWAP"
+    },
+    {
+      "cluster": [
+        1415,
+        1422
+      ],
+      "n_frames": 2,
+      "peak_frame": 1422,
+      "peak_omega2": -5308.34,
+      "jump_px": 452.7,
+      "jump_marker": "red",
+      "verdict": "CONFIRMED_SWAP"
+    },
+    {
+      "cluster": [
+        1497,
+        1497
+      ],
+      "n_frames": 1,
+      "peak_frame": 1497,
+      "peak_omega2": 4787.38,
+      "jump_px": 362.2,
+      "jump_marker": "red",
+      "verdict": "CONFIRMED_SWAP"
+    },
+    {
+      "cluster": [
+        1610,
+        1611
+      ],
+      "n_frames": 2,
+      "peak_frame": 1611,
+      "peak_omega2": 5609.71,
+      "jump_px": 351.8,
+      "jump_marker": "red",
+      "verdict": "CONFIRMED_SWAP"
+    }
+  ],
+  "th1_p153_th2_p090": [
+    {
+      "cluster": [
+        191,
+        192
+      ],
+      "n_frames": 2,
+      "peak_frame": 192,
+      "peak_omega2": -4288.07,
+      "jump_px": 351.1,
+      "jump_marker": "green",
+      "verdict": "CONFIRMED_SWAP"
+    },
+    {
+      "cluster": [
+        555,
+        555
+      ],
+      "n_frames": 1,
+      "peak_frame": 555,
+      "peak_omega2": -4403.57,
+      "jump_px": 369.0,
+      "jump_marker": "green",
+      "verdict": "CONFIRMED_SWAP"
+    },
+    {
+      "cluster": [
+        747,
+        747
+      ],
+      "n_frames": 1,
+      "peak_frame": 747,
+      "peak_omega2": -4341.81,
+      "jump_px": 378.9,
+      "jump_marker": "red",
+      "verdict": "CONFIRMED_SWAP"
+    },
+    {
+      "cluster": [
+        845,
+        846
+      ],
+      "n_frames": 2,
+      "peak_frame": 845,
+      "peak_omega2": 4839.45,
+      "jump_px": 365.0,
+      "jump_marker": "green",
+      "verdict": "CONFIRMED_SWAP"
+    },
+    {
+      "cluster": [
+        1334,
+        1334
+      ],
+      "n_frames": 1,
+      "peak_frame": 1334,
+      "peak_omega2": 5191.79,
+      "jump_px": 257.4,
+      "jump_marker": "green",
+      "verdict": "CONFIRMED_SWAP"
+    },
+    {
+      "cluster": [
+        1748,
+        1748
+      ],
+      "n_frames": 1,
+      "peak_frame": 1748,
+      "peak_omega2": 4641.78,
+      "jump_px": 342.2,
+      "jump_marker": "green",
+      "verdict": "CONFIRMED_SWAP"
+    }
+  ],
+  "th1_p176_th2_p180": [
+    {
+      "cluster": [
+        659,
+        659
+      ],
+      "n_frames": 1,
+      "peak_frame": 659,
+      "peak_omega2": 4083.38,
+      "jump_px": 365.9,
+      "jump_marker": "green",
+      "verdict": "CONFIRMED_SWAP"
+    },
+    {
+      "cluster": [
+        1333,
+        1333
+      ],
+      "n_frames": 1,
+      "peak_frame": 1333,
+      "peak_omega2": 5010.04,
+      "jump_px": 381.7,
+      "jump_marker": "green",
+      "verdict": "CONFIRMED_SWAP"
+    },
+    {
+      "cluster": [
+        1712,
+        1713
+      ],
+      "n_frames": 2,
+      "peak_frame": 1712,
+      "peak_omega2": 4507.45,
+      "jump_px": 394.7,
+      "jump_marker": "green",
+      "verdict": "CONFIRMED_SWAP"
+    },
+    {
+      "cluster": [
+        1824,
+        1825
+      ],
+      "n_frames": 2,
+      "peak_frame": 1825,
+      "peak_omega2": 4308.06,
+      "jump_px": 398.8,
+      "jump_marker": "green",
+      "verdict": "CONFIRMED_SWAP"
+    },
+    {
+      "cluster": [
+        1871,
+        1873
+      ],
+      "n_frames": 3,
+      "peak_frame": 1872,
+      "peak_omega2": 4788.62,
+      "jump_px": 379.3,
+      "jump_marker": "green",
+      "verdict": "CONFIRMED_SWAP"
+    },
+    {
+      "cluster": [
+        2028,
+        2028
+      ],
+      "n_frames": 1,
+      "peak_frame": 2028,
+      "peak_omega2": 4444.13,
+      "jump_px": 361.2,
+      "jump_marker": "green",
+      "verdict": "CONFIRMED_SWAP"
+    }
+  ]
+}

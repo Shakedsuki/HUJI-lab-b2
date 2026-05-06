@@ -37,6 +37,8 @@ data/log_*.txt
 data/track_one_log.txt
 # Bulk-run streaming logs (one per chaos bulk invocation)
 data/bulk_run_*.log
+# Batch driver logs (phase analysis, render batches, etc.)
+data/*batch_log.txt
 
 # Tracking-CSV backups created by interpolate_suspects.py
 measurements/*/tracking.csv.bak
