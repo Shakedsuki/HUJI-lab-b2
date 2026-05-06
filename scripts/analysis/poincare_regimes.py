@@ -121,24 +121,23 @@ def main():
 
         amp = d.get("amplitude", float("nan"))
         lam = d.get("lambda1",   float("nan"))
-        r2  = d.get("r2",        float("nan"))
         n   = len(df)
-        title_lines = [d["label"]]
-        title_lines.append(rf"$\theta_1(0)={amp:.0f}^\circ$    $N$={n}")
+        # Compact one-line title: regime · amplitude · N crossings
+        ax.set_title(rf"{d['label']}  ·  $\theta_1(0)={amp:.0f}^\circ$  ·  $N$={n}",
+                     fontsize=11)
+        # λ annotation in upper-right corner
         if not np.isnan(lam):
-            title_lines.append(rf"$\lambda_1={lam:+.2f}$/s    $R^2$={r2:.2f}")
-        ax.set_title("\n".join(title_lines), fontsize=11)
+            ax.text(0.97, 0.97, rf"$\lambda_1={lam:+.2f}$/s",
+                    transform=ax.transAxes, ha="right", va="top",
+                    fontsize=10, family="monospace",
+                    bbox=dict(boxstyle="round,pad=0.3",
+                              facecolor="white", alpha=0.8,
+                              edgecolor="lightgray"))
 
     # Y-axis label only on the left column
     axes[0, 0].set_ylabel(r"$\omega_1$ at section (deg/s)")
     axes[1, 0].set_ylabel(r"$\omega_1$ at section (deg/s)")
 
-    fig.suptitle(
-        "Poincaré sections across the periodic→chaotic transition\n"
-        r"section: $\theta_1+\theta_2=0$ (upward)  ·  "
-        "color = time of crossing",
-        fontsize=13, y=0.99
-    )
     fig.tight_layout()
 
     if args.show:

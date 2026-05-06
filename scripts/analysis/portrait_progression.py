@@ -189,40 +189,23 @@ def main():
     fig, axes = plt.subplots(rows_n, cols,
                              figsize=(3.4 * cols, 2.7 * rows_n),
                              squeeze=False)
-    amps = np.array([r["amplitude"] for r in rows])
-    norm = Normalize(vmin=amps.min(), vmax=amps.max())
-    cmap = plt.cm.plasma
-
     for i, r in enumerate(rows):
         ax = axes[i // cols][i % cols]
-        c = cmap(norm(r["amplitude"]))
         # Colour by time so you see how the trajectory winds.
         ax.scatter(r["th"], r["om"],
                    c=r["t"], cmap="viridis",
                    s=1.2, alpha=0.55)
-        ax.set_title(f"{r['stem'].replace('th1_', '')}  "
-                     f"|θ₁|={r['amplitude']:.0f}°",
-                     fontsize=8.5, color="black")
+        ax.set_title(rf"$|\theta_1|={r['amplitude']:.0f}^\circ$",
+                     fontsize=10, color="black")
         ax.axhline(0, color="gray", lw=0.4, ls="--")
         ax.axvline(0, color="gray", lw=0.4, ls="--")
         ax.tick_params(labelsize=7)
         ax.grid(True, alpha=0.25)
-        # Outline color-codes amplitude band.
-        for spine in ax.spines.values():
-            spine.set_edgecolor(c)
-            spine.set_linewidth(1.5)
 
     for j in range(n, rows_n * cols):
         axes[j // cols][j % cols].axis("off")
 
-    arm_label = f"θ{args.arm}"
-    fig.suptitle(
-        f"Phase portrait progression — {arm_label} vs ω{args.arm}, "
-        f"sorted by initial |θ₁_release|.\n"
-        f"Border colour: amplitude band.  "
-        f"Points coloured by time within each clip.",
-        fontsize=11, y=0.998)
-    plt.tight_layout(rect=[0, 0, 1, 0.97])
+    plt.tight_layout()
     out_path = aggregate_path(f"portrait_progression_arm{args.arm}.png")
     plt.savefig(out_path, dpi=140)
     mirror_to_ready(out_path)

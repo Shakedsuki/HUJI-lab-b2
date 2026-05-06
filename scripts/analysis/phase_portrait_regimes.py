@@ -145,22 +145,21 @@ def main():
 
         amp = d.get("amplitude", float("nan"))
         lam = d.get("lambda1",   float("nan"))
-        r2  = d.get("r2",        float("nan"))
-        title_lines = [d["label"], rf"$\theta_1(0)={amp:.0f}^\circ$"]
+        # Compact one-line title: regime · amplitude
+        ax.set_title(rf"{d['label']}  ·  $\theta_1(0)={amp:.0f}^\circ$",
+                     fontsize=11)
+        # λ annotation in upper-right corner
         if not np.isnan(lam):
-            title_lines.append(rf"$\lambda_1={lam:+.2f}$/s    $R^2$={r2:.2f}")
-        ax.set_title("\n".join(title_lines), fontsize=11)
+            ax.text(0.97, 0.97, rf"$\lambda_1={lam:+.2f}$/s",
+                    transform=ax.transAxes, ha="right", va="top",
+                    fontsize=10, family="monospace",
+                    bbox=dict(boxstyle="round,pad=0.3",
+                              facecolor="white", alpha=0.8,
+                              edgecolor="lightgray"))
 
     axes[0, 0].set_ylabel(rf"$\omega_{arm}$ (deg/s)")
     axes[1, 0].set_ylabel(rf"$\omega_{arm}$ (deg/s)")
 
-    arm_label = f"arm {arm}"
-    fig.suptitle(
-        f"Phase portraits across the periodic→chaotic transition  ·  {arm_label}\n"
-        rf"$(\theta_{arm}, \omega_{arm})$ projection of the free-swing trajectory  ·  "
-        "color = time",
-        fontsize=13, y=0.99
-    )
     fig.tight_layout()
 
     if args.show:

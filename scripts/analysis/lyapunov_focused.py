@@ -118,14 +118,13 @@ def main():
                             rf"$\lambda_1$={c['slope']:+.2f}/s")
     ax_l.set_xlabel(r"horizon $k\cdot dt$ (s)")
     ax_l.set_ylabel(r"$\langle \ln d(k) \rangle$")
-    ax_l.set_title("Rosenstein divergence curves (4-amplitude ladder)\n"
-                    "linear stretch = chaos; saturates at system size")
+    ax_l.set_title("Rosenstein divergence curves", fontsize=11)
     ax_l.grid(alpha=0.3)
     ax_l.legend(loc="lower right", fontsize=9)
 
-    # Right scatter
+    # Right scatter — viridis throughout for colormap consistency
     sc = ax_r.scatter(df_clean["amplitude"], df_clean["lambda1"],
-                       c=df_clean["r2"], cmap="cividis", vmin=0.7, vmax=1.0,
+                       c=df_clean["r2"], cmap="viridis", vmin=0.7, vmax=1.0,
                        s=55, edgecolor="black", linewidth=0.4)
     cb = plt.colorbar(sc, ax=ax_r, label=r"fit $R^2$", shrink=0.85)
 
@@ -141,13 +140,10 @@ def main():
     ax_r.axhline(0, color="gray", lw=0.5, linestyle="--", alpha=0.6)
     ax_r.set_xlabel(r"$|\theta_1(0)|$  (deg)")
     ax_r.set_ylabel(r"$\lambda_1$ (Rosenstein)  (1/s)")
-    ax_r.set_title(rf"$\lambda_1$ vs amplitude across {len(df_clean)} clips "
-                    rf"($R^2 \geq {R2_MIN:.1f}$)" "\n"
-                    "trend: more amplitude → more chaos")
+    ax_r.set_title(rf"$\lambda_1$ vs amplitude  ($N$={len(df_clean)},  "
+                    rf"$R^2 \geq {R2_MIN:.1f}$)", fontsize=11)
     ax_r.grid(alpha=0.3)
 
-    fig.suptitle("Largest Lyapunov exponent — focused view",
-                  fontsize=13, y=1.00)
     fig.tight_layout()
 
     out = aggregate_path("lyapunov_focused.png")
