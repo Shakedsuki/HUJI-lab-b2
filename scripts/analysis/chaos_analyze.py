@@ -50,6 +50,10 @@ import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
 from matplotlib.colors import Normalize
 
+_THIS_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.join(_THIS_DIR, "..", "utils"))
+from figures_paths import figure_path  # noqa: E402
+
 
 # scripts/analysis/ → scripts/ → repo root
 ROOT     = os.path.dirname(os.path.dirname(os.path.dirname(
@@ -510,9 +514,7 @@ def main():
     print_card(stem, topo, stat, verdict, reasons)
 
     if not args.no_plot:
-        out_dir = os.path.join(MEAS_DIR, stem)
-        os.makedirs(out_dir, exist_ok=True)
-        out_png = os.path.join(out_dir, "chaos_analyze.png")
+        out_png = figure_path("chaos_analyze", stem)
         make_plot(stem, topo, stat, out_png)
         print(f"  Plot: {out_png}")
 

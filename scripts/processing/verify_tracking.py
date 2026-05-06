@@ -68,6 +68,7 @@ from render import (  # noqa: E402
     render_arm_length_violations,
     render_pivot_check,
 )
+from figures_paths import figure_path  # noqa: E402
 from thresholds import (  # noqa: E402
     ARM_LEN_THRESHOLD_PCT,
     OMEGA_CAP_HOLDING,
@@ -837,8 +838,10 @@ def main():
                      f"({100*n_clean_suspect/n:.2f}%)")
         plt.tight_layout()
 
-        os.makedirs(output_dir, exist_ok=True)
-        out_png = os.path.join(output_dir, "verification.png")
+        # Canonical: figures/verification/<stem>_verification.png.
+        # Derive the stem from the measurements/<stem>/ folder name.
+        derived_stem = os.path.basename(output_dir)
+        out_png = figure_path("verification", derived_stem)
         plt.savefig(out_png, dpi=140)
         print(f"Plot: {out_png}")
 

@@ -59,6 +59,9 @@ ROOT     = os.path.dirname(os.path.dirname(os.path.dirname(
               os.path.abspath(__file__))))
 MEAS_DIR = os.path.join(ROOT, "measurements")
 
+sys.path.insert(0, os.path.join(ROOT, "scripts", "utils"))
+from figures_paths import figure_path  # noqa: E402
+
 
 def parse_args():
     p = argparse.ArgumentParser(
@@ -360,7 +363,7 @@ def main():
         print(f"  Lyapunov timescale 1/lambda_1 = {1/slope:.2f} s")
 
     if not args.no_plot:
-        out_png = os.path.join(out_dir, "lyapunov.png")
+        out_png = figure_path("lyapunov", label)
         make_figure(t, x, S, dt, tau, m, theiler,
                     slope, intercept, r2, fit_lo, fit_hi,
                     label, out_png)
