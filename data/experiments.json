@@ -187,7 +187,11 @@
     "tracking_quality": "good",
     "notes": "",
     "suspect_frames_interpolated": 6,
-    "interpolation_date": "2026-05-01"
+    "interpolation_date": "2026-05-01",
+    "green_swap_fix_date": "2026-05-06",
+    "green_swap_interpolated": 0,
+    "green_swap_dropped": 12,
+    "green_swap_long_clusters": 1
   },
   "DSC_0143": {
     "video_file": "th1_p116_th2_m001.mov",
@@ -325,7 +329,10 @@
     "interpolation_date": "2026-05-02",
     "frames_overridden": 1,
     "last_override_frame": 580,
-    "last_override_date": "2026-05-02"
+    "last_override_date": "2026-05-02",
+    "green_swaps_fixed": 6,
+    "green_swap_fix_date": "2026-05-06",
+    "green_swap_fix_failures": 1
   },
   "DSC_0146": {
     "video_file": "th1_p180_th2_p090.mov",
@@ -373,7 +380,9 @@
     "interpolation_date": "2026-05-02",
     "frames_overridden": 1,
     "last_override_frame": 1497,
-    "last_override_date": "2026-05-02"
+    "last_override_date": "2026-05-02",
+    "green_swaps_fixed": 6,
+    "green_swap_fix_date": "2026-05-06"
   },
   "DSC_0148": {
     "video_file": "th1_p037_th2_p094.mov",
@@ -501,20 +510,47 @@
     "scale_cm_per_px": 0.186,
     "csv_file": "tracking.csv",
     "config_description": "th1_p180_th2_m179",
-    "tracking_quality": "review",
+    "tracking_quality": "verified",
     "notes": "",
     "measurements_dir": "measurements/th1_p180_th2_m179",
-    "verification_notes": "DOWNGRADED via chaos audit on 2026-05-06: was 'verified'; new verdict WARN. Reasons: 15 \u03c9-cap suspects survived interpolation; peak |\u03c9\u2082| 2553\u00b0/s > 1500\u00b0/s physical rule-of-thumb; 17 holding-phase suspects (|\u03c9| > 100\u00b0/s while stationary); 97 arm-length violation(s) (max deviation 32.2%) \u2014 tracker latched on wrong object; 160 frame(s) with |\u0394\u03c9| spike (unphysical acceleration); 139 frame(s) with \u03b8-prediction residual > 5.0\u00b0 (position inconsistent with recent velocity); 27 frame(s) show rolling energy spike (>2.0\u00d7 baseline) \u2014 tracker likely jumped briefly to wrong object",
+    "verification_notes": "Manually accepted via chaos triage on 2026-05-02 (visually clean despite: 17 omega-cap suspects survived interpolation; peak |omega2| 2553 deg/s > 1500 deg/s physical rule-of-thumb; 17 holding-phase suspects; 97 arm-length violations (max deviation 32.2%); 160 frame(s) with |delta-omega| spike; 139 frame(s) with theta-prediction residual > 5deg; 27 frame(s) show rolling energy spike (>2.0x baseline)). Re-affirmed 2026-05-06 after audit-overwrites-manual-accept bug fix.",
     "suspect_frames_interpolated": 20,
     "interpolation_date": "2026-05-01",
     "verification_date": "2026-05-02",
     "audit_date": "2026-05-06",
     "audit_old_status": "verified",
-    "audit_new_status": "WARN",
+    "audit_new_status": "PASS",
     "frames_overridden": 8,
     "last_override_frame": 792,
     "last_override_date": "2026-05-02",
-    "verified_under_brief_version": 14
+    "verified_under_brief_version": 14,
+    "manual_accept": true,
+    "manual_accept_date": "2026-05-02",
+    "manual_accept_brief_version": 14,
+    "manual_accept_reasons": [
+      "17 omega-cap suspects survived interpolation",
+      "peak |omega2| 2553 deg/s > 1500 deg/s physical rule-of-thumb",
+      "17 holding-phase suspects",
+      "97 arm-length violations (max deviation 32.2%)",
+      "160 frame(s) with |delta-omega| spike",
+      "139 frame(s) with theta-prediction residual > 5deg",
+      "27 frame(s) show rolling energy spike (>2.0x baseline)"
+    ],
+    "last_audit_date": "2026-05-06",
+    "last_audit_status_observed": "WARN",
+    "last_audit_reasons": [
+      "15 \u03c9-cap suspects survived interpolation",
+      "peak |\u03c9\u2082| 2553\u00b0/s > 1500\u00b0/s physical rule-of-thumb",
+      "17 holding-phase suspects (|\u03c9| > 100\u00b0/s while stationary)",
+      "97 arm-length violation(s) (max deviation 32.2%) \u2014 tracker latched on wrong object",
+      "160 frame(s) with |\u0394\u03c9| spike (unphysical acceleration)",
+      "139 frame(s) with \u03b8-prediction residual > 5.0\u00b0 (position inconsistent with recent velocity)",
+      "27 frame(s) show rolling energy spike (>2.0\u00d7 baseline) \u2014 tracker likely jumped briefly to wrong object"
+    ],
+    "green_swap_fix_date": "2026-05-06",
+    "green_swap_interpolated": 1,
+    "green_swap_dropped": 0,
+    "green_swap_long_clusters": 0
   },
   "DSC_0151": {
     "video_file": "th1_p140_th2_p089.mov",
@@ -559,7 +595,11 @@
     "tracking_quality": "good",
     "notes": "",
     "suspect_frames_interpolated": 123,
-    "interpolation_date": "2026-05-02"
+    "interpolation_date": "2026-05-02",
+    "green_swap_fix_date": "2026-05-06",
+    "green_swap_interpolated": 3,
+    "green_swap_dropped": 0,
+    "green_swap_long_clusters": 0
   },
   "DSC_0152": {
     "video_file": "th1_p153_th2_p090.mov",
@@ -607,7 +647,9 @@
     "interpolation_date": "2026-05-02",
     "frames_overridden": 1,
     "last_override_frame": 1750,
-    "last_override_date": "2026-05-02"
+    "last_override_date": "2026-05-02",
+    "green_swaps_fixed": 6,
+    "green_swap_fix_date": "2026-05-06"
   },
   "DSC_0153": {
     "video_file": "th1_m179_th2_p089.mov",
@@ -632,30 +674,47 @@
     "green_roi": null,
     "red_roi": null,
     "tracker": "ring",
-    "arm_length_px": 188,
+    "arm_length_px": 162,
     "ring_tolerance": 30,
-    "theta1_release": -169.315,
-    "theta2_release": 87.384,
-    "omega1_release": 1187.553,
-    "omega2_release": -988.2825,
-    "energy_proxy": 729.0367,
+    "theta1_release": -178.933,
+    "theta2_release": 89.64,
+    "omega1_release": -2.1964,
+    "omega2_release": 70.0984,
+    "energy_proxy": 3.4917,
     "t0_offset_s": 1.23457,
     "duration_s": 44.144,
     "n_free_frames": 2647,
-    "dropout_rate_pct": 0.64,
+    "dropout_rate_pct": 0.49,
     "arm_length_cm": 35.0,
     "pivot_px": [
       608,
       355
     ],
     "scale_cm_per_px": 0.186,
-    "tracking_quality": "good",
+    "tracking_quality": "verified",
     "notes": "",
-    "suspect_frames_interpolated": 366,
-    "interpolation_date": "2026-05-01",
+    "suspect_frames_interpolated": 55,
+    "interpolation_date": "2026-05-06",
     "frames_overridden": 2,
     "last_override_frame": 650,
-    "last_override_date": "2026-05-02"
+    "last_override_date": "2026-05-02",
+    "green_swaps_fixed": 7,
+    "green_swap_fix_date": "2026-05-06",
+    "verification_date": "2026-05-06",
+    "verification_notes": "Manually accepted via chaos triage on 2026-05-06 (visually clean despite: peak |\u03c9\u2082| 1574\u00b0/s > 1500\u00b0/s physical rule-of-thumb; 41 arm-length violation(s) (max deviation 16.2%) \u2014 tracker latched on wrong object; 17 frame(s) with |\u0394\u03c9| spike (unphysical acceleration); 6 frame(s) with \u03b8-prediction residual > 5.0\u00b0 (position inconsistent with recent velocity); 13 frame(s) show rolling energy spike (>2.0\u00d7 baseline) \u2014 tracker likely jumped briefly to wrong object)",
+    "verified_under_brief_version": 14,
+    "audit_old_status": "verified",
+    "audit_new_status": "PASS",
+    "manual_accept": true,
+    "manual_accept_date": "2026-05-06",
+    "manual_accept_brief_version": 14,
+    "manual_accept_reasons": [
+      "peak |\u03c9\u2082| 1574\u00b0/s > 1500\u00b0/s physical rule-of-thumb",
+      "41 arm-length violation(s) (max deviation 16.2%) \u2014 tracker latched on wrong object",
+      "17 frame(s) with |\u0394\u03c9| spike (unphysical acceleration)",
+      "6 frame(s) with \u03b8-prediction residual > 5.0\u00b0 (position inconsistent with recent velocity)",
+      "13 frame(s) show rolling energy spike (>2.0\u00d7 baseline) \u2014 tracker likely jumped briefly to wrong object"
+    ]
   },
   "DSC_0154": {
     "video_file": "th1_p176_th2_p180.mov",
@@ -703,7 +762,9 @@
     "interpolation_date": "2026-05-02",
     "frames_overridden": 1,
     "last_override_frame": 1155,
-    "last_override_date": "2026-05-02"
+    "last_override_date": "2026-05-02",
+    "green_swaps_fixed": 6,
+    "green_swap_fix_date": "2026-05-06"
   },
   "DSC_0156": {
     "video_file": "th1_p093_th2_m002.mov",
@@ -748,7 +809,11 @@
     "tracking_quality": "good",
     "notes": "",
     "suspect_frames_interpolated": 141,
-    "interpolation_date": "2026-05-02"
+    "interpolation_date": "2026-05-02",
+    "green_swap_fix_date": "2026-05-06",
+    "green_swap_interpolated": 1,
+    "green_swap_dropped": 5,
+    "green_swap_long_clusters": 1
   },
   "DSC_0157": {
     "video_file": "th1_p093_th2_m000.mov",
@@ -1021,7 +1086,11 @@
     "verification_notes": "DOWNGRADED via chaos audit on 2026-05-02: was 'verified'; new verdict WARN. Reasons: free-swing dropout 5.8% in 5\u201310% band; 62 residual suspects post-interpolation; 62 arm-length violation(s) (max deviation 33.1%) \u2014 tracker latched on wrong object; 62 frame(s) with |\u0394\u03c9| spike (unphysical acceleration)",
     "audit_date": "2026-05-02",
     "audit_old_status": "verified",
-    "audit_new_status": "WARN"
+    "audit_new_status": "WARN",
+    "green_swap_fix_date": "2026-05-06",
+    "green_swap_interpolated": 1,
+    "green_swap_dropped": 0,
+    "green_swap_long_clusters": 0
   },
   "DSC_0165": {
     "video_file": "DSC_0165.mov",
@@ -1051,7 +1120,11 @@
     "config_description": "th1_m001_th2_p001",
     "tracking_quality": "good",
     "notes": "",
-    "measurements_dir": "measurements/th1_m001_th2_p001"
+    "measurements_dir": "measurements/th1_m001_th2_p001",
+    "green_swap_fix_date": "2026-05-06",
+    "green_swap_interpolated": 5,
+    "green_swap_dropped": 30,
+    "green_swap_long_clusters": 1
   },
   "th1_p180_th2_p180": {
     "video_file": "th1_p180_th2_p180.mov",
@@ -1088,7 +1161,11 @@
     "verification_date": "2026-05-01",
     "audit_date": "2026-05-02",
     "audit_old_status": "verified",
-    "audit_new_status": "WARN"
+    "audit_new_status": "WARN",
+    "green_swap_fix_date": "2026-05-06",
+    "green_swap_interpolated": 2,
+    "green_swap_dropped": 0,
+    "green_swap_long_clusters": 0
   },
   "th1_p001_th2_p093": {
     "video_file": "th1_p001_th2_p093.mov",
@@ -1136,7 +1213,11 @@
     "interpolation_date": "2026-05-01",
     "frames_overridden": 2,
     "last_override_frame": 227,
-    "last_override_date": "2026-05-01"
+    "last_override_date": "2026-05-01",
+    "green_swap_fix_date": "2026-05-06",
+    "green_swap_interpolated": 5,
+    "green_swap_dropped": 10,
+    "green_swap_long_clusters": 1
   },
   "th1_p082_th2_p001": {
     "video_file": "th1_p082_th2_p001.mov",

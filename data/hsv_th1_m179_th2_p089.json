@@ -1,22 +1,22 @@
 {
   "green": {
-    "h_min": 15,
+    "h_min": 14,
     "h_max": 60,
-    "s_min": 90,
+    "s_min": 86,
     "s_max": 255,
     "v_min": 26,
-    "v_max": 129
+    "v_max": 134
   },
   "red": {
     "h_min": 0,
-    "h_max": 25,
-    "s_min": 103,
-    "s_max": 199,
-    "v_min": 70,
-    "v_max": 135,
+    "h_max": 34,
+    "s_min": 71,
+    "s_max": 255,
+    "v_min": 35,
+    "v_max": 138,
     "h_min2": 180,
     "h_max2": 180
   },
   "ring_tolerance": 30,
-  "arm_length_px": 188
+  "arm_length_px": 162
 }
