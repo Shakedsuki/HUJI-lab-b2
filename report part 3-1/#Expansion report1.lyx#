@@ -318,7 +318,26 @@ status open
 \begin_inset Graphics
 	filename chaos_vs_regular.png
 	lyxscale 20
-	scale 50
+	scale 35
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+
+\lang hebrew
+בגרף זה רואים 
+\end_layout
+
+\begin_layout Standard
+
+\lang hebrew
+\begin_inset Graphics
+	filename phase_portrait_arm1.png
+	lyxscale 20
+	scale 35
 
 \end_inset
 
