@@ -40,8 +40,8 @@ data/bulk_run_*.log
 # Batch driver logs (phase analysis, render batches, etc.)
 data/*batch_log.txt
 
-# Tracking-CSV backups created by interpolate_suspects.py
-measurements/*/tracking.csv.bak
+# Tracking-CSV backups (interpolate_suspects, fix_green_swaps, etc.)
+measurements/*/tracking.csv.bak*
 
 # Registry backups created by bulk_track.py
 data/experiments.json.bulk_track_*.bak
