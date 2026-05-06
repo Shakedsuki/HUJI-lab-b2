@@ -293,6 +293,15 @@ status open
 \begin_layout Standard
 
 \lang hebrew
+ניתן להבחין בגרפים במעבר המערכת ממצב פחות כאוטי ליותר כאוטי כתלות בזווית ההתחלתית.
+ בגרפים בזוויות נמוכות (השורה הראשונה) ניתן לראות כי המסלולים המתקבלים יחסית סגורים ומסודרים,
+ מה שמעיד על כאוס נמוך.
+ לעומת זאת במדידו
+\end_layout
+
+\begin_layout Standard
+
+\lang hebrew
 \begin_inset Graphics
 	filename portrait_progression_arm2.png
 	lyxscale 20
@@ -318,7 +327,7 @@ status open
 \begin_inset Graphics
 	filename chaos_vs_regular.png
 	lyxscale 20
-	scale 35
+	scale 50
 
 \end_inset
 
@@ -328,26 +337,89 @@ status open
 \begin_layout Standard
 
 \lang hebrew
-בגרף זה רואים 
+בגרף זה רואים השוואה בין מדידה כאוטית שהתחילה בזווית התחלתית גדולה משמאל,
+ למדידה לא כאוטית שהתחילה מזווית נמוכה בצד ימין.
 \end_layout
 
 \begin_layout Standard
 
 \lang hebrew
-\begin_inset Graphics
-	filename phase_portrait_arm1.png
-	lyxscale 20
-	scale 35
-
-\end_inset
-
-
+לכל מדידה יש למעלה גרף של זווית המוט העליון כתלות בזמן,
+ ולמטה ספקטרום הספק
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+\lang american
+(Power Spectrum)
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+\lang hebrew
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+שמציג מה התדרים הפעילים בדגימה.
 \end_layout
 
 \begin_layout Standard
 
 \lang hebrew
-בגרף זה רואים 
+בנוסף,
+ לכל דגימה חישבנו את מספר גוטוולד מלבורן,
+ שהוא מדד לכאוטיות במערכת.
+ הוא נע בין אפס (כאשר המערכת אינה כאוטית) לאחד (כאשר היא כאוטית).
+\end_layout
+
+\begin_layout Standard
+
+\lang hebrew
+ניתן לראות שבדגימה הרגילה התדרים הפעילים יחסית ממורכזים סביב ערכים נקודתיים,
+ ולעומת זאת בדגימה הכאוטית תחום התדרים הפעיל הרבה יותר רחב.
 \end_layout
 
 \begin_layout Standard
