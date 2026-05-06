@@ -18,6 +18,15 @@ Usage:
     python scripts/analysis/portrait_progression.py --filter th1_p1
     python scripts/analysis/portrait_progression.py --pass-only
     python scripts/analysis/portrait_progression.py --arm 2
+
+    # Exclude unphysical tracker spikes (band-aid for high-amplitude
+    # marker-occlusion artefacts; produces a publication-clean figure
+    # while the underlying tracking is being repaired):
+    python scripts/analysis/portrait_progression.py --omega-clip 3000
+
+Hard-coded exclusions (see EXCLUDE_FROM_PROGRESSION below) drop clips
+that aren't meaningfully phase-portrait-able (≈0° release, retake-
+superseded broken tracks). Override with --include-excluded.
 """
 
 import argparse
@@ -47,12 +56,34 @@ sys.path.insert(0, os.path.join(ROOT, "scripts", "utils"))
 from figures_paths import aggregate_path, mirror_to_journal  # noqa: E402
 
 
+# Hard-exclude list — clips for which a phase portrait simply isn't
+# meaningful, regardless of audit verdict. Distinct from FAIL: a FAIL
+# clip can still display interesting (if noisy) phase-space structure;
+# these clips can't. Bypass with --include-excluded.
+EXCLUDE_FROM_PROGRESSION = {
+    "th1_m001_th2_p001": "release |θ₁|≈0° — no oscillation to portray",
+    "th1_p090_th2_p000": "tracker froze (vertical strip artefact); "
+                         "superseded by p090_th2_p000_r2",
+}
+
+
 def parse_args():
     p = argparse.ArgumentParser()
     p.add_argument("--filter", help="only stems containing SUBSTR")
     p.add_argument("--pass-only", action="store_true")
     p.add_argument("--arm", type=int, choices=[1, 2], default=1,
                    help="which arm's phase portrait to show (default 1)")
+    p.add_argument("--min-amplitude", type=float, default=1.0,
+                   metavar="DEG",
+                   help="drop clips with |θ₁_release| < this (default 1°)")
+    p.add_argument("--include-excluded", action="store_true",
+                   help="ignore EXCLUDE_FROM_PROGRESSION (debug only)")
+    p.add_argument("--omega-clip", type=float, default=None,
+                   metavar="DEG_PER_S",
+                   help="mask trajectory rows where |ω| exceeds this. "
+                        "Band-aid for unphysical tracker spikes at "
+                        "high amplitudes (suggested: 3000). "
+                        "Default: no clipping.")
     return p.parse_args()
 
 
@@ -94,6 +125,7 @@ def main():
     reg = load_registry()
 
     rows = []
+    excluded = []  # list of (stem, reason) for the run-summary print
     for e in reg.values():
         stem = e.get("config_description")
         if not stem:
@@ -102,12 +134,30 @@ def main():
             continue
         if args.pass_only and not is_passing(e):
             continue
+        amplitude = abs(e.get("theta1_release", 0))
+        if not args.include_excluded and stem in EXCLUDE_FROM_PROGRESSION:
+            excluded.append((stem, EXCLUDE_FROM_PROGRESSION[stem]))
+            continue
+        if amplitude < args.min_amplitude:
+            excluded.append(
+                (stem, f"|θ₁|={amplitude:.2f}° < --min-amplitude "
+                       f"{args.min_amplitude}°"))
+            continue
         t, th, om = load_traj(stem, args.arm)
         if t is None:
             continue
+        if args.omega_clip is not None:
+            mask = np.abs(om) <= args.omega_clip
+            n_dropped = int((~mask).sum())
+            t, th, om = t[mask], th[mask], om[mask]
+            if len(t) < 50:
+                excluded.append(
+                    (stem, f"<50 samples after --omega-clip "
+                           f"{args.omega_clip}°/s (dropped {n_dropped})"))
+                continue
         rows.append({
             "stem": stem,
-            "amplitude": abs(e.get("theta1_release", 0)),
+            "amplitude": amplitude,
             "status": "PASS" if is_passing(e)
                        else ("FAIL" if e.get("audit_new_status") == "FAIL"
                              else "WARN"),
@@ -119,8 +169,12 @@ def main():
         return
 
     rows = sorted(rows, key=lambda r: r["amplitude"])
-    print(f"  {len(rows)} clips, amplitude range "
+    print(f"  {len(rows)} clips kept, amplitude range "
           f"{rows[0]['amplitude']:.1f}° → {rows[-1]['amplitude']:.1f}°")
+    if excluded:
+        print(f"  {len(excluded)} clip(s) excluded:")
+        for stem, reason in excluded:
+            print(f"    - {stem}: {reason}")
 
     n = len(rows)
     cols = 5
