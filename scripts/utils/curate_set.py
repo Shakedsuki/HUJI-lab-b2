@@ -75,13 +75,14 @@ from figures_paths import figure_path  # noqa: E402
 # ─────────────────────────────────────────────
 
 GROUPS = {
-    # Sensitivity-to-IC test set: 6 clips at theta1≈90°, theta2≈0°.
+    # Sensitivity-to-IC test set: 5 clips at theta1≈90°, theta2≈0°.
+    # th1_p093_th2_m002 dropped 2026-05-06 — live ω₁(0)=+147 deg/s
+    # (residual push at release) violated the near-rest IC condition.
     "group_a": [
         "th1_p091_th2_m001",
         "th1_p092_th2_m002",
         "th1_p092_th2_p000",
         "th1_p093_th2_m000",
-        "th1_p093_th2_m002",
         "th1_p094_th2_p000",
     ],
     # Tier 1 PASS clips spanning the periodic→chaotic transition.
@@ -97,7 +98,7 @@ GROUPS = {
         "th1_p082_th2_p001", "th1_p180_th2_m179",
         "th1_p091_th2_m001", "th1_p092_th2_m002",
         "th1_p092_th2_p000", "th1_p093_th2_m000",
-        "th1_p093_th2_m002", "th1_p094_th2_p000",
+        "th1_p094_th2_p000",
     ],
 }
 

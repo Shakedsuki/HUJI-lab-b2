@@ -62,12 +62,12 @@ sys.path.insert(0, os.path.join(ROOT, "scripts", "utils"))
 from figures_paths import aggregate_path, mirror_to_journal  # noqa: E402
 
 GROUPS = {
+    # th1_p093_th2_m002 dropped 2026-05-06 — residual ω at release.
     "group_a": [
         "th1_p091_th2_m001",
         "th1_p092_th2_m002",
         "th1_p092_th2_p000",
         "th1_p093_th2_m000",
-        "th1_p093_th2_m002",
         "th1_p094_th2_p000",
     ],
     "tier_1": [
