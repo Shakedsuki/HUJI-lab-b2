@@ -47,7 +47,7 @@ EXPERIMENTS_FILE = os.path.join(ROOT, "data", "experiments.json")
 POINCARE_SCRIPT  = os.path.join(ROOT, "scripts", "analysis", "poincare.py")
 
 sys.path.insert(0, os.path.join(ROOT, "scripts", "utils"))
-from figures_paths import aggregate_path  # noqa: E402
+from figures_paths import aggregate_path, mirror_to_journal  # noqa: E402
 
 
 def parse_args():
@@ -173,6 +173,7 @@ def make_overlay(rows, out_path):
 
     plt.tight_layout()
     plt.savefig(out_path, dpi=140)
+    mirror_to_journal(out_path)
     plt.close(fig)
     print(f"  wrote {out_path}")
 
@@ -212,6 +213,7 @@ def make_grid(rows, out_path):
                  fontsize=13, y=0.995)
     plt.tight_layout(rect=[0, 0, 1, 0.985])
     plt.savefig(out_path, dpi=140)
+    mirror_to_journal(out_path)
     plt.close(fig)
     print(f"  wrote {out_path}")
 

@@ -60,7 +60,7 @@ ROOT     = os.path.dirname(os.path.dirname(os.path.dirname(
 MEAS_DIR = os.path.join(ROOT, "measurements")
 
 sys.path.insert(0, os.path.join(ROOT, "scripts", "utils"))
-from figures_paths import figure_path  # noqa: E402
+from figures_paths import figure_path, mirror_to_journal  # noqa: E402
 
 
 def parse_args():
@@ -307,6 +307,7 @@ def make_figure(t, x, S, dt, tau, m, theiler,
     fig.suptitle(f"Largest Lyapunov exponent (Rosenstein) — {label}",
                  fontsize=14, y=0.98)
     fig.savefig(out_path, dpi=130)
+    mirror_to_journal(out_path)
     plt.close(fig)
 
 
