@@ -68,11 +68,16 @@ def load_one(stem):
     }
 
 
-def plot_trace(ax, d, label, t_range=None):
+def plot_trace(ax, d, label, t_max=None):
     topo = d["topo"]
     t  = topo["time_s"] - topo["time_s"][0]
     th = topo["theta2_abs"]
     er = topo["E_ratio_trace"]
+
+    # Truncate to actively-chaotic window if requested
+    if t_max is not None:
+        m = t <= t_max
+        t, th, er = t[m], th[m], er[m]
 
     # Sub-sample for plotting speed if very long
     if len(t) > 8000:
@@ -80,20 +85,12 @@ def plot_trace(ax, d, label, t_range=None):
         t, th, er = t[::stride], th[::stride], er[::stride]
 
     norm = Normalize(vmin=0, vmax=max(1.1, float(np.nanmax(er))))
-    sc = ax.scatter(t, th, c=er, cmap="viridis", norm=norm, s=1.3,
-                     alpha=0.75, edgecolor="none")
-    ax.axhline(+90,  color="#d4724b", lw=0.8, ls="--", alpha=0.7,
-                label=r"$\pm 90^\circ$ inversion")
-    ax.axhline(-90,  color="#d4724b", lw=0.8, ls="--", alpha=0.7)
-    ax.axhline(+180, color="#a02938", lw=0.8, ls="--", alpha=0.7,
-                label=r"$\pm 180^\circ$ fully inverted")
-    ax.axhline(-180, color="#a02938", lw=0.8, ls="--", alpha=0.7)
+    sc = ax.scatter(t, th, c=er, cmap="viridis", norm=norm, s=1.6,
+                     alpha=0.8, edgecolor="none")
     ax.set_xlabel("time from release (s)")
     ax.set_ylabel(r"$\theta_2^{\rm abs}$ (deg)")
     ax.set_title(label, fontsize=11)
     ax.grid(alpha=0.25)
-    if t_range is not None:
-        ax.set_xlim(t_range)
     cb = plt.colorbar(sc, ax=ax, shrink=0.85)
     cb.set_label(r"$E / E_{\rm inversion}$", fontsize=9)
 
@@ -117,32 +114,34 @@ def main():
 
     fig, axes = plt.subplots(2, 2, figsize=(14, 9))
 
-    plot_trace(axes[0, 0], chaotic, "Chaotic   ·   $\\theta_1(0)=180°$  (long recording)")
-    plot_trace(axes[0, 1], regular, "Regular   ·   $\\theta_1(0)=37°$")
+    # Trim the chaotic θ_abs trace to the actively-chaotic window
+    # (after ~55s the long_recording is in low-amplitude bound oscillation).
+    plot_trace(axes[0, 0], chaotic,
+                "Chaotic   ·   $\\theta_1(0)=180°$",
+                t_max=55.0)
+    plot_trace(axes[0, 1], regular,
+                "Regular   ·   $\\theta_1(0)=37°$")
 
-    # Match θ y-axis on the top row so the inversion-threshold story is direct
+    # Match θ y-axis on the top row so the amplitude contrast is direct
     yhi = max(max(abs(y) for y in axes[0, 0].get_ylim()),
                 max(abs(y) for y in axes[0, 1].get_ylim()),
                 200)
     axes[0, 0].set_ylim(-yhi, yhi)
     axes[0, 1].set_ylim(-yhi, yhi)
-    axes[0, 0].legend(loc="lower right", fontsize=8)
 
     plot_spectrum(axes[1, 0], chaotic, "Chaotic — broadband")
     plot_spectrum(axes[1, 1], regular, "Regular — sharp peaks")
 
-    # Same y-range on spectra so power magnitudes are directly comparable
+    # Force matched x AND y limits on the spectra so the broadband-vs-sharp-peaks
+    # comparison is direct (both record lengths/sample counts produce different
+    # native frequency ranges otherwise).
+    xlim_lo = min(axes[1, 0].get_xlim()[0], axes[1, 1].get_xlim()[0])
+    xlim_hi = max(axes[1, 0].get_xlim()[1], axes[1, 1].get_xlim()[1])
     ylim_lo = min(axes[1, 0].get_ylim()[0], axes[1, 1].get_ylim()[0])
     ylim_hi = max(axes[1, 0].get_ylim()[1], axes[1, 1].get_ylim()[1])
-    axes[1, 0].set_ylim(ylim_lo, ylim_hi)
-    axes[1, 1].set_ylim(ylim_lo, ylim_hi)
+    axes[1, 0].set_xlim(xlim_lo, xlim_hi); axes[1, 0].set_ylim(ylim_lo, ylim_hi)
+    axes[1, 1].set_xlim(xlim_lo, xlim_hi); axes[1, 1].set_ylim(ylim_lo, ylim_hi)
 
-    fig.suptitle(
-        "Chaotic vs regular — same diagnostics, two regimes\n"
-        r"top: $\theta_2^{\rm abs}(t)$ ; bottom: power spectrum  ·  "
-        r"$K \rightarrow 1$ chaotic, $K \rightarrow 0$ regular",
-        fontsize=13, y=1.00,
-    )
     fig.tight_layout()
 
     out = aggregate_path("chaos_vs_regular.png")
