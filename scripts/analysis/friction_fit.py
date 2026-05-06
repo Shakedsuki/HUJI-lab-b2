@@ -41,7 +41,7 @@ ROOT     = r"C:\dev\chaos"
 MEAS_DIR = os.path.join(ROOT, "measurements")
 
 sys.path.insert(0, os.path.join(ROOT, "scripts", "utils"))
-from figures_paths import figure_path, mirror_to_journal  # noqa: E402
+from figures_paths import figure_path, mirror_to_ready  # noqa: E402
 
 
 # Rod-pendulum total mechanical energy. Mirrors verify_tracking's
@@ -240,7 +240,7 @@ def main():
         ax.grid(alpha=0.3)
         plt.tight_layout()
         plt.savefig(out_png, dpi=140)
-        mirror_to_journal(out_png)
+        mirror_to_ready(out_png)
         plt.close(fig)
         print(f"\n  Plot: {out_png}")
 

@@ -74,7 +74,7 @@ except (AttributeError, OSError):
 
 
 ROOT             = r"C:\dev\chaos"
-VIDEOS_DIR       = os.path.join(ROOT, "Videos")
+VIDEOS_DIR       = os.path.join(ROOT, "data", "videos")
 MEAS_DIR         = os.path.join(ROOT, "measurements")
 EXPERIMENTS_FILE = os.path.join(ROOT, "data", "experiments.json")
 TRACKER_SCRIPT   = os.path.join(ROOT, "scripts", "processing", "ring_tracker.py")

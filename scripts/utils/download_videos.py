@@ -2,7 +2,7 @@
 download_videos.py
 -------------------
 Downloads all raw video files from the project's Google Drive folder
-into the local Videos/ directory.
+into the local data/videos/ directory.
 
 Requirements:
     pip install gdown
@@ -24,8 +24,8 @@ DRIVE_FOLDER_ID = "1nB9rrpZ1UTdLrKEJudptLbawavkvXWj-"
 
 # ── Local destination ─────────────────────────────────────────────────
 SCRIPT_DIR   = os.path.dirname(os.path.abspath(__file__))
-PROJECT_ROOT = os.path.dirname(SCRIPT_DIR)
-OUTPUT_DIR   = os.path.join(PROJECT_ROOT, "Videos")
+PROJECT_ROOT = os.path.dirname(os.path.dirname(SCRIPT_DIR))
+OUTPUT_DIR   = os.path.join(PROJECT_ROOT, "data", "videos")
 
 
 def check_gdown():

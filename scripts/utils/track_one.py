@@ -16,7 +16,7 @@ Usage
     python scripts/utils/track_one.py --stem th1_p047_th2_m002
 
     # Mode 2 — by video path (resolves config_description from registry):
-    python scripts/utils/track_one.py Videos/th1_p047_th2_m002.mov
+    python scripts/utils/track_one.py data/videos/th1_p047_th2_m002.mov
 
     # Skip the interpolation step (track + verify only):
     python scripts/utils/track_one.py --stem th1_p047_th2_m002 --no-interpolate
@@ -47,7 +47,7 @@ except (AttributeError, OSError):
 
 
 ROOT             = r"C:\dev\chaos"
-VIDEOS_DIR       = os.path.join(ROOT, "Videos")
+VIDEOS_DIR       = os.path.join(ROOT, "data", "videos")
 MEAS_DIR         = os.path.join(ROOT, "measurements")
 DATA_DIR         = os.path.join(ROOT, "data")
 EXPERIMENTS_FILE = os.path.join(DATA_DIR, "experiments.json")
@@ -879,7 +879,7 @@ def parse_args():
     p = argparse.ArgumentParser(
         description="Track + verify + interpolate one video, emit verdict card.")
     p.add_argument("video", nargs="?", default=None,
-                   help="Path to .mov in Videos/ (positional, optional).")
+                   help="Path to .mov in data/videos/ (positional, optional).")
     p.add_argument("--stem", default=None,
                    help="config_description (e.g. th1_p047_th2_m002).")
     p.add_argument("--no-interpolate", action="store_true",

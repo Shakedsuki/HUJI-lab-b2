@@ -44,7 +44,7 @@ LYAP_SCRIPT      = os.path.join(ROOT, "scripts", "analysis", "lyapunov.py")
 DATA_DIR         = os.path.join(ROOT, "data")
 
 sys.path.insert(0, os.path.join(ROOT, "scripts", "utils"))
-from figures_paths import aggregate_path, mirror_to_journal  # noqa: E402
+from figures_paths import aggregate_path, mirror_to_ready  # noqa: E402
 
 
 # Per-stem k_max overrides for clips where the auto-fit picks a poor
@@ -190,7 +190,7 @@ def make_plot(rows, out_path):
     ax.grid(True, alpha=0.3)
     plt.tight_layout()
     plt.savefig(out_path, dpi=140)
-    mirror_to_journal(out_path)
+    mirror_to_ready(out_path)
     plt.close(fig)
     print(f"\n  wrote {out_path}")
 

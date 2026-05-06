@@ -59,7 +59,7 @@ ROOT     = os.path.dirname(os.path.dirname(os.path.dirname(
 MEAS_DIR = os.path.join(ROOT, "measurements")
 
 sys.path.insert(0, os.path.join(ROOT, "scripts", "utils"))
-from figures_paths import aggregate_path, mirror_to_journal  # noqa: E402
+from figures_paths import aggregate_path, mirror_to_ready  # noqa: E402
 
 # Mirror curate_set.py groups so callers can use either name.
 GROUPS = {
@@ -278,7 +278,7 @@ def make_figure(rows, out_path, label, fit_lo=0.3, fit_hi=1.5):
         f"|θ₁|≈90°, |θ₂|≈0°)",
         fontsize=13, y=0.985)
     plt.savefig(out_path, dpi=140)
-    mirror_to_journal(out_path)
+    mirror_to_ready(out_path)
     plt.close(fig)
     return slope, r2
 

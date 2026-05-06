@@ -273,11 +273,11 @@ def main():
 
         # Save next to this script (tracked by git, served via GitHub Pages).
         # include_plotlyjs='cdn' keeps the file ~130 KB instead of ~3 MB.
-        out_3d = os.path.join(SCRIPT_DIR, 'bifurcation_continuous_3D.html')
+        out_3d = os.path.join(SCRIPT_DIR, 'bifurcation_continuous_3d.html')
         fig3d.write_html(out_3d, include_plotlyjs='cdn')
         print(f"Saved 3D interactive plot → {out_3d}")
         print("Commit and push, then view at:")
-        print("  https://shakedsuki.github.io/HUJI-lab-b2/chaos/chaos/part2/bifurcation_continuous_3D.html")
+        print("  https://shakedsuki.github.io/HUJI-lab-b2/chaos/chaos/part2/bifurcation_continuous_3d.html")
 
     except ImportError:
         print("plotly not installed — skipping 3D plot.  pip install plotly")

@@ -52,7 +52,7 @@ except (AttributeError, OSError):
 
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
-VIDEOS_DIR  = os.path.join(ROOT, "Videos")
+VIDEOS_DIR  = os.path.join(ROOT, "data", "videos")
 MEAS_DIR    = os.path.join(ROOT, "measurements")
 DATA_DIR    = os.path.join(ROOT, "data")
 EXPERIMENTS = os.path.join(DATA_DIR, "experiments.json")
@@ -116,7 +116,7 @@ def is_tracked(entry):
 
 
 def list_pending_videos():
-    """Return list of video filenames in Videos/ that aren't tracked yet."""
+    """Return list of video filenames in data/videos/ that aren't tracked yet."""
     reg = load_registry()
     if not os.path.isdir(VIDEOS_DIR):
         return []
@@ -366,7 +366,7 @@ def cmd_lyapunov(args):
 
 
 def resolve_video_path_for_stem(stem):
-    """Look up Videos/<video_file> for a config_description via registry."""
+    """Look up data/videos/<video_file> for a config_description via registry."""
     reg = load_registry()
     _, entry = find_entry_by_stem(reg, stem)
     if not entry or not entry.get("video_file"):

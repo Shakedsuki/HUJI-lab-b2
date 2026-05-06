@@ -18,7 +18,7 @@ Usage:
   python scripts/analysis/combined_video.py --stem th1_p044_th2_m001
 
   # Mode 2 — explicit CSV + video:
-  python scripts/analysis/combined_video.py measurements/th1_p044_th2_m001/tracking.csv Videos/th1_p044_th2_m001.mov
+  python scripts/analysis/combined_video.py measurements/th1_p044_th2_m001/tracking.csv data/videos/th1_p044_th2_m001.mov
 
   # Mode 3 — defaults to long_recording:
   python scripts/analysis/combined_video.py
@@ -56,7 +56,7 @@ ROOT          = r"C:\dev\chaos"
 EXPERIMENTS_FILE = os.path.join(ROOT, "data", "experiments.json")
 DEFAULT_CSV   = os.path.join(ROOT, "measurements", "th1_p180_th2_m179",
                              "tracking.csv")
-DEFAULT_VIDEO = os.path.join(ROOT, "Videos", "long_recording.mov")
+DEFAULT_VIDEO = os.path.join(ROOT, "data", "videos", "long_recording.mov")
 LEGACY_OUT    = os.path.join(ROOT, "data", "figures")
 
 
@@ -90,7 +90,7 @@ def video_for_stem(stem):
             video_file = entry.get("video_file")
             if not video_file:
                 continue
-            return os.path.join(ROOT, "Videos", video_file)
+            return os.path.join(ROOT, "data", "videos", video_file)
     print(f"ERROR: no registry entry has config_description '{stem}'.")
     print(f"       Add an entry to {EXPERIMENTS_FILE} or supply video "
           f"path positionally.")

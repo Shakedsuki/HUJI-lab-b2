@@ -29,7 +29,7 @@ import numpy as np
 from scipy.optimize import curve_fit
 from scipy.special import lambertw
 
-import tek_csv_v2 as tek
+import tek_csv as tek
 
 V_T = 0.02585           # thermal voltage at 300 K (V)
 R_RES = 470.0           # series resistor in the circuit (ohm)
