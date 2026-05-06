@@ -57,7 +57,7 @@ ROOT     = os.path.dirname(os.path.dirname(os.path.dirname(
               os.path.abspath(__file__))))
 MEAS_DIR = os.path.join(ROOT, "measurements")
 
-ANIM_INTERVAL_MS = 40       # animation tick (≈25 fps display)
+ANIM_INTERVAL_MS = 16       # animation tick (~62 fps display target)
 SOURCE_FPS       = 59.94    # data acquisition rate
 TRAIL_FRAMES     = 200      # ghost trail length
 FLASH_DURATION_S = 0.5      # how long the bright flash lingers
@@ -165,6 +165,9 @@ class PoincareAnimator:
         self.last_seen_idx = -1
         # Visible crossings (those whose source-frame index <= current frame)
         self.visible_crossings = []   # list of dicts with extra 'first_seen_t'
+        # Per-frame caches to skip redundant artist updates when nothing changed
+        self._last_visible_count = -1   # tracks scatter point counts
+        self._last_flash_count   = -1   # tracks flash marker counts
 
     def _build_artists(self):
         ax = self.ax3d
@@ -331,42 +334,46 @@ class PoincareAnimator:
 
         # ── Crossings ──
         now_t = self.t[cur]
-        if self.visible_crossings:
-            # Persistent dots (3D + 2D), colored by time index
-            xs3 = np.array([c["th1"] for c in self.visible_crossings])
-            ys3 = np.array([c["th2"] for c in self.visible_crossings])
-            zs3 = np.array([c["w1"]  for c in self.visible_crossings])
-            cs  = np.array([c["t_cross"] for c in self.visible_crossings])
-            # 3D scatter — recreate for proper redraw
-            self.cross3d_persistent._offsets3d = (xs3, ys3, zs3)
-            norm = mcolors.Normalize(vmin=self.t[0], vmax=self.t[-1])
-            colors = cm.viridis(norm(cs))
-            self.cross3d_persistent.set_color(colors)
+        n_visible = len(self.visible_crossings)
+        # Only update persistent scatters when their point counts changed.
+        # 3D scatter reprojection is the dominant per-frame cost; skipping it
+        # when nothing was added gives a large framerate win.
+        if n_visible != self._last_visible_count:
+            if n_visible:
+                xs3 = np.array([c["th1"] for c in self.visible_crossings])
+                ys3 = np.array([c["th2"] for c in self.visible_crossings])
+                zs3 = np.array([c["w1"]  for c in self.visible_crossings])
+                cs  = np.array([c["t_cross"] for c in self.visible_crossings])
+                self.cross3d_persistent._offsets3d = (xs3, ys3, zs3)
+                norm = mcolors.Normalize(vmin=self.t[0], vmax=self.t[-1])
+                self.cross3d_persistent.set_color(cm.viridis(norm(cs)))
+                xs2 = xs3  # same θ₁
+                ys2 = np.array([c["w1"] for c in self.visible_crossings])
+                self.cross2d_persistent.set_offsets(np.column_stack([xs2, ys2]))
+                self.cross2d_persistent.set_array(cs)
+                self.cross2d_persistent.set_clim(self.t[0], self.t[-1])
+            else:
+                self.cross3d_persistent._offsets3d = ([], [], [])
+                self.cross2d_persistent.set_offsets(np.empty((0, 2)))
+            self._last_visible_count = n_visible
 
-            xs2 = np.array([c["th1"] for c in self.visible_crossings])
-            ys2 = np.array([c["w1"]  for c in self.visible_crossings])
-            self.cross2d_persistent.set_offsets(np.column_stack([xs2, ys2]))
-            self.cross2d_persistent.set_array(cs)
-            self.cross2d_persistent.set_clim(self.t[0], self.t[-1])
-
-            # Flashing markers: those still within FLASH_DURATION_S
-            flash_x3, flash_y3, flash_z3 = [], [], []
-            flash_x2, flash_y2 = [], []
-            for c in self.visible_crossings:
-                age = now_t - c["first_seen_t"]
-                if 0 <= age < FLASH_DURATION_S:
-                    flash_x3.append(c["th1"]); flash_y3.append(c["th2"])
-                    flash_z3.append(c["w1"])
-                    flash_x2.append(c["th1"]); flash_y2.append(c["w1"])
+        # Flash markers: only update when count changes (most frames have none)
+        flash_x3, flash_y3, flash_z3 = [], [], []
+        flash_x2, flash_y2 = [], []
+        for c in self.visible_crossings:
+            age = now_t - c["first_seen_t"]
+            if 0 <= age < FLASH_DURATION_S:
+                flash_x3.append(c["th1"]); flash_y3.append(c["th2"])
+                flash_z3.append(c["w1"])
+                flash_x2.append(c["th1"]); flash_y2.append(c["w1"])
+        n_flash = len(flash_x3)
+        if n_flash != self._last_flash_count or n_flash > 0:
+            # Always update when there ARE flashes (their fade timing is per-frame);
+            # skip only the steady-state "no flash" → "no flash" no-op transition.
             self.cross3d_flash.set_data(flash_x3, flash_y3)
             self.cross3d_flash.set_3d_properties(flash_z3)
             self.cross2d_flash.set_data(flash_x2, flash_y2)
-        else:
-            self.cross3d_persistent._offsets3d = ([], [], [])
-            self.cross2d_persistent.set_offsets(np.empty((0, 2)))
-            self.cross3d_flash.set_data([], [])
-            self.cross3d_flash.set_3d_properties([])
-            self.cross2d_flash.set_data([], [])
+            self._last_flash_count = n_flash
 
         n_cross_now = len(self.visible_crossings)
         n_cross_total = len(self.crossings)
