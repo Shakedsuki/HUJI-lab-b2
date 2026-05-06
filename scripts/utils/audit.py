@@ -278,9 +278,23 @@ def render_summary(rows):
 # ─────────────────────────────────────────────
 
 def downgrade_clip(reg, key, new_status, reasons):
-    """Update tracking_quality on a clip whose new verdict isn't PASS."""
+    """Update tracking_quality on a clip whose new verdict isn't PASS.
+
+    Honors `manual_accept: true` set by triage.py — manually-accepted
+    clips keep their tracking_quality + verification_notes; the audit
+    observation is recorded in separate `last_audit_*` fields so the
+    re-evaluation is traceable without losing the [v] decision.
+    """
     entry = reg[key]
     today = datetime.datetime.now().strftime("%Y-%m-%d")
+
+    # Manual-accept guard: don't trample a [v] decision.
+    if entry.get("manual_accept"):
+        entry["last_audit_date"]            = today
+        entry["last_audit_status_observed"] = new_status
+        entry["last_audit_reasons"]         = reasons
+        return False  # signal that no downgrade was applied
+
     note = (f"DOWNGRADED via chaos audit on {today}: was 'verified'; "
             f"new verdict {new_status}. Reasons: {'; '.join(reasons)}")
     # Map new_status → tracking_quality; FAIL becomes 'failed', WARN
@@ -291,6 +305,7 @@ def downgrade_clip(reg, key, new_status, reasons):
     entry["audit_date"]         = today
     entry["audit_old_status"]   = "verified"
     entry["audit_new_status"]   = new_status
+    return True
 
 
 def upgrade_clip(reg, key, reasons, brief_version=14):
@@ -390,14 +405,16 @@ def main():
         # Re-load the registry in case anything mutated it during audit
         # (background tracker subprocesses might still be running).
         reg = load_registry()
-        n_down = n_up = 0
+        n_down = n_up = n_protected = 0
         for r in rows:
             if "error" in r:
                 continue
             old, new = r["old_status"], r["new_status"]
             if old == "PASS" and new != "PASS":
-                downgrade_clip(reg, r["key"], new, r["reasons"])
-                n_down += 1
+                if downgrade_clip(reg, r["key"], new, r["reasons"]):
+                    n_down += 1
+                else:
+                    n_protected += 1
             elif args.upgrade and old != "PASS" and new == "PASS":
                 upgrade_clip(reg, r["key"], r["reasons"])
                 n_up += 1
@@ -405,6 +422,8 @@ def main():
         msg = f"  Applied: {n_down} downgraded"
         if args.upgrade:
             msg += f", {n_up} upgraded"
+        if n_protected:
+            msg += f", {n_protected} protected by manual_accept"
         print(f"\n{msg}.")
     elif any(r.get("new_status") in ("WARN", "FAIL") for r in rows
              if "error" not in r):

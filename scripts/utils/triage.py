@@ -385,6 +385,12 @@ def mark_verified_manual(stem, reasons):
             e["verified_under_brief_version"]  = 14
             e["audit_old_status"]              = e.get("tracking_quality", "review")
             e["audit_new_status"]              = "PASS"
+            # Persist the [v] decision so future audits don't trample it.
+            # See project_audit_overwrites_manual_accept.md memo.
+            e["manual_accept"]                 = True
+            e["manual_accept_date"]            = today
+            e["manual_accept_brief_version"]   = 14
+            e["manual_accept_reasons"]         = reasons
             with open(EXPERIMENTS_FILE, "w", encoding="utf-8") as f:
                 json.dump(reg, f, indent=2)
             return True
