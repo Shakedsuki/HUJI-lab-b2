@@ -94,7 +94,8 @@ def run_lyap(stem):
     cmd = [sys.executable, LYAP_SCRIPT, "--stem", stem, "--no-plot"]
     if stem in KMAX_OVERRIDES:
         cmd += ["--k-max", str(KMAX_OVERRIDES[stem])]
-    out = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True)
+    out = subprocess.run(cmd, cwd=ROOT, capture_output=True,
+                         text=True, encoding="utf-8", errors="replace")
     text = out.stdout + out.stderr
     m = _LAM_RE.search(text)
     if not m:

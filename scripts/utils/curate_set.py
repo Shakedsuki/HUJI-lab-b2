@@ -216,7 +216,8 @@ def check_release_frame(stem, state):
 def run_step(label, cmd, log_path=None):
     """Run a subprocess and capture its output. Returns the CompletedProcess."""
     print(f"    > {label}")
-    result = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True)
+    result = subprocess.run(cmd, cwd=ROOT, capture_output=True,
+                            text=True, encoding="utf-8", errors="replace")
     if log_path:
         os.makedirs(os.path.dirname(log_path), exist_ok=True)
         with open(log_path, "a", encoding="utf-8") as f:
