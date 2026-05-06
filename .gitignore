@@ -33,6 +33,7 @@ data/migration_log.txt
 data/bulk_tracking_log.json
 # Long-render stdout logs from analysis scripts
 data/log_*.txt
+data/*_log.txt
 # Per-video verdict-card transcript appended by track_one.py
 data/track_one_log.txt
 # Bulk-run streaming logs (one per chaos bulk invocation)
