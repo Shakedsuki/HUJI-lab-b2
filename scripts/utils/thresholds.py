@@ -96,7 +96,12 @@ ARM_LENGTH_TREND_DEV_PCT  = 5.0    # % deviation from reference window
 # Phase 2 ARM_LENGTH_CM: measure physically in lab (ruler from pivot bolt to
 # green marker center) and update the if-branch below.
 if _PHASE == "phase2-motor-driven":
-    ARM_LENGTH_CM = None   # TODO: measure Phase 2 arm length in cm
+    # Cross-phase digital calibration (2026-05-13):
+    # Phase 1 scale = 35.0 cm / 162 px = 0.2160 cm/px.
+    # Phase 2 ARM_LENGTH_PX = 153 px (circle fit, p95 residual 2.0 px).
+    # PIVOT shift Phase1->Phase2 is only 56px right / 25px up — rig repositioned,
+    # camera distance unchanged. => 153 * 0.2160 = 33.1 cm.
+    ARM_LENGTH_CM = 33.1
 else:
     ARM_LENGTH_CM = 35.0   # Phase 1, physical arm length in cm
 
