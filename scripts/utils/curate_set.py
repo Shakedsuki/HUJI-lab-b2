@@ -47,6 +47,9 @@ except (AttributeError, OSError):
 import numpy as np
 import pandas as pd
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
+
 SCRIPT_FIX_GREEN = os.path.join(REPO_ROOT, "scripts", "processing",
                                 "fix_green_swaps.py")
 SCRIPT_INTERP    = os.path.join(REPO_ROOT, "scripts", "processing",
@@ -60,8 +63,6 @@ SCRIPT_3D        = os.path.join(REPO_ROOT, "scripts", "analysis", "phase_3d.py")
 SCRIPT_ANALYZE   = os.path.join(REPO_ROOT, "scripts", "analysis", "chaos_analyze.py")
 SCRIPT_FRICTION  = os.path.join(REPO_ROOT, "scripts", "analysis", "friction_fit.py")
 
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
 EXPERIMENTS_FILE = EXPERIMENTS
 from figures_paths import figure_path  # noqa: E402
 

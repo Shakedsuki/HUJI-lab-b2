@@ -99,6 +99,8 @@ def main():
             except ValueError:
                 pass
 
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
+
     n_susp = len(suspect_frames)
     pct = (100.0 * n_susp / n_total) if n_total else 0.0
 
@@ -179,4 +181,3 @@ def main():
 if __name__ == "__main__":
     sys.exit(main())
 
-from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402

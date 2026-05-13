@@ -48,6 +48,9 @@ try:
 except (AttributeError, OSError):
     pass
 
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "utils")))
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
+
 # ─────────────────────────────────────────────
 # CONSTANTS  (mirror ring_tracker.py)
 # ─────────────────────────────────────────────
@@ -55,8 +58,6 @@ except (AttributeError, OSError):
 VERIFY_SCRIPT    = os.path.join(REPO_ROOT, "scripts", "processing",
                                 "verify_tracking.py")
 
-sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "utils")))
-from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
 EXPERIMENTS_FILE = EXPERIMENTS
 from render import render_interpolation_plan  # noqa: E402
 # Brief 10b: ARM_LENGTH_PX lives in thresholds.py.

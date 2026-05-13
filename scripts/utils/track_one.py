@@ -45,6 +45,9 @@ try:
 except (AttributeError, OSError):
     pass
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
+
 LOG_FILE         = os.path.join(DATA_DIR, "track_one_log.txt")
 
 TRACKER_SCRIPT  = os.path.join(REPO_ROOT, "scripts", "processing", "ring_tracker.py")
@@ -56,8 +59,6 @@ GLOBAL_HSV_FILE = os.path.join(DATA_DIR, "hsv_values.json")
 # scripts/utils is already in sys.path because Python auto-adds the
 # script's directory; this re-affirms it for the case where track_one
 # is imported from another script (e.g. manual_correction).
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
 EXPERIMENTS_FILE = EXPERIMENTS
 from render import render_verdict  # noqa: E402
 from thresholds import (  # noqa: E402

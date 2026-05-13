@@ -49,6 +49,9 @@ try:
 except (AttributeError, OSError):
     pass
 
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "utils")))
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
+
 DEFAULT_CSV = os.path.join(REPO_ROOT, "measurements", "th1_p180_th2_m179",
                            "tracking.csv")
 
@@ -56,8 +59,6 @@ DEFAULT_CSV = os.path.join(REPO_ROOT, "measurements", "th1_p180_th2_m179",
 # block in this script that produces a table is delegated there so
 # the verdict layer and the live verify output stay visually
 # consistent.
-sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "utils")))
-from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
 from render import (  # noqa: E402
     render_verification_summary,
     render_arm_breakdown,

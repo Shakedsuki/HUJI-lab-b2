@@ -39,10 +39,11 @@ import matplotlib.pyplot as plt
 from matplotlib.cm import ScalarMappable
 from matplotlib.colors import Normalize
 
-POINCARE_SCRIPT  = os.path.join(REPO_ROOT, "scripts", "analysis", "poincare.py")
-
 sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "utils")))
 from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
+
+POINCARE_SCRIPT  = os.path.join(REPO_ROOT, "scripts", "analysis", "poincare.py")
+
 EXPERIMENTS_FILE = EXPERIMENTS
 from figures_paths import aggregate_path, mirror_to_ready  # noqa: E402
 

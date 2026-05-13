@@ -42,10 +42,11 @@ try:
 except (AttributeError, OSError):
     pass
 
-CHAOS_PY         = os.path.join(REPO_ROOT, "chaos.py")
-
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
+
+CHAOS_PY         = os.path.join(REPO_ROOT, "chaos.py")
+
 EXPERIMENTS_FILE = EXPERIMENTS
 from track_one import (              # noqa: E402
     read_verification_metrics, compute_verdict,

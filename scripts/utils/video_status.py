@@ -51,6 +51,8 @@ def load_registry(path=EXPERIMENTS_FILE):
         with open(path, "r") as f:
             return json.load(f)
     except (json.JSONDecodeError, OSError):
+
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
         return {}
 
 def is_tracked(stem, registry, root=REPO_ROOT):
@@ -147,5 +149,4 @@ def print_status(videos_dir=VIDEOS_DIR, registry_path=EXPERIMENTS_FILE):
 if __name__ == "__main__":
     print_status()
 
-from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
 EXPERIMENTS_FILE = EXPERIMENTS

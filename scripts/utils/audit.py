@@ -47,12 +47,13 @@ try:
 except (AttributeError, OSError):
     pass
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
+
 VERIFY_SCRIPT    = os.path.join(REPO_ROOT, "scripts", "processing",
                                 "verify_tracking.py")
 
 # In-process imports — track_one + render live in the same dir.
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
 EXPERIMENTS_FILE = EXPERIMENTS
 from track_one import (  # noqa: E402
     read_verification_metrics,

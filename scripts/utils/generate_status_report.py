@@ -220,6 +220,8 @@ def count_verification_suspects(verification_csv):
             return None
         return int(df["suspect"].astype(int).sum())
     except Exception:
+
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
         return None
 
 # ─────────────────────────────────────────────
@@ -571,5 +573,4 @@ def main():
 if __name__ == "__main__":
     sys.exit(main())
 
-from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
 EXPERIMENTS_FILE = EXPERIMENTS

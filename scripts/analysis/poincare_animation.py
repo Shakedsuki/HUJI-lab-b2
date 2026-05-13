@@ -52,6 +52,8 @@ from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 from matplotlib import cm
 import matplotlib.colors as mcolors
 
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
+
 ANIM_INTERVAL_MS = 16       # animation tick (~62 fps display target)
 SOURCE_FPS       = 59.94    # data acquisition rate
 TRAIL_FRAMES     = 200      # ghost trail length
@@ -478,4 +480,3 @@ def main():
 if __name__ == "__main__":
     main()
 
-from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402

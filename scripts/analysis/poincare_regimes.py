@@ -30,10 +30,11 @@ import matplotlib.pyplot as plt
 from matplotlib import cm
 import matplotlib.colors as mcolors
 
-LYAP_CSV = os.path.join(REPO_ROOT, "data", "lyapunov_summary.csv")
-
 sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "utils")))
 from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
+
+LYAP_CSV = os.path.join(REPO_ROOT, "data", "lyapunov_summary.csv")
+
 from figures_paths import aggregate_path, mirror_to_ready  # noqa: E402
 
 # Factor-of-2 amplitude ladder. All clips have clean Lyapunov fits

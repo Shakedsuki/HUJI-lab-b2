@@ -72,6 +72,9 @@ try:
 except (AttributeError, OSError):
     pass
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
+
 TRACKER_SCRIPT   = os.path.join(REPO_ROOT, "scripts", "processing", "ring_tracker.py")
 TRACK_ONE_SCRIPT = os.path.join(REPO_ROOT, "scripts", "utils", "track_one.py")
 BULK_LOG_FILE    = os.path.join(REPO_ROOT, "data", "bulk_tracking_log.json")
@@ -79,8 +82,6 @@ BULK_LOG_FILE    = os.path.join(REPO_ROOT, "data", "bulk_tracking_log.json")
 # Pull verdict logic from track_one (in-process) and the rich summary
 # renderer from render so the bulk wrap-up uses the same PASS/WARN/FAIL
 # bands as a single-clip run.
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
 EXPERIMENTS_FILE = EXPERIMENTS
 from track_one import compute_verdict, read_verification_metrics  # noqa: E402
 from render import render_bulk_summary  # noqa: E402
