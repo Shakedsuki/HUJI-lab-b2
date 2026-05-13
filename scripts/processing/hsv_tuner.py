@@ -412,6 +412,7 @@ def save_hsv_file(state, target_path):
         "red":            state["red"],
         "ring_tolerance": state["ring_tolerance"],
         "arm_length_px":  ARM_LENGTH_PX,
+        "pivot":          list(state["pivot"]),
     }
     with open(target_path, "w") as f:
         json.dump(payload, f, indent=2)
@@ -484,6 +485,14 @@ class TunerState:
         # Keep tol idx in sync with whatever was saved.
         if self.data["ring_tolerance"] in RING_TOLERANCES:
             self.tol_idx = RING_TOLERANCES.index(self.data["ring_tolerance"])
+        # Pivot location — loaded from file if present, else from thresholds.
+        # Mutable so the user can relocate it with the P key.
+        _pv = self.data.get("pivot")
+        self.pivot              = (int(_pv[0]), int(_pv[1])) if _pv else PIVOT
+        self.pivot_mode         = False   # when True, next click sets pivot
+        self.pivot_dist_grid    = precompute_distance_grid(FRAME_W, FRAME_H,
+                                                           self.pivot)
+        self.data["pivot"]      = list(self.pivot)  # keep data dict in sync
 
     @property
     def tolerance(self):
@@ -648,9 +657,6 @@ def main():
                        if state.ref_queue else 0)
     state.frame_idx = max(0, min(total_frames - 1, state.frame_idx))
 
-    # Precompute the static pivot distance grid once — used for the green ring.
-    pivot_dist_grid = precompute_distance_grid(FRAME_W, FRAME_H, PIVOT)
-
     # ── Windows + trackbars ──────────────────────────────────────────────
     cv2.namedWindow(WINDOW_MAIN, cv2.WINDOW_AUTOSIZE)
     build_controls_window(state.mode)
@@ -671,12 +677,24 @@ def main():
             state.cursor_disp = None
             state.cursor_orig = None
 
+        if event != cv2.EVENT_LBUTTONDOWN or mapped is None:
+            return
+
+        # Pivot-set mode: next click relocates the pivot dot and ring.
+        if state.pivot_mode:
+            state.pivot = mapped
+            state.pivot_dist_grid = precompute_distance_grid(
+                FRAME_W, FRAME_H, state.pivot)
+            state.data["pivot"] = list(state.pivot)
+            state.pivot_mode = False
+            state.dirty = True
+            print(f"  PIVOT set to {state.pivot}  (press S to save)")
+            return
+
         # Sample on a left-click. Centre = click point, radius =
         # state.click_radius. The HSV-similarity filter inside
         # sample_circle_region drops pixels far from the centre's HSV,
         # so the radius can be generous without polluting the bucket.
-        if event != cv2.EVENT_LBUTTONDOWN or mapped is None:
-            return
         if state.current_hsv is None:
             return
 
@@ -746,7 +764,7 @@ def main():
             state.data["green"].pop("h_max2", None)
 
         # ── Build the green ring detection ──────────────────────────────
-        green_ring = ring_mask_from_distance(pivot_dist_grid,
+        green_ring = ring_mask_from_distance(state.pivot_dist_grid,
                                              ARM_LENGTH_PX, state.tolerance)
         green_color = color_mask_green(hsv_full, state.data["green"])
         green_combined = cv2.bitwise_and(green_color,
@@ -783,16 +801,19 @@ def main():
 
         # Marker overlays (rings, lines, labels) only at OVERLAY_FULL.
         if state.overlay_level == OVERLAY_FULL:
-            # Pivot dot.
-            cv2.circle(overlay, PIVOT, 8, (0, 215, 255), -1)
+            # Pivot dot — flashes cyan/orange to signal pivot-set mode.
+            pivot_color = (0, 165, 255) if state.pivot_mode else (0, 215, 255)
+            cv2.circle(overlay, state.pivot, 8, pivot_color, -1)
+            if state.pivot_mode:
+                cv2.circle(overlay, state.pivot, 18, pivot_color, 2)
 
             # Green ring.
-            cv2.circle(overlay, PIVOT, ARM_LENGTH_PX, (0, 200, 0), 1)
+            cv2.circle(overlay, state.pivot, ARM_LENGTH_PX, (0, 200, 0), 1)
 
             if green_pos is not None:
-                cv2.line(overlay, PIVOT, green_pos, (0, 255, 0), 2)
+                cv2.line(overlay, state.pivot, green_pos, (0, 255, 0), 2)
                 cv2.circle(overlay, green_pos, 8, (0, 255, 0), -1)
-                theta1 = compute_angle(PIVOT, green_pos)
+                theta1 = compute_angle(state.pivot, green_pos)
                 cv2.putText(overlay, f"th1={theta1:.1f}",
                             (green_pos[0] + 10, green_pos[1] - 10),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
@@ -899,6 +920,8 @@ def main():
                          f"(circle r={int(state.click_radius)}px, [/] adjust)")
         if ready:
             goal_text = "READY: scrub the clip — rings should lock on markers"
+        if state.pivot_mode:
+            goal_text = "PIVOT-SET: click the true pivot bolt to relocate the ring"
 
         g_chk = " OK" if n_g >= SAMPLE_TARGET else ""
         r_chk = " OK" if n_r >= SAMPLE_TARGET else ""
@@ -1076,6 +1099,15 @@ def main():
                 state.frame_idx = state.ref_queue[0]
             print(f"Cleared samples for {state.mode.upper()}  "
                   f"(auto-advance queue reset)")
+            continue
+
+        if k in (ord("p"), ord("P")):
+            state.pivot_mode = not state.pivot_mode
+            if state.pivot_mode:
+                print(f"PIVOT-SET mode ON — click the true pivot bolt  "
+                      f"(current: {state.pivot})")
+            else:
+                print("PIVOT-SET mode OFF")
             continue
 
         if k in (ord("t"), ord("T")):
