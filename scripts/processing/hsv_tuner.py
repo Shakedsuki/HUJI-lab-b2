@@ -50,17 +50,14 @@ import json
 import os
 import sys
 
-
 # ─────────────────────────────────────────────
 # CONSTANTS
 # ─────────────────────────────────────────────
 
-ROOT             = r"C:\dev\chaos"
-DEFAULT_VIDEO    = os.path.join(ROOT, r"Videos\long_recording.mov")
-DATA_DIR         = os.path.join(ROOT, "data")
+DEFAULT_VIDEO    = os.path.join(REPO_ROOT, r"Videos\long_recording.mov")
+
 GLOBAL_HSV_FILE  = os.path.join(DATA_DIR, "hsv_values.json")
 HSV_README       = os.path.join(DATA_DIR, "hsv_values_readme.txt")
-
 
 def hsv_file_for_video(video_path, force_global=False):
     """
@@ -166,7 +163,6 @@ MIN_SAMPLES_FOR_AUTO = 5
 BARS_GREEN = ["H_min", "H_max", "S_min", "S_max", "V_min", "V_max"]
 BARS_RED   = BARS_GREEN + ["H_min2", "H_max2"]
 
-
 # ─────────────────────────────────────────────
 # RING / MASK HELPERS
 # ─────────────────────────────────────────────
@@ -182,18 +178,15 @@ def precompute_distance_grid(width, height, center):
     ys, xs = np.indices((height, width), dtype=np.float32)
     return np.sqrt((xs - center[0])**2 + (ys - center[1])**2)
 
-
 def ring_mask_from_distance(dist_grid, radius, tolerance):
     """Boolean mask where dist_grid is within radius +- tolerance."""
     return (np.abs(dist_grid - radius) < tolerance)
-
 
 def color_mask_green(hsv_img, cfg):
     """Single-range HSV mask for the green marker."""
     lo = np.array([cfg["h_min"], cfg["s_min"], cfg["v_min"]], dtype=np.uint8)
     hi = np.array([cfg["h_max"], cfg["s_max"], cfg["v_max"]], dtype=np.uint8)
     return cv2.inRange(hsv_img, lo, hi)
-
 
 def color_mask_red(hsv_img, cfg):
     """
@@ -208,7 +201,6 @@ def color_mask_red(hsv_img, cfg):
     m1 = cv2.inRange(hsv_img, lo1, hi1)
     m2 = cv2.inRange(hsv_img, lo2, hi2)
     return cv2.bitwise_or(m1, m2)
-
 
 def largest_centroid(mask_uint8, min_area=10, max_radius=35):
     """
@@ -260,7 +252,6 @@ def largest_centroid(mask_uint8, min_area=10, max_radius=35):
     cx, cy = centroids[best_idx]
     return (int(round(cx)), int(round(cy))), best_area
 
-
 # ─────────────────────────────────────────────
 # ANGLE HELPER
 # ─────────────────────────────────────────────
@@ -271,7 +262,6 @@ def compute_angle(p_from, p_to):
     dy = p_to[1] - p_from[1]
     return float(np.degrees(np.arctan2(dx, dy)))
 
-
 # ─────────────────────────────────────────────
 # TRACKBAR PLUMBING
 # ─────────────────────────────────────────────
@@ -279,7 +269,6 @@ def compute_angle(p_from, p_to):
 def _noop(_):
     """Trackbar callback placeholder — we read positions on demand."""
     pass
-
 
 def build_controls_window(mode):
     """
@@ -300,7 +289,6 @@ def build_controls_window(mode):
         max_val = 179 if name.startswith("H") else 255
         cv2.createTrackbar(name, WINDOW_CTRL, 0, max_val, _noop)
 
-
 def push_cfg_to_trackbars(cfg, mode):
     """Force trackbar positions to match the dict cfg for the active mode."""
     bars = BARS_GREEN if mode == "green" else BARS_RED
@@ -309,7 +297,6 @@ def push_cfg_to_trackbars(cfg, mode):
     for name, key in zip(bars, keys):
         if key in cfg:
             cv2.setTrackbarPos(name, WINDOW_CTRL, int(cfg[key]))
-
 
 def read_cfg_from_trackbars(mode):
     """Return a fresh cfg dict reflecting the current trackbar positions."""
@@ -320,7 +307,6 @@ def read_cfg_from_trackbars(mode):
     for name, key in zip(bars, keys):
         cfg[key] = cv2.getTrackbarPos(name, WINDOW_CTRL)
     return cfg
-
 
 # ─────────────────────────────────────────────
 # AUTO-SUGGEST FROM SAMPLES
@@ -378,7 +364,6 @@ def suggest_from_samples(samples, mode):
             "v_min": v_min,  "v_max": v_max,
             "h_min2": h_min2, "h_max2": h_max2}
 
-
 # ─────────────────────────────────────────────
 # JSON I/O
 # ─────────────────────────────────────────────
@@ -416,7 +401,6 @@ def load_hsv_file(target_path):
         "arm_length_px":  ARM_LENGTH_PX,
     }
 
-
 def save_hsv_file(state, target_path):
     """Write HSV calibration JSON plus the (global) human-readable readme."""
     os.makedirs(os.path.dirname(target_path), exist_ok=True)
@@ -432,7 +416,6 @@ def save_hsv_file(state, target_path):
     with open(HSV_README, "w") as f:
         f.write(_readme_text())
     print(f"Saved {target_path}")
-
 
 def _readme_text():
     return (
@@ -455,7 +438,6 @@ def _readme_text():
         "                  pixels within +/- this tolerance of the radius.\n\n"
         "arm_length_px     fixed arm length in pixels for both arms (~188).\n"
     )
-
 
 # ─────────────────────────────────────────────
 # MAIN
@@ -508,7 +490,6 @@ class TunerState:
     def zoom_factor(self):
         return ZOOM_FACTORS[self.zoom_idx]
 
-
 def display_to_frame(x_disp, y_disp):
     """Map a click in the 960x540 video sub-area back to original 1280x720."""
     if x_disp >= VIDEO_DISP_W or y_disp >= VIDEO_DISP_H:
@@ -518,7 +499,6 @@ def display_to_frame(x_disp, y_disp):
     x_orig = max(0, min(FRAME_W - 1, x_orig))
     y_orig = max(0, min(FRAME_H - 1, y_orig))
     return (x_orig, y_orig)
-
 
 def sample_circle_region(hsv_full, center_orig, radius_orig):
     """
@@ -586,7 +566,6 @@ def sample_circle_region(hsv_full, center_orig, radius_orig):
     samples = list(zip(h_kept.tolist(), s_kept.tolist(), v_kept.tolist()))
     return samples, n_kept
 
-
 def main():
     # ── Parse CLI ────────────────────────────────────────────────────────
     raw_args   = sys.argv[1:]
@@ -596,7 +575,7 @@ def main():
 
     video_path = positional[0] if positional else DEFAULT_VIDEO
     if not os.path.isabs(video_path):
-        video_path = os.path.join(ROOT, video_path)
+        video_path = os.path.join(REPO_ROOT, video_path)
     if not os.path.exists(video_path):
         print(f"ERROR: video not found: {video_path}")
         return
@@ -1145,6 +1124,7 @@ def main():
     cap.release()
     cv2.destroyAllWindows()
 
-
 if __name__ == "__main__":
     main()
+
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402

@@ -22,18 +22,11 @@ import os
 import sys
 from pathlib import Path
 
-
 # ─────────────────────────────────────────────
 # CONSTANTS  (mirrors ring_tracker.py)
 # ─────────────────────────────────────────────
 
-ROOT             = r"C:\dev\chaos"
-VIDEOS_DIR       = os.path.join(ROOT, "data", "videos")
-EXPERIMENTS_FILE = os.path.join(ROOT, "data", "experiments.json")
-MEASUREMENTS_DIR = os.path.join(ROOT, "measurements")
-
 VIDEO_EXTS = {".mov", ".mp4", ".avi", ".mkv", ".m4v"}
-
 
 # ─────────────────────────────────────────────
 # HELPERS
@@ -50,7 +43,6 @@ def list_videos(videos_dir=VIDEOS_DIR):
             out.append(full)
     return out
 
-
 def load_registry(path=EXPERIMENTS_FILE):
     """Load experiments.json. Returns {} if absent or malformed."""
     if not os.path.exists(path):
@@ -61,8 +53,7 @@ def load_registry(path=EXPERIMENTS_FILE):
     except (json.JSONDecodeError, OSError):
         return {}
 
-
-def is_tracked(stem, registry, root=ROOT):
+def is_tracked(stem, registry, root=REPO_ROOT):
     """
     A video is "tracked" if its registry entry has:
       - release_frame populated
@@ -81,7 +72,6 @@ def is_tracked(stem, registry, root=ROOT):
         return False
     csv_basename = entry.get("csv_file") or "tracking.csv"
     return os.path.exists(os.path.join(root, meas_dir, csv_basename))
-
 
 def _resolve_entry(stem, registry):
     """
@@ -103,7 +93,6 @@ def _resolve_entry(stem, registry):
             return entry
     return None
 
-
 def status_breakdown(videos_dir=VIDEOS_DIR, registry_path=EXPERIMENTS_FILE):
     """Return (tracked_paths, pending_paths) — both sorted lists."""
     registry = load_registry(registry_path)
@@ -114,12 +103,10 @@ def status_breakdown(videos_dir=VIDEOS_DIR, registry_path=EXPERIMENTS_FILE):
         (tracked if is_tracked(stem, registry) else pending).append(v)
     return tracked, pending
 
-
 def status_summary(videos_dir=VIDEOS_DIR, registry_path=EXPERIMENTS_FILE):
     """One-liner suitable for printing before opening a picker."""
     t, p = status_breakdown(videos_dir, registry_path)
     return f"Tracked: {len(t)}   Pending: {len(p)}   (total: {len(t) + len(p)})"
-
 
 # ─────────────────────────────────────────────
 # CLI
@@ -157,6 +144,8 @@ def print_status(videos_dir=VIDEOS_DIR, registry_path=EXPERIMENTS_FILE):
     else:
         print("    (none — all videos tracked)")
 
-
 if __name__ == "__main__":
     print_status()
+
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
+EXPERIMENTS_FILE = EXPERIMENTS

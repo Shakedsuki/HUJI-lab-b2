@@ -36,13 +36,9 @@ import matplotlib.pyplot as plt
 
 from scipy.optimize import curve_fit
 
-
-ROOT     = r"C:\dev\chaos"
-MEAS_DIR = os.path.join(ROOT, "measurements")
-
-sys.path.insert(0, os.path.join(ROOT, "scripts", "utils"))
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "utils")))
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
 from figures_paths import figure_path, mirror_to_ready  # noqa: E402
-
 
 # Rod-pendulum total mechanical energy. Mirrors verify_tracking's
 # compute_frame_energy so the fit is consistent with the verdict
@@ -60,7 +56,6 @@ def E_per_frame(th1_deg, th2_deg, om1_dps, om2_dps, L=0.35, g=9.8):
         + 0.5         * w1_r * w2_abs_r * np.cos(th2_rel_r)
         + (1.0 / 6.0) * w2_abs_r**2)
     return KE + PE
-
 
 def smooth_envelope(t, e, window_s=0.5):
     """Return a moving-window mean of e over `window_s` seconds.
@@ -83,7 +78,6 @@ def smooth_envelope(t, e, window_s=0.5):
         b = min(len(e), i + half + 1)
         out[i] = (cumsum[b] - cumsum[a]) / (b - a)
     return out
-
 
 def fit_models(t, e):
     """Fit exponential and power-law decay to (t, e) where t starts
@@ -135,7 +129,6 @@ def fit_models(t, e):
 
     return out
 
-
 def parse_args():
     p = argparse.ArgumentParser(
         description="Fit a friction model to a clip's energy decay.")
@@ -148,7 +141,6 @@ def parse_args():
     p.add_argument("--no-plot", action="store_true",
                    help="skip writing friction_fit.png")
     return p.parse_args()
-
 
 def main():
     args = parse_args()
@@ -245,7 +237,6 @@ def main():
         print(f"\n  Plot: {out_png}")
 
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main())

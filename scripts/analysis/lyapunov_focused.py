@@ -32,21 +32,17 @@ import matplotlib.pyplot as plt
 from matplotlib import cm
 import matplotlib.colors as mcolors
 
+LYAP_CSV = os.path.join(REPO_ROOT, "data", "lyapunov_summary.csv")
 
-ROOT     = os.path.dirname(os.path.dirname(os.path.dirname(
-              os.path.abspath(__file__))))
-MEAS_DIR = os.path.join(ROOT, "measurements")
-LYAP_CSV = os.path.join(ROOT, "data", "lyapunov_summary.csv")
-
-sys.path.insert(0, os.path.join(ROOT, "scripts", "utils"))
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "utils")))
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
 from figures_paths import aggregate_path, mirror_to_ready  # noqa: E402
 
-sys.path.insert(0, os.path.join(ROOT, "scripts", "analysis"))
+sys.path.insert(0, os.path.join(REPO_ROOT, "scripts", "analysis"))
 from lyapunov import (  # noqa: E402
     load_series, autocorr_first_drop, estimate_period_frames,
     embed, rosenstein, auto_fit_range, linear_fit_slope,
 )
-
 
 PANELS = [
     {"stem": "th1_p044_th2_m001", "label": "Regular"},
@@ -58,7 +54,6 @@ PANELS = [
 K_MAX  = 120
 EMB_M  = 5
 R2_MIN = 0.70   # filter for the right-panel scatter
-
 
 def compute_curve(stem):
     """Returns dict with t_k, S, fit_lo, fit_hi, slope, intercept, r2, dt."""
@@ -80,7 +75,6 @@ def compute_curve(stem):
         "t_k": t_k, "S": S, "fit_lo": lo, "fit_hi": hi,
         "slope": slope, "intercept": intercept, "r2": r2, "dt": dt,
     }
-
 
 def main():
     # ── Right panel: full scatter ──
@@ -150,7 +144,6 @@ def main():
     plt.savefig(out, dpi=150, bbox_inches="tight")
     mirror_to_ready(out)
     print(f"  wrote {out}")
-
 
 if __name__ == "__main__":
     main()

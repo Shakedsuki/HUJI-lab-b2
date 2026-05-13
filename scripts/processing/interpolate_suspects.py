@@ -48,22 +48,19 @@ try:
 except (AttributeError, OSError):
     pass
 
-
 # ─────────────────────────────────────────────
 # CONSTANTS  (mirror ring_tracker.py)
 # ─────────────────────────────────────────────
 
-ROOT             = r"C:\dev\chaos"
-MEAS_DIR         = os.path.join(ROOT, "measurements")
-EXPERIMENTS_FILE = os.path.join(ROOT, "data", "experiments.json")
-VERIFY_SCRIPT    = os.path.join(ROOT, "scripts", "processing",
+VERIFY_SCRIPT    = os.path.join(REPO_ROOT, "scripts", "processing",
                                 "verify_tracking.py")
 
-sys.path.insert(0, os.path.join(ROOT, "scripts", "utils"))
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "utils")))
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
+EXPERIMENTS_FILE = EXPERIMENTS
 from render import render_interpolation_plan  # noqa: E402
 # Brief 10b: ARM_LENGTH_PX lives in thresholds.py.
 from thresholds import ARM_LENGTH_PX  # noqa: E402
-
 
 # ─────────────────────────────────────────────
 # HELPERS
@@ -81,14 +78,12 @@ def parse_args():
                         "step (default 2500).")
     return p.parse_args()
 
-
 def load_csv_rows(path):
     with open(path, "r", newline="") as f:
         reader = csv.DictReader(f)
         rows = list(reader)
         fieldnames = reader.fieldnames
     return rows, fieldnames
-
 
 def write_csv_rows(path, rows, fieldnames):
     with open(path, "w", newline="") as f:
@@ -97,24 +92,21 @@ def write_csv_rows(path, rows, fieldnames):
         for r in rows:
             w.writerow(r)
 
-
 # to_float / is_clean_row / find_neighbours moved to scripts/utils/
 # csv_helpers.py so render.py can share the same predicates without
 # importing interpolate_suspects (which would create a layering cycle).
-sys.path.insert(0, os.path.join(ROOT, "scripts", "utils"))
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "utils")))
 from csv_helpers import (  # noqa: E402
     to_float,
     is_clean_row,
     find_neighbours,
 )
 
-
 def linear_interp(t, t0, v0, t1, v1):
     """Linear interpolation; falls back to v0 if t1 == t0."""
     if t1 == t0:
         return v0
     return v0 + (v1 - v0) * (t - t0) / (t1 - t0)
-
 
 def interp_theta2(prev_row, next_row, target_row):
     """
@@ -138,7 +130,6 @@ def interp_theta2(prev_row, next_row, target_row):
     interp = linear_interp(t, t0, v0, t1, v0 + delta)
     return ((interp + 180.0) % 360.0) - 180.0
 
-
 def red_pos_from_geometry(x_green, y_green, theta2_deg):
     """
     Reproject (x_red, y_red) from green's pixel position and θ₂. Uses
@@ -150,7 +141,6 @@ def red_pos_from_geometry(x_green, y_green, theta2_deg):
     x = x_green + ARM_LENGTH_PX * math.sin(rad)
     y = y_green + ARM_LENGTH_PX * math.cos(rad)
     return int(round(x)), int(round(y))
-
 
 def update_registry_after_interp(stem, n_interpolated, n_unresolvable):
     """Add suspect_frames_interpolated + interpolation_date for stem."""
@@ -176,7 +166,6 @@ def update_registry_after_interp(stem, n_interpolated, n_unresolvable):
         json.dump(reg, f, indent=2)
     print(f"Registry updated: '{target_key}' "
           f"(suspect_frames_interpolated={n_interpolated}, date={iso}).")
-
 
 # ─────────────────────────────────────────────
 # MAIN
@@ -326,15 +315,14 @@ def main():
     rc = subprocess.run(
         [sys.executable, VERIFY_SCRIPT, "--stem", args.stem,
          "--omega-cap", str(args.omega_cap), "--no-plot"],
-        cwd=ROOT,
+        cwd=REPO_ROOT,
     ).returncode
 
     # ── Final summary ─────────────────────────────────────────────────
     print()
     print(f"Interpolated {n_interpolated} frames. {n_unresolvable} "
-          f"unresolvable. Backup at {os.path.relpath(backup_path, ROOT)}.")
+          f"unresolvable. Backup at {os.path.relpath(backup_path, REPO_ROOT)}.")
     return 0 if rc == 0 else 1
-
 
 if __name__ == "__main__":
     sys.exit(main())

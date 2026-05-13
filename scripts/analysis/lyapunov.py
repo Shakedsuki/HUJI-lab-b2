@@ -54,14 +54,9 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from scipy.spatial import cKDTree
 
-
-ROOT     = os.path.dirname(os.path.dirname(os.path.dirname(
-              os.path.abspath(__file__))))
-MEAS_DIR = os.path.join(ROOT, "measurements")
-
-sys.path.insert(0, os.path.join(ROOT, "scripts", "utils"))
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "utils")))
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
 from figures_paths import figure_path, mirror_to_ready  # noqa: E402
-
 
 def parse_args():
     p = argparse.ArgumentParser(
@@ -85,7 +80,6 @@ def parse_args():
     p.add_argument("--no-plot", action="store_true")
     return p.parse_args()
 
-
 def resolve_io(args):
     if args.stem:
         meas = os.path.join(MEAS_DIR, args.stem)
@@ -94,7 +88,6 @@ def resolve_io(args):
         out_dir = os.path.dirname(os.path.abspath(args.csv))
         return args.csv, out_dir, os.path.basename(out_dir)
     raise SystemExit("Need --stem or a CSV path.")
-
 
 def load_series(csv_path, use_omega=False):
     rows = []
@@ -119,7 +112,6 @@ def load_series(csv_path, use_omega=False):
     th  = np.degrees(np.unwrap(np.radians(th)))
     return t, om if use_omega else th
 
-
 def autocorr_first_drop(x, threshold=1.0 / np.e, lag_max=None):
     """First lag at which the (normalised) autocorrelation drops below
     threshold. Default threshold 1/e per Abarbanel's recipe."""
@@ -135,7 +127,6 @@ def autocorr_first_drop(x, threshold=1.0 / np.e, lag_max=None):
         if ac < threshold:
             return max(lag, 1)
     return lag_max
-
 
 def estimate_period_frames(t, x):
     """Crude period estimate: dominant non-DC FFT bin."""
@@ -153,7 +144,6 @@ def estimate_period_frames(t, x):
         return 60
     return max(int(round(1.0 / f_peak / dt)), 6)
 
-
 def embed(x, m, tau):
     """Time-delay embedding. Returns array of shape (N - (m-1)*tau, m)."""
     N = len(x) - (m - 1) * tau
@@ -161,7 +151,6 @@ def embed(x, m, tau):
     for j in range(m):
         out[:, j] = x[j * tau : j * tau + N]
     return out
-
 
 def rosenstein(emb, theiler, k_max):
     """
@@ -201,7 +190,6 @@ def rosenstein(emb, theiler, k_max):
             S[k] = np.mean(log_dists)
     return S
 
-
 def linear_fit_slope(x, y, lo, hi):
     mask = np.arange(len(y))
     sel  = (mask >= lo) & (mask <= hi) & np.isfinite(y)
@@ -214,7 +202,6 @@ def linear_fit_slope(x, y, lo, hi):
     ss_tot = np.sum((y[sel] - y[sel].mean()) ** 2)
     r2 = 1.0 - ss_res / ss_tot if ss_tot > 0 else float("nan")
     return slope, intercept, r2
-
 
 def auto_fit_range(S, k_max):
     """Pick the linear stretch as: skip the first ~3 frames (transient
@@ -240,7 +227,6 @@ def auto_fit_range(S, k_max):
     if hi - lo < 10:
         hi = min(k_max, lo + 10)
     return lo, hi
-
 
 def make_figure(t, x, S, dt, tau, m, theiler,
                 slope, intercept, r2, fit_lo, fit_hi,
@@ -310,7 +296,6 @@ def make_figure(t, x, S, dt, tau, m, theiler,
     mirror_to_ready(out_path)
     plt.close(fig)
 
-
 def main():
     args = parse_args()
     csv_path, out_dir, label = resolve_io(args)
@@ -369,7 +354,6 @@ def main():
                     slope, intercept, r2, fit_lo, fit_hi,
                     label, out_png)
         print(f"  wrote {out_png}")
-
 
 if __name__ == "__main__":
     main()

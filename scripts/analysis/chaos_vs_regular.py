@@ -28,23 +28,17 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import Normalize
 
-
-ROOT     = os.path.dirname(os.path.dirname(os.path.dirname(
-              os.path.abspath(__file__))))
-MEAS_DIR = os.path.join(ROOT, "measurements")
-
-sys.path.insert(0, os.path.join(ROOT, "scripts", "utils"))
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "utils")))
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
 from figures_paths import aggregate_path, mirror_to_ready  # noqa: E402
 
-sys.path.insert(0, os.path.join(ROOT, "scripts", "analysis"))
+sys.path.insert(0, os.path.join(REPO_ROOT, "scripts", "analysis"))
 from chaos_analyze import (  # noqa: E402
     load_free_swing, compute_topological, k01_test,
 )
 
-
 CHAOTIC_STEM = "th1_p180_th2_m179"
 REGULAR_STEM = "th1_p044_th2_m001"
-
 
 def load_one(stem):
     csv = os.path.join(MEAS_DIR, stem, "verification.csv")
@@ -66,7 +60,6 @@ def load_one(stem):
         "stem": stem, "topo": topo, "K": K,
         "freqs": freqs, "power": power,
     }
-
 
 def plot_trace(ax, d, label, t_max=None):
     topo = d["topo"]
@@ -94,7 +87,6 @@ def plot_trace(ax, d, label, t_max=None):
     cb = plt.colorbar(sc, ax=ax, shrink=0.85)
     cb.set_label(r"$E / E_{\rm inversion}$", fontsize=9)
 
-
 def plot_spectrum(ax, d, label):
     ax.loglog(d["freqs"], d["power"], lw=0.6, color="#3a4f7a", alpha=0.85)
     ax.set_xlabel("frequency (Hz)")
@@ -102,7 +94,6 @@ def plot_spectrum(ax, d, label):
     K = d["K"]
     ax.set_title(label + rf"    $K = {K:.2f}$", fontsize=11)
     ax.grid(which="both", alpha=0.2)
-
 
 def main():
     print("loading chaotic clip…")
@@ -148,7 +139,6 @@ def main():
     plt.savefig(out, dpi=150, bbox_inches="tight")
     mirror_to_ready(out)
     print(f"  wrote {out}")
-
 
 if __name__ == "__main__":
     main()

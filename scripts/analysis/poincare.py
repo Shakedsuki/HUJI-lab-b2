@@ -42,14 +42,9 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-
-ROOT     = os.path.dirname(os.path.dirname(os.path.dirname(
-              os.path.abspath(__file__))))
-MEAS_DIR = os.path.join(ROOT, "measurements")
-
-sys.path.insert(0, os.path.join(ROOT, "scripts", "utils"))
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "utils")))
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
 from figures_paths import figure_path, mirror_to_ready  # noqa: E402
-
 
 def parse_args():
     p = argparse.ArgumentParser(
@@ -62,7 +57,6 @@ def parse_args():
     p.add_argument("--no-csv", action="store_true",
                    help="Skip writing poincare.csv")
     return p.parse_args()
-
 
 def resolve_io(args):
     if args.stem:
@@ -79,7 +73,6 @@ def resolve_io(args):
     if not os.path.exists(csv_path):
         raise SystemExit(f"CSV not found: {csv_path}")
     return csv_path, out_dir, label
-
 
 def load_clean(csv_path):
     """Load the free-swing rows. Returns (t, th1, th2, om1, om2) in
@@ -106,7 +99,6 @@ def load_clean(csv_path):
     t   = arr[:, 0] - arr[0, 0]
     return t, arr[:, 1], arr[:, 2], arr[:, 3], arr[:, 4]
 
-
 def upward_zero_crossings(s):
     """Return the index pairs (i-1, i) where s changes sign from
     negative to positive between samples i-1 and i. Equality at i-1
@@ -117,7 +109,6 @@ def upward_zero_crossings(s):
     mask = (sign_prev < 0) & (sign_next >= 0)
     return np.where(mask)[0]
 
-
 def lerp_at_crossing(s_prev, s_next, x_prev, x_next):
     """Linear interpolation: find x at the moment s crosses zero
     between (s_prev, x_prev) and (s_next, x_next)."""
@@ -126,7 +117,6 @@ def lerp_at_crossing(s_prev, s_next, x_prev, x_next):
         return x_prev
     frac = -s_prev / denom    # in [0, 1] when s_prev < 0 < s_next
     return x_prev + frac * (x_next - x_prev)
-
 
 def poincare_points(t, th1, th2, om1, om2):
     """
@@ -185,7 +175,6 @@ def poincare_points(t, th1, th2, om1, om2):
             np.array(th1_cross),
             np.array(om1_cross))
 
-
 def make_figure(t, th1, th2, om1, om2,
                 t_p, th1_p, om1_p, label, out_path):
     fig = plt.figure(figsize=(15, 10))
@@ -238,7 +227,6 @@ def make_figure(t, th1, th2, om1, om2,
     mirror_to_ready(out_path)
     plt.close(fig)
 
-
 def main():
     args = parse_args()
     csv_path, out_dir, label = resolve_io(args)
@@ -263,7 +251,6 @@ def main():
         make_figure(t, th1, th2, om1, om2,
                     t_p, th1_p, om1_p, label, out_png)
         print(f"  wrote {out_png}")
-
 
 if __name__ == "__main__":
     main()

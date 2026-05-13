@@ -52,13 +52,10 @@ from matplotlib.colors import Normalize
 
 _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(_THIS_DIR, "..", "utils"))
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
 from figures_paths import figure_path, mirror_to_ready  # noqa: E402
 
-
 # scripts/analysis/ → scripts/ → repo root
-ROOT     = os.path.dirname(os.path.dirname(os.path.dirname(
-               os.path.abspath(__file__))))
-MEAS_DIR = os.path.join(ROOT, "measurements")
 
 # Rod-pendulum physical constants (Brief 9 formula, mirrors friction_fit.py).
 _L = 0.35   # arm length in metres
@@ -68,7 +65,6 @@ _G = 9.8    # gravitational acceleration m/s²
 #   PE_max = g*(3L/2)*(1-cos 180°) + g*(L/2)*(1-cos 180°)
 #          = g*(3L/2)*2 + g*(L/2)*2 = 4*g*L
 E_INVERSION = 4.0 * _G * _L   # ≈ 13.72 J/kg per unit mass
-
 
 # ─────────────────────────────────────────────
 # ENERGY FORMULA  (identical to friction_fit.py)
@@ -87,7 +83,6 @@ def E_per_frame(th1_deg, th2_deg, om1_dps, om2_dps):
         + 0.5         * w1_r * w2_abs_r * np.cos(th2_rel_r)
         + (1.0 / 6.0) * w2_abs_r**2)
     return KE + PE
-
 
 # ─────────────────────────────────────────────
 # DATA LOADING
@@ -128,7 +123,6 @@ def load_free_swing(csv_path):
         "om2":      om2[valid].values.astype(float),
         "n_frames": n,
     }
-
 
 # ─────────────────────────────────────────────
 # TIER 1 — TOPOLOGICAL MEASURES
@@ -181,7 +175,6 @@ def compute_topological(data):
         "E_ratio_release":   E_ratio_release,
         "E_ratio_peak":      E_ratio_peak,
     }
-
 
 # ─────────────────────────────────────────────
 # TIER 2 — STATISTICAL MEASURES
@@ -255,7 +248,6 @@ def k01_test(x, c_values=None, n_c=50):
 
     return float(np.median(Ks)) if Ks else float("nan")
 
-
 def spectral_entropy_norm(x):
     """
     Spectral entropy of x, normalised by log2(number of frequency bins).
@@ -273,7 +265,6 @@ def spectral_entropy_norm(x):
     spec = spec / s
     H    = -float(np.sum(spec * np.log2(spec + 1e-12)))
     return H / np.log2(len(spec))
-
 
 def compute_statistical(topo, n_c=50):
     """Return dict of Tier-2 statistical measures."""
@@ -299,7 +290,6 @@ def compute_statistical(topo, n_c=50):
         "spectral_entropy_th1_norm": H_th1,
         "spectral_entropy_th2_norm": H_th2,
     }
-
 
 # ─────────────────────────────────────────────
 # VERDICT
@@ -367,14 +357,12 @@ def compute_verdict(topo, stat):
             f"(θ₂ norm. entropy = {H_th2:.2f})")
     return "BORDERLINE", reasons
 
-
 # ─────────────────────────────────────────────
 # OUTPUT — VERDICT CARD
 # ─────────────────────────────────────────────
 
 def _fmt(v, fmt=".3f"):
     return format(v, fmt) if not (isinstance(v, float) and np.isnan(v)) else "n/a"
-
 
 def print_card(stem, topo, stat, verdict, reasons):
     sep = "=" * 72
@@ -402,7 +390,6 @@ def print_card(stem, topo, stat, verdict, reasons):
     for r in reasons:
         print(f"    • {r}")
     print()
-
 
 # ─────────────────────────────────────────────
 # OUTPUT — PLOT
@@ -471,7 +458,6 @@ def make_plot(stem, topo, stat, out_path):
     mirror_to_ready(out_path)
     plt.close(fig)
 
-
 # ─────────────────────────────────────────────
 # CLI
 # ─────────────────────────────────────────────
@@ -488,7 +474,6 @@ def parse_args():
                    help="random c values for the 0-1 test "
                         "(default 50; fewer = faster, more = more robust)")
     return p.parse_args()
-
 
 def main():
     args     = parse_args()
@@ -520,7 +505,6 @@ def main():
         print(f"  Plot: {out_png}")
 
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main())

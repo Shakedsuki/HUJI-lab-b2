@@ -52,10 +52,8 @@ except (AttributeError, OSError):
 
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
-VIDEOS_DIR  = os.path.join(ROOT, "data", "videos")
-MEAS_DIR    = os.path.join(ROOT, "measurements")
-DATA_DIR    = os.path.join(ROOT, "data")
-EXPERIMENTS = os.path.join(DATA_DIR, "experiments.json")
+sys.path.insert(0, os.path.join(ROOT, "scripts", "utils"))
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS  # noqa: E402
 
 SCRIPT_HSV_TUNER  = os.path.join(ROOT, "scripts", "processing", "hsv_tuner.py")
 SCRIPT_RING       = os.path.join(ROOT, "scripts", "processing", "ring_tracker.py")

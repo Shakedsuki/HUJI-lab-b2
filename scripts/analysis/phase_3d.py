@@ -41,17 +41,15 @@ from matplotlib.collections import LineCollection
 
 _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(_THIS_DIR, "..", "utils"))
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
 from figures_paths import figure_path, mirror_to_ready  # noqa: E402
-
 
 # ─────────────────────────────────────────────
 # CONFIG
 # ─────────────────────────────────────────────
 
-ROOT         = r"C:\dev\chaos"
-DEFAULT_CSV  = os.path.join(ROOT, "measurements", "th1_p180_th2_m179",
+DEFAULT_CSV  = os.path.join(REPO_ROOT, "measurements", "th1_p180_th2_m179",
                             "tracking.csv")
-LEGACY_OUT   = os.path.join(ROOT, "data", "figures")
 
 SG_WINDOW    = 11
 SG_POLY      = 3
@@ -61,7 +59,6 @@ AZIM_START   = 30       # starting azimuth angle
 AZIM_END     = 390      # ending azimuth (one full rotation + 30)
 N_ROT_FRAMES = 360      # frames for the rotation
 ELEV         = 22       # fixed elevation angle
-
 
 def parse_args():
     p = argparse.ArgumentParser(
@@ -75,7 +72,6 @@ def parse_args():
                    help="Save outputs to disk instead of plt.show().")
     return p.parse_args()
 
-
 def resolve_paths(args):
     """
     Returns (csv_path, output_dir, stem_label, force_save).
@@ -83,7 +79,7 @@ def resolve_paths(args):
     always written to disk.
     """
     if args.stem:
-        meas_dir = os.path.join(ROOT, "measurements", args.stem)
+        meas_dir = os.path.join(REPO_ROOT, "measurements", args.stem)
         csv_path = os.path.join(meas_dir, "tracking.csv")
         if not os.path.exists(csv_path):
             print(f"ERROR: tracking.csv not found for stem '{args.stem}'")
@@ -93,14 +89,13 @@ def resolve_paths(args):
 
     if args.csv:
         csv_path = args.csv if os.path.isabs(args.csv) \
-                   else os.path.join(ROOT, args.csv)
+                   else os.path.join(REPO_ROOT, args.csv)
         output_dir = os.path.dirname(csv_path) or LEGACY_OUT
         stem_label = os.path.basename(output_dir) or \
                      os.path.splitext(os.path.basename(csv_path))[0]
         return csv_path, output_dir, stem_label, args.save
 
     return DEFAULT_CSV, LEGACY_OUT, "long_recording", args.save
-
 
 # ─────────────────────────────────────────────
 # LOAD DATA
@@ -127,7 +122,6 @@ def load(path):
 
     return t, th1, th2, om1, om2
 
-
 # ─────────────────────────────────────────────
 # COLOURED LINE SEGMENTS
 # ─────────────────────────────────────────────
@@ -145,7 +139,6 @@ def make_segments(x, y, z, wrap_threshold=180.0):
     keep = (np.abs(np.diff(x)) <= wrap_threshold) & \
            (np.abs(np.diff(y)) <= wrap_threshold)
     return segs[keep], keep
-
 
 # ─────────────────────────────────────────────
 # STATIC 3D PLOT
@@ -222,7 +215,6 @@ def plot_3d(t, th1, th2, om1, label, out_path, output_dir):
     print(f"Static figure saved to: {out_path}")
     return fig, ax, lc, norm, cmap
 
-
 # ─────────────────────────────────────────────
 # ROTATING ANIMATION
 # ─────────────────────────────────────────────
@@ -256,7 +248,6 @@ def make_rotation_animation(fig, ax, out_mp4, output_dir):
                 print(f"  [{bar}] {pct:3d}%", end='\r', flush=True)
 
     print(f"\nRotation saved to: {out_mp4}")
-
 
 # ─────────────────────────────────────────────
 # MAIN
@@ -307,7 +298,6 @@ def main():
         make_rotation_animation(fig, ax, mp4_path, output_dir)
     else:
         plt.show()
-
 
 if __name__ == "__main__":
     main()

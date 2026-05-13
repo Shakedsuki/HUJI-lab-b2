@@ -53,12 +53,8 @@ from matplotlib.collections import LineCollection
 from mpl_toolkits.mplot3d import Axes3D                        # noqa: F401
 from mpl_toolkits.mplot3d.art3d import Line3DCollection
 
-
-ROOT     = os.path.dirname(os.path.dirname(os.path.dirname(
-              os.path.abspath(__file__))))
-MEAS_DIR = os.path.join(ROOT, "measurements")
-
-sys.path.insert(0, os.path.join(ROOT, "scripts", "utils"))
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "utils")))
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
 from figures_paths import aggregate_path, mirror_to_ready  # noqa: E402
 
 GROUPS = {
@@ -81,7 +77,6 @@ GROUPS = {
 # Schematic pendulum geometry (matplotlib math coords; +y up).
 # 0 deg = straight down; +90 = right; -90 = left.
 ARM_LEN = 1.0   # arbitrary units; both arms same length, the rig has L=L
-
 
 # ─────────────────────────────────────────────
 # DATA LOADING (shared with group_overlay.py)
@@ -119,7 +114,6 @@ def load_traj(stem):
         "om2":  np.array(om2),
     }
 
-
 def time_align(rows, max_time=None, dt_out=None):
     """Resample each clip onto a common time grid. Returns list of dicts
     with keys (stem, t, th1, th2, om1, om2) all on the same grid."""
@@ -144,11 +138,9 @@ def time_align(rows, max_time=None, dt_out=None):
         })
     return out
 
-
 def colors_for(n):
     cmap = plt.cm.tab10
     return [cmap(i / max(1, n - 1)) for i in range(n)]
-
 
 def pendulum_xy(th1_deg, th2_deg):
     """Return (pivot, elbow, bob) (x, y) for one frame in math coords.
@@ -160,7 +152,6 @@ def pendulum_xy(th1_deg, th2_deg):
     bob    = elbow + ARM_LEN * np.array([np.sin(th1 + th2),
                                           -np.cos(th1 + th2)])
     return pivot, elbow, bob
-
 
 # ─────────────────────────────────────────────
 # (A) GHOST PENDULUMS
@@ -286,7 +277,6 @@ def render_ghost(rows, out_path, fps_out, speed):
     mirror_to_ready(out_path)
     print(f"  wrote {out_path}")
 
-
 # ─────────────────────────────────────────────
 # (B) PHASE PORTRAIT TRACE RACE
 # ─────────────────────────────────────────────
@@ -358,7 +348,6 @@ def render_phase(rows, out_path, fps_out, speed):
     plt.close(fig)
     mirror_to_ready(out_path)
     print(f"  wrote {out_path}")
-
 
 # ─────────────────────────────────────────────
 # (C) 3D PHASE RIBBON OVERLAY
@@ -440,7 +429,6 @@ def render_3d(rows, out_path, fps_out, speed):
     mirror_to_ready(out_path)
     print(f"  wrote {out_path}")
 
-
 # ─────────────────────────────────────────────
 # DRIVER
 # ─────────────────────────────────────────────
@@ -460,14 +448,12 @@ def parse_args():
                    help="playback speed multiplier (default 1.0 = real time)")
     return p.parse_args()
 
-
 def resolve_stems(args):
     if args.stems:
         return [s.strip() for s in args.stems.split(",") if s.strip()]
     if args.group:
         return list(GROUPS[args.group])
     raise SystemExit("Need --group or --stems.")
-
 
 def main():
     args = parse_args()
@@ -508,7 +494,6 @@ def main():
         render_3d(rows,
                   aggregate_path(f"group_{label}_3d.mp4"),
                   args.fps, args.speed)
-
 
 if __name__ == "__main__":
     main()

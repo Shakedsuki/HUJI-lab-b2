@@ -26,8 +26,9 @@ import os
 import shutil
 import sys
 
-ROOT = r"C:\dev\chaos"
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+_THIS_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, _THIS_DIR)
+from paths import MEAS_DIR, REPO_ROOT  # noqa: E402
 from thresholds import PIVOT  # noqa: E402
 
 
@@ -89,7 +90,7 @@ def main():
 
     print(f"Using PIVOT = {PIVOT}")
 
-    meas_root = os.path.join(ROOT, "measurements")
+    meas_root = MEAS_DIR
     if args.stem:
         targets = [args.stem]
     else:

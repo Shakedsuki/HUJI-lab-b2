@@ -47,28 +47,23 @@ except (AttributeError, OSError):
 import numpy as np
 import pandas as pd
 
-
-ROOT             = os.path.dirname(os.path.dirname(os.path.dirname(
-                       os.path.abspath(__file__))))
-MEAS_DIR         = os.path.join(ROOT, "measurements")
-EXPERIMENTS_FILE = os.path.join(ROOT, "data", "experiments.json")
-
-SCRIPT_FIX_GREEN = os.path.join(ROOT, "scripts", "processing",
+SCRIPT_FIX_GREEN = os.path.join(REPO_ROOT, "scripts", "processing",
                                 "fix_green_swaps.py")
-SCRIPT_INTERP    = os.path.join(ROOT, "scripts", "processing",
+SCRIPT_INTERP    = os.path.join(REPO_ROOT, "scripts", "processing",
                                 "interpolate_suspects.py")
-SCRIPT_VERIFY    = os.path.join(ROOT, "scripts", "processing",
+SCRIPT_VERIFY    = os.path.join(REPO_ROOT, "scripts", "processing",
                                 "verify_tracking.py")
-SCRIPT_POINCARE  = os.path.join(ROOT, "scripts", "analysis", "poincare.py")
-SCRIPT_LYAPUNOV  = os.path.join(ROOT, "scripts", "analysis", "lyapunov.py")
-SCRIPT_PANELS    = os.path.join(ROOT, "scripts", "analysis", "phase_panels.py")
-SCRIPT_3D        = os.path.join(ROOT, "scripts", "analysis", "phase_3d.py")
-SCRIPT_ANALYZE   = os.path.join(ROOT, "scripts", "analysis", "chaos_analyze.py")
-SCRIPT_FRICTION  = os.path.join(ROOT, "scripts", "analysis", "friction_fit.py")
+SCRIPT_POINCARE  = os.path.join(REPO_ROOT, "scripts", "analysis", "poincare.py")
+SCRIPT_LYAPUNOV  = os.path.join(REPO_ROOT, "scripts", "analysis", "lyapunov.py")
+SCRIPT_PANELS    = os.path.join(REPO_ROOT, "scripts", "analysis", "phase_panels.py")
+SCRIPT_3D        = os.path.join(REPO_ROOT, "scripts", "analysis", "phase_3d.py")
+SCRIPT_ANALYZE   = os.path.join(REPO_ROOT, "scripts", "analysis", "chaos_analyze.py")
+SCRIPT_FRICTION  = os.path.join(REPO_ROOT, "scripts", "analysis", "friction_fit.py")
 
-sys.path.insert(0, os.path.join(ROOT, "scripts", "utils"))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
+EXPERIMENTS_FILE = EXPERIMENTS
 from figures_paths import figure_path  # noqa: E402
-
 
 # ─────────────────────────────────────────────
 # CURATED GROUP DEFINITIONS
@@ -102,7 +97,6 @@ GROUPS = {
     ],
 }
 
-
 # ─────────────────────────────────────────────
 # STATE
 # ─────────────────────────────────────────────
@@ -122,23 +116,19 @@ class ClipState:
     flags:        list = field(default_factory=list)
     actions:      list = field(default_factory=list)
 
-
 def load_registry():
     with open(EXPERIMENTS_FILE, encoding="utf-8") as f:
         return json.load(f)
 
-
 def find_entry(reg, stem):
     return next((v for v in reg.values()
                  if v.get("config_description") == stem), None)
-
 
 def is_passing(entry):
     if entry is None:
         return False
     return (entry.get("audit_new_status") == "PASS"
             or bool(entry.get("manual_accept")))
-
 
 def collect_state(stem):
     """Snapshot the live state of a clip from disk + registry."""
@@ -185,7 +175,6 @@ def collect_state(stem):
 
     return s
 
-
 # ─────────────────────────────────────────────
 # RELEASE-FRAME SANITY
 # ─────────────────────────────────────────────
@@ -209,7 +198,6 @@ def check_release_frame(stem, state):
             f"release-frame omega looks high (om1={om1:+.0f}, "
             f"om2={om2:+.0f}); release_frame={rel_frame} may be too late")
 
-
 # ─────────────────────────────────────────────
 # STAGE RUNNERS
 # ─────────────────────────────────────────────
@@ -217,7 +205,7 @@ def check_release_frame(stem, state):
 def run_step(label, cmd, log_path=None):
     """Run a subprocess and capture its output. Returns the CompletedProcess."""
     print(f"    > {label}")
-    result = subprocess.run(cmd, cwd=ROOT, capture_output=True,
+    result = subprocess.run(cmd, cwd=REPO_ROOT, capture_output=True,
                             text=True, encoding="utf-8", errors="replace")
     if log_path:
         os.makedirs(os.path.dirname(log_path), exist_ok=True)
@@ -231,33 +219,29 @@ def run_step(label, cmd, log_path=None):
         # Fall through — let downstream step decide if this is fatal.
     return result
 
-
 def step_fix_green(stem):
     """Apply geometric off-ring repair (interpolate short clusters,
     dropout long ones)."""
     return run_step(
         "fix_green_swaps",
         [sys.executable, SCRIPT_FIX_GREEN, "--stem", stem],
-        log_path=os.path.join(ROOT, "data", "curate_set_log.txt"),
+        log_path=os.path.join(REPO_ROOT, "data", "curate_set_log.txt"),
     )
-
 
 def step_interpolate(stem):
     """Run interpolate_suspects.py if there are omega-cap suspects."""
     return run_step(
         "interpolate_suspects",
         [sys.executable, SCRIPT_INTERP, "--stem", stem],
-        log_path=os.path.join(ROOT, "data", "curate_set_log.txt"),
+        log_path=os.path.join(REPO_ROOT, "data", "curate_set_log.txt"),
     )
-
 
 def step_verify(stem):
     return run_step(
         "verify_tracking",
         [sys.executable, SCRIPT_VERIFY, "--stem", stem, "--no-plot"],
-        log_path=os.path.join(ROOT, "data", "curate_set_log.txt"),
+        log_path=os.path.join(REPO_ROOT, "data", "curate_set_log.txt"),
     )
-
 
 def step_phase_2(stem):
     """Generate Poincaré + Lyapunov + phase analysis figures."""
@@ -271,8 +255,7 @@ def step_phase_2(stem):
     ]
     for label, cmd in runs:
         run_step(label, cmd,
-                 log_path=os.path.join(ROOT, "data", "curate_set_log.txt"))
-
+                 log_path=os.path.join(REPO_ROOT, "data", "curate_set_log.txt"))
 
 # ─────────────────────────────────────────────
 # DRIVER
@@ -296,14 +279,12 @@ def parse_args():
                    help="skip Phase 2 figure generation")
     return p.parse_args()
 
-
 def resolve_stems(args):
     if args.stems:
         return [s.strip() for s in args.stems.split(",") if s.strip()]
     if args.group:
         return list(GROUPS[args.group])
     raise SystemExit("Need --group or --stems.")
-
 
 def print_state(states):
     """Compact one-row-per-clip snapshot."""
@@ -320,7 +301,6 @@ def print_state(states):
         flags = "; ".join(s.flags) if s.flags else ""
         print(f"  {s.stem:<24} {s.verdict:<6} {drop:>6} {pw2:>9} "
               f"{adv:>8} {s.n_off_ring:>6} {th1:>8} {om1:>8} {flags}")
-
 
 def main():
     args = parse_args()
@@ -409,7 +389,6 @@ def main():
         print(f"  Next: run scripts/analysis/group_overlay.py --stems "
               f"{','.join(stems)}")
         print(f"  to generate the IC-divergence + theta(t)-overlay aggregate plots.")
-
 
 if __name__ == "__main__":
     main()

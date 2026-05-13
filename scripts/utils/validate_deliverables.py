@@ -45,13 +45,13 @@ import numpy as np
 import pandas as pd
 
 
-ROOT             = os.path.dirname(os.path.dirname(os.path.dirname(
-                       os.path.abspath(__file__))))
-MEAS_DIR         = os.path.join(ROOT, "measurements")
-EXPERIMENTS_FILE = os.path.join(ROOT, "data", "experiments.json")
+_THIS_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, _THIS_DIR)
+from paths import MEAS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
+EXPERIMENTS_FILE = EXPERIMENTS
 
-SCRIPT_LYAPUNOV  = os.path.join(ROOT, "scripts", "analysis", "lyapunov.py")
-SCRIPT_ANALYZE   = os.path.join(ROOT, "scripts", "analysis", "chaos_analyze.py")
+SCRIPT_LYAPUNOV  = os.path.join(REPO_ROOT, "scripts", "analysis", "lyapunov.py")
+SCRIPT_ANALYZE   = os.path.join(REPO_ROOT, "scripts", "analysis", "chaos_analyze.py")
 
 
 # Keep these definitions in sync with curate_set.py / group_overlay.py / group_animations.py.
@@ -243,7 +243,7 @@ def run_lyapunov(stem, cache):
         return cache[stem]
     cmd = [sys.executable, SCRIPT_LYAPUNOV, "--stem", stem, "--no-plot"]
     try:
-        out = subprocess.run(cmd, cwd=ROOT, capture_output=True,
+        out = subprocess.run(cmd, cwd=REPO_ROOT, capture_output=True,
                              text=True, encoding="utf-8", errors="replace",
                              timeout=120)
     except subprocess.TimeoutExpired:
@@ -279,7 +279,7 @@ def run_chaos_analyze(stem, cache):
         return cache[stem]
     cmd = [sys.executable, SCRIPT_ANALYZE, stem]
     try:
-        out = subprocess.run(cmd, cwd=ROOT, capture_output=True,
+        out = subprocess.run(cmd, cwd=REPO_ROOT, capture_output=True,
                              text=True, encoding="utf-8", errors="replace",
                              timeout=120)
     except subprocess.TimeoutExpired:

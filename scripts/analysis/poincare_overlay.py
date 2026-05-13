@@ -39,16 +39,12 @@ import matplotlib.pyplot as plt
 from matplotlib.cm import ScalarMappable
 from matplotlib.colors import Normalize
 
+POINCARE_SCRIPT  = os.path.join(REPO_ROOT, "scripts", "analysis", "poincare.py")
 
-ROOT             = os.path.dirname(os.path.dirname(os.path.dirname(
-                       os.path.abspath(__file__))))
-MEAS_DIR         = os.path.join(ROOT, "measurements")
-EXPERIMENTS_FILE = os.path.join(ROOT, "data", "experiments.json")
-POINCARE_SCRIPT  = os.path.join(ROOT, "scripts", "analysis", "poincare.py")
-
-sys.path.insert(0, os.path.join(ROOT, "scripts", "utils"))
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "utils")))
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
+EXPERIMENTS_FILE = EXPERIMENTS
 from figures_paths import aggregate_path, mirror_to_ready  # noqa: E402
-
 
 def parse_args():
     p = argparse.ArgumentParser(
@@ -58,11 +54,9 @@ def parse_args():
                    help="only PASS clips (audit_new_status==PASS or manual_accept)")
     return p.parse_args()
 
-
 def load_registry():
     with open(EXPERIMENTS_FILE, encoding="utf-8") as f:
         return json.load(f)
-
 
 def get_passing(reg):
     out = set()
@@ -72,7 +66,6 @@ def get_passing(reg):
             if cd:
                 out.add(cd)
     return out
-
 
 def status_for(reg, stem):
     e = next((v for v in reg.values()
@@ -85,12 +78,10 @@ def status_for(reg, stem):
         return "FAIL"
     return "WARN"
 
-
 def theta1_release(reg, stem):
     e = next((v for v in reg.values()
               if v.get("config_description") == stem), None)
     return abs(e.get("theta1_release", 0)) if e else 0.0
-
 
 def ensure_poincare_csv(stem):
     csv_path = os.path.join(MEAS_DIR, stem, "poincare.csv")
@@ -99,9 +90,8 @@ def ensure_poincare_csv(stem):
     print(f"  generating poincare.csv for {stem} ...")
     subprocess.run([sys.executable, POINCARE_SCRIPT, "--stem", stem,
                     "--no-plot"],
-                   cwd=ROOT, check=False, capture_output=True)
+                   cwd=REPO_ROOT, check=False, capture_output=True)
     return csv_path if os.path.exists(csv_path) else None
-
 
 def load_poincare(csv_path):
     t, th1, om1 = [], [], []
@@ -114,7 +104,6 @@ def load_poincare(csv_path):
             except (KeyError, ValueError):
                 continue
     return np.array(t), np.array(th1), np.array(om1)
-
 
 def collect_data(args):
     reg = load_registry()
@@ -141,7 +130,6 @@ def collect_data(args):
             "n": len(th1),
         })
     return rows
-
 
 def make_overlay(rows, out_path):
     """One combined panel: every clip's section, coloured by amplitude."""
@@ -176,7 +164,6 @@ def make_overlay(rows, out_path):
     mirror_to_ready(out_path)
     plt.close(fig)
     print(f"  wrote {out_path}")
-
 
 def make_grid(rows, out_path):
     """One small panel per clip, sorted by amplitude. Compact 'family'
@@ -217,7 +204,6 @@ def make_grid(rows, out_path):
     plt.close(fig)
     print(f"  wrote {out_path}")
 
-
 def main():
     args = parse_args()
     print("poincare_overlay.py")
@@ -228,7 +214,6 @@ def main():
         return
     make_overlay(rows, aggregate_path("poincare_overlay.png"))
     make_grid(rows,    aggregate_path("poincare_grid.png"))
-
 
 if __name__ == "__main__":
     main()

@@ -48,15 +48,10 @@ except ImportError:
     print("  pip install openpyxl")
     sys.exit(1)
 
-
 # ─────────────────────────────────────────────
 # CONSTANTS
 # ─────────────────────────────────────────────
 
-ROOT             = r"C:\dev\chaos"
-DATA_DIR         = os.path.join(ROOT, "data")
-MEAS_DIR         = os.path.join(ROOT, "measurements")
-EXPERIMENTS_FILE = os.path.join(DATA_DIR, "experiments.json")
 DEFAULT_OUTPUT   = os.path.join(DATA_DIR, "status_report.xlsx")
 
 CONFIG_RE = re.compile(r"^th1_[pm]\d+_th2_[pm]\d+(_r\d+)?$")
@@ -89,7 +84,6 @@ FILL = {
 GREEN_FONT = Font(color="006100")
 RED_FONT   = Font(color="9C0006")
 
-
 # ─────────────────────────────────────────────
 # REGISTRY HELPERS
 # ─────────────────────────────────────────────
@@ -113,7 +107,6 @@ def synthesize_config_description(entry):
         return f"{sign}{abs(n):03d}"
     return f"th1_{fmt(th1)}_th2_{fmt(th2)}"
 
-
 def resolve_config_description(key, entry):
     """Same precedence as the migration script."""
     cd = entry.get("config_description")
@@ -124,7 +117,6 @@ def resolve_config_description(key, entry):
     if CONFIG_RE.match(stem):
         return stem
     return synthesize_config_description(entry)
-
 
 # ─────────────────────────────────────────────
 # CSV-DERIVED METRICS
@@ -164,7 +156,6 @@ def compute_dropout_metrics(csv_path):
 
     metrics["dropout_pattern"] = describe_dropout_runs(free, drops)
     return metrics
-
 
 def describe_dropout_runs(free, drops):
     """
@@ -219,7 +210,6 @@ def describe_dropout_runs(free, drops):
     body = " | ".join(s for _, s in formatted)
     return f"{len(runs)} run{'s' if len(runs) != 1 else ''}: {body}"
 
-
 def count_verification_suspects(verification_csv):
     """Count rows with suspect=1; returns None if file missing."""
     if not os.path.exists(verification_csv):
@@ -231,7 +221,6 @@ def count_verification_suspects(verification_csv):
         return int(df["suspect"].astype(int).sum())
     except Exception:
         return None
-
 
 # ─────────────────────────────────────────────
 # STATUS DERIVATION
@@ -271,7 +260,6 @@ def derive_status(meas_dir, dropout_pct, tracking_quality):
 
     return (f"IN PROGRESS ({len(present)}/{len(CANONICAL_OUTPUTS)})",
             "IN PROGRESS")
-
 
 # ─────────────────────────────────────────────
 # ROW BUILDER
@@ -366,7 +354,6 @@ def build_row(key, entry, cd):
         "notes":              "\n".join(notes_parts) if notes_parts else "",
     }
 
-
 def add_long_recording_extras(row, entry, cd):
     """Tack on the four extra columns for the long_recording sheet."""
     meas_dir   = os.path.join(MEAS_DIR, cd)
@@ -379,7 +366,6 @@ def add_long_recording_extras(row, entry, cd):
         suspects if suspects is not None else "—")
     row["energy_proxy"]                = entry.get("energy_proxy")
     return row
-
 
 # ─────────────────────────────────────────────
 # WORKBOOK FORMATTING
@@ -481,7 +467,6 @@ def write_sheet(ws, columns, rows, *, status_col="status",
     ws.freeze_panes = "A2"
     ws.auto_filter.ref = ws.dimensions
 
-
 # ─────────────────────────────────────────────
 # MAIN
 # ─────────────────────────────────────────────
@@ -492,7 +477,6 @@ def parse_args():
     p.add_argument("--output", default=DEFAULT_OUTPUT,
                    help=f"output path (default: {DEFAULT_OUTPUT})")
     return p.parse_args()
-
 
 def main():
     args = parse_args()
@@ -563,7 +547,7 @@ def main():
 
     out = args.output
     if not os.path.isabs(out):
-        out = os.path.join(ROOT, out)
+        out = os.path.join(REPO_ROOT, out)
     os.makedirs(os.path.dirname(out), exist_ok=True)
     wb.save(out)
 
@@ -580,10 +564,12 @@ def main():
     n_done = sum(1 for r in main_rows + ([long_row] if long_row else [])
                  if str(r["status"]).startswith("DONE"))
 
-    print(f"Report written: {os.path.relpath(out, ROOT)} — "
+    print(f"Report written: {os.path.relpath(out, REPO_ROOT)} — "
           f"{n_total} measurements, {n_tracked} tracked, {n_done} done")
     return 0
 
-
 if __name__ == "__main__":
     sys.exit(main())
+
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
+EXPERIMENTS_FILE = EXPERIMENTS

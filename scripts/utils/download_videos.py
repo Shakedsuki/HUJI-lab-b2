@@ -17,7 +17,6 @@ import os
 import subprocess
 import sys
 
-
 # ── Google Drive folder ID ────────────────────────────────────────────
 # Extracted from: https://drive.google.com/drive/folders/1nB9rrpZ1UTdLrKEJudptLbawavkvXWj-
 DRIVE_FOLDER_ID = "1nB9rrpZ1UTdLrKEJudptLbawavkvXWj-"
@@ -26,7 +25,6 @@ DRIVE_FOLDER_ID = "1nB9rrpZ1UTdLrKEJudptLbawavkvXWj-"
 SCRIPT_DIR   = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(os.path.dirname(SCRIPT_DIR))
 OUTPUT_DIR   = os.path.join(PROJECT_ROOT, "data", "videos")
-
 
 def check_gdown():
     """Check gdown is installed, prompt to install if not."""
@@ -37,7 +35,6 @@ def check_gdown():
         print("ERROR: gdown is not installed.")
         print("Install it with:  pip install gdown")
         sys.exit(1)
-
 
 def main():
     check_gdown()
@@ -62,6 +59,7 @@ def main():
     print()
     print("Done. Videos saved to:", OUTPUT_DIR)
 
-
 if __name__ == "__main__":
     main()
+
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402

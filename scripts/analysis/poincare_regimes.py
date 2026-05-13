@@ -30,15 +30,11 @@ import matplotlib.pyplot as plt
 from matplotlib import cm
 import matplotlib.colors as mcolors
 
+LYAP_CSV = os.path.join(REPO_ROOT, "data", "lyapunov_summary.csv")
 
-ROOT     = os.path.dirname(os.path.dirname(os.path.dirname(
-              os.path.abspath(__file__))))
-MEAS_DIR = os.path.join(ROOT, "measurements")
-LYAP_CSV = os.path.join(ROOT, "data", "lyapunov_summary.csv")
-
-sys.path.insert(0, os.path.join(ROOT, "scripts", "utils"))
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "utils")))
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
 from figures_paths import aggregate_path, mirror_to_ready  # noqa: E402
-
 
 # Factor-of-2 amplitude ladder. All clips have clean Lyapunov fits
 # (R² > 0.6) and no tracker FAIL flags.
@@ -48,7 +44,6 @@ PANELS = [
     {"stem": "th1_p138_th2_m002", "label": "Strongly chaotic"},
     {"stem": "th1_p180_th2_m179", "label": "Fully chaotic"},
 ]
-
 
 def load_lyap_index():
     """Returns dict stem -> {lambda1, r2, amplitude}."""
@@ -64,14 +59,12 @@ def load_lyap_index():
         }
     return out
 
-
 def load_poincare(stem):
     p = os.path.join(MEAS_DIR, stem, "poincare.csv")
     if not os.path.exists(p):
         return None
     df = pd.read_csv(p)
     return df if len(df) else None
-
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -147,7 +140,6 @@ def main():
         plt.savefig(out, dpi=150, bbox_inches="tight")
         mirror_to_ready(out)
         print(f"  wrote {out}")
-
 
 if __name__ == "__main__":
     main()

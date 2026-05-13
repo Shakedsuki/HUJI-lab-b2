@@ -42,24 +42,21 @@ from scipy.signal import savgol_filter
 
 _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(_THIS_DIR, "..", "utils"))
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
 from figures_paths import figure_path  # noqa: E402
-
 
 # ─────────────────────────────────────────────
 # CONFIG
 # ─────────────────────────────────────────────
 
-ROOT         = r"C:\dev\chaos"
-DEFAULT_CSV  = os.path.join(ROOT, "measurements", "th1_p180_th2_m179",
+DEFAULT_CSV  = os.path.join(REPO_ROOT, "measurements", "th1_p180_th2_m179",
                             "tracking.csv")
-LEGACY_OUT   = os.path.join(ROOT, "data", "figures")
 
 SG_WINDOW    = 11
 SG_POLY      = 3
 
 INTERVAL_MS  = 16     # ~60fps playback (matches 59.94fps source)
 SKIP         = 1      # process every Nth frame (1 = all frames, 2 = half speed)
-
 
 def parse_args():
     p = argparse.ArgumentParser(
@@ -73,11 +70,10 @@ def parse_args():
                    help="Save MP4 instead of plt.show().")
     return p.parse_args()
 
-
 def resolve_paths(args):
     """Returns (csv_path, output_dir, stem_label, force_save)."""
     if args.stem:
-        meas_dir = os.path.join(ROOT, "measurements", args.stem)
+        meas_dir = os.path.join(REPO_ROOT, "measurements", args.stem)
         csv_path = os.path.join(meas_dir, "tracking.csv")
         if not os.path.exists(csv_path):
             print(f"ERROR: tracking.csv not found for stem '{args.stem}'")
@@ -87,7 +83,7 @@ def resolve_paths(args):
 
     if args.csv:
         csv_path = args.csv if os.path.isabs(args.csv) \
-                   else os.path.join(ROOT, args.csv)
+                   else os.path.join(REPO_ROOT, args.csv)
         output_dir = os.path.dirname(csv_path) or LEGACY_OUT
         stem_label = os.path.basename(output_dir) or \
                      os.path.splitext(os.path.basename(csv_path))[0]
@@ -99,7 +95,6 @@ def resolve_paths(args):
 COLOR_CONFIG = 'tab:blue'    # configuration space (θ₁ vs θ₂)
 COLOR_ARM1   = 'tab:green'   # arm 1 / green physical marker
 COLOR_ARM2   = 'tab:red'     # arm 2 / red physical marker
-
 
 # ─────────────────────────────────────────────
 # LOAD & PREPARE
@@ -129,7 +124,6 @@ def load(path):
 
     return t, th1, th2, om1, om2
 
-
 def break_arrays(arrays, wrap_mask):
     """
     Set position (i + 1) to NaN in every array where wrap_mask[i] is True.
@@ -142,7 +136,6 @@ def break_arrays(arrays, wrap_mask):
         b[1:][wrap_mask] = np.nan
         out.append(b)
     return out
-
 
 # ─────────────────────────────────────────────
 # ANIMATION
@@ -288,7 +281,6 @@ def animate(path, output_dir, stem_label, force_save):
         print(f"\nSaved to: {output_mp4}")
     else:
         plt.show()
-
 
 # ─────────────────────────────────────────────
 # MAIN

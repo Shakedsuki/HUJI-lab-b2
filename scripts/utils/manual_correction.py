@@ -54,20 +54,19 @@ except (AttributeError, OSError):
     pass
 
 
-ROOT             = r"C:\dev\chaos"
-VIDEOS_DIR       = os.path.join(ROOT, "data", "videos")
-MEAS_DIR         = os.path.join(ROOT, "measurements")
-DATA_DIR         = os.path.join(ROOT, "data")
-EXPERIMENTS_FILE = os.path.join(DATA_DIR, "experiments.json")
+_THIS_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, _THIS_DIR)
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
+EXPERIMENTS_FILE = EXPERIMENTS
 
-TRACKER_SCRIPT = os.path.join(ROOT, "scripts", "processing", "ring_tracker.py")
-VERIFY_SCRIPT  = os.path.join(ROOT, "scripts", "processing", "verify_tracking.py")
-INTERP_SCRIPT  = os.path.join(ROOT, "scripts", "processing", "interpolate_suspects.py")
-TRACK_ONE      = os.path.join(ROOT, "scripts", "utils",       "track_one.py")
+TRACKER_SCRIPT = os.path.join(REPO_ROOT, "scripts", "processing", "ring_tracker.py")
+VERIFY_SCRIPT  = os.path.join(REPO_ROOT, "scripts", "processing", "verify_tracking.py")
+INTERP_SCRIPT  = os.path.join(REPO_ROOT, "scripts", "processing", "interpolate_suspects.py")
+TRACK_ONE      = os.path.join(REPO_ROOT, "scripts", "utils",       "track_one.py")
 
 # Reuse the metrics + verdict logic from track_one so manual_correction
 # emits the same verdict card and auto-marks tracking_quality on PASS.
-sys.path.insert(0, os.path.join(ROOT, "scripts", "utils"))
+sys.path.insert(0, _THIS_DIR)
 import track_one as _track_one_mod  # noqa: E402
 # Brief 10b: PIVOT and ARM_LENGTH_PX live in thresholds.py — sole
 # source of truth. Do not redeclare locally.
@@ -440,7 +439,7 @@ def run_track_and_verify(stem, seeds_path, earliest_seed, omega_cap,
     if use_from_frame:
         cmd += ["--from-frame", str(earliest_seed)]
 
-    rc = subprocess.run(cmd, cwd=ROOT).returncode
+    rc = subprocess.run(cmd, cwd=REPO_ROOT).returncode
     if rc != 0:
         print(f"ring_tracker exit {rc} — aborting before verify.")
         return rc
@@ -453,7 +452,7 @@ def run_track_and_verify(stem, seeds_path, earliest_seed, omega_cap,
     rc = subprocess.run(
         [sys.executable, VERIFY_SCRIPT, "--stem", stem,
          "--omega-cap", str(omega_cap), "--no-plot"],
-        cwd=ROOT,
+        cwd=REPO_ROOT,
     ).returncode
     if rc != 0:
         print(f"verify_tracking exit {rc} — aborting before interpolation.")
@@ -474,7 +473,7 @@ def run_track_and_verify(stem, seeds_path, earliest_seed, omega_cap,
         irc = subprocess.run(
             [sys.executable, INTERP_SCRIPT, "--stem", stem,
              "--omega-cap", str(omega_cap)],
-            cwd=ROOT,
+            cwd=REPO_ROOT,
         ).returncode
         if irc != 0:
             print(f"interpolate_suspects exit {irc} — verdict will use pre-interp metrics.")

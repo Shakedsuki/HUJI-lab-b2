@@ -44,17 +44,10 @@ try:
 except (AttributeError, OSError):
     pass
 
-
-ROOT             = r"C:\dev\chaos"
-DATA_DIR         = os.path.join(ROOT, "data")
-MEAS_DIR         = os.path.join(ROOT, "measurements")
-VIDEOS_DIR       = os.path.join(ROOT, "data", "videos")
-EXPERIMENTS_FILE = os.path.join(DATA_DIR, "experiments.json")
-TRACKER_SCRIPT   = os.path.join(ROOT, "scripts", "processing",
+TRACKER_SCRIPT   = os.path.join(REPO_ROOT, "scripts", "processing",
                                 "ring_tracker.py")
-VERIFY_SCRIPT    = os.path.join(ROOT, "scripts", "processing",
+VERIFY_SCRIPT    = os.path.join(REPO_ROOT, "scripts", "processing",
                                 "verify_tracking.py")
-
 
 def parse_args():
     p = argparse.ArgumentParser(
@@ -77,11 +70,9 @@ def parse_args():
                    help="ω cap for the verify step (default 2500)")
     return p.parse_args()
 
-
 def load_registry():
     with open(EXPERIMENTS_FILE, "r", encoding="utf-8") as f:
         return json.load(f)
-
 
 def find_entry_by_stem(reg, stem):
     for k, e in reg.items():
@@ -90,7 +81,6 @@ def find_entry_by_stem(reg, stem):
     if stem in reg:
         return stem, reg[stem]
     return None, None
-
 
 # ─────────────────────────────────────────────
 # CSV PARSING
@@ -119,7 +109,6 @@ def load_tracking_rows(path):
                 continue
     return rows
 
-
 def find_suspect_frames(verification_path, arm_dev_threshold=10.0):
     """Return a sorted list of frame numbers that need a seed:
        - suspect=1 (any check fired)
@@ -145,7 +134,6 @@ def find_suspect_frames(verification_path, arm_dev_threshold=10.0):
                 continue
     return sorted(out)
 
-
 def clusterize(frames, gap):
     """Group consecutive frames within `gap` of each other into the
     same cluster. Returns a list of [first, last] pairs."""
@@ -160,7 +148,6 @@ def clusterize(frames, gap):
             out.append([f, f])
     return out
 
-
 # ─────────────────────────────────────────────
 # CLEAN-NEIGHBOUR LOOKUP
 # ─────────────────────────────────────────────
@@ -173,7 +160,6 @@ def is_clean_row(row):
     return all(row.get(k) is not None for k in
                ("x_green", "y_green", "x_red", "y_red"))
 
-
 def find_clean_anchor_before(rows, start_frame, max_back, suspect_set):
     """Walk backward from start_frame-1, return the first frame whose
     row is clean AND not itself a suspect. Returns None on miss."""
@@ -183,7 +169,6 @@ def find_clean_anchor_before(rows, start_frame, max_back, suspect_set):
         if is_clean_row(rows.get(f)):
             return f
     return None
-
 
 def find_clean_anchor_after(rows, end_frame, max_forward, suspect_set,
                             max_frame):
@@ -196,7 +181,6 @@ def find_clean_anchor_after(rows, end_frame, max_forward, suspect_set,
         if is_clean_row(rows.get(f)):
             return f
     return None
-
 
 # ─────────────────────────────────────────────
 # SEED CONSTRUCTION
@@ -217,7 +201,6 @@ def interp_xy(rows, before_f, after_f, target_f):
         (int(round(lerp(a["x_red"],   b["x_red"]))),
          int(round(lerp(a["y_red"],   b["y_red"])))),
     )
-
 
 def build_auto_seeds(rows, suspect_frames, gap, max_dist):
     """For each cluster of suspect frames, derive one seed at the
@@ -264,7 +247,6 @@ def build_auto_seeds(rows, suspect_frames, gap, max_dist):
         })
     return auto, plan
 
-
 # ─────────────────────────────────────────────
 # SEEDS.JSON I/O
 # ─────────────────────────────────────────────
@@ -278,7 +260,6 @@ def load_existing_seeds(path):
         return list(data.get("seeds", []))
     except (OSError, json.JSONDecodeError):
         return []
-
 
 def merge_seeds(existing, auto):
     """Merge auto-seeds into existing seeds. Existing seeds win on
@@ -294,7 +275,6 @@ def merge_seeds(existing, auto):
             }
             n_added += 1
     return sorted(by_frame.values(), key=lambda s: s["frame"]), n_added
-
 
 def save_seeds(path, seeds):
     os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -315,7 +295,6 @@ def save_seeds(path, seeds):
     }
     with open(path, "w", encoding="utf-8") as f:
         json.dump(payload, f, indent=2)
-
 
 # ─────────────────────────────────────────────
 # RE-TRACK + RE-VERIFY
@@ -359,7 +338,7 @@ def run_retrack_and_verify(stem, seeds_path, earliest_seed, omega_cap):
     if use_from_frame:
         cmd += ["--from-frame", str(earliest_seed)]
 
-    rc = subprocess.run(cmd, cwd=ROOT).returncode
+    rc = subprocess.run(cmd, cwd=REPO_ROOT).returncode
     if rc != 0:
         print(f"ring_tracker exit {rc} — aborting before verify.")
         return rc
@@ -373,9 +352,8 @@ def run_retrack_and_verify(stem, seeds_path, earliest_seed, omega_cap):
          "--stem", stem,
          "--omega-cap", str(omega_cap),
          "--no-plot"],
-        cwd=ROOT).returncode
+        cwd=REPO_ROOT).returncode
     return rc
-
 
 # ─────────────────────────────────────────────
 # MAIN
@@ -463,6 +441,8 @@ def main():
         print(f"  Re-track or verify exited rc={rc}")
     return rc
 
-
 if __name__ == "__main__":
     sys.exit(main())
+
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
+EXPERIMENTS_FILE = EXPERIMENTS

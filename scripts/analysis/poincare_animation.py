@@ -52,16 +52,10 @@ from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 from matplotlib import cm
 import matplotlib.colors as mcolors
 
-
-ROOT     = os.path.dirname(os.path.dirname(os.path.dirname(
-              os.path.abspath(__file__))))
-MEAS_DIR = os.path.join(ROOT, "measurements")
-
 ANIM_INTERVAL_MS = 16       # animation tick (~62 fps display target)
 SOURCE_FPS       = 59.94    # data acquisition rate
 TRAIL_FRAMES     = 200      # ghost trail length
 FLASH_DURATION_S = 0.5      # how long the bright flash lingers
-
 
 # ─────────────────────────────────────────────
 # DATA
@@ -75,7 +69,6 @@ def list_clips():
         if os.path.exists(os.path.join(MEAS_DIR, d, "verification.csv")):
             out.append(d)
     return out
-
 
 def load_clip(stem):
     """Return (t, th1, th2, w1, w2) for the free_swing phase. Skips NaN rows."""
@@ -106,7 +99,6 @@ def load_clip(stem):
             free["omega1_deg_s"].to_numpy(),
             free["omega2_deg_s"].to_numpy())
 
-
 def find_crossings_upward(t, th1, th2, w1, w2):
     """Find all upward crossings of θ₁+θ₂=0 (i.e. d/dt(θ₁+θ₂) > 0).
     Returns list of dicts: {idx, frac, t_cross, th1, th2, w1, w2}."""
@@ -132,7 +124,6 @@ def find_crossings_upward(t, th1, th2, w1, w2):
                     w2       = (1 - frac) * w2[i]  + frac * w2[i + 1],
                 ))
     return out
-
 
 # ─────────────────────────────────────────────
 # ANIMATOR
@@ -393,7 +384,6 @@ class PoincareAnimator:
                 self.cross2d_persistent, self.cross2d_flash,
                 self.count_text, self.status_text)
 
-
 # ─────────────────────────────────────────────
 # WIRING
 # ─────────────────────────────────────────────
@@ -465,13 +455,11 @@ def build_figure(stems, initial_stem):
     fig._anim = anim
     return fig, anim_obj
 
-
 def parse_args():
     p = argparse.ArgumentParser(description=__doc__,
                                   formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--stem", default=None, help="Clip stem (default: first).")
     return p.parse_args()
-
 
 def main():
     args = parse_args()
@@ -487,6 +475,7 @@ def main():
     fig, _ = build_figure(stems, initial)
     plt.show()
 
-
 if __name__ == "__main__":
     main()
+
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402

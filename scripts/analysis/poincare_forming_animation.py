@@ -31,12 +31,8 @@ import matplotlib.pyplot as plt
 from matplotlib import animation, cm
 import matplotlib.colors as mcolors
 
-
-ROOT     = os.path.dirname(os.path.dirname(os.path.dirname(
-              os.path.abspath(__file__))))
-MEAS_DIR = os.path.join(ROOT, "measurements")
-
-sys.path.insert(0, os.path.join(ROOT, "scripts", "utils"))
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "utils")))
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
 from figures_paths import aggregate_path, mirror_to_ready  # noqa: E402
 
 REGULAR_STEM = "th1_p044_th2_m001"
@@ -46,7 +42,6 @@ OUTPUT_FPS       = 30
 ANIM_DURATION_S  = 30.0      # total wall-clock video length
 FLASH_FRAMES     = int(0.4 * OUTPUT_FPS)
 
-
 def load_crossings(stem):
     """Returns DataFrame with t_s (relative to t=0), theta1_deg, omega1_deg_s."""
     path = os.path.join(MEAS_DIR, stem, "poincare.csv")
@@ -54,7 +49,6 @@ def load_crossings(stem):
     df = df.sort_values("t_s").reset_index(drop=True)
     df["t_rel"] = df["t_s"] - df["t_s"].iloc[0]
     return df
-
 
 def main():
     reg = load_crossings(REGULAR_STEM)
@@ -192,7 +186,6 @@ def main():
     plt.close(fig)
     mirror_to_ready(out)
     print(f"  wrote {out}")
-
 
 if __name__ == "__main__":
     main()

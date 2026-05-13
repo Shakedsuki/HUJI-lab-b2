@@ -41,18 +41,15 @@ from scipy.signal import savgol_filter
 
 _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(_THIS_DIR, "..", "utils"))
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
 from figures_paths import figure_path, mirror_to_ready  # noqa: E402
-
 
 # ─────────────────────────────────────────────
 # CONFIG
 # ─────────────────────────────────────────────
 
-ROOT        = r"C:\dev\chaos"
-DEFAULT_CSV = os.path.join(ROOT, "measurements", "th1_p180_th2_m179",
+DEFAULT_CSV = os.path.join(REPO_ROOT, "measurements", "th1_p180_th2_m179",
                            "tracking.csv")
-LEGACY_OUT  = os.path.join(ROOT, "data", "figures")
-
 
 def parse_args():
     p = argparse.ArgumentParser(
@@ -66,11 +63,10 @@ def parse_args():
                    help="Save PNG instead of plt.show().")
     return p.parse_args()
 
-
 def resolve_paths(args):
     """Returns (csv_path, output_dir, stem_label, force_save)."""
     if args.stem:
-        meas_dir = os.path.join(ROOT, "measurements", args.stem)
+        meas_dir = os.path.join(REPO_ROOT, "measurements", args.stem)
         csv_path = os.path.join(meas_dir, "tracking.csv")
         if not os.path.exists(csv_path):
             print(f"ERROR: tracking.csv not found for stem '{args.stem}'")
@@ -80,7 +76,7 @@ def resolve_paths(args):
 
     if args.csv:
         csv_path = args.csv if os.path.isabs(args.csv) \
-                   else os.path.join(ROOT, args.csv)
+                   else os.path.join(REPO_ROOT, args.csv)
         output_dir = os.path.dirname(csv_path) or LEGACY_OUT
         stem_label = os.path.basename(output_dir) or \
                      os.path.splitext(os.path.basename(csv_path))[0]
@@ -98,7 +94,6 @@ FPS = 59.94      # used only if CSV timestamps look wrong
 COLOR_CONFIG = 'tab:blue'    # configuration space
 COLOR_ARM1   = 'tab:green'   # arm 1 / green physical marker
 COLOR_ARM2   = 'tab:red'     # arm 2 / red physical marker
-
 
 # ─────────────────────────────────────────────
 # LOAD DATA
@@ -131,7 +126,6 @@ def load_csv(path):
 
     return t, th1, th2
 
-
 # ─────────────────────────────────────────────
 # DERIVATIVES
 # ─────────────────────────────────────────────
@@ -158,7 +152,6 @@ def compute_velocities(t, th1, th2):
 
     return om1, om2
 
-
 # ─────────────────────────────────────────────
 # WRAP-AWARE LINE PLOTTING
 # ─────────────────────────────────────────────
@@ -167,7 +160,6 @@ def wrap_break_mask(theta, threshold=180.0):
     """Boolean mask of length N-1 marking positions where consecutive
     samples jump by more than `threshold` degrees (= a wrap discontinuity)."""
     return np.abs(np.diff(theta)) > threshold
-
 
 def insert_breaks(arrays, break_mask):
     """
@@ -190,7 +182,6 @@ def insert_breaks(arrays, break_mask):
         out.append(np.concatenate(pieces))
     return tuple(out)
 
-
 # ─────────────────────────────────────────────
 # POINCARE SECTION
 # ─────────────────────────────────────────────
@@ -210,7 +201,6 @@ def poincare_crossings(th1, om1):
         return np.array([]), np.array([])
 
     return np.array(crossings[:-1]), np.array(crossings[1:])
-
 
 # ─────────────────────────────────────────────
 # PLOT
@@ -318,7 +308,6 @@ def make_figure(t, th1, th2, om1, om2, label, out_path, force_save):
     else:
         plt.show()
 
-
 # ─────────────────────────────────────────────
 # MAIN
 # ─────────────────────────────────────────────
@@ -362,7 +351,6 @@ def main():
         out_path = os.path.join(output_dir, f"{stem}_sanity.png")
 
     make_figure(t, th1, th2, om1, om2, stem, out_path, force_save)
-
 
 if __name__ == "__main__":
     main()

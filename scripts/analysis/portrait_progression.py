@@ -46,15 +46,10 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.colors import Normalize
 
-
-ROOT             = os.path.dirname(os.path.dirname(os.path.dirname(
-                       os.path.abspath(__file__))))
-MEAS_DIR         = os.path.join(ROOT, "measurements")
-EXPERIMENTS_FILE = os.path.join(ROOT, "data", "experiments.json")
-
-sys.path.insert(0, os.path.join(ROOT, "scripts", "utils"))
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "utils")))
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
+EXPERIMENTS_FILE = EXPERIMENTS
 from figures_paths import aggregate_path, mirror_to_ready  # noqa: E402
-
 
 # Hard-exclude list — clips for which a phase portrait simply isn't
 # meaningful, regardless of audit verdict. Distinct from FAIL: a FAIL
@@ -72,7 +67,6 @@ EXCLUDE_FROM_PROGRESSION = {
     "th1_p176_th2_p180":  "tracking failure — |ω| reaches 8×10³ deg/s",
     "th1_p180_th2_p090":  "tracking failure — |ω| reaches 7.5×10³ deg/s",
 }
-
 
 def parse_args():
     p = argparse.ArgumentParser()
@@ -93,15 +87,12 @@ def parse_args():
                         "Default: no clipping.")
     return p.parse_args()
 
-
 def load_registry():
     with open(EXPERIMENTS_FILE, encoding="utf-8") as f:
         return json.load(f)
 
-
 def is_passing(e):
     return e.get("audit_new_status") == "PASS" or bool(e.get("manual_accept"))
-
 
 def load_traj(stem, arm):
     csv_path = os.path.join(MEAS_DIR, stem, "verification.csv")
@@ -124,7 +115,6 @@ def load_traj(stem, arm):
     if len(t) < 50:
         return None, None, None
     return np.array(t), np.array(th), np.array(om)
-
 
 def main():
     args = parse_args()
@@ -211,7 +201,6 @@ def main():
     mirror_to_ready(out_path)
     plt.close(fig)
     print(f"  wrote {out_path}")
-
 
 if __name__ == "__main__":
     main()

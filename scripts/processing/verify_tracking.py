@@ -49,17 +49,15 @@ try:
 except (AttributeError, OSError):
     pass
 
-
-ROOT = r"C:\dev\chaos"
-EXPERIMENTS_FILE = os.path.join(ROOT, "data", "experiments.json")
-DEFAULT_CSV = os.path.join(ROOT, "measurements", "th1_p180_th2_m179",
+DEFAULT_CSV = os.path.join(REPO_ROOT, "measurements", "th1_p180_th2_m179",
                            "tracking.csv")
 
 # Pull rendering helpers from scripts/utils/render.py — every print
 # block in this script that produces a table is delegated there so
 # the verdict layer and the live verify output stay visually
 # consistent.
-sys.path.insert(0, os.path.join(ROOT, "scripts", "utils"))
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "utils")))
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
 from render import (  # noqa: E402
     render_verification_summary,
     render_arm_breakdown,
@@ -84,7 +82,6 @@ from thresholds import (  # noqa: E402
     PIVOT,
     ARM_LENGTH_PX,
 )
-
 
 def compute_frame_energy(th1_deg, th2_deg, om1_dps, om2_dps,
                          L_m=0.35, g=9.8):
@@ -126,7 +123,6 @@ def compute_frame_energy(th1_deg, th2_deg, om1_dps, om2_dps,
     )
 
     return KE + PE
-
 
 def parse_args():
     p = argparse.ArgumentParser(
@@ -180,7 +176,6 @@ def parse_args():
                         f"{ARM_LENGTH_TREND_DEV_PCT:.1f})")
     return p.parse_args()
 
-
 def resolve_paths(args):
     """
     Returns (csv_path, output_dir, stem_label).
@@ -188,7 +183,7 @@ def resolve_paths(args):
     output_dir is where verification.csv / verification.png are written.
     """
     if args.stem:
-        meas_dir = os.path.join(ROOT, "measurements", args.stem)
+        meas_dir = os.path.join(REPO_ROOT, "measurements", args.stem)
         csv_path = os.path.join(meas_dir, "tracking.csv")
         if not os.path.exists(csv_path):
             print(f"ERROR: tracking.csv not found for stem '{args.stem}'")
@@ -199,7 +194,7 @@ def resolve_paths(args):
     if args.csv:
         csv_path = args.csv
         if not os.path.isabs(csv_path):
-            csv_path = os.path.join(ROOT, csv_path)
+            csv_path = os.path.join(REPO_ROOT, csv_path)
         # Write outputs next to the CSV — i.e., into the measurement folder.
         output_dir = os.path.dirname(csv_path)
         stem_label = os.path.basename(output_dir) or \
@@ -210,7 +205,6 @@ def resolve_paths(args):
     output_dir = os.path.dirname(csv_path)
     stem_label = os.path.basename(output_dir)
     return csv_path, output_dir, stem_label
-
 
 def wrap_diff(angle_series):
     """
@@ -228,14 +222,12 @@ def wrap_diff(angle_series):
         d[i] = delta
     return d
 
-
 # Brief 12 — Savitzky-Golay differentiation parameters. Match the
 # values used by the analysis-side scripts (phase_panels, phase_3d,
 # combined_video) so verify_tracking's ω is consistent with the ω
 # downstream consumers actually plot.
 SG_WINDOW = 11
 SG_POLY   = 3
-
 
 def smooth_omega(angle_series, dt_med):
     """
@@ -287,7 +279,6 @@ def smooth_omega(angle_series, dt_med):
                 om[i:j] = np.gradient(seg_unwrap, dt_med)
         i = j
     return om
-
 
 def main():
     args = parse_args()
@@ -844,7 +835,6 @@ def main():
         out_png = figure_path("verification", derived_stem)
         plt.savefig(out_png, dpi=140)
         print(f"Plot: {out_png}")
-
 
 if __name__ == "__main__":
     main()
