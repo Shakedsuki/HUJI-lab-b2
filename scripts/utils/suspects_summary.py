@@ -27,11 +27,6 @@ try:
 except (AttributeError, OSError):
     pass
 
-
-ROOT     = r"C:\dev\chaos"
-MEAS_DIR = os.path.join(ROOT, "measurements")
-
-
 def parse_args():
     p = argparse.ArgumentParser(
         description="Decompose a clip's suspect count into per-check "
@@ -42,7 +37,6 @@ def parse_args():
                    help="frames within this gap count as the same "
                         "cluster (default 10)")
     return p.parse_args()
-
 
 def clusterize(frames, gap):
     if not frames:
@@ -55,7 +49,6 @@ def clusterize(frames, gap):
         else:
             out.append([f])
     return out
-
 
 def main():
     args = parse_args()
@@ -183,6 +176,7 @@ def main():
     print()
     return 0
 
-
 if __name__ == "__main__":
     sys.exit(main())
+
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402

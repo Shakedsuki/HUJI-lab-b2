@@ -72,24 +72,20 @@ try:
 except (AttributeError, OSError):
     pass
 
-
-ROOT             = r"C:\dev\chaos"
-VIDEOS_DIR       = os.path.join(ROOT, "data", "videos")
-MEAS_DIR         = os.path.join(ROOT, "measurements")
-EXPERIMENTS_FILE = os.path.join(ROOT, "data", "experiments.json")
-TRACKER_SCRIPT   = os.path.join(ROOT, "scripts", "processing", "ring_tracker.py")
-TRACK_ONE_SCRIPT = os.path.join(ROOT, "scripts", "utils", "track_one.py")
-BULK_LOG_FILE    = os.path.join(ROOT, "data", "bulk_tracking_log.json")
+TRACKER_SCRIPT   = os.path.join(REPO_ROOT, "scripts", "processing", "ring_tracker.py")
+TRACK_ONE_SCRIPT = os.path.join(REPO_ROOT, "scripts", "utils", "track_one.py")
+BULK_LOG_FILE    = os.path.join(REPO_ROOT, "data", "bulk_tracking_log.json")
 
 # Pull verdict logic from track_one (in-process) and the rich summary
 # renderer from render so the bulk wrap-up uses the same PASS/WARN/FAIL
 # bands as a single-clip run.
-sys.path.insert(0, os.path.join(ROOT, "scripts", "utils"))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
+EXPERIMENTS_FILE = EXPERIMENTS
 from track_one import compute_verdict, read_verification_metrics  # noqa: E402
 from render import render_bulk_summary  # noqa: E402
 
 CONFIG_RE = re.compile(r"^th1_[pm]\d+_th2_[pm]\d+(_r\d+)?$")
-
 
 # ─────────────────────────────────────────────
 # REGISTRY HELPERS
@@ -99,11 +95,9 @@ def load_registry():
     with open(EXPERIMENTS_FILE, "r", encoding="utf-8") as f:
         return json.load(f)
 
-
 def save_registry(reg):
     with open(EXPERIMENTS_FILE, "w", encoding="utf-8") as f:
         json.dump(reg, f, indent=2)
-
 
 def backup_registry_once(suffix=None):
     """
@@ -117,13 +111,11 @@ def backup_registry_once(suffix=None):
         shutil.copy2(EXPERIMENTS_FILE, bak)
     return bak
 
-
 def has_tracking_csv(entry):
     md = entry.get("measurements_dir")
     if not md:
         return False
-    return os.path.exists(os.path.join(ROOT, md, "tracking.csv"))
-
+    return os.path.exists(os.path.join(REPO_ROOT, md, "tracking.csv"))
 
 # ─────────────────────────────────────────────
 # PLAN
@@ -152,7 +144,6 @@ class Plan:
                 and self.init_frame is not None
                 and self.release_frame is not None)
 
-
 def derive_frames(entry):
     """
     Resolve (init_frame, release_frame, source_of_decision) for an
@@ -171,7 +162,6 @@ def derive_frames(entry):
     if tag is not None:
         return int(tag), int(tag), "registry (tag_frame)"
     return None, None, None
-
 
 def build_plan(reg, *, filter_substr=None, redo=False):
     """
@@ -215,7 +205,6 @@ def build_plan(reg, *, filter_substr=None, redo=False):
                           source=source))
     return plans
 
-
 # ─────────────────────────────────────────────
 # RUN ONE
 # ─────────────────────────────────────────────
@@ -225,7 +214,6 @@ def prepopulate_frames(reg, plan):
     e = reg[plan.key]
     e["init_frame"]    = plan.init_frame
     e["release_frame"] = plan.release_frame
-
 
 def run_one(plan, no_debug=True, force=True):
     """
@@ -252,10 +240,9 @@ def run_one(plan, no_debug=True, force=True):
     print("=" * 70)
 
     t0 = time.time()
-    rc = subprocess.run(cmd, cwd=ROOT).returncode
+    rc = subprocess.run(cmd, cwd=REPO_ROOT).returncode
     dt = time.time() - t0
     return rc, dt
-
 
 # ─────────────────────────────────────────────
 # BULK LOG
@@ -267,12 +254,10 @@ def load_bulk_log():
     with open(BULK_LOG_FILE, "r", encoding="utf-8") as f:
         return json.load(f)
 
-
 def save_bulk_log(log):
     os.makedirs(os.path.dirname(BULK_LOG_FILE), exist_ok=True)
     with open(BULK_LOG_FILE, "w", encoding="utf-8") as f:
         json.dump(log, f, indent=2)
-
 
 # ─────────────────────────────────────────────
 # REPORT
@@ -336,7 +321,6 @@ def emit_report(rows):
     print(f"  total wall-clock: {total_time:.0f}s "
           f"({total_time / 60:.1f} min)")
 
-
 # ─────────────────────────────────────────────
 # MAIN
 # ─────────────────────────────────────────────
@@ -358,7 +342,6 @@ def parse_args():
                    help="Reserved for future parallel execution. "
                         "Currently always 1.")
     return p.parse_args()
-
 
 def main():
     args = parse_args()
@@ -402,7 +385,7 @@ def main():
     # ── Back up registry then pre-populate init/release frames. ─────────
     bak = backup_registry_once()
     print()
-    print(f"Registry backed up: {os.path.relpath(bak, ROOT)}")
+    print(f"Registry backed up: {os.path.relpath(bak, REPO_ROOT)}")
     for p in runnable:
         prepopulate_frames(reg, p)
     save_registry(reg)
@@ -436,9 +419,8 @@ def main():
 
     # ── Emit final report. ──────────────────────────────────────────────
     emit_report(rows)
-    print(f"\nDetailed log: {os.path.relpath(BULK_LOG_FILE, ROOT)}")
+    print(f"\nDetailed log: {os.path.relpath(BULK_LOG_FILE, REPO_ROOT)}")
     return 0 if all(r["returncode"] == 0 for r in rows) else 1
-
 
 if __name__ == "__main__":
     sys.exit(main())

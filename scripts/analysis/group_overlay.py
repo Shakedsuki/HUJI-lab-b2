@@ -53,12 +53,8 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-
-ROOT     = os.path.dirname(os.path.dirname(os.path.dirname(
-              os.path.abspath(__file__))))
-MEAS_DIR = os.path.join(ROOT, "measurements")
-
-sys.path.insert(0, os.path.join(ROOT, "scripts", "utils"))
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "utils")))
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
 from figures_paths import aggregate_path, mirror_to_ready  # noqa: E402
 
 # Mirror curate_set.py groups so callers can use either name.
@@ -79,7 +75,6 @@ GROUPS = {
     ],
 }
 
-
 def parse_args():
     p = argparse.ArgumentParser()
     p.add_argument("--group", choices=list(GROUPS),
@@ -98,14 +93,12 @@ def parse_args():
                    help="output filename (default: group_overlay_<group>.png)")
     return p.parse_args()
 
-
 def resolve_stems(args):
     if args.stems:
         return [s.strip() for s in args.stems.split(",") if s.strip()]
     if args.group:
         return list(GROUPS[args.group])
     raise SystemExit("Need --group or --stems.")
-
 
 def load_traj(stem):
     """Load free_swing (t, th1, th2) for a clip. NaN-pad gap rows so
@@ -134,7 +127,6 @@ def load_traj(stem):
     t = t - t[0]
     return t, th1, th2
 
-
 def time_aligned(rows, max_time=None):
     """Resample each clip onto a common time grid (the densest one's dt
     over the shortest one's t_max)."""
@@ -162,7 +154,6 @@ def time_aligned(rows, max_time=None):
         })
     return out
 
-
 def pairwise_divergence(rows):
     """For every pair (i,j), Delta_ij(t) = sqrt(dth1^2 + dth2^2) in degrees.
     Returns array of shape (n_pairs, n_t)."""
@@ -175,7 +166,6 @@ def pairwise_divergence(rows):
             d    = np.sqrt(dth1 ** 2 + dth2 ** 2)
             pairs.append(d)
     return np.array(pairs)
-
 
 def fit_divergence_slope(t, d_pairs, fit_lo_s=0.3, fit_hi_s=1.5):
     """Fit <ln Delta>(t) over a chosen window. Returns (slope, r2,
@@ -204,7 +194,6 @@ def fit_divergence_slope(t, d_pairs, fit_lo_s=0.3, fit_hi_s=1.5):
     ss_tot = np.sum((y[valid] - y[valid].mean()) ** 2)
     r2 = 1.0 - ss_res / ss_tot if ss_tot > 0 else float("nan")
     return slope, r2, mean_log_d, (lo, hi)
-
 
 def make_figure(rows, out_path, label, fit_lo=0.3, fit_hi=1.5):
     n = len(rows)
@@ -282,7 +271,6 @@ def make_figure(rows, out_path, label, fit_lo=0.3, fit_hi=1.5):
     plt.close(fig)
     return slope, r2
 
-
 def main():
     args = parse_args()
     stems = resolve_stems(args)
@@ -313,7 +301,6 @@ def main():
     print(f"  empirical λ₁ from twin-trial divergence: "
           f"{slope:+.3f} /s  (R² = {r2:.2f})")
     print(f"  wrote {aggregate_path(out_name)}")
-
 
 if __name__ == "__main__":
     main()

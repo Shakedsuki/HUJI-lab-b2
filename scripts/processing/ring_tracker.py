@@ -71,6 +71,8 @@ _SCRIPT_DIR     = os.path.dirname(os.path.abspath(__file__))
 _UTILS_DIR      = os.path.abspath(os.path.join(_SCRIPT_DIR, os.pardir, "utils"))
 HSV_TUNER_PATH  = os.path.join(_SCRIPT_DIR, "hsv_tuner.py")
 sys.path.insert(0, _UTILS_DIR)
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
+EXPERIMENTS_FILE = EXPERIMENTS
 from video_status import (         # noqa: E402  (after sys.path tweak)
     is_tracked,
     status_summary,
@@ -84,18 +86,11 @@ from thresholds import (           # noqa: E402  (after sys.path tweak)
 )
 from figures_paths import figure_path  # noqa: E402
 
-
 # ─────────────────────────────────────────────
 # PATHS / CONSTANTS
 # ─────────────────────────────────────────────
 
-ROOT             = r"C:\dev\chaos"
-VIDEOS_DIR       = os.path.join(ROOT, "data", "videos")
-DATA_DIR         = os.path.join(ROOT, "data")
-MEASUREMENTS_DIR = os.path.join(ROOT, "measurements")
-EXPERIMENTS_FILE = os.path.join(DATA_DIR, "experiments.json")
 GLOBAL_HSV_FILE  = os.path.join(DATA_DIR, "hsv_values.json")
-
 
 def measurements_dir_for(config_description):
     """
@@ -107,7 +102,6 @@ def measurements_dir_for(config_description):
     d = os.path.join(MEASUREMENTS_DIR, config_description)
     os.makedirs(d, exist_ok=True)
     return d
-
 
 def derive_config_description(stem, video_path, existing_entry):
     """
@@ -124,7 +118,6 @@ def derive_config_description(stem, video_path, existing_entry):
     if FILENAME_ANGLE_PATTERN.search(stem):
         return stem
     return stem
-
 
 def find_registry_key(reg, stem, video_filename, config_description):
     """
@@ -150,7 +143,6 @@ def find_registry_key(reg, stem, video_filename, config_description):
             if e.get("video_file") == video_filename:
                 return k
     return None
-
 
 def hsv_file_for_video(video_path):
     """
@@ -180,7 +172,6 @@ FILENAME_ANGLE_PATTERN = re.compile(
 )
 PICKER_ANCHOR_MAX_DIST = 70   # px tolerance around the expected position
 
-
 def parse_initial_angles(video_path):
     """
     Parse a filename like 'th1_p180_th2_m045.mov' into (th1_deg, th2_deg).
@@ -194,7 +185,6 @@ def parse_initial_angles(video_path):
     th1 = float(deg1) * (-1.0 if sign1.lower() == "m" else 1.0)
     th2 = float(deg2) * (-1.0 if sign2.lower() == "m" else 1.0)
     return th1, th2
-
 
 def expected_marker_positions(th1_deg, th2_deg):
     """
@@ -222,7 +212,6 @@ SG_POLY   = 3
 ADEQUACY_SAMPLES   = 30
 ADEQUACY_WARN_PCT  = 70.0
 ADEQUACY_ABORT_PCT = 40.0
-
 
 def hsv_adequacy_probe(cap, total_frames, hsv_values, ring_tolerance,
                        use_filename_prior, video_path):
@@ -332,7 +321,6 @@ STRICT_ARC_OMEGA_K     = 1.5    # gate radius = base + k * |ω| * dt
 STRICT_POST_SEED_FRAMES = 30    # how many frames to keep strict mode on after a seed
 STRICT_PIXEL_FLOOR_PX  = 18.0   # pixel-distance gate floor for slow / sleeping predictor
 
-
 # ─────────────────────────────────────────────
 # REGISTRY I/O  (mirrors ring_tracker.py)
 # ─────────────────────────────────────────────
@@ -343,13 +331,11 @@ def load_registry():
             return json.load(f)
     return {}
 
-
 def save_registry(reg):
     os.makedirs(os.path.dirname(EXPERIMENTS_FILE), exist_ok=True)
     with open(EXPERIMENTS_FILE, "w") as f:
         json.dump(reg, f, indent=2)
     print(f"Registry updated: {EXPERIMENTS_FILE}")
-
 
 def update_registry(reg, key, video_file, init_frame, release_frame,
                     config_description, ring_tolerance,
@@ -398,7 +384,6 @@ def update_registry(reg, key, video_file, init_frame, release_frame,
     reg[key] = base
     return base
 
-
 # ─────────────────────────────────────────────
 # GEOMETRY HELPERS
 # ─────────────────────────────────────────────
@@ -418,7 +403,6 @@ def strict_pixel_radius(predictor, dt):
                     STRICT_ARC_OMEGA_K * abs(predictor.omega) * dt)
     return max(STRICT_PIXEL_FLOOR_PX,
                ARM_LENGTH_PX * np.radians(angle_budget))
-
 
 def load_seeds(path):
     """
@@ -452,10 +436,8 @@ def load_seeds(path):
         by_frame[frame] = {"green_xy": green_xy, "red_xy": red_xy}
     return by_frame, data
 
-
 def euclid(p1, p2):
     return float(np.sqrt((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2))
-
 
 def compute_angle(p_from, p_to):
     """0° = straight down; +90 = right, -90 = left, ±180 = up."""
@@ -463,11 +445,9 @@ def compute_angle(p_from, p_to):
     dy = p_to[1] - p_from[1]
     return float(np.degrees(np.arctan2(dx, dy)))
 
-
 def angular_diff(a, b):
     """Signed (a − b) wrapped to [-180, 180]."""
     return ((a - b + 180.0) % 360.0) - 180.0
-
 
 def draw_dashed_circle(img, center, radius, color, thickness=1, dash_len=10):
     n = max(8, int(2 * np.pi * radius / dash_len))
@@ -475,7 +455,6 @@ def draw_dashed_circle(img, center, radius, color, thickness=1, dash_len=10):
         a1 = 360.0 * i / n
         a2 = 360.0 * (i + 1) / n
         cv2.ellipse(img, center, (radius, radius), 0, a1, a2, color, thickness)
-
 
 def validate_geometry(green_pos, red_pos):
     if green_pos is not None:
@@ -487,7 +466,6 @@ def validate_geometry(green_pos, red_pos):
     elif green_pos is None:
         red_pos = None
     return green_pos, red_pos
-
 
 # ─────────────────────────────────────────────
 # HSV LOADING + MASKS
@@ -524,12 +502,10 @@ def load_hsv_values(video_path=None):
     print("Run scripts/processing/hsv_tuner.py to calibrate marker colours.")
     sys.exit(1)
 
-
 def color_mask_green(hsv, cfg):
     lo = np.array([cfg["h_min"], cfg["s_min"], cfg["v_min"]], dtype=np.uint8)
     hi = np.array([cfg["h_max"], cfg["s_max"], cfg["v_max"]], dtype=np.uint8)
     return cv2.inRange(hsv, lo, hi)
-
 
 def color_mask_red(hsv, cfg):
     lo1 = np.array([cfg["h_min"],  cfg["s_min"], cfg["v_min"]], dtype=np.uint8)
@@ -539,7 +515,6 @@ def color_mask_red(hsv, cfg):
     m1 = cv2.inRange(hsv, lo1, hi1)
     m2 = cv2.inRange(hsv, lo2, hi2)
     return cv2.bitwise_or(m1, m2)
-
 
 # ─────────────────────────────────────────────
 # STATIC BACKGROUND VIA TEMPORAL MEDIAN
@@ -574,7 +549,6 @@ def compute_static_background(cap, total_frames, n_samples=BG_SAMPLES):
     print(f"\nStatic background ready ({bg.shape[1]}x{bg.shape[0]}).")
     return bg, bg_gray
 
-
 def motion_mask(frame_blurred, bg_gray, threshold=BG_DIFF_THRESH):
     """
     Grayscale absolute difference vs the static background, thresholded,
@@ -586,7 +560,6 @@ def motion_mask(frame_blurred, bg_gray, threshold=BG_DIFF_THRESH):
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
     fg = cv2.morphologyEx(fg, cv2.MORPH_OPEN, kernel, iterations=1)
     return fg
-
 
 # ─────────────────────────────────────────────
 # RING + ARC MASKS
@@ -607,16 +580,13 @@ def precompute_pivot_grids(width, height, center):
     angle_grid = np.degrees(np.arctan2(dx, dy))
     return dist_grid, angle_grid
 
-
 def make_ring_uint8(dist_grid, radius, tolerance):
     return ((np.abs(dist_grid - radius) < tolerance).astype(np.uint8)) * 255
-
 
 def make_arc_uint8(angle_grid, theta_pred_deg, half_width_deg):
     """Pixels whose grid-angle is within ±half_width of theta_pred (mod 360)."""
     diff = ((angle_grid - theta_pred_deg + 180.0) % 360.0) - 180.0
     return ((np.abs(diff) < half_width_deg).astype(np.uint8)) * 255
-
 
 # ─────────────────────────────────────────────
 # BLOB SCORING
@@ -670,7 +640,6 @@ def best_blob(mask, anchor=None, max_dist=None,
             best_score = score
             best = (int(round(cx)), int(round(cy)))
     return best
-
 
 # ─────────────────────────────────────────────
 # ANGULAR PREDICTOR (Kalman-lite)
@@ -728,7 +697,6 @@ class AngularPredictor:
 
     def arc_half_width(self, dt):
         return ARC_HALF_BASE + ARC_OMEGA_FACTOR * abs(self.omega) * dt
-
 
 # ─────────────────────────────────────────────
 # DETECTION CHAIN — GREEN
@@ -817,7 +785,6 @@ def detect_green(hsv_blurred, fg_mask,
             return pos, "ring+motion"
 
     return None, "fail-strict" if strict else "fail"
-
 
 def detect_red(hsv_blurred, fg_mask, frame_shape,
                green_pos, ring_tolerance,
@@ -918,7 +885,6 @@ def detect_red(hsv_blurred, fg_mask, frame_shape,
 
     return None, "fail-strict" if strict else "fail"
 
-
 # ─────────────────────────────────────────────
 # IC EXTRACTION
 # ─────────────────────────────────────────────
@@ -956,7 +922,6 @@ def extract_ic_from_csv(csv_path, release_frame, video_fps):
             float(om1[0]), float(om2[0]),
             n_free_total, dropout_pct, duration_s)
 
-
 # ─────────────────────────────────────────────
 # VIDEO PICKER
 # ─────────────────────────────────────────────
@@ -974,7 +939,7 @@ def pick_video_interactive():
         print("tkinter is not available — pass a video path on the command line.")
         return None
 
-    initialdir = VIDEOS_DIR if os.path.isdir(VIDEOS_DIR) else ROOT
+    initialdir = VIDEOS_DIR if os.path.isdir(VIDEOS_DIR) else REPO_ROOT
 
     root = tk.Tk()
     root.withdraw()                      # hide the empty Tk root window
@@ -993,7 +958,6 @@ def pick_video_interactive():
     )
     root.destroy()
     return chosen if chosen else None
-
 
 # ─────────────────────────────────────────────
 # SMART INIT/RELEASE FRAME SUGGESTIONS
@@ -1113,7 +1077,6 @@ def suggest_frame_candidates(video_path, total_frames, hsv_values,
 
     cap.release()
     return init_suggestion, release_suggestion
-
 
 # ─────────────────────────────────────────────
 # VISUAL FRAME PICKER  (init_frame / release_frame)
@@ -1366,7 +1329,6 @@ def pick_frame_interactive(video_path, label, fps, total_frames,
     cv2.destroyWindow(win_title)
     return chosen
 
-
 # ─────────────────────────────────────────────
 # MAIN
 # ─────────────────────────────────────────────
@@ -1413,7 +1375,7 @@ def main():
     if args and not force_browse:
         video_path = args[0]
         if not os.path.isabs(video_path):
-            video_path = os.path.join(ROOT, video_path)
+            video_path = os.path.join(REPO_ROOT, video_path)
     else:
         video_path = pick_video_interactive()
         if not video_path:
@@ -1458,7 +1420,7 @@ def main():
 
     # ── Already tracked? Confirm re-run unless --force was passed. ──
     reg = load_registry()
-    if is_tracked(stem, reg, root=ROOT) and not force_run:
+    if is_tracked(stem, reg, root=REPO_ROOT) and not force_run:
         # Use reg_key so we read the right entry even when the registry
         # key (e.g. DSC_0139) differs from the video stem.
         e = reg.get(reg_key, reg.get(stem, {}))
@@ -1546,7 +1508,7 @@ def main():
     seeds_by_frame, _seeds_meta = load_seeds(seeds_path)
     if seeds_by_frame:
         print(f"\nLoaded {len(seeds_by_frame)} seed(s) from "
-              f"{os.path.relpath(seeds_path, ROOT)}")
+              f"{os.path.relpath(seeds_path, REPO_ROOT)}")
 
     # When --from-frame=N is given AND N > 0, we preserve rows
     # 0..N-1 from the existing CSV and re-track only frames N..end.
@@ -2078,7 +2040,6 @@ def main():
         video_fps, existing_entry=reg.get(reg_key),
     )
     save_registry(reg)
-
 
 if __name__ == "__main__":
     main()

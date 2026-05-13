@@ -60,15 +60,15 @@ except (AttributeError, OSError):
     pass
 
 
-ROOT             = r"C:\dev\chaos"
-DATA_DIR         = os.path.join(ROOT, "data")
-VIDEOS_DIR       = os.path.join(ROOT, "data", "videos")
-EXPERIMENTS_FILE = os.path.join(DATA_DIR, "experiments.json")
+_THIS_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, _THIS_DIR)
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
+EXPERIMENTS_FILE = EXPERIMENTS
 BULK_LOG_FILE    = os.path.join(DATA_DIR, "bulk_tracking_log.json")
 GLOBAL_HSV_FILE  = os.path.join(DATA_DIR, "hsv_values.json")
 
 # Make ring_tracker importable so we can call hsv_adequacy_probe directly.
-sys.path.insert(0, os.path.join(ROOT, "scripts", "processing"))
+sys.path.insert(0, os.path.join(REPO_ROOT, "scripts", "processing"))
 import ring_tracker as rt  # noqa: E402
 import cv2  # noqa: E402
 
@@ -101,7 +101,7 @@ def has_tracking_csv(entry):
     md = entry.get("measurements_dir")
     if not md:
         return False
-    return os.path.exists(os.path.join(ROOT, md, "tracking.csv"))
+    return os.path.exists(os.path.join(REPO_ROOT, md, "tracking.csv"))
 
 
 def discover_abort_clips(filter_substr=None):
@@ -268,8 +268,8 @@ def main():
             dst_path = os.path.join(DATA_DIR, f"hsv_{stem}.json")
             print(f"    {stem:<28}  ←  {src_label}  "
                   f"({verdict} {pct:.0f}%)")
-            print(f"      cp \"{os.path.relpath(src_path, ROOT)}\" "
-                  f"\"{os.path.relpath(dst_path, ROOT)}\"")
+            print(f"      cp \"{os.path.relpath(src_path, REPO_ROOT)}\" "
+                  f"\"{os.path.relpath(dst_path, REPO_ROOT)}\"")
     else:
         print("  No reusable matches found.")
 

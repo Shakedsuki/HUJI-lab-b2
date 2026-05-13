@@ -42,14 +42,11 @@ try:
 except (AttributeError, OSError):
     pass
 
+CHAOS_PY         = os.path.join(REPO_ROOT, "chaos.py")
 
-ROOT             = r"C:\dev\chaos"
-DATA_DIR         = os.path.join(ROOT, "data")
-MEAS_DIR         = os.path.join(ROOT, "measurements")
-EXPERIMENTS_FILE = os.path.join(DATA_DIR, "experiments.json")
-CHAOS_PY         = os.path.join(ROOT, "chaos.py")
-
-sys.path.insert(0, os.path.join(ROOT, "scripts", "utils"))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
+EXPERIMENTS_FILE = EXPERIMENTS
 from track_one import (              # noqa: E402
     read_verification_metrics, compute_verdict,
 )
@@ -57,7 +54,6 @@ from thresholds import (              # noqa: E402
     PEAK_OMEGA_ABSURD, PEAK_OMEGA_PHYSICAL,
     WARN_DROPOUT_PCT, PASS_DROPOUT_PCT,
 )
-
 
 # ─────────────────────────────────────────────
 # REGISTRY
@@ -67,11 +63,9 @@ def load_registry():
     with open(EXPERIMENTS_FILE, "r", encoding="utf-8") as f:
         return json.load(f)
 
-
 def has_csv(entry, stem):
     md = entry.get("measurements_dir") or f"measurements/{stem}"
-    return os.path.exists(os.path.join(ROOT, md, "tracking.csv"))
-
+    return os.path.exists(os.path.join(REPO_ROOT, md, "tracking.csv"))
 
 # ─────────────────────────────────────────────
 # CLASSIFIER
@@ -90,7 +84,6 @@ PRIORITY = {
     "review":         30,
     "special":        20,
 }
-
 
 def classify_issue(metrics, reasons):
     """
@@ -170,7 +163,6 @@ def classify_issue(metrics, reasons):
 
     return ("review", PRIORITY["review"], "unknown reason — visual inspection needed")
 
-
 # ─────────────────────────────────────────────
 # WORST-FRAME FINDER (for override dispatch)
 # ─────────────────────────────────────────────
@@ -204,7 +196,6 @@ def find_worst_omega_frame(meas_dir):
         return None
     return best
 
-
 # ─────────────────────────────────────────────
 # QUEUE
 # ─────────────────────────────────────────────
@@ -225,7 +216,7 @@ def build_queue(reg, *, filter_substr=None, skip_stems=None):
             continue
         if entry.get("tracking_quality") == "verified":
             # Already verified — re-evaluate against current logic.
-            md = os.path.join(ROOT, entry.get("measurements_dir")
+            md = os.path.join(REPO_ROOT, entry.get("measurements_dir")
                               or f"measurements/{stem}")
             if not os.path.exists(os.path.join(md, "tracking.csv")):
                 continue
@@ -240,7 +231,7 @@ def build_queue(reg, *, filter_substr=None, skip_stems=None):
         else:
             if not has_csv(entry, stem):
                 continue
-            md = os.path.join(ROOT, entry.get("measurements_dir")
+            md = os.path.join(REPO_ROOT, entry.get("measurements_dir")
                               or f"measurements/{stem}")
             metrics = read_verification_metrics(md)
             if metrics is None:
@@ -256,7 +247,6 @@ def build_queue(reg, *, filter_substr=None, skip_stems=None):
 
     rows.sort(key=lambda r: (-r[0], r[1]))
     return rows
-
 
 # ─────────────────────────────────────────────
 # RENDER
@@ -278,7 +268,6 @@ _BUCKET_LABEL = {
     "special":       "SPECIAL    (manual investigation)",
 }
 
-
 def print_clip_diagnosis(idx, total, stem, status, metrics,
                          reasons, bucket, primary):
     print()
@@ -298,7 +287,6 @@ def print_clip_diagnosis(idx, total, stem, status, metrics,
         if len(reasons) > 6:
             print(f"    • … and {len(reasons) - 6} more")
 
-
 # ─────────────────────────────────────────────
 # DISPATCH
 # ─────────────────────────────────────────────
@@ -308,8 +296,7 @@ def _run_chaos(*subcmd):
     terminal. Inherits stdin/stdout/stderr so interactive picker
     windows work as expected."""
     cmd = [sys.executable, CHAOS_PY, *subcmd]
-    return subprocess.run(cmd, cwd=ROOT).returncode
-
+    return subprocess.run(cmd, cwd=REPO_ROOT).returncode
 
 def dispatch_override(stem, metrics):
     """Find the worst |ω₂| suspect frame and run chaos override on
@@ -328,14 +315,12 @@ def dispatch_override(stem, metrics):
         print(f"  chaos override exited rc={rc}")
     return frame_no
 
-
 def dispatch_fix(stem):
     """Run chaos fix interactively. The picker handles its own UI."""
     rc = _run_chaos("fix", stem)
     if rc != 0:
         print(f"  chaos fix exited rc={rc}")
     return rc
-
 
 def dispatch_tune_track(stem):
     """Run chaos tune (interactive) followed by chaos track."""
@@ -347,7 +332,6 @@ def dispatch_tune_track(stem):
     if rc != 0:
         print(f"  chaos track exited rc={rc}")
     return rc
-
 
 def dispatch_review(stem, status, metrics, reasons):
     """For borderline / special cases, just open the verification.png
@@ -369,7 +353,6 @@ def dispatch_review(stem, status, metrics, reasons):
         if ans in ("v", "w", "s", "q"):
             return ans
         print("  please answer v / w / s / q")
-
 
 def mark_verified_manual(stem, reasons):
     reg = load_registry()
@@ -396,7 +379,6 @@ def mark_verified_manual(stem, reasons):
             return True
     return False
 
-
 def annotate_warn(stem, reasons):
     reg = load_registry()
     for k, e in reg.items():
@@ -411,7 +393,6 @@ def annotate_warn(stem, reasons):
                 json.dump(reg, f, indent=2)
             return True
     return False
-
 
 # ─────────────────────────────────────────────
 # CONFIRM PROMPT
@@ -440,7 +421,6 @@ def confirm_dispatch(bucket, *, auto=False):
             return "quit"
         print("  please answer y / v / n / q")
 
-
 # ─────────────────────────────────────────────
 # RE-VERIFY
 # ─────────────────────────────────────────────
@@ -455,7 +435,6 @@ def reverify_and_status(stem):
     status, reasons = compute_verdict(
         metrics, metrics.get("n_suspect_hidden", 0))
     return status, reasons, metrics
-
 
 # ─────────────────────────────────────────────
 # MAIN LOOP
@@ -474,7 +453,6 @@ def parse_args():
                    help="dispatch a single clip and exit "
                         "(default: loop until queue empty or user quits)")
     return p.parse_args()
-
 
 def main():
     args = parse_args()
@@ -571,7 +549,6 @@ def main():
             break
 
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main())

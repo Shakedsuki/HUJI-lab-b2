@@ -36,16 +36,12 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
+LYAP_SCRIPT      = os.path.join(REPO_ROOT, "scripts", "analysis", "lyapunov.py")
 
-ROOT             = os.path.dirname(os.path.dirname(os.path.dirname(
-                       os.path.abspath(__file__))))
-EXPERIMENTS_FILE = os.path.join(ROOT, "data", "experiments.json")
-LYAP_SCRIPT      = os.path.join(ROOT, "scripts", "analysis", "lyapunov.py")
-DATA_DIR         = os.path.join(ROOT, "data")
-
-sys.path.insert(0, os.path.join(ROOT, "scripts", "utils"))
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "utils")))
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
+EXPERIMENTS_FILE = EXPERIMENTS
 from figures_paths import aggregate_path, mirror_to_ready  # noqa: E402
-
 
 # Per-stem k_max overrides for clips where the auto-fit picks a poor
 # range. These stem from previous runs where we eyeballed the divergence
@@ -59,7 +55,6 @@ KMAX_OVERRIDES = {
     "th1_p138_th2_m002":   60,
 }
 
-
 def parse_args():
     p = argparse.ArgumentParser()
     p.add_argument("--filter", help="only stems containing SUBSTR")
@@ -68,15 +63,12 @@ def parse_args():
                    help="don't re-run lyapunov.py; trust last summary")
     return p.parse_args()
 
-
 def load_registry():
     with open(EXPERIMENTS_FILE, encoding="utf-8") as f:
         return json.load(f)
 
-
 def is_passing(e):
     return e.get("audit_new_status") == "PASS" or bool(e.get("manual_accept"))
-
 
 def status_for(e):
     if is_passing(e):
@@ -85,23 +77,20 @@ def status_for(e):
         return "FAIL"
     return "WARN"
 
-
 _LAM_RE = re.compile(
     r"lambda_1\s*=\s*([+\-0-9.]+)\s*/s\s+R\^2\s*=\s*([0-9.]+)")
-
 
 def run_lyap(stem):
     cmd = [sys.executable, LYAP_SCRIPT, "--stem", stem, "--no-plot"]
     if stem in KMAX_OVERRIDES:
         cmd += ["--k-max", str(KMAX_OVERRIDES[stem])]
-    out = subprocess.run(cmd, cwd=ROOT, capture_output=True,
+    out = subprocess.run(cmd, cwd=REPO_ROOT, capture_output=True,
                          text=True, encoding="utf-8", errors="replace")
     text = out.stdout + out.stderr
     m = _LAM_RE.search(text)
     if not m:
         return None, None
     return float(m.group(1)), float(m.group(2))
-
 
 def collect(args):
     reg = load_registry()
@@ -115,7 +104,7 @@ def collect(args):
         if args.pass_only and not is_passing(e):
             continue
 
-        meas_csv = os.path.join(ROOT, "measurements", stem,
+        meas_csv = os.path.join(REPO_ROOT, "measurements", stem,
                                 "verification.csv")
         if not os.path.exists(meas_csv):
             continue
@@ -135,7 +124,6 @@ def collect(args):
             "status": status, "lambda1": lam, "r2": r2,
         })
     return rows
-
 
 def make_plot(rows, out_path):
     fig, ax = plt.subplots(figsize=(11, 7))
@@ -194,7 +182,6 @@ def make_plot(rows, out_path):
     plt.close(fig)
     print(f"\n  wrote {out_path}")
 
-
 def write_summary_csv(rows, out_path):
     with open(out_path, "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=[
@@ -203,7 +190,6 @@ def write_summary_csv(rows, out_path):
         for r in sorted(rows, key=lambda x: x["amplitude"]):
             w.writerow(r)
     print(f"  wrote {out_path}")
-
 
 def main():
     args = parse_args()
@@ -220,7 +206,6 @@ def main():
     out_csv = os.path.join(DATA_DIR, "lyapunov_summary.csv")
     write_summary_csv(rows, out_csv)
     make_plot(rows, aggregate_path("lyapunov_vs_amplitude.png"))
-
 
 if __name__ == "__main__":
     main()

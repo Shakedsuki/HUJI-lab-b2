@@ -46,16 +46,14 @@ except (AttributeError, OSError):
     pass
 
 
-ROOT             = r"C:\dev\chaos"
-VIDEOS_DIR       = os.path.join(ROOT, "data", "videos")
-MEAS_DIR         = os.path.join(ROOT, "measurements")
-DATA_DIR         = os.path.join(ROOT, "data")
-EXPERIMENTS_FILE = os.path.join(DATA_DIR, "experiments.json")
+_THIS_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, _THIS_DIR)
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
+EXPERIMENTS_FILE = EXPERIMENTS
 
-VERIFY_SCRIPT = os.path.join(ROOT, "scripts", "processing", "verify_tracking.py")
+VERIFY_SCRIPT = os.path.join(REPO_ROOT, "scripts", "processing", "verify_tracking.py")
 
 # Brief 10b: PIVOT and ARM_LENGTH_PX live in thresholds.py.
-sys.path.insert(0, os.path.join(ROOT, "scripts", "utils"))
 from thresholds import PIVOT, ARM_LENGTH_PX  # noqa: E402
 
 FRAME_W = 1280
@@ -438,10 +436,10 @@ def main():
     bak_path = csv_path + ".bak"
     if not os.path.exists(bak_path):
         shutil.copy2(csv_path, bak_path)
-        print(f"Backup written: {os.path.relpath(bak_path, ROOT)}")
+        print(f"Backup written: {os.path.relpath(bak_path, REPO_ROOT)}")
 
     write_csv(csv_path, rows, fieldnames)
-    print(f"Wrote override into {os.path.relpath(csv_path, ROOT)}:")
+    print(f"Wrote override into {os.path.relpath(csv_path, REPO_ROOT)}:")
     print(f"  frame {args.frame}: green=({target['x_green']},{target['y_green']}), "
           f"red=({target['x_red']},{target['y_red']}), "
           f"th1={th1:.2f}°, th2={th2:.2f}°, dropout=0")
@@ -466,7 +464,7 @@ def main():
         rc = subprocess.run(
             [sys.executable, VERIFY_SCRIPT, "--stem", args.stem,
              "--omega-cap", str(args.omega_cap), "--no-plot"],
-            cwd=ROOT,
+            cwd=REPO_ROOT,
         ).returncode
         return rc
     return 0

@@ -28,13 +28,11 @@ combined_video.py, ring_tracker.py (debug.mp4), friction_compare.py.
 import os
 import shutil
 
+from paths import PHASE_ROOT, MEAS_DIR  # noqa: E402
 
-# scripts/utils/figures_paths.py → scripts/ → repo root
-ROOT        = os.path.dirname(os.path.dirname(os.path.dirname(
-                  os.path.abspath(__file__))))
-FIGURES_DIR = os.path.join(ROOT, "figures")
+FIGURES_DIR = os.path.join(PHASE_ROOT, "figures")
 AGGREGATE   = os.path.join(FIGURES_DIR, "aggregate")
-READY       = os.path.join(ROOT, "measurements", "ready")
+READY       = os.path.join(MEAS_DIR, "ready")
 
 
 # Canonical figure type names.  Keep the set deliberately small — adding

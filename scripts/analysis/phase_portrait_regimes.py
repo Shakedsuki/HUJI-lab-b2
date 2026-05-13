@@ -31,15 +31,11 @@ import matplotlib.pyplot as plt
 from matplotlib import cm
 import matplotlib.colors as mcolors
 
+LYAP_CSV = os.path.join(REPO_ROOT, "data", "lyapunov_summary.csv")
 
-ROOT     = os.path.dirname(os.path.dirname(os.path.dirname(
-              os.path.abspath(__file__))))
-MEAS_DIR = os.path.join(ROOT, "measurements")
-LYAP_CSV = os.path.join(ROOT, "data", "lyapunov_summary.csv")
-
-sys.path.insert(0, os.path.join(ROOT, "scripts", "utils"))
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "utils")))
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
 from figures_paths import aggregate_path, mirror_to_ready  # noqa: E402
-
 
 PANELS = [
     {"stem": "th1_p044_th2_m001", "label": "Regular"},
@@ -47,7 +43,6 @@ PANELS = [
     {"stem": "th1_p138_th2_m002", "label": "Strongly chaotic"},
     {"stem": "th1_p180_th2_m179", "label": "Fully chaotic"},
 ]
-
 
 def load_lyap_index():
     if not os.path.exists(LYAP_CSV):
@@ -61,7 +56,6 @@ def load_lyap_index():
         }
         for _, row in df.iterrows()
     }
-
 
 def load_traj(stem, arm):
     """Returns DataFrame of free_swing rows with (time_s, theta, omega) columns."""
@@ -84,7 +78,6 @@ def load_traj(stem, arm):
     if arm == 2:
         out["theta"] = ((out["theta"] + 180) % 360) - 180
     return out
-
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -169,7 +162,6 @@ def main():
         plt.savefig(out, dpi=150, bbox_inches="tight")
         mirror_to_ready(out)
         print(f"  wrote {out}")
-
 
 if __name__ == "__main__":
     main()

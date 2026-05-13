@@ -45,24 +45,20 @@ try:
 except (AttributeError, OSError):
     pass
 
-
-ROOT             = r"C:\dev\chaos"
-VIDEOS_DIR       = os.path.join(ROOT, "data", "videos")
-MEAS_DIR         = os.path.join(ROOT, "measurements")
-DATA_DIR         = os.path.join(ROOT, "data")
-EXPERIMENTS_FILE = os.path.join(DATA_DIR, "experiments.json")
 LOG_FILE         = os.path.join(DATA_DIR, "track_one_log.txt")
 
-TRACKER_SCRIPT  = os.path.join(ROOT, "scripts", "processing", "ring_tracker.py")
-VERIFY_SCRIPT   = os.path.join(ROOT, "scripts", "processing", "verify_tracking.py")
-INTERP_SCRIPT   = os.path.join(ROOT, "scripts", "processing",
+TRACKER_SCRIPT  = os.path.join(REPO_ROOT, "scripts", "processing", "ring_tracker.py")
+VERIFY_SCRIPT   = os.path.join(REPO_ROOT, "scripts", "processing", "verify_tracking.py")
+INTERP_SCRIPT   = os.path.join(REPO_ROOT, "scripts", "processing",
                                "interpolate_suspects.py")
 GLOBAL_HSV_FILE = os.path.join(DATA_DIR, "hsv_values.json")
 
 # scripts/utils is already in sys.path because Python auto-adds the
 # script's directory; this re-affirms it for the case where track_one
 # is imported from another script (e.g. manual_correction).
-sys.path.insert(0, os.path.join(ROOT, "scripts", "utils"))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
+EXPERIMENTS_FILE = EXPERIMENTS
 from render import render_verdict  # noqa: E402
 from thresholds import (  # noqa: E402
     ARM_LEN_THRESHOLD_PCT,
@@ -74,7 +70,6 @@ from thresholds import (  # noqa: E402
     ARM_LENGTH_CM,
 )
 
-
 # ─────────────────────────────────────────────
 # REGISTRY HELPERS
 # ─────────────────────────────────────────────
@@ -83,14 +78,12 @@ def load_registry():
     with open(EXPERIMENTS_FILE, "r", encoding="utf-8") as f:
         return json.load(f)
 
-
 def find_entry_by_video(reg, video_filename):
     """Return (key, entry) for the registry row whose video_file matches."""
     for k, e in reg.items():
         if e.get("video_file") == video_filename:
             return k, e
     return None, None
-
 
 def find_entry_by_stem(reg, stem):
     """Return (key, entry) for the registry row whose config_description matches."""
@@ -101,7 +94,6 @@ def find_entry_by_stem(reg, stem):
     if stem in reg:
         return stem, reg[stem]
     return None, None
-
 
 def resolve_inputs(args):
     """
@@ -125,7 +117,7 @@ def resolve_inputs(args):
     if args.video:
         video_path = args.video
         if not os.path.isabs(video_path):
-            video_path = os.path.join(ROOT, video_path)
+            video_path = os.path.join(REPO_ROOT, video_path)
         if not os.path.exists(video_path):
             print(f"ERROR: video not found: {video_path}")
             sys.exit(1)
@@ -140,7 +132,6 @@ def resolve_inputs(args):
 
     print("ERROR: provide --stem or a positional video path.")
     sys.exit(1)
-
 
 # ─────────────────────────────────────────────
 # CSV PARSING (for verdict metrics)
@@ -317,7 +308,6 @@ def read_verification_metrics(meas_dir):
         "n_omega_cap_suspects":        n_omega_cap_suspect,
     }
 
-
 # ─────────────────────────────────────────────
 # VERDICT
 # ─────────────────────────────────────────────
@@ -332,7 +322,6 @@ from thresholds import (  # noqa: E402
     PEAK_OMEGA_PHYSICAL,
     PEAK_OMEGA_ABSURD,
 )
-
 
 def compute_verdict(metrics, n_suspects_post_interp):
     """
@@ -483,7 +472,6 @@ def compute_verdict(metrics, n_suspects_post_interp):
         return status, reasons
     return "PASS", ["dropout, suspects, and ω all within thresholds"]
 
-
 # ─────────────────────────────────────────────
 # ACTIONABLE-STEPS BUILDER  (Brief 4)
 # ─────────────────────────────────────────────
@@ -515,7 +503,6 @@ def _load_top_suspect_frames(meas_dir, n=5):
                 continue
     candidates.sort(key=lambda c: -c["om2"])
     return candidates[:n]
-
 
 def compute_energy_omega_cap(entry: dict):
     """
@@ -551,7 +538,6 @@ def compute_energy_omega_cap(entry: dict):
         return None
 
     return math.degrees(math.sqrt(2.0 * E_total) / L)
-
 
 def build_actionable_steps(stem, metrics_post, reasons, status,
                            suspect_frames=None, *, entry=None,
@@ -793,7 +779,6 @@ def build_actionable_steps(stem, metrics_post, reasons, status,
 
     return steps
 
-
 # ─────────────────────────────────────────────
 # ORCHESTRATION
 # ─────────────────────────────────────────────
@@ -806,9 +791,8 @@ def run(cmd, *, label):
     print("─" * 70)
     import time
     t0 = time.time()
-    rc = subprocess.run(cmd, cwd=ROOT).returncode
+    rc = subprocess.run(cmd, cwd=REPO_ROOT).returncode
     return rc, time.time() - t0
-
 
 def hsv_kind_for_video(video_filename):
     """Return 'per-video' or 'global' depending on which HSV file applies."""
@@ -816,7 +800,6 @@ def hsv_kind_for_video(video_filename):
     if os.path.exists(os.path.join(DATA_DIR, f"hsv_{stem}.json")):
         return "per-video"
     return "global"
-
 
 def emit_card(stem, video_path, key, entry, *,
               status, reasons,
@@ -848,7 +831,6 @@ def emit_card(stem, video_path, key, entry, *,
         f.write(text + "\n")
     return text
 
-
 def maybe_mark_verified(stem, status, reasons):
     """When status is PASS, bump tracking_quality in the registry."""
     if status != "PASS":
@@ -869,7 +851,6 @@ def maybe_mark_verified(stem, status, reasons):
     entry["verified_under_brief_version"] = 14
     with open(EXPERIMENTS_FILE, "w", encoding="utf-8") as f:
         json.dump(reg, f, indent=2)
-
 
 # ─────────────────────────────────────────────
 # MAIN
@@ -895,7 +876,6 @@ def parse_args():
     p.add_argument("--omega-cap", type=float, default=2500.0,
                    help="ω threshold for verify_tracking (default 2500 °/s).")
     return p.parse_args()
-
 
 def main():
     args = parse_args()
@@ -1006,7 +986,6 @@ def main():
               energy_omega_cap=energy_cap)
     maybe_mark_verified(stem, status, reasons)
     return 0 if status != "FAIL" else 1
-
 
 if __name__ == "__main__":
     sys.exit(main())

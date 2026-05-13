@@ -41,24 +41,21 @@ import matplotlib
 
 _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(_THIS_DIR, "..", "utils"))
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
+EXPERIMENTS_FILE = EXPERIMENTS
 from figures_paths import figure_path  # noqa: E402
 matplotlib.use('Agg')          # non-interactive backend — much faster offscreen
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from scipy.signal import savgol_filter
 
-
 # ─────────────────────────────────────────────
 # CONFIG
 # ─────────────────────────────────────────────
 
-ROOT          = r"C:\dev\chaos"
-EXPERIMENTS_FILE = os.path.join(ROOT, "data", "experiments.json")
-DEFAULT_CSV   = os.path.join(ROOT, "measurements", "th1_p180_th2_m179",
+DEFAULT_CSV   = os.path.join(REPO_ROOT, "measurements", "th1_p180_th2_m179",
                              "tracking.csv")
-DEFAULT_VIDEO = os.path.join(ROOT, "data", "videos", "long_recording.mov")
-LEGACY_OUT    = os.path.join(ROOT, "data", "figures")
-
+DEFAULT_VIDEO = os.path.join(REPO_ROOT, "data", "videos", "long_recording.mov")
 
 def parse_args():
     p = argparse.ArgumentParser(
@@ -72,7 +69,6 @@ def parse_args():
                         "Resolves CSV, video (via experiments.json), and "
                         "output dir from measurements/.")
     return p.parse_args()
-
 
 def video_for_stem(stem):
     """
@@ -90,12 +86,11 @@ def video_for_stem(stem):
             video_file = entry.get("video_file")
             if not video_file:
                 continue
-            return os.path.join(ROOT, "data", "videos", video_file)
+            return os.path.join(REPO_ROOT, "data", "videos", video_file)
     print(f"ERROR: no registry entry has config_description '{stem}'.")
     print(f"       Add an entry to {EXPERIMENTS_FILE} or supply video "
           f"path positionally.")
     sys.exit(1)
-
 
 def resolve_paths(args):
     """
@@ -104,7 +99,7 @@ def resolve_paths(args):
     the measurement folder.
     """
     if args.stem:
-        meas_dir = os.path.join(ROOT, "measurements", args.stem)
+        meas_dir = os.path.join(REPO_ROOT, "measurements", args.stem)
         csv_path = os.path.join(meas_dir, "tracking.csv")
         if not os.path.exists(csv_path):
             print(f"ERROR: tracking.csv not found for stem '{args.stem}'")
@@ -116,11 +111,11 @@ def resolve_paths(args):
 
     csv_path = args.csv if args.csv else DEFAULT_CSV
     if not os.path.isabs(csv_path):
-        csv_path = os.path.join(ROOT, csv_path)
+        csv_path = os.path.join(REPO_ROOT, csv_path)
 
     video_path = args.video if args.video else DEFAULT_VIDEO
     if not os.path.isabs(video_path):
-        video_path = os.path.join(ROOT, video_path)
+        video_path = os.path.join(REPO_ROOT, video_path)
 
     # When the CSV lives inside a measurements folder, derive the stem
     # from the folder name and write the output to the canonical figures
@@ -162,7 +157,6 @@ COLOR_ARM2    = '#ef5350'          # red   — arm 2 / red physical marker
 BGR_ARM1   = (80,  175,  76)       # green
 BGR_ARM2   = (80,   83, 239)       # red
 BGR_CONFIG = (243, 150,  33)       # blue
-
 
 # ─────────────────────────────────────────────
 # LOAD CSV
@@ -207,7 +201,6 @@ def load_csv(path):
     om2[dropouts == 1] = np.nan
 
     return frames, times, phases, th1, th2, om1, om2, dropouts
-
 
 # ─────────────────────────────────────────────
 # BUILD MATPLOTLIB FIGURE (offscreen)
@@ -293,14 +286,12 @@ def setup_figure(th1, th2, om1, om2):
 
     return fig, trace_lines, head_dots, time_txt
 
-
 def render_figure(fig):
     """Render matplotlib figure to a BGR numpy array (PANEL_H × PANEL_W × 3)."""
     fig.canvas.draw()
     buf = np.frombuffer(fig.canvas.buffer_rgba(), dtype=np.uint8)
     buf = buf.reshape(PANEL_H, PANEL_W, 4)
     return cv2.cvtColor(buf, cv2.COLOR_RGBA2BGR)
-
 
 # ─────────────────────────────────────────────
 # LEFT PANEL: resize + overlay
@@ -391,7 +382,6 @@ def make_left_panel(frame, phase, t, th1, th2, om1, om2,
                     font, fs, color, 1, lineType=cv2.LINE_AA)
 
     return panel
-
 
 # ─────────────────────────────────────────────
 # MAIN
@@ -525,7 +515,6 @@ def main():
     plt.close(fig)
 
     print(f"\n\nDone. Saved to: {output_mp4}")
-
 
 if __name__ == "__main__":
     main()

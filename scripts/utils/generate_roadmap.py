@@ -45,14 +45,8 @@ try:
 except (AttributeError, OSError):
     pass
 
-
-ROOT             = r"C:\dev\chaos"
-DATA_DIR         = os.path.join(ROOT, "data")
-MEAS_DIR         = os.path.join(ROOT, "measurements")
-EXPERIMENTS_FILE = os.path.join(DATA_DIR, "experiments.json")
 BULK_LOG_FILE    = os.path.join(DATA_DIR, "bulk_tracking_log.json")
-DEFAULT_OUT      = os.path.join(ROOT, "docs", "tracking_roadmap.md")
-
+DEFAULT_OUT      = os.path.join(REPO_ROOT, "docs", "tracking_roadmap.md")
 
 # Bucket priority — first match wins, in this order. Drives the summary
 # counts and the per-clip Status column.
@@ -65,20 +59,17 @@ BUCKETS = [
     ("never-attempted",  "PENDING",     "registry entry exists but no track_one run on record"),
 ]
 
-
 def load_json(path, default=None):
     if not os.path.exists(path):
         return default if default is not None else {}
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
 
-
 def has_tracking_csv(entry):
     md = entry.get("measurements_dir")
     if not md:
         return False
-    return os.path.exists(os.path.join(ROOT, md, "tracking.csv"))
-
+    return os.path.exists(os.path.join(REPO_ROOT, md, "tracking.csv"))
 
 def read_verification_metrics(meas_dir):
     """Brief 6 — return a dict with the per-clip fields the roadmap
@@ -155,16 +146,13 @@ def read_verification_metrics(meas_dir):
             pass
     return out
 
-
 def read_peak_omega_and_suspects(meas_dir):
     """Backwards-compatible wrapper. Call sites that only need the two
     headline numbers can keep using this signature."""
     m = read_verification_metrics(meas_dir)
     return m["peak_omega2"], m["n_suspect_hidden"]
 
-
 CURRENT_BRIEF_VERSION = 14   # bump when verdict logic changes
-
 
 def classify(entry, bulk_entry, meas_dir=None):
     """
@@ -193,7 +181,9 @@ def classify(entry, bulk_entry, meas_dir=None):
         try:
             # Lazy import — avoids forcing roadmap consumers to bring
             # in track_one when they don't need verdict computation.
-            sys.path.insert(0, os.path.join(ROOT, "scripts", "utils"))
+            sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
+EXPERIMENTS_FILE = EXPERIMENTS
             from track_one import (  # noqa: E402
                 read_verification_metrics, compute_verdict,
             )
@@ -229,7 +219,6 @@ def classify(entry, bulk_entry, meas_dir=None):
 
     return "never-attempted", "PENDING"
 
-
 def first_attempt_iso(entry, bulk_entry):
     """When did we last touch this clip? Prefer verification_date, then
     interpolation_date, then bulk_log's ran_at, else '—'."""
@@ -240,7 +229,6 @@ def first_attempt_iso(entry, bulk_entry):
     if bulk_entry and bulk_entry.get("ran_at"):
         return bulk_entry["ran_at"][:10]
     return "—"
-
 
 def short_note(entry, bulk_entry, bucket):
     """One-line note column. Pulls from the most diagnostic field for
@@ -266,7 +254,6 @@ def short_note(entry, bulk_entry, bucket):
         return "no record in bulk_tracking_log yet"
     return ""
 
-
 def build_table_rows(reg, bulk_log):
     """Return a list of dicts, one per clip, sorted: PASS first, then
     WARN, FAIL, HSV-ABORT, NEEDS-PICKER, PENDING — and within each bucket
@@ -276,7 +263,7 @@ def build_table_rows(reg, bulk_log):
     for key, entry in reg.items():
         stem = entry.get("config_description") or key
         bulk_entry = bulk_log.get(stem)
-        meas_dir = os.path.join(ROOT, entry.get("measurements_dir") or
+        meas_dir = os.path.join(REPO_ROOT, entry.get("measurements_dir") or
                                 f"measurements/{stem}")
         # Brief 14b: classify() needs meas_dir so it can read the
         # current verification.csv and apply compute_verdict() instead
@@ -319,7 +306,6 @@ def build_table_rows(reg, bulk_log):
     rows.sort(key=lambda r: (bucket_order[r["bucket"]], r["stem"]))
     return rows
 
-
 def fmt(v, kind):
     if v is None:
         return "—"
@@ -332,7 +318,6 @@ def fmt(v, kind):
     if kind == "deg":
         return f"{v:.1f}°"
     return str(v)
-
 
 def render_markdown(rows, reg, bulk_log):
     now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
@@ -439,7 +424,6 @@ def render_markdown(rows, reg, bulk_log):
 
     return "\n".join(lines)
 
-
 def parse_args():
     p = argparse.ArgumentParser(
         description="Generate docs/tracking_roadmap.md from current registry state.")
@@ -448,7 +432,6 @@ def parse_args():
     p.add_argument("--dry-run", action="store_true",
                    help="print the markdown to stdout instead of writing.")
     return p.parse_args()
-
 
 def main():
     args = parse_args()
@@ -477,7 +460,6 @@ def main():
           f"NEEDS-PICKER={bucket_counts['needs-picker']}  "
           f"PENDING={bucket_counts['never-attempted']}")
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main())

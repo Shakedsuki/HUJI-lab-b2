@@ -68,19 +68,15 @@ try:
 except (AttributeError, OSError):
     pass
 
-
-ROOT             = r"C:\dev\chaos"
-MEAS_DIR         = os.path.join(ROOT, "measurements")
-DATA_DIR         = os.path.join(ROOT, "data")
-EXPERIMENTS_FILE = os.path.join(DATA_DIR, "experiments.json")
-VERIFY_SCRIPT    = os.path.join(ROOT, "scripts", "processing",
+VERIFY_SCRIPT    = os.path.join(REPO_ROOT, "scripts", "processing",
                                 "verify_tracking.py")
 
-sys.path.insert(0, os.path.join(ROOT, "scripts", "utils"))
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "utils")))
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
+EXPERIMENTS_FILE = EXPERIMENTS
 from thresholds import PIVOT, ARM_LENGTH_PX  # noqa: E402
 
 RING_TOL_PX = 25  # off-ring threshold in pixels
-
 
 # ─────────────────────────────────────────────
 # GEOMETRY
@@ -94,16 +90,13 @@ def to_float(v):
     except ValueError:
         return math.nan
 
-
 def green_radius(x_green, y_green):
     return math.hypot(x_green - PIVOT[0], y_green - PIVOT[1])
-
 
 def is_off_ring(x_green, y_green):
     if math.isnan(x_green) or math.isnan(y_green):
         return False  # NaN = dropout, not a swap (handled separately)
     return abs(green_radius(x_green, y_green) - ARM_LENGTH_PX) > RING_TOL_PX
-
 
 def green_xy_from_theta1(theta1_deg):
     """Back-project (x_green, y_green) from θ₁ given PIVOT, ARM_LENGTH_PX.
@@ -112,14 +105,12 @@ def green_xy_from_theta1(theta1_deg):
     return (PIVOT[0] + ARM_LENGTH_PX * math.sin(rad),
             PIVOT[1] + ARM_LENGTH_PX * math.cos(rad))
 
-
 def red_xy_from_theta(x_green, y_green, theta1_deg, theta2_deg):
     """Back-project (x_red, y_red) on the lower-arm ring around green.
     Lower arm absolute angle = θ₁ + θ₂."""
     rad = math.radians(theta1_deg + theta2_deg)
     return (x_green + ARM_LENGTH_PX * math.sin(rad),
             y_green + ARM_LENGTH_PX * math.cos(rad))
-
 
 def short_way(a0, a1):
     """Return (a0, a1') such that a1' is on the short path from a0 to a1.
@@ -128,12 +119,10 @@ def short_way(a0, a1):
     delta = ((a1 - a0 + 180.0) % 360.0) - 180.0
     return a0, a0 + delta
 
-
 def lerp(t, t0, v0, t1, v1):
     if t1 == t0:
         return v0
     return v0 + (v1 - v0) * (t - t0) / (t1 - t0)
-
 
 # ─────────────────────────────────────────────
 # CLUSTERING
@@ -161,7 +150,6 @@ def find_off_ring_clusters(rows, gap=3):
             clusters.append([i, i])
     return clusters
 
-
 def find_clean_anchor(rows, idx, direction, max_search=30):
     """Walk rows[idx ± step] until we find a row whose green is
     on-ring AND not a dropout. Returns idx or None.
@@ -184,7 +172,6 @@ def find_clean_anchor(rows, idx, direction, max_search=30):
             continue
         return j
     return None
-
 
 # ─────────────────────────────────────────────
 # REPAIR
@@ -230,7 +217,6 @@ def interpolate_cluster(rows, cluster_start, cluster_end):
         n_done += 1
     return n_done, f"interp anchors f{rows[prev_i]['frame']}..f{rows[next_i]['frame']}"
 
-
 def mark_dropout(rows, cluster_start, cluster_end):
     n_done = 0
     for i in range(cluster_start, cluster_end + 1):
@@ -245,7 +231,6 @@ def mark_dropout(rows, cluster_start, cluster_end):
         n_done += 1
     return n_done
 
-
 # ─────────────────────────────────────────────
 # CSV I/O
 # ─────────────────────────────────────────────
@@ -255,13 +240,11 @@ def load_csv(path):
         reader = csv.DictReader(f)
         return list(reader), reader.fieldnames
 
-
 def write_csv(path, rows, fieldnames):
     with open(path, "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=fieldnames)
         w.writeheader()
         w.writerows(rows)
-
 
 # ─────────────────────────────────────────────
 # REGISTRY
@@ -285,7 +268,6 @@ def update_registry(stem, n_interp, n_dropped, n_long_clusters):
     e["green_swap_long_clusters"] = n_long_clusters
     with open(EXPERIMENTS_FILE, "w", encoding="utf-8") as f:
         json.dump(reg, f, indent=2)
-
 
 # ─────────────────────────────────────────────
 # DRIVER
@@ -345,11 +327,10 @@ def fix_clip(stem, dry_run=False, reverify=True, interp_max=3, gap=3):
     if reverify:
         subprocess.run(
             [sys.executable, VERIFY_SCRIPT, "--stem", stem, "--no-plot"],
-            cwd=ROOT, check=False, capture_output=True)
+            cwd=REPO_ROOT, check=False, capture_output=True)
         print(f"    re-verified")
 
     return n_interp, n_dropped, len(long_)
-
 
 def parse_args():
     p = argparse.ArgumentParser(
@@ -369,14 +350,12 @@ def parse_args():
                         "into one cluster (default 3)")
     return p.parse_args()
 
-
 def all_stems_with_tracking():
     out = []
     for d in sorted(os.listdir(MEAS_DIR)):
         if os.path.exists(os.path.join(MEAS_DIR, d, "tracking.csv")):
             out.append(d)
     return out
-
 
 def main():
     args = parse_args()
@@ -414,7 +393,6 @@ def main():
           f"dropped {tot_dropped} frame(s), "
           f"{tot_long} long cluster(s) marked dropout. "
           f"{n_modified} clip(s) modified.")
-
 
 if __name__ == "__main__":
     main()

@@ -36,17 +36,11 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 
-
-ROOT     = os.path.dirname(os.path.dirname(os.path.dirname(
-              os.path.abspath(__file__))))
-DATA_DIR = os.path.join(ROOT, "data")
-MEAS_DIR = os.path.join(ROOT, "measurements")
-EXPERIMENTS_FILE = os.path.join(DATA_DIR, "experiments.json")
-
-sys.path.insert(0, os.path.join(ROOT, "scripts", "utils"))
+sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "utils")))
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
+EXPERIMENTS_FILE = EXPERIMENTS
 from track_one import read_verification_metrics, compute_verdict  # noqa: E402
 from figures_paths import aggregate_path, mirror_to_ready  # noqa: E402
-
 
 def E_per_frame(th1_deg, th2_deg, om1_dps, om2_dps, L=0.35, g=9.8):
     th1_r = np.radians(th1_deg)
@@ -61,7 +55,6 @@ def E_per_frame(th1_deg, th2_deg, om1_dps, om2_dps, L=0.35, g=9.8):
         + 0.5         * w1_r * w2_abs_r * np.cos(th2_rel_r)
         + (1.0 / 6.0) * w2_abs_r ** 2)
     return KE + PE
-
 
 def smooth_envelope(t, e, window_s=2.0):
     if len(t) < 3:
@@ -78,7 +71,6 @@ def smooth_envelope(t, e, window_s=2.0):
         b = min(len(e), i + half + 1)
         out[i] = (cs[b] - cs[a]) / (b - a)
     return out
-
 
 def fit_one(stem, smooth_window=2.0):
     """Return dict of fit results for this clip, or None on failure."""
@@ -137,7 +129,6 @@ def fit_one(stem, smooth_window=2.0):
         "E0_fit":            E0,
     }
 
-
 def parse_args():
     p = argparse.ArgumentParser(
         description="Run friction_fit on every clip and compare τ "
@@ -149,7 +140,6 @@ def parse_args():
     p.add_argument("--smooth-window", type=float, default=2.0,
                    metavar="SECONDS")
     return p.parse_args()
-
 
 def main():
     args = parse_args()
@@ -273,7 +263,6 @@ def main():
                   f"(slope ≈ 0 → linear drag; slope < 0 → nonlinear)")
 
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main())

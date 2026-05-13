@@ -47,16 +47,13 @@ try:
 except (AttributeError, OSError):
     pass
 
-
-ROOT             = r"C:\dev\chaos"
-DATA_DIR         = os.path.join(ROOT, "data")
-MEAS_DIR         = os.path.join(ROOT, "measurements")
-EXPERIMENTS_FILE = os.path.join(DATA_DIR, "experiments.json")
-VERIFY_SCRIPT    = os.path.join(ROOT, "scripts", "processing",
+VERIFY_SCRIPT    = os.path.join(REPO_ROOT, "scripts", "processing",
                                 "verify_tracking.py")
 
 # In-process imports — track_one + render live in the same dir.
-sys.path.insert(0, os.path.join(ROOT, "scripts", "utils"))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
+EXPERIMENTS_FILE = EXPERIMENTS
 from track_one import (  # noqa: E402
     read_verification_metrics,
     compute_verdict,
@@ -68,7 +65,6 @@ from rich.table import Table  # noqa: E402
 
 console = Console()
 
-
 # ─────────────────────────────────────────────
 # REGISTRY
 # ─────────────────────────────────────────────
@@ -77,18 +73,15 @@ def load_registry():
     with open(EXPERIMENTS_FILE, "r", encoding="utf-8") as f:
         return json.load(f)
 
-
 def save_registry(reg):
     with open(EXPERIMENTS_FILE, "w", encoding="utf-8") as f:
         json.dump(reg, f, indent=2)
-
 
 def has_tracking_csv(entry):
     md = entry.get("measurements_dir")
     if not md:
         return False
-    return os.path.exists(os.path.join(ROOT, md, "tracking.csv"))
-
+    return os.path.exists(os.path.join(REPO_ROOT, md, "tracking.csv"))
 
 # ─────────────────────────────────────────────
 # AUDIT CORE
@@ -107,7 +100,6 @@ def gather_verified_clips(reg, filter_substr=None):
             continue
         yield key, entry
 
-
 def gather_all_tracked_clips(reg, filter_substr=None):
     """Yield (key, entry) for every clip with a tracking.csv on disk —
     regardless of tracking_quality. Used by --upgrade to find clips
@@ -119,7 +111,6 @@ def gather_all_tracked_clips(reg, filter_substr=None):
         if filter_substr and filter_substr not in cd:
             continue
         yield key, entry
-
 
 def reverify(stem, omega_cap=2500.0):
     """Run verify_tracking --no-plot for this stem. Returns rc."""
@@ -133,11 +124,10 @@ def reverify(stem, omega_cap=2500.0):
     # nothing in the chain crashes on these glyphs.
     env = os.environ.copy()
     env["PYTHONIOENCODING"] = "utf-8"
-    return subprocess.run(cmd, cwd=ROOT,
+    return subprocess.run(cmd, cwd=REPO_ROOT,
                           capture_output=True, text=True,
                           encoding="utf-8", errors="replace",
                           env=env).returncode
-
 
 def audit_one(stem, *, skip_reverify=False, omega_cap=2500.0,
               old_status="PASS"):
@@ -176,7 +166,6 @@ def audit_one(stem, *, skip_reverify=False, omega_cap=2500.0,
         "metrics":     metrics,
     }
 
-
 # ─────────────────────────────────────────────
 # RENDER
 # ─────────────────────────────────────────────
@@ -187,7 +176,6 @@ _BADGE = {
     "FAIL":  "[bold red]FAIL[/]",
     "ERROR": "[dim red]ERROR[/]",
 }
-
 
 def render_audit_table(rows):
     t = Table(title="Verification Audit  (re-run with current verdict logic)",
@@ -255,7 +243,6 @@ def render_audit_table(rows):
 
     console.print(t)
 
-
 def render_summary(rows):
     n_total   = len(rows)
     n_ok      = sum(1 for r in rows
@@ -271,7 +258,6 @@ def render_summary(rows):
         f"[red]{n_fail} would now FAIL[/]  ·  "
         f"[dim]{n_error} errored[/]  "
         f"(of {n_total} audited)")
-
 
 # ─────────────────────────────────────────────
 # DOWNGRADE
@@ -307,7 +293,6 @@ def downgrade_clip(reg, key, new_status, reasons):
     entry["audit_new_status"]   = new_status
     return True
 
-
 def upgrade_clip(reg, key, reasons, brief_version=14):
     """Mark a previously-non-verified clip as verified, with audit
     provenance so the upgrade is traceable. Used by --upgrade."""
@@ -324,7 +309,6 @@ def upgrade_clip(reg, key, reasons, brief_version=14):
     entry["audit_old_status"]            = old_quality
     entry["audit_new_status"]            = "PASS"
     entry["verified_under_brief_version"] = brief_version
-
 
 # ─────────────────────────────────────────────
 # CLI
@@ -350,7 +334,6 @@ def parse_args():
                    help="ω cap passed to verify_tracking (default 2500)")
     return p.parse_args()
 
-
 def _bucket(entry):
     """Old-status bucket for the audit table — what the registry
     currently says about this clip before re-evaluation."""
@@ -360,7 +343,6 @@ def _bucket(entry):
     if drop is not None and drop > 10:
         return "FAIL"
     return "WARN"
-
 
 def main():
     args = parse_args()
@@ -430,7 +412,6 @@ def main():
         print("\n  Re-run with [bold]--apply[/] to downgrade clips that no "
               "longer PASS.")
     return 0
-
 
 if __name__ == "__main__":
     sys.exit(main())
