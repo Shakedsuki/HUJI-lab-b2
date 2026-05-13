@@ -71,6 +71,7 @@ SCRIPT_AUDIT      = os.path.join(ROOT, "scripts", "utils", "audit.py")
 SCRIPT_TRIAGE     = os.path.join(ROOT, "scripts", "utils", "triage.py")
 SCRIPT_SUSPECTS   = os.path.join(ROOT, "scripts", "utils", "suspects_summary.py")
 SCRIPT_AUTO_SEED  = os.path.join(ROOT, "scripts", "utils", "auto_seed.py")
+SCRIPT_BATCH_FIGS = os.path.join(ROOT, "scripts", "utils", "batch_figures.py")
 SCRIPT_COMBINED   = os.path.join(ROOT, "scripts", "analysis", "combined_video.py")
 SCRIPT_ANALYZE    = os.path.join(ROOT, "scripts", "analysis", "chaos_analyze.py")
 SCRIPT_FRICTION   = os.path.join(ROOT, "scripts", "analysis", "friction_fit.py")
@@ -105,12 +106,15 @@ def find_entry_by_stem(reg, stem):
 
 def is_tracked(entry):
     if not entry: return False
-    if entry.get("release_frame") is None: return False
-    if entry.get("theta1_release") is None: return False
+    is_phase2 = entry.get("drive_voltage_v") is not None
+    if not is_phase2:
+        if entry.get("release_frame") is None: return False
+        if entry.get("theta1_release") is None: return False
     md = entry.get("measurements_dir")
     if not md: return False
     csv_basename = entry.get("csv_file") or "tracking.csv"
-    return os.path.exists(os.path.join(ROOT, md, csv_basename))
+    phase_root = os.path.dirname(MEAS_DIR)
+    return os.path.exists(os.path.join(phase_root, md, csv_basename))
 
 
 def list_pending_videos():
@@ -347,6 +351,15 @@ def cmd_poincare(args):
     if args.no_plot: extra.append("--no-plot")
     if args.no_csv:  extra.append("--no-csv")
     return run_script(SCRIPT_POINCARE, *extra)
+
+
+def cmd_figures(args):
+    """Batch-render all per-clip figures for every tracked measurement."""
+    extra = []
+    if args.stem:  extra += ["--stem", args.stem]
+    if args.video: extra.append("--video")
+    if args.force: extra.append("--force")
+    return run_script(SCRIPT_BATCH_FIGS, *extra)
 
 
 def cmd_lyapunov(args):
@@ -925,6 +938,15 @@ def build_parser():
         help="embed omega1 instead of theta1")
     p_lyap.add_argument("--no-plot", action="store_true")
 
+    p_figs = sub.add_parser("figures",
+        help="batch-render all per-clip figures for tracked measurements")
+    p_figs.add_argument("--stem", default=None, metavar="<stem>",
+        help="render figures for one specific stem only")
+    p_figs.add_argument("--video", action="store_true",
+        help="also render phase_animation and combined mp4 (slow)")
+    p_figs.add_argument("--force", action="store_true",
+        help="re-render even if output files already exist")
+
     sub.add_parser("help", help="one-page cheat sheet for all subcommands")
 
     return p
@@ -952,6 +974,7 @@ HANDLERS = {
     "friction-compare": cmd_friction_compare,
     "poincare":         cmd_poincare,
     "lyapunov":         cmd_lyapunov,
+    "figures":          cmd_figures,
     "help":             cmd_help,
 }
 
