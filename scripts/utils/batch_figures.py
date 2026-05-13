@@ -101,7 +101,8 @@ def run_suite(stems, suite, force, label):
                 cmd = [PYTHON, script_path, "--stem", stem] + extra
 
             print(f"  [ run] {fig_type} ...", end="", flush=True)
-            result = subprocess.run(cmd, capture_output=True, text=True)
+            result = subprocess.run(cmd, capture_output=True, text=True,
+                                        encoding="utf-8", errors="replace")
             if result.returncode == 0:
                 print(f"  OK  → {os.path.relpath(out_path, ROOT)}")
                 done += 1
