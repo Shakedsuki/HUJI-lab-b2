@@ -112,7 +112,18 @@ def backup_registry_once(suffix=None):
         shutil.copy2(EXPERIMENTS_FILE, bak)
     return bak
 
-def has_tracking_csv(entry):
+_TRACKED_QUALITY_VALUES = {"good", "verified", "review"}
+
+def is_tracked(entry):
+    """Return True if the entry has already been tracked.
+
+    Checks the registry's tracking_quality field first (reliable even when
+    data files are not present on disk), then falls back to tracking.csv
+    existence for entries that predate the tracking_quality field.
+    """
+    tq = entry.get("tracking_quality", "")
+    if tq and tq.strip() in _TRACKED_QUALITY_VALUES:
+        return True
     md = entry.get("measurements_dir")
     if not md:
         return False
@@ -189,7 +200,7 @@ def build_plan(reg, *, filter_substr=None, redo=False):
                               skip_reason=f"video missing on disk"))
             continue
 
-        if has_tracking_csv(entry) and not redo:
+        if is_tracked(entry) and not redo:
             plans.append(Plan(key, cd, video_path,
                               skip_reason="already tracked (use --redo)"))
             continue
