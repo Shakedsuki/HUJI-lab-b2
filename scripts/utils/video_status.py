@@ -22,11 +22,16 @@ import os
 import sys
 from pathlib import Path
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
+
 # ─────────────────────────────────────────────
 # CONSTANTS  (mirrors ring_tracker.py)
 # ─────────────────────────────────────────────
 
 VIDEO_EXTS = {".mov", ".mp4", ".avi", ".mkv", ".m4v"}
+EXPERIMENTS_FILE = EXPERIMENTS
+PHASE_ROOT = os.path.dirname(MEAS_DIR)
 
 # ─────────────────────────────────────────────
 # HELPERS
@@ -51,24 +56,24 @@ def load_registry(path=EXPERIMENTS_FILE):
         with open(path, "r") as f:
             return json.load(f)
     except (json.JSONDecodeError, OSError):
-
-from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
         return {}
 
-def is_tracked(stem, registry, root=REPO_ROOT):
+def is_tracked(stem, registry, root=PHASE_ROOT):
     """
-    A video is "tracked" if its registry entry has:
-      - release_frame populated
-      - theta1_release populated (i.e. ICs were extracted from a real run)
-      - a measurements_dir whose tracking.csv exists on disk
+    A video is "tracked" if it has a tracking.csv on disk.
+    Phase 1 additionally requires release_frame and theta1_release (ICs from
+    a held-release run). Phase 2 (motor-driven) starts from rest at 0,0 so
+    those fields are not meaningful — CSV existence is sufficient.
     """
     entry = _resolve_entry(stem, registry)
     if not entry:
         return False
-    if entry.get("release_frame") is None:
-        return False
-    if entry.get("theta1_release") is None:
-        return False
+    is_phase2 = entry.get("drive_voltage_v") is not None
+    if not is_phase2:
+        if entry.get("release_frame") is None:
+            return False
+        if entry.get("theta1_release") is None:
+            return False
     meas_dir = entry.get("measurements_dir")
     if not meas_dir:
         return False
@@ -148,5 +153,3 @@ def print_status(videos_dir=VIDEOS_DIR, registry_path=EXPERIMENTS_FILE):
 
 if __name__ == "__main__":
     print_status()
-
-EXPERIMENTS_FILE = EXPERIMENTS

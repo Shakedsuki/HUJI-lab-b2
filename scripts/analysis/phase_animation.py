@@ -49,8 +49,7 @@ from figures_paths import figure_path  # noqa: E402
 # CONFIG
 # ─────────────────────────────────────────────
 
-DEFAULT_CSV  = os.path.join(REPO_ROOT, "measurements", "th1_p180_th2_m179",
-                            "tracking.csv")
+DEFAULT_CSV  = os.path.join(MEAS_DIR, "th1_p180_th2_m179", "tracking.csv")
 
 SG_WINDOW    = 11
 SG_POLY      = 3
@@ -73,7 +72,7 @@ def parse_args():
 def resolve_paths(args):
     """Returns (csv_path, output_dir, stem_label, force_save)."""
     if args.stem:
-        meas_dir = os.path.join(REPO_ROOT, "measurements", args.stem)
+        meas_dir = os.path.join(MEAS_DIR, args.stem)
         csv_path = os.path.join(meas_dir, "tracking.csv")
         if not os.path.exists(csv_path):
             print(f"ERROR: tracking.csv not found for stem '{args.stem}'")

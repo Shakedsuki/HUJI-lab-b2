@@ -1,0 +1,181 @@
+
+2026-05-13T15:23:31
+╭──────────────────────────────────────── ✗  FAIL  3V_1Hz ─────────────────────────────────────────╮
+│                                                                                                  │
+│  ────────────────────────────────────────── Identity ──────────────────────────────────────────  │
+│   video         3V_1Hz.mov                                                                       │
+│   registry key  3V_1Hz                                                                           │
+│   HSV used      global                                                                           │
+│  ─────────────────────────────────────── Signal Quality ───────────────────────────────────────  │
+│   frames           init —  /  release —  /  free —                                               │
+│   holding dropout  —                                                                             │
+│   free dropout     —                                                                             │
+│   suspects         0                                                                             │
+│  ──────────────────────────────────── Physical Diagnostics ────────────────────────────────────  │
+│   peak |ω₁|  0 °/s  ░░░░░░░░┊░░░░░░░░░░░                                                         │
+│   peak |ω₂|  0 °/s  ░░░░░░░░┊░░░░░░░░░░░                                                         │
+│  ╭───────────────────────────────────────── Reasons ──────────────────────────────────────────╮  │
+│  │   • ring_tracker exit 1 — likely picker cancellation or unexpected error.                  │  │
+│  ╰────────────────────────────────────────────────────────────────────────────────────────────╯  │
+│  ───────────────────────────────────────── next steps ─────────────────────────────────────────  │
+│    Inspect debug.mp4 or re-run with --debug; consider hsv_tuner re-calibration or a different    │
+│  release frame.                                                                                  │
+│                                                                                     elapsed: 2s  │
+│                                                                                                  │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+
+2026-05-13T15:24:56
+┌──────────────────────────────────────── ✗  FAIL  3V_1Hz ─────────────────────────────────────────┐
+│                                                                                                  │
+│  ────────────────────────────────────────── Identity ──────────────────────────────────────────  │
+│   video         3V_1Hz.mov                                                                       │
+│   registry key  3V_1Hz                                                                           │
+│   HSV used      global                                                                           │
+│  ─────────────────────────────────────── Signal Quality ───────────────────────────────────────  │
+│   frames           init —  /  release —  /  free —                                               │
+│   holding dropout  —                                                                             │
+│   free dropout     —                                                                             │
+│   suspects         0                                                                             │
+│  ──────────────────────────────────── Physical Diagnostics ────────────────────────────────────  │
+│   peak |ω₁|  0 °/s  ░░░░░░░░┊░░░░░░░░░░░                                                         │
+│   peak |ω₂|  0 °/s  ░░░░░░░░┊░░░░░░░░░░░                                                         │
+│  ┌───────────────────────────────────────── Reasons ──────────────────────────────────────────┐  │
+│  │   • ring_tracker exit 1 — likely picker cancellation or unexpected error.                  │  │
+│  └────────────────────────────────────────────────────────────────────────────────────────────┘  │
+│  ───────────────────────────────────────── next steps ─────────────────────────────────────────  │
+│    Inspect debug.mp4 or re-run with --debug; consider hsv_tuner re-calibration or a different    │
+│  release frame.                                                                                  │
+│                                                                                     elapsed: 2s  │
+│                                                                                                  │
+└──────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+
+2026-05-13T15:30:07
+╭──────────────────────────────────────── ✗  FAIL  3V_1Hz ─────────────────────────────────────────╮
+│                                                                                                  │
+│  ────────────────────────────────────────── Identity ──────────────────────────────────────────  │
+│   video         3V_1Hz.mov                                                                       │
+│   registry key  3V_1Hz                                                                           │
+│   HSV used      global                                                                           │
+│  ─────────────────────────────────────── Signal Quality ───────────────────────────────────────  │
+│   frames           init —  /  release —  /  free —                                               │
+│   holding dropout  —                                                                             │
+│   free dropout     —                                                                             │
+│   suspects         0                                                                             │
+│  ──────────────────────────────────── Physical Diagnostics ────────────────────────────────────  │
+│   peak |ω₁|  0 °/s  ░░░░░░░░┊░░░░░░░░░░░                                                         │
+│   peak |ω₂|  0 °/s  ░░░░░░░░┊░░░░░░░░░░░                                                         │
+│  ╭───────────────────────────────────────── Reasons ──────────────────────────────────────────╮  │
+│  │   • verify_tracking exit 1                                                                 │  │
+│  ╰────────────────────────────────────────────────────────────────────────────────────────────╯  │
+│  ───────────────────────────────────────── next steps ─────────────────────────────────────────  │
+│    Inspect debug.mp4 or re-run with --debug; consider hsv_tuner re-calibration or a different    │
+│  release frame.                                                                                  │
+│                                                                                   elapsed: 160s  │
+│                                                                                                  │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+
+2026-05-13T15:38:33
+╭─────────────────────────────────────── ⚠  WARN  2.45V_1Hz ───────────────────────────────────────╮
+│                                                                                                  │
+│  ────────────────────────────────────────── Identity ──────────────────────────────────────────  │
+│   video         2.45V_1Hz.mov                                                                    │
+│   registry key  2.45V_1Hz                                                                        │
+│   HSV used      global                                                                           │
+│  ─────────────────────────────────────── Signal Quality ───────────────────────────────────────  │
+│   frames           init —  /  release —  /  free 2220                                            │
+│   holding dropout  0.00%  ░░░░░░░░░░░░░░░░░░░░  (0 frames)                                       │
+│   free dropout     0.05%  ░░░░░░░░░░░░░░░░░░░░  (1 frames)                                       │
+│   suspects         pre: 17  →  interp: 17  →  post: 21                                           │
+│  ──────────────────────────────────── Physical Diagnostics ────────────────────────────────────  │
+│   peak |ω₁|        428 °/s  ━━░░░░░░┊░░░░░░░░░░░                                                 │
+│   peak |ω₂|        1119 °/s  ━━━━━━░░┊░░░░░░░░░░░                                                │
+│   arm L deviation  8.9% max                                                                      │
+│  ╭───────────────────────────────────────── Reasons ──────────────────────────────────────────╮  │
+│  │   • 15 frame(s) exceed release-energy ceiling (0.7% of free_swing) — probable stable       │  │
+│  │ wrong-target latch                                                                         │  │
+│  │   • 6 frame(s) show rolling energy spike (>2.0× baseline) — tracker likely jumped briefly  │  │
+│  │ to wrong object                                                                            │  │
+│  ╰────────────────────────────────────────────────────────────────────────────────────────────╯  │
+│  ───────────────────────────────────────── next steps ─────────────────────────────────────────  │
+│    required   Frame 1957  (t = 32.649s,  free_swing):  |ω₂| = 863 °/s                            │
+│                 Check verification.png at this timestamp.                                        │
+│                 If the marker position looks wrong, correct it manually.                         │
+│                 $ chaos override 2.45V_1Hz --frame 1957                                          │
+│    required   Frame 967  (t = 16.133s,  free_swing):  |ω₂| = 809 °/s                             │
+│                 Check verification.png at this timestamp.                                        │
+│                 If the marker position looks wrong, correct it manually.                         │
+│                 $ chaos override 2.45V_1Hz --frame 967                                           │
+│    required   Frame 906  (t = 15.115s,  free_swing):  |ω₂| = 784 °/s                             │
+│                 Check verification.png at this timestamp.                                        │
+│                 If the marker position looks wrong, correct it manually.                         │
+│                 $ chaos override 2.45V_1Hz --frame 906                                           │
+│    info       ... and 2 more suspect frames. Run verify_tracking for the full list.              │
+│                 $ chaos verify 2.45V_1Hz                                                         │
+│    required   15 frames (0.7% of free_swing) exceed the release-energy ceiling.                  │
+│                 Signature of a sustained wrong-target latch — the tracker followed a             │
+│               non-marker object for an extended run.                                             │
+│                 Single-frame interpolation cannot fix this. Add a seed at the latch entry        │
+│               point or recalibrate HSV.                                                          │
+│                 $ chaos fix 2.45V_1Hz                                                            │
+│                                                                                   elapsed: 189s  │
+│                                                                                                  │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+
+2026-05-13T15:42:11
+╭─────────────────────────────────────── ⚠  WARN  2.45V_1Hz ───────────────────────────────────────╮
+│                                                                                                  │
+│  ────────────────────────────────────────── Identity ──────────────────────────────────────────  │
+│   video         2.45V_1Hz.mov                                                                    │
+│   registry key  2.45V_1Hz                                                                        │
+│   HSV used      global                                                                           │
+│  ─────────────────────────────────────── Signal Quality ───────────────────────────────────────  │
+│   frames           init 0  /  release 87  /  free 2220                                           │
+│   holding dropout  0.00%  ░░░░░░░░░░░░░░░░░░░░  (0 frames)                                       │
+│   free dropout     0.05%  ░░░░░░░░░░░░░░░░░░░░  (1 frames)                                       │
+│   suspects         pre: 16  →  interp: 16  →  post: 18                                           │
+│  ──────────────────────────────────── Physical Diagnostics ────────────────────────────────────  │
+│   peak |ω₁|        428 °/s  ━━░░░░░░┊░░░░░░░░░░░                                                 │
+│   peak |ω₂|        1119 °/s  ━━━━━━░░┊░░░░░░░░░░░                                                │
+│   arm L deviation  8.9% max                                                                      │
+│  ╭───────────────────────────────────────── Reasons ──────────────────────────────────────────╮  │
+│  │   • 13 frame(s) exceed release-energy ceiling (0.6% of free_swing) — probable stable       │  │
+│  │ wrong-target latch                                                                         │  │
+│  │   • 5 frame(s) show rolling energy spike (>2.0× baseline) — tracker likely jumped briefly  │  │
+│  │ to wrong object                                                                            │  │
+│  ╰────────────────────────────────────────────────────────────────────────────────────────────╯  │
+│  ───────────────────────────────────────── next steps ─────────────────────────────────────────  │
+│    Review verification.png; if acceptable, set tracking_quality=verified manually.               │
+│                                                                                     elapsed: 0s  │
+│                                                                                                  │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+
+2026-05-13T15:42:31
+╭────────────────────────────────────── ✗  FAIL  2.4V_1Hz_1 ───────────────────────────────────────╮
+│                                                                                                  │
+│  ────────────────────────────────────────── Identity ──────────────────────────────────────────  │
+│   video         2.4V_1Hz_1.mov                                                                   │
+│   registry key  2.4V_1Hz_1                                                                       │
+│   HSV used      global                                                                           │
+│  ─────────────────────────────────────── Signal Quality ───────────────────────────────────────  │
+│   frames           init —  /  release —  /  free —                                               │
+│   holding dropout  —                                                                             │
+│   free dropout     —                                                                             │
+│   suspects         0                                                                             │
+│  ──────────────────────────────────── Physical Diagnostics ────────────────────────────────────  │
+│   peak |ω₁|  0 °/s  ░░░░░░░░┊░░░░░░░░░░░                                                         │
+│   peak |ω₂|  0 °/s  ░░░░░░░░┊░░░░░░░░░░░                                                         │
+│  ╭───────────────────────────────────────── Reasons ──────────────────────────────────────────╮  │
+│  │   • verify_tracking exit 1                                                                 │  │
+│  ╰────────────────────────────────────────────────────────────────────────────────────────────╯  │
+│  ───────────────────────────────────────── next steps ─────────────────────────────────────────  │
+│    Inspect debug.mp4 or re-run with --debug; consider hsv_tuner re-calibration or a different    │
+│  release frame.                                                                                  │
+│                                                                                    elapsed: 16s  │
+│                                                                                                  │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+

@@ -1,5 +1,5 @@
-#LyX 2.4 created this file. For more info see https://www.lyx.org/
-\lyxformat 620
+#LyX 2.5 created this file. For more info see https://www.lyx.org/
+\lyxformat 643
 \begin_document
 \begin_header
 \save_transient_properties true
@@ -54,11 +54,19 @@
 \use_indices false
 \paperorientation portrait
 \suppress_date false
-\justification true
-\use_refstyle 1
+\justification default
+\crossref_package refstyle
 \use_formatted_ref 0
 \use_minted 0
 \use_lineno 0
+\backgroundcolor none
+\fontcolor none
+\notefontcolor lightgray
+\boxbgcolor red
+\table_border_color default
+\table_odd_row_color default
+\table_even_row_color default
+\table_alt_row_colors_start 1
 \index Index
 \shortcut idx
 \color #008080
@@ -88,6 +96,7 @@
 \html_be_strict false
 \docbook_table_output 0
 \docbook_mathml_prefix 1
+\docbook_mathml_version 0
 \html_math_img_scale 1.1
 \end_header
 
@@ -200,12 +209,13 @@ status open
 \end_layout
 
 \begin_layout Standard
+\align center
 
 \lang hebrew
 \begin_inset Graphics
 	filename system.png
 	lyxscale 20
-	scale 70
+	width 30col%
 
 \end_inset
 
@@ -250,31 +260,69 @@ status open
 
 \end_layout
 
+\begin_layout Section*
+
+\series bold
+\shape smallcaps
+\size larger
+\lang hebrew
+תוצאות
+\end_layout
+
 \begin_layout Subsection*
 
 \series bold
 \shape smallcaps
 \size larger
 \lang hebrew
-גרפים
+מרחב הפאזה
 \end_layout
 
 \begin_layout Standard
+\align center
 
 \lang hebrew
-\begin_inset Formula $ $
-\end_inset
+\begin_inset Float figure
+placement H
+alignment document
+wide false
+sideways false
+status open
 
-
-\end_layout
-
-\begin_layout Standard
+\begin_layout Plain Layout
+\align center
 
 \lang hebrew
 \begin_inset Graphics
 	filename portrait_progression_arm1.png
 	lyxscale 20
-	scale 35
+	width 100col%
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+
+\lang hebrew
+בגרף זה רואים גרפי מרחב פאזה של הקואורדינטה של הזרוע הראשונה,
+ המהירות הזוויתית (במעלות לשנייה) כתלות בזווית (במעלות).
+ בכל גרף הזווית ההתחלתית של הזרוע הראשונה שונה וכתובה בכותרת הגרף.
+ הנקודות צבועות לפי הזמן.ניתן להבחין בגרפים במעבר המערכת ממצב פחות כאוטי ליותר כאוטי כתלות בזווית ההתחלתית.
+ בגרפים בזוויות נמוכות (השורה הראשונה) ניתן לראות כי המסלולים המתקבלים יחסית סגורים ומסודרים,
+ מה שמעיד על כאוס נמוך.
+ לעומת זאת במדידות המתחילות מזוויות גבוהה קשה למצוא צורה של מסלול סגור,
+ מה שמעיד על כאוטיות.
+\end_layout
+
+\end_inset
+
+
+\end_layout
 
 \end_inset
 
@@ -282,30 +330,13 @@ status open
 \end_layout
 
 \begin_layout Standard
-
-\lang hebrew
-בגרף זה רואים גרפי מרחב פאזה של הקואורדינטה של הזרוע הראשונה,
- המהירות הזוויתית (במעלות לשנייה) כתלות בזווית (במעלות).
- בכל גרף הזווית ההתחלתית של הזרוע הראשונה שונה וכתובה בכותרת הגרף.
- הנקודות צבועות לפי הזמן.
-\end_layout
-
-\begin_layout Standard
-
-\lang hebrew
-ניתן להבחין בגרפים במעבר המערכת ממצב פחות כאוטי ליותר כאוטי כתלות בזווית ההתחלתית.
- בגרפים בזוויות נמוכות (השורה הראשונה) ניתן לראות כי המסלולים המתקבלים יחסית סגורים ומסודרים,
- מה שמעיד על כאוס נמוך.
- לעומת זאת במדידו
-\end_layout
-
-\begin_layout Standard
+\align center
 
 \lang hebrew
 \begin_inset Graphics
 	filename portrait_progression_arm2.png
 	lyxscale 20
-	scale 35
+	width 100col%
 
 \end_inset
 
@@ -321,13 +352,23 @@ status open
  הנקודות צבועות לפי הזמן.
 \end_layout
 
+\begin_layout Subsection*
+
+\series bold
+\shape smallcaps
+\size larger
+\lang hebrew
+השוואה בין מערכת כאוטית ללא-כאוטית
+\end_layout
+
 \begin_layout Standard
+\align center
 
 \lang hebrew
 \begin_inset Graphics
 	filename chaos_vs_regular.png
 	lyxscale 20
-	scale 50
+	width 100col%
 
 \end_inset
 
@@ -420,14 +461,26 @@ status open
 \lang hebrew
 ניתן לראות שבדגימה הרגילה התדרים הפעילים יחסית ממורכזים סביב ערכים נקודתיים,
  ולעומת זאת בדגימה הכאוטית תחום התדרים הפעיל הרבה יותר רחב.
+ 
+\end_layout
+
+\begin_layout Subsection*
+
+\series bold
+\shape smallcaps
+\size larger
+\lang hebrew
+מקדמי ליאפונוב
 \end_layout
 
 \begin_layout Standard
+\align center
 
 \lang hebrew
-\begin_inset Formula 
-\[
-\]
+\begin_inset Graphics
+	filename C:/Users/Shake/Downloads/lyapunov_twins_theta1_3s.png
+	lyxscale 50
+	width 70col%
 
 \end_inset
 
@@ -436,17 +489,138 @@ status open
 
 \begin_layout Standard
 
+\lang hebrew
+על מנת לתאר באופן כמותני,
+ ולא איכותני,
+ את אופיה הכאוטי של מערכת המטוטלת הכפולה,
+ נוכל להשתמש במקדמי ליאפונוב.
+ לשם כך,
+ השתמשנו בחמש מדידות בעלות תנאי התחלה דומים (שוחררו עם 
+\begin_inset Formula $\theta_{1}=90^{\circ},\theta_{2}=0^{\circ}$
+\end_inset
+
+ ) וסינכרנו את זמני ההתחלה והשחרור של המטוטלות בין חמשת המדידות,
+ כך שהחלק העליון של הגרף מציג את הזווית 
+\begin_inset Formula $\theta_{1}\left(t\right)$
+\end_inset
+
+.
+ כל צבע שונה מתייחס לאחת מחמשת המדידות השונות.
+ ניתן לראות כי בשניה הראשונה חמשת המסלולים חופפים באופן כמעט מושלם,
+ אך החל מנקודה זו הם מתפצלים למסלולים שונים,
+ כאשר בזמן של 
+\begin_inset Formula $t=1.5s$
+\end_inset
+
+ ישנו כבר הפרש של כ-
+\begin_inset Formula $30^{\circ}$
+\end_inset
+
+ ביניהם,
+ וב-
+\begin_inset Formula $t=2.5s$
+\end_inset
+
+ ההפרש כפל מוכפל לערך ל- 
+\begin_inset Formula $85^{\circ}$
+\end_inset
+
+.
+ זוהי דוגמה מובהקת לרגישות לתנאי ההתחלה,
+ שהינו מאפיין של מערכות כאוטיות.
+ כפי שראינו בחלק התיאורטי,
+ נוכל לתאר את אותה רגישות באמצעות מקדמי ליאפונוב.
+ היות ומערכת המטוטלת הכפולה הינה ארבע-מימדית,
+ אזי ישנם ארבעה מקדמי ליאפונוב,
+ כאשר הגדול בינהם הוא 
+\begin_inset Formula $\lambda_{1}\approx2.2s^{-1}$
+\end_inset
+
+,
+ כאשר מקדם ליאפונוב חיובי 
+\begin_inset Formula $\lambda_{1}>0$
+\end_inset
+
+ הינו מאפיין של מערכות כאוטיות.
+ 
+\end_layout
+
+\begin_layout Subsection*
+
 \series bold
 \shape smallcaps
 \size larger
 \lang hebrew
-פרמטרים מעניינים שחולצו
+חתכי פונאקרה
 \end_layout
 
 \begin_layout Standard
 
 \lang hebrew
-השוונו את ה
+\begin_inset Float figure
+placement H
+alignment document
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\align center
+\begin_inset Graphics
+	filename C:/Users/Shake/Downloads/poincare_regular_vs_chaotic.png
+	lyxscale 40
+	width 70col%
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\lang hebrew
+דרך נוספת לתאר מערכות כאוטיות היא באמצעות חתכי פואנקרה.
+ הגרף לעיל מציג חתכי פואנקרה של 
+\begin_inset Formula $\left(\theta_{1},\omega_{1}\right)$
+\end_inset
+
+ בהיפר-מישור 
+\begin_inset Formula $\theta_{2}=0$
+\end_inset
+
+ ועבור 
+\begin_inset Formula $\omega_{2}>0$
+\end_inset
+
+ עבור שש מדידות שונות המסודרות לפי אנרגיה התחלתית.
+ בשורה הראשונה מופיעים חתכי פואנקרה של מערכות 
+\begin_inset Quotes eld
+\end_inset
+
+רגילות
+\begin_inset Quotes erd
+\end_inset
+
+ (שאינן כאוטיות) - ניתן לראות כי אוסף הנקודות הדיסקרטיות יוצר (ברובן) עקומות רציפות התחומות במרחב הפאזה,
+ כפי שהיינו מצפים מתנועה במסלול סגור (הרמוני).
+ לעומת זאת,
+ בשורה התחתונה נוכל לראות חתכי פואנקרה של מערכות כאוטיות:
+ הנקודות מפוזרות באופן דיפוזי במרחב הפאזה,
+ ללא דפוס הנראה לעין,
+ בקלאסטרים ובפינות שונות של מרחב הפאזה.
+ 
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Newpage newpage
+\end_inset
+
+
 \end_layout
 
 \end_body

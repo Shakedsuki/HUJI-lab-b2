@@ -53,8 +53,7 @@ from scipy.signal import savgol_filter
 # CONFIG
 # ─────────────────────────────────────────────
 
-DEFAULT_CSV   = os.path.join(REPO_ROOT, "measurements", "th1_p180_th2_m179",
-                             "tracking.csv")
+DEFAULT_CSV   = os.path.join(MEAS_DIR, "th1_p180_th2_m179", "tracking.csv")
 DEFAULT_VIDEO = os.path.join(REPO_ROOT, "data", "videos", "long_recording.mov")
 
 def parse_args():
@@ -86,7 +85,7 @@ def video_for_stem(stem):
             video_file = entry.get("video_file")
             if not video_file:
                 continue
-            return os.path.join(REPO_ROOT, "data", "videos", video_file)
+            return os.path.join(VIDEOS_DIR, video_file)
     print(f"ERROR: no registry entry has config_description '{stem}'.")
     print(f"       Add an entry to {EXPERIMENTS_FILE} or supply video "
           f"path positionally.")
@@ -99,7 +98,7 @@ def resolve_paths(args):
     the measurement folder.
     """
     if args.stem:
-        meas_dir = os.path.join(REPO_ROOT, "measurements", args.stem)
+        meas_dir = os.path.join(MEAS_DIR, args.stem)
         csv_path = os.path.join(meas_dir, "tracking.csv")
         if not os.path.exists(csv_path):
             print(f"ERROR: tracking.csv not found for stem '{args.stem}'")

@@ -99,7 +99,7 @@ def measurements_dir_for(config_description):
     Example: measurements_dir_for("th1_p044_th2_m001")
              -> "C:\\dev\\chaos\\measurements\\th1_p044_th2_m001"
     """
-    d = os.path.join(MEASUREMENTS_DIR, config_description)
+    d = os.path.join(MEAS_DIR, config_description)
     os.makedirs(d, exist_ok=True)
     return d
 

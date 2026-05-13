@@ -52,8 +52,7 @@ except (AttributeError, OSError):
 sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "utils")))
 from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
 
-DEFAULT_CSV = os.path.join(REPO_ROOT, "measurements", "th1_p180_th2_m179",
-                           "tracking.csv")
+DEFAULT_CSV = os.path.join(MEAS_DIR, "th1_p180_th2_m179", "tracking.csv")
 
 # Pull rendering helpers from scripts/utils/render.py — every print
 # block in this script that produces a table is delegated there so
@@ -184,7 +183,7 @@ def resolve_paths(args):
     output_dir is where verification.csv / verification.png are written.
     """
     if args.stem:
-        meas_dir = os.path.join(REPO_ROOT, "measurements", args.stem)
+        meas_dir = os.path.join(MEAS_DIR, args.stem)
         csv_path = os.path.join(meas_dir, "tracking.csv")
         if not os.path.exists(csv_path):
             print(f"ERROR: tracking.csv not found for stem '{args.stem}'")
@@ -195,7 +194,7 @@ def resolve_paths(args):
     if args.csv:
         csv_path = args.csv
         if not os.path.isabs(csv_path):
-            csv_path = os.path.join(REPO_ROOT, csv_path)
+            csv_path = os.path.join(MEAS_DIR, csv_path)
         # Write outputs next to the CSV — i.e., into the measurement folder.
         output_dir = os.path.dirname(csv_path)
         stem_label = os.path.basename(output_dir) or \

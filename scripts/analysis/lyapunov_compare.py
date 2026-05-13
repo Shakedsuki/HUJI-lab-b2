@@ -105,8 +105,7 @@ def collect(args):
         if args.pass_only and not is_passing(e):
             continue
 
-        meas_csv = os.path.join(REPO_ROOT, "measurements", stem,
-                                "verification.csv")
+        meas_csv = os.path.join(MEAS_DIR, stem, "verification.csv")
         if not os.path.exists(meas_csv):
             continue
 
