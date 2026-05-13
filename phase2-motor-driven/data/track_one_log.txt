@@ -1099,3 +1099,209 @@
 │                                                                                                  │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
 
+
+2026-05-13T19:47:17
+╭─────────────────────────────────────── ✗  FAIL  3V_0.75Hz ───────────────────────────────────────╮
+│                                                                                                  │
+│  ────────────────────────────────────────── Identity ──────────────────────────────────────────  │
+│   video         3V_0.75Hz.mov                                                                    │
+│   registry key  3V_0.75Hz                                                                        │
+│   HSV used      global                                                                           │
+│  ─────────────────────────────────────── Signal Quality ───────────────────────────────────────  │
+│   frames           init —  /  release —  /  free 2076                                            │
+│   holding dropout  0.00%  ░░░░░░░░░░░░░░░░░░░░  (0 frames)                                       │
+│   free dropout     0.00%  ░░░░░░░░░░░░░░░░░░░░  (0 frames)                                       │
+│   suspects         pre: 383  →  interp: 383  →  post: 283                                        │
+│  ──────────────────────────────────── Physical Diagnostics ────────────────────────────────────  │
+│   peak |ω₁|        614 °/s  ━━━░░░░░┊░░░░░░░░░░░                                                 │
+│   peak |ω₂|        1130 °/s  ━━━━━━░░┊░░░░░░░░░░░                                                │
+│   arm L deviation  7.8% max                                                                      │
+│  ╭───────────────────────────────────────── Reasons ──────────────────────────────────────────╮  │
+│  │   • 7 frame(s) with |Δω| spike (unphysical acceleration)                                   │  │
+│  │   • 2 frame(s) with θ-prediction residual > 5.0° (position inconsistent with recent        │  │
+│  │ velocity)                                                                                  │  │
+│  │   • 270 frame(s) exceed release-energy ceiling (13.0% of free_swing) — probable stable     │  │
+│  │ wrong-target latch                                                                         │  │
+│  ╰────────────────────────────────────────────────────────────────────────────────────────────╯  │
+│  ───────────────────────────────────────── next steps ─────────────────────────────────────────  │
+│    required   Frame 1404  (t = 23.423s,  free_swing):  |ω₂| = 1130 °/s                           │
+│                 Check verification.png at this timestamp.                                        │
+│                 If the marker position looks wrong, correct it manually.                         │
+│                 $ chaos override 3V_0.75Hz --frame 1404                                          │
+│    required   Frame 1405  (t = 23.440s,  free_swing):  |ω₂| = 1129 °/s                           │
+│                 Check verification.png at this timestamp.                                        │
+│                 If the marker position looks wrong, correct it manually.                         │
+│                 $ chaos override 3V_0.75Hz --frame 1405                                          │
+│    required   Frame 1565  (t = 26.109s,  free_swing):  |ω₂| = 1091 °/s                           │
+│                 Check verification.png at this timestamp.                                        │
+│                 If the marker position looks wrong, correct it manually.                         │
+│                 $ chaos override 3V_0.75Hz --frame 1565                                          │
+│    info       ... and 2 more suspect frames. Run verify_tracking for the full list.              │
+│                 $ chaos verify 3V_0.75Hz                                                         │
+│    review     2 frame(s) show θ position inconsistent with recent velocity (residual > 5.0°).    │
+│                 Likely: slow background object near the ring during low-velocity phase.          │
+│                 Check verification.png for position scatter near ω zero-crossings.               │
+│                 $ chaos verify 3V_0.75Hz                                                         │
+│    required   270 frames (13.0% of free_swing) exceed the release-energy ceiling.                │
+│                 Signature of a sustained wrong-target latch — the tracker followed a             │
+│               non-marker object for an extended run.                                             │
+│                 Single-frame interpolation cannot fix this. Add a seed at the latch entry        │
+│               point or recalibrate HSV.                                                          │
+│                 $ chaos fix 3V_0.75Hz                                                            │
+│                                                                                  elapsed: 1448s  │
+│                                                                                                  │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+
+2026-05-13T19:50:36
+╭─────────────────────────────────────── ⚠  WARN  3V_0.75Hz ───────────────────────────────────────╮
+│                                                                                                  │
+│  ────────────────────────────────────────── Identity ──────────────────────────────────────────  │
+│   video         3V_0.75Hz.mov                                                                    │
+│   registry key  3V_0.75Hz                                                                        │
+│   HSV used      global                                                                           │
+│  ─────────────────────────────────────── Signal Quality ───────────────────────────────────────  │
+│   frames           init 0  /  release 198  /  free 2076                                          │
+│   holding dropout  0.00%  ░░░░░░░░░░░░░░░░░░░░  (0 frames)                                       │
+│   free dropout     2.89%  ━━━━░░░░░░░░░░░░░░░░  (60 frames)                                      │
+│   suspects         pre: 1877  →  interp: 1877  →  post: 14                                       │
+│  ──────────────────────────────────── Physical Diagnostics ────────────────────────────────────  │
+│   peak |ω₁|        629 °/s  ━━━░░░░░┊░░░░░░░░░░░                                                 │
+│   peak |ω₂|        887 °/s  ━━━━░░░░┊░░░░░░░░░░░                                                 │
+│   arm L deviation  9.2% max                                                                      │
+│  ╭───────────────────────────────────────── Reasons ──────────────────────────────────────────╮  │
+│  │   • 3 frame(s) exceed release-energy ceiling (0.1% of free_swing) — probable stable        │  │
+│  │ wrong-target latch                                                                         │  │
+│  │   • 11 frame(s) show rolling energy spike (>2.0× baseline) — tracker likely jumped briefly │  │
+│  │ to wrong object                                                                            │  │
+│  ╰────────────────────────────────────────────────────────────────────────────────────────────╯  │
+│  ───────────────────────────────────────── next steps ─────────────────────────────────────────  │
+│    Review verification.png; if acceptable, set tracking_quality=verified manually.               │
+│                                                                                     elapsed: 0s  │
+│                                                                                                  │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+
+2026-05-13T19:52:15
+╭─────────────────────────────────────── ⚠  WARN  3V_1.25Hz ───────────────────────────────────────╮
+│                                                                                                  │
+│  ────────────────────────────────────────── Identity ──────────────────────────────────────────  │
+│   video         3V_1.25Hz.mov                                                                    │
+│   registry key  3V_1.25Hz                                                                        │
+│   HSV used      global                                                                           │
+│  ─────────────────────────────────────── Signal Quality ───────────────────────────────────────  │
+│   frames           init —  /  release —  /  free 1941                                            │
+│   holding dropout  0.00%  ░░░░░░░░░░░░░░░░░░░░  (0 frames)                                       │
+│   free dropout     0.00%  ░░░░░░░░░░░░░░░░░░░░  (0 frames)                                       │
+│   suspects         pre: 17  →  interp: 17  →  post: 18                                           │
+│  ──────────────────────────────────── Physical Diagnostics ────────────────────────────────────  │
+│   peak |ω₁|        601 °/s  ━━━░░░░░┊░░░░░░░░░░░                                                 │
+│   peak |ω₂|        1343 °/s  ━━━━━━━░┊░░░░░░░░░░░                                                │
+│   arm L deviation  12.4% max                                                                     │
+│  ╭───────────────────────────────────────── Reasons ──────────────────────────────────────────╮  │
+│  │   • 3 arm-length violation(s) (max deviation 12.4%) — tracker latched on wrong object      │  │
+│  │   • 9 frame(s) exceed release-energy ceiling (0.5% of free_swing) — probable stable        │  │
+│  │ wrong-target latch                                                                         │  │
+│  │   • 9 frame(s) show rolling energy spike (>2.0× baseline) — tracker likely jumped briefly  │  │
+│  │ to wrong object                                                                            │  │
+│  ╰────────────────────────────────────────────────────────────────────────────────────────────╯  │
+│  ───────────────────────────────────────── next steps ─────────────────────────────────────────  │
+│    required   Frame 1778  (t = 29.663s,  free_swing):  |ω₂| = 795 °/s                            │
+│                 Check verification.png at this timestamp.                                        │
+│                 If the marker position looks wrong, correct it manually.                         │
+│                 $ chaos override 3V_1.25Hz --frame 1778                                          │
+│    required   Frame 844  (t = 14.081s,  free_swing):  |ω₂| = 702 °/s                             │
+│                 Check verification.png at this timestamp.                                        │
+│                 If the marker position looks wrong, correct it manually.                         │
+│                 $ chaos override 3V_1.25Hz --frame 844                                           │
+│    required   Frame 410  (t = 6.840s,  free_swing):  |ω₂| = 674 °/s                              │
+│                 Check verification.png at this timestamp.                                        │
+│                 If the marker position looks wrong, correct it manually.                         │
+│                 $ chaos override 3V_1.25Hz --frame 410                                           │
+│    info       ... and 2 more suspect frames. Run verify_tracking for the full list.              │
+│                 $ chaos verify 3V_1.25Hz                                                         │
+│    review     3 frame(s) violate rigid-arm constraint (max deviation: 12.4%).                    │
+│                 These frames show the tracker latched onto a wrong                               │
+│                 object. They cannot be fixed by interpolation alone —                            │
+│                 inspect each frame visually and correct or mark unresolvable.                    │
+│                 $ chaos verify 3V_1.25Hz                                                         │
+│    required   9 frames (0.5% of free_swing) exceed the release-energy ceiling.                   │
+│                 Signature of a sustained wrong-target latch — the tracker followed a             │
+│               non-marker object for an extended run.                                             │
+│                 Single-frame interpolation cannot fix this. Add a seed at the latch entry        │
+│               point or recalibrate HSV.                                                          │
+│                 $ chaos fix 3V_1.25Hz                                                            │
+│                                                                                    elapsed: 87s  │
+│                                                                                                  │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+
+2026-05-13T23:54:59
+╭─────────────────────────────────────── ⚠  WARN  3V_1.5Hz ────────────────────────────────────────╮
+│                                                                                                  │
+│  ────────────────────────────────────────── Identity ──────────────────────────────────────────  │
+│   video         3V_1.5Hz.mov                                                                     │
+│   registry key  3V_1.5Hz                                                                         │
+│   HSV used      global                                                                           │
+│  ─────────────────────────────────────── Signal Quality ───────────────────────────────────────  │
+│   frames           init —  /  release —  /  free 2649                                            │
+│   holding dropout  0.00%  ░░░░░░░░░░░░░░░░░░░░  (0 frames)                                       │
+│   free dropout     0.00%  ░░░░░░░░░░░░░░░░░░░░  (0 frames)                                       │
+│   suspects         pre: 6  →  interp: 6  →  post: 4                                              │
+│  ──────────────────────────────────── Physical Diagnostics ────────────────────────────────────  │
+│   peak |ω₁|        463 °/s  ━━░░░░░░┊░░░░░░░░░░░                                                 │
+│   peak |ω₂|        894 °/s  ━━━━░░░░┊░░░░░░░░░░░                                                 │
+│   arm L deviation  7.7% max                                                                      │
+│  ╭───────────────────────────────────────── Reasons ──────────────────────────────────────────╮  │
+│  │   • 4 frame(s) show rolling energy spike (>2.0× baseline) — tracker likely jumped briefly  │  │
+│  │ to wrong object                                                                            │  │
+│  ╰────────────────────────────────────────────────────────────────────────────────────────────╯  │
+│  ───────────────────────────────────────── next steps ─────────────────────────────────────────  │
+│    required   Frame 115  (t = 1.919s,  free_swing):  |ω₂| = 237 °/s                              │
+│                 Check verification.png at this timestamp.                                        │
+│                 If the marker position looks wrong, correct it manually.                         │
+│                 $ chaos override 3V_1.5Hz --frame 115                                            │
+│    required   Frame 114  (t = 1.902s,  free_swing):  |ω₂| = 233 °/s                              │
+│                 Check verification.png at this timestamp.                                        │
+│                 If the marker position looks wrong, correct it manually.                         │
+│                 $ chaos override 3V_1.5Hz --frame 114                                            │
+│    required   Frame 116  (t = 1.935s,  free_swing):  |ω₂| = 215 °/s                              │
+│                 Check verification.png at this timestamp.                                        │
+│                 If the marker position looks wrong, correct it manually.                         │
+│                 $ chaos override 3V_1.5Hz --frame 116                                            │
+│    info       ... and 1 more suspect frames. Run verify_tracking for the full list.              │
+│                 $ chaos verify 3V_1.5Hz                                                          │
+│    review     4 frame(s) show brief energy spikes above the rolling baseline.                    │
+│                 Likely: tracker briefly latched onto a wrong object and returned.                │
+│               Interpolation may fix these.                                                       │
+│                 $ chaos override 3V_1.5Hz                                                        │
+│                                                                                   elapsed: 124s  │
+│                                                                                                  │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+
+2026-05-13T23:55:13
+╭─────────────────────────────────────── ✗  FAIL  4V_0.6Hz ────────────────────────────────────────╮
+│                                                                                                  │
+│  ────────────────────────────────────────── Identity ──────────────────────────────────────────  │
+│   video         4V_0.6Hz.mov                                                                     │
+│   registry key  4V_0.6Hz                                                                         │
+│   HSV used      global                                                                           │
+│  ─────────────────────────────────────── Signal Quality ───────────────────────────────────────  │
+│   frames           init —  /  release —  /  free —                                               │
+│   holding dropout  —                                                                             │
+│   free dropout     —                                                                             │
+│   suspects         0                                                                             │
+│  ──────────────────────────────────── Physical Diagnostics ────────────────────────────────────  │
+│   peak |ω₁|  0 °/s  ░░░░░░░░┊░░░░░░░░░░░                                                         │
+│   peak |ω₂|  0 °/s  ░░░░░░░░┊░░░░░░░░░░░                                                         │
+│  ╭───────────────────────────────────────── Reasons ──────────────────────────────────────────╮  │
+│  │   • verify_tracking exit 1                                                                 │  │
+│  ╰────────────────────────────────────────────────────────────────────────────────────────────╯  │
+│  ───────────────────────────────────────── next steps ─────────────────────────────────────────  │
+│    Inspect debug.mp4 or re-run with --debug; consider hsv_tuner re-calibration or a different    │
+│  release frame.                                                                                  │
+│                                                                                     elapsed: 9s  │
+│                                                                                                  │
+╰──────────────────────────────────────────────────────────────────────────────────────────────────╯
+

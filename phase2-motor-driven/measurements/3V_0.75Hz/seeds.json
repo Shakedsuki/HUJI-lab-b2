@@ -1,0 +1,108 @@
+{
+  "seeds": [
+    {
+      "frame": 200,
+      "green_xy": [
+        655,
+        483
+      ],
+      "red_xy": [
+        660,
+        632
+      ]
+    },
+    {
+      "frame": 202,
+      "green_xy": [
+        644,
+        481
+      ],
+      "red_xy": [
+        660,
+        631
+      ]
+    },
+    {
+      "frame": 365,
+      "green_xy": null,
+      "red_xy": [
+        643,
+        628
+      ]
+    },
+    {
+      "frame": 366,
+      "green_xy": null,
+      "red_xy": [
+        583,
+        608
+      ]
+    },
+    {
+      "frame": 367,
+      "green_xy": null,
+      "red_xy": [
+        536,
+        585
+      ]
+    },
+    {
+      "frame": 368,
+      "green_xy": null,
+      "red_xy": [
+        497,
+        556
+      ]
+    },
+    {
+      "frame": 369,
+      "green_xy": null,
+      "red_xy": [
+        463,
+        529
+      ]
+    },
+    {
+      "frame": 445,
+      "green_xy": null,
+      "red_xy": [
+        613,
+        625
+      ]
+    },
+    {
+      "frame": 446,
+      "green_xy": null,
+      "red_xy": [
+        561,
+        607
+      ]
+    },
+    {
+      "frame": 447,
+      "green_xy": null,
+      "red_xy": [
+        515,
+        584
+      ]
+    },
+    {
+      "frame": 448,
+      "green_xy": null,
+      "red_xy": [
+        476,
+        555
+      ]
+    },
+    {
+      "frame": 485,
+      "green_xy": null,
+      "red_xy": [
+        661,
+        633
+      ]
+    }
+  ],
+  "saved_at": "2026-05-13T19:49:15",
+  "notes": "Created by manual_correction.py"
+}
