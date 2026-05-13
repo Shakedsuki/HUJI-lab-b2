@@ -1,0 +1,61 @@
+{
+  "seeds": [
+    {
+      "frame": 95,
+      "green_xy": [
+        649,
+        484
+      ],
+      "red_xy": [
+        667,
+        632
+      ]
+    },
+    {
+      "frame": 96,
+      "green_xy": [
+        640,
+        484
+      ],
+      "red_xy": [
+        671,
+        628
+      ]
+    },
+    {
+      "frame": 97,
+      "green_xy": [
+        632,
+        484
+      ],
+      "red_xy": [
+        671,
+        624
+      ]
+    },
+    {
+      "frame": 98,
+      "green_xy": [
+        621,
+        479
+      ],
+      "red_xy": [
+        673,
+        616
+      ]
+    },
+    {
+      "frame": 99,
+      "green_xy": [
+        611,
+        475
+      ],
+      "red_xy": [
+        669,
+        612
+      ]
+    }
+  ],
+  "saved_at": "2026-05-13T17:40:33",
+  "notes": "Created by manual_correction.py"
+}
