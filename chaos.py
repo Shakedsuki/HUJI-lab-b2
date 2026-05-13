@@ -78,6 +78,8 @@ SCRIPT_FRICTION   = os.path.join(ROOT, "scripts", "analysis", "friction_fit.py")
 SCRIPT_FRIC_CMP   = os.path.join(ROOT, "scripts", "analysis", "friction_compare.py")
 SCRIPT_POINCARE   = os.path.join(ROOT, "scripts", "analysis", "poincare.py")
 SCRIPT_LYAPUNOV   = os.path.join(ROOT, "scripts", "analysis", "lyapunov.py")
+SCRIPT_DRIVEN_POIN = os.path.join(ROOT, "scripts", "analysis", "driven_poincare.py")
+SCRIPT_DRIVEN_BIF  = os.path.join(ROOT, "scripts", "analysis", "driven_bifurcation.py")
 
 VIDEO_EXTS = {".mov", ".mp4", ".avi", ".mkv", ".m4v"}
 
@@ -353,6 +355,30 @@ def cmd_poincare(args):
     return run_script(SCRIPT_POINCARE, *extra)
 
 
+def cmd_driven_poincare(args):
+    """Phase 2 driven — stroboscopic Poincare section at t = n/f_drive.
+    Writes measurements/<stem>/driven_poincare.csv and
+    figures/driven_poincare/<stem>_driven_poincare.png."""
+    extra = ["--stem", args.stem]
+    if args.transient is not None: extra += ["--transient", str(args.transient)]
+    if args.f_drive   is not None: extra += ["--f-drive", str(args.f_drive)]
+    if args.no_csv:                extra.append("--no-csv")
+    return run_script(SCRIPT_DRIVEN_POIN, *extra)
+
+
+def cmd_driven_bifurcation(args):
+    """Phase 2 driven — multi-clip bifurcation diagram across a 1D
+    parameter sweep. Writes data/driven_bifurcation_<tag>.csv and
+    figures/aggregate/driven_bifurcation_<tag>.png."""
+    extra = ["--sweep", args.sweep]
+    if args.fixed_fd  is not None: extra += ["--fixed-fd", str(args.fixed_fd)]
+    if args.fixed_vd  is not None: extra += ["--fixed-vd", str(args.fixed_vd)]
+    if args.tolerance is not None: extra += ["--tolerance", str(args.tolerance)]
+    if args.transient is not None: extra += ["--transient", str(args.transient)]
+    if args.min_clips is not None: extra += ["--min-clips", str(args.min_clips)]
+    return run_script(SCRIPT_DRIVEN_BIF, *extra)
+
+
 def cmd_figures(args):
     """Batch-render all per-clip figures for every tracked measurement."""
     extra = []
@@ -442,6 +468,17 @@ BATCH / DRIVER COMMANDS
   chaos poincare <stem>      Phase 2 — true 2D Poincaré section at
                              theta1+theta2=0 (upward). Writes poincare.png
                              and poincare.csv
+  chaos driven-poincare <stem>
+                             Phase 2 (motor-driven) — stroboscopic Poincare
+                             section sampling (theta1, omega1) once per drive
+                             period T = 1/f_drive. Writes
+                             measurements/<stem>/driven_poincare.csv
+                             and figures/driven_poincare/<stem>_driven_poincare.png
+  chaos driven-bifurcation [--sweep vd|fd]
+                             Phase 2 (motor-driven) — bifurcation diagram across
+                             a 1D parameter sweep (--sweep vd at --fixed-fd, or
+                             --sweep fd at --fixed-vd). Writes
+                             figures/aggregate/driven_bifurcation_<tag>.png
   chaos lyapunov <stem>      Phase 2 — largest Lyapunov exponent via
                              Rosenstein 1993 algorithm (delay-embedding +
                              nearest-neighbor divergence). Writes lyapunov.png
@@ -938,6 +975,31 @@ def build_parser():
         help="embed omega1 instead of theta1")
     p_lyap.add_argument("--no-plot", action="store_true")
 
+    p_dpoin = sub.add_parser("driven-poincare",
+        help="Phase 2 driven — stroboscopic Poincare at t = n/f_drive")
+    p_dpoin.add_argument("stem", metavar="<stem>",
+        help="config_description, e.g. 3V_1.5Hz")
+    p_dpoin.add_argument("--transient", type=float, default=None,
+        metavar="SECONDS", help="seconds to skip at start (default 5)")
+    p_dpoin.add_argument("--f-drive", type=float, default=None, metavar="HZ",
+        help="override drive frequency (default: from experiments.json)")
+    p_dpoin.add_argument("--no-csv", action="store_true")
+
+    p_dbif = sub.add_parser("driven-bifurcation",
+        help="Phase 2 driven — multi-clip bifurcation diagram across a 1D sweep")
+    p_dbif.add_argument("--sweep", choices=["vd", "fd"], default="vd",
+        help="parameter to sweep on x (default vd)")
+    p_dbif.add_argument("--fixed-fd", type=float, default=None,
+        metavar="HZ", help="drive freq to hold fixed when --sweep vd (default 1.0)")
+    p_dbif.add_argument("--fixed-vd", type=float, default=None,
+        metavar="V", help="drive voltage to hold fixed when --sweep fd (default 3.0)")
+    p_dbif.add_argument("--tolerance", type=float, default=None,
+        metavar="EPS", help="match tolerance for the fixed parameter (default 0.05)")
+    p_dbif.add_argument("--transient", type=float, default=None,
+        metavar="SECONDS", help="seconds to skip at start of each clip")
+    p_dbif.add_argument("--min-clips", type=int, default=None, metavar="N",
+        help="refuse to plot fewer than N matched clips (default 3)")
+
     p_figs = sub.add_parser("figures",
         help="batch-render all per-clip figures for tracked measurements")
     p_figs.add_argument("--stem", default=None, metavar="<stem>",
@@ -974,6 +1036,8 @@ HANDLERS = {
     "friction-compare": cmd_friction_compare,
     "poincare":         cmd_poincare,
     "lyapunov":         cmd_lyapunov,
+    "driven-poincare":    cmd_driven_poincare,
+    "driven-bifurcation": cmd_driven_bifurcation,
     "figures":          cmd_figures,
     "help":             cmd_help,
 }
