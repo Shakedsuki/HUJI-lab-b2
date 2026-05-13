@@ -50,11 +50,19 @@ import json
 import os
 import sys
 
+_HSV_TUNER_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, os.path.abspath(os.path.join(_HSV_TUNER_DIR, os.pardir, "utils")))
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
+from thresholds import PIVOT, ARM_LENGTH_PX  # noqa: E402
+
 # ─────────────────────────────────────────────
 # CONSTANTS
 # ─────────────────────────────────────────────
 
-DEFAULT_VIDEO    = os.path.join(REPO_ROOT, r"Videos\long_recording.mov")
+DEFAULT_VIDEO    = next(
+    (os.path.join(VIDEOS_DIR, f) for f in sorted(os.listdir(VIDEOS_DIR))
+     if f.lower().endswith(".mov")),
+    None) if os.path.isdir(VIDEOS_DIR) else None
 
 GLOBAL_HSV_FILE  = os.path.join(DATA_DIR, "hsv_values.json")
 HSV_README       = os.path.join(DATA_DIR, "hsv_values_readme.txt")
@@ -69,12 +77,7 @@ def hsv_file_for_video(video_path, force_global=False):
     stem = os.path.splitext(os.path.basename(video_path))[0]
     return os.path.join(DATA_DIR, f"hsv_{stem}.json")
 
-# Brief 10b: PIVOT and ARM_LENGTH_PX imported from thresholds.py.
-# (--arm-length N still overrides ARM_LENGTH_PX at the CLI layer below.)
-_HSV_TUNER_DIR = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, os.path.abspath(
-    os.path.join(_HSV_TUNER_DIR, os.pardir, "utils")))
-from thresholds import PIVOT, ARM_LENGTH_PX  # noqa: E402
+# Brief 10b: PIVOT and ARM_LENGTH_PX imported from thresholds.py above.
 
 # Original frame dimensions (we know the rig: 1280x720 @ 59.94fps).
 FRAME_W = 1280
@@ -1126,5 +1129,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402

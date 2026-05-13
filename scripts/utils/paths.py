@@ -26,6 +26,11 @@ PHASE_ROOT = os.path.join(REPO_ROOT, PHASE)
 
 DATA_DIR    = os.path.join(PHASE_ROOT, "data")
 MEAS_DIR    = os.path.join(PHASE_ROOT, "measurements")
-VIDEOS_DIR  = os.path.join(PHASE_ROOT, "data", "videos")
 FIGURES_DIR = os.path.join(PHASE_ROOT, "figures")
 EXPERIMENTS = os.path.join(DATA_DIR, "experiments.json")
+
+# Phase 2 stores videos directly under phase2-motor-driven/videos/ (not data/videos/).
+if PHASE == "phase2-motor-driven":
+    VIDEOS_DIR = os.path.join(PHASE_ROOT, "videos")
+else:
+    VIDEOS_DIR = os.path.join(PHASE_ROOT, "data", "videos")
