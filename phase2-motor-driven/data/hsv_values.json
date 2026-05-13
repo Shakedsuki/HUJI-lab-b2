@@ -1,0 +1,26 @@
+{
+  "green": {
+    "h_min": 23,
+    "h_max": 61,
+    "s_min": 147,
+    "s_max": 255,
+    "v_min": 48,
+    "v_max": 157
+  },
+  "red": {
+    "h_min": 0,
+    "h_max": 25,
+    "s_min": 143,
+    "s_max": 255,
+    "v_min": 62,
+    "v_max": 147,
+    "h_min2": 180,
+    "h_max2": 180
+  },
+  "ring_tolerance": 30,
+  "arm_length_px": 153,
+  "pivot": [
+    663,
+    332
+  ]
+}

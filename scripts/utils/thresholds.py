@@ -120,7 +120,7 @@ else:
 #   center (663.7, 329.7)  r = 153.0 px
 #   fit residuals: std=0.58px  median=0.81px  p95=2.01px  (3308 inliers)
 if _PHASE == "phase2-motor-driven":
-    PIVOT         = (664, 330)
+    PIVOT         = (663, 332)   # refined by hsv_tuner P-key (2026-05-13)
     ARM_LENGTH_PX = 153
 else:
     PIVOT         = (608, 355)
