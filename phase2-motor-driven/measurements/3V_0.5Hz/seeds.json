@@ -1,0 +1,199 @@
+{
+  "seeds": [
+    {
+      "frame": 95,
+      "green_xy": [
+        644,
+        484
+      ],
+      "red_xy": [
+        656,
+        631
+      ]
+    },
+    {
+      "frame": 96,
+      "green_xy": [
+        635,
+        483
+      ],
+      "red_xy": [
+        660,
+        627
+      ]
+    },
+    {
+      "frame": 97,
+      "green_xy": [
+        627,
+        479
+      ],
+      "red_xy": [
+        661,
+        624
+      ]
+    },
+    {
+      "frame": 98,
+      "green_xy": [
+        617,
+        477
+      ],
+      "red_xy": null
+    },
+    {
+      "frame": 294,
+      "green_xy": null,
+      "red_xy": [
+        945,
+        301
+      ]
+    },
+    {
+      "frame": 295,
+      "green_xy": null,
+      "red_xy": [
+        937,
+        300
+      ]
+    },
+    {
+      "frame": 296,
+      "green_xy": null,
+      "red_xy": [
+        928,
+        304
+      ]
+    },
+    {
+      "frame": 297,
+      "green_xy": null,
+      "red_xy": [
+        916,
+        307
+      ]
+    },
+    {
+      "frame": 298,
+      "green_xy": null,
+      "red_xy": [
+        904,
+        312
+      ]
+    },
+    {
+      "frame": 302,
+      "green_xy": null,
+      "red_xy": [
+        836,
+        341
+      ]
+    },
+    {
+      "frame": 304,
+      "green_xy": null,
+      "red_xy": [
+        789,
+        359
+      ]
+    },
+    {
+      "frame": 305,
+      "green_xy": null,
+      "red_xy": [
+        764,
+        363
+      ]
+    },
+    {
+      "frame": 306,
+      "green_xy": null,
+      "red_xy": [
+        737,
+        363
+      ]
+    },
+    {
+      "frame": 307,
+      "green_xy": null,
+      "red_xy": [
+        709,
+        357
+      ]
+    },
+    {
+      "frame": 308,
+      "green_xy": null,
+      "red_xy": [
+        685,
+        345
+      ]
+    },
+    {
+      "frame": 309,
+      "green_xy": null,
+      "red_xy": [
+        664,
+        333
+      ]
+    },
+    {
+      "frame": 310,
+      "green_xy": null,
+      "red_xy": [
+        649,
+        320
+      ]
+    },
+    {
+      "frame": 311,
+      "green_xy": null,
+      "red_xy": [
+        636,
+        305
+      ]
+    },
+    {
+      "frame": 312,
+      "green_xy": null,
+      "red_xy": [
+        624,
+        295
+      ]
+    },
+    {
+      "frame": 313,
+      "green_xy": null,
+      "red_xy": [
+        616,
+        284
+      ]
+    },
+    {
+      "frame": 314,
+      "green_xy": null,
+      "red_xy": [
+        609,
+        276
+      ]
+    },
+    {
+      "frame": 315,
+      "green_xy": null,
+      "red_xy": [
+        597,
+        273
+      ]
+    },
+    {
+      "frame": 316,
+      "green_xy": null,
+      "red_xy": [
+        596,
+        268
+      ]
+    }
+  ],
+  "saved_at": "2026-05-13T17:53:23",
+  "notes": "Created by manual_correction.py"
+}
