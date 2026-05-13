@@ -58,7 +58,39 @@ Raw oscilloscope CSVs live in `chaos/part2/samples/` (gitignored). Acquire from 
 
 ---
 
-## Double-Pendulum Tracking (`scripts/`, `measurements/`, `data/`)
+## Phase 2 — Motor-Driven Double Pendulum (`phase2-motor-driven/`)  ← Current
+
+### What it is
+
+A driven, damped double pendulum: a DC motor oscillates Arm 1 (upper arm) at a controlled frequency `f_drive` and amplitude proportional to `V_drill`. Arm 2 (lower arm) hangs free from Pivot β. The system can sustain a **strange attractor** — unlike Phase 1 (free swing / transient chaos), continuous energy input from the motor balances dissipation.
+
+The control space is 2D: **`f_drive` (Hz) × `V_drill` (V)**. A sweep in `V_drill` at fixed `f_drive` produces the period-doubling cascade (period-1 → period-2 → period-4 → chaos), mirroring the RLD circuit results from Part 2.
+
+### Control parameters
+
+| Parameter | Physical meaning | Set via |
+|-----------|-----------------|---------|
+| `f_drive` | Driving frequency (Hz) | Function generator |
+| `V_drill` | Driving amplitude proxy | Bench supply Ch2 |
+
+### Clip naming convention
+
+```
+fd_<freq_hz>_vd_<voltage_v>     e.g.  fd_1p5_vd_4v0
+```
+
+### Deliverables
+
+Phase portraits · Poincaré sections (stroboscopic at θ₁ = 0, ω₁ > 0) · Bifurcation diagram (peak θ₂ vs V_drill) · Return maps · Lyapunov exponent · 3D phase animation
+
+### Docs
+
+- [`phase2-motor-driven/docs/SYSTEM_SETUP.md`](phase2-motor-driven/docs/SYSTEM_SETUP.md) — full apparatus, circuit, electronics, and physics reference
+- [`phase2-motor-driven/docs/driven_pendulum_circuit.html`](phase2-motor-driven/docs/driven_pendulum_circuit.html) — annotated HTML circuit diagram (DPDT relay, signal chain, mechanical output)
+
+---
+
+## Phase 1 — Free-Swing Double Pendulum Tracking (`scripts/`, `measurements/`, `data/`)
 
 ### Setup
 
@@ -137,6 +169,6 @@ Plus the cross-clip rollup at `data/status_report.xlsx` (`chaos report`) and `do
 
 ### More
 
-- [`docs/PIPELINE.md`](docs/PIPELINE.md) — keystroke-level walkthrough, HSV/fix-up keyboard refs, geometry calibration, troubleshooting
+- [`phase1-free-swing/docs/PIPELINE.md`](phase1-free-swing/docs/PIPELINE.md) — keystroke-level walkthrough, HSV/fix-up keyboard refs, geometry calibration, troubleshooting
 - `chaos help` — same cheat sheet on stdout
 - `chaos <cmd> --help` — flag list for any subcommand
