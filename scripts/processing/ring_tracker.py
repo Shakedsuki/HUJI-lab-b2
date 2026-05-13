@@ -63,6 +63,11 @@ import sys
 import json
 from scipy.signal import savgol_filter
 
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+except (AttributeError, OSError):
+    pass
+
 # Reuse the tracked/pending helpers from scripts/utils/video_status.py
 # instead of duplicating them. ring_tracker.py is a script (never imported),
 # so a one-shot sys.path insertion is fine. Compute the path relative to

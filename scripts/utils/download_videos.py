@@ -17,14 +17,20 @@ import os
 import subprocess
 import sys
 
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+except (AttributeError, OSError):
+    pass
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from paths import VIDEOS_DIR  # noqa: E402
+
 # ── Google Drive folder ID ────────────────────────────────────────────
 # Extracted from: https://drive.google.com/drive/folders/1nB9rrpZ1UTdLrKEJudptLbawavkvXWj-
 DRIVE_FOLDER_ID = "1nB9rrpZ1UTdLrKEJudptLbawavkvXWj-"
 
-# ── Local destination ─────────────────────────────────────────────────
-SCRIPT_DIR   = os.path.dirname(os.path.abspath(__file__))
-PROJECT_ROOT = os.path.dirname(os.path.dirname(SCRIPT_DIR))
-OUTPUT_DIR   = os.path.join(PROJECT_ROOT, "data", "videos")
+# ── Local destination (honours CHAOS_PHASE) ───────────────────────────
+OUTPUT_DIR = VIDEOS_DIR
 
 def check_gdown():
     """Check gdown is installed, prompt to install if not."""
@@ -61,5 +67,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402

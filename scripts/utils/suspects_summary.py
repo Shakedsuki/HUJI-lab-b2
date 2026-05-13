@@ -27,6 +27,9 @@ try:
 except (AttributeError, OSError):
     pass
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
+
 def parse_args():
     p = argparse.ArgumentParser(
         description="Decompose a clip's suspect count into per-check "
@@ -98,8 +101,6 @@ def main():
                     arm_violation_rows.append((fr, dev))
             except ValueError:
                 pass
-
-from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
 
     n_susp = len(suspect_frames)
     pct = (100.0 * n_susp / n_total) if n_total else 0.0

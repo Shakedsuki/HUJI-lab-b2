@@ -44,6 +44,11 @@ try:
 except (AttributeError, OSError):
     pass
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
+
+EXPERIMENTS_FILE = EXPERIMENTS
+
 TRACKER_SCRIPT   = os.path.join(REPO_ROOT, "scripts", "processing",
                                 "ring_tracker.py")
 VERIFY_SCRIPT    = os.path.join(REPO_ROOT, "scripts", "processing",
@@ -259,8 +264,6 @@ def load_existing_seeds(path):
             data = json.load(f)
         return list(data.get("seeds", []))
     except (OSError, json.JSONDecodeError):
-
-from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
         return []
 
 def merge_seeds(existing, auto):
@@ -445,5 +448,3 @@ def main():
 
 if __name__ == "__main__":
     sys.exit(main())
-
-EXPERIMENTS_FILE = EXPERIMENTS
