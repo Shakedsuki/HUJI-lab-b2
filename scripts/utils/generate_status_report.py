@@ -48,6 +48,11 @@ except ImportError:
     print("  pip install openpyxl")
     sys.exit(1)
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
+
+EXPERIMENTS_FILE = EXPERIMENTS
+
 # ─────────────────────────────────────────────
 # CONSTANTS
 # ─────────────────────────────────────────────
@@ -220,8 +225,6 @@ def count_verification_suspects(verification_csv):
             return None
         return int(df["suspect"].astype(int).sum())
     except Exception:
-
-from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
         return None
 
 # ─────────────────────────────────────────────

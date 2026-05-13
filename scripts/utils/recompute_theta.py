@@ -26,6 +26,11 @@ import os
 import shutil
 import sys
 
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+except (AttributeError, OSError):
+    pass
+
 _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, _THIS_DIR)
 from paths import MEAS_DIR, REPO_ROOT  # noqa: E402

@@ -45,6 +45,11 @@ try:
 except (AttributeError, OSError):
     pass
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
+
+EXPERIMENTS_FILE = EXPERIMENTS
+
 BULK_LOG_FILE    = os.path.join(DATA_DIR, "bulk_tracking_log.json")
 DEFAULT_OUT      = os.path.join(REPO_ROOT, "docs", "tracking_roadmap.md")
 
@@ -179,12 +184,8 @@ def classify(entry, bulk_entry, meas_dir=None):
 
     if has_tracking_csv(entry) and meas_dir is not None:
         try:
-
-            sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
             # Lazy import — avoids forcing roadmap consumers to bring
             # in track_one when they don't need verdict computation.
-EXPERIMENTS_FILE = EXPERIMENTS
             from track_one import (  # noqa: E402
                 read_verification_metrics, compute_verdict,
             )
