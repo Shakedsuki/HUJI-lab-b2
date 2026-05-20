@@ -892,5 +892,632 @@
     "tag_frame": 0,
     "init_frame": 0,
     "release_frame": 0
+  },
+  "3.2V_0.91Hz": {
+    "video_file": "3.2V_0.91Hz.mov",
+    "config_description": "3.2V_0.91Hz",
+    "drive_voltage_v": 3.2,
+    "drive_freq_hz": 0.91,
+    "repeat_number": 1,
+    "arm_length_cm": 33.1,
+    "arm_length_px": 153,
+    "pivot_px": [
+      663,
+      332
+    ],
+    "scale_cm_per_px": 0.2163,
+    "measurements_dir": "measurements/3.2V_0.91Hz",
+    "csv_file": "tracking.csv",
+    "tracking_quality": "untracked",
+    "notes": "",
+    "tag_frame": 0
+  },
+  "3.2V_0.92Hz": {
+    "video_file": "3.2V_0.92Hz.mov",
+    "config_description": "3.2V_0.92Hz",
+    "drive_voltage_v": 3.2,
+    "drive_freq_hz": 0.92,
+    "repeat_number": 1,
+    "arm_length_cm": 33.1,
+    "arm_length_px": 153,
+    "pivot_px": [
+      663,
+      332
+    ],
+    "scale_cm_per_px": 0.2163,
+    "measurements_dir": "measurements/3.2V_0.92Hz",
+    "csv_file": "tracking.csv",
+    "tracking_quality": "untracked",
+    "notes": "",
+    "tag_frame": 0
+  },
+  "3.2V_0.93Hz": {
+    "video_file": "3.2V_0.93Hz.mov",
+    "config_description": "3.2V_0.93Hz",
+    "drive_voltage_v": 3.2,
+    "drive_freq_hz": 0.93,
+    "repeat_number": 1,
+    "arm_length_cm": 33.1,
+    "arm_length_px": 153,
+    "pivot_px": [
+      663,
+      332
+    ],
+    "scale_cm_per_px": 0.2163,
+    "measurements_dir": "measurements/3.2V_0.93Hz",
+    "csv_file": "tracking.csv",
+    "tracking_quality": "untracked",
+    "notes": "",
+    "tag_frame": 0
+  },
+  "3.2V_0.94Hz": {
+    "video_file": "3.2V_0.94Hz.mov",
+    "config_description": "3.2V_0.94Hz",
+    "drive_voltage_v": 3.2,
+    "drive_freq_hz": 0.94,
+    "repeat_number": 1,
+    "arm_length_cm": 33.1,
+    "arm_length_px": 153,
+    "pivot_px": [
+      663,
+      332
+    ],
+    "scale_cm_per_px": 0.2163,
+    "measurements_dir": "measurements/3.2V_0.94Hz",
+    "csv_file": "tracking.csv",
+    "tracking_quality": "untracked",
+    "notes": "",
+    "tag_frame": 0
+  },
+  "3.2V_0.95Hz": {
+    "video_file": "3.2V_0.95Hz.mov",
+    "config_description": "3.2V_0.95Hz",
+    "drive_voltage_v": 3.2,
+    "drive_freq_hz": 0.95,
+    "repeat_number": 1,
+    "arm_length_cm": 33.1,
+    "arm_length_px": 153,
+    "pivot_px": [
+      663,
+      332
+    ],
+    "scale_cm_per_px": 0.2163,
+    "measurements_dir": "measurements/3.2V_0.95Hz",
+    "csv_file": "tracking.csv",
+    "tracking_quality": "untracked",
+    "notes": "",
+    "tag_frame": 0
+  },
+  "3.2V_0.96Hz": {
+    "video_file": "3.2V_0.96Hz.mov",
+    "config_description": "3.2V_0.96Hz",
+    "drive_voltage_v": 3.2,
+    "drive_freq_hz": 0.96,
+    "repeat_number": 1,
+    "arm_length_cm": 33.1,
+    "arm_length_px": 153,
+    "pivot_px": [
+      663,
+      332
+    ],
+    "scale_cm_per_px": 0.2163,
+    "measurements_dir": "measurements/3.2V_0.96Hz",
+    "csv_file": "tracking.csv",
+    "tracking_quality": "untracked",
+    "notes": "",
+    "tag_frame": 0
+  },
+  "3.2V_0.97Hz": {
+    "video_file": "3.2V_0.97Hz.mov",
+    "config_description": "3.2V_0.97Hz",
+    "drive_voltage_v": 3.2,
+    "drive_freq_hz": 0.97,
+    "repeat_number": 1,
+    "arm_length_cm": 33.1,
+    "arm_length_px": 153,
+    "pivot_px": [
+      663,
+      332
+    ],
+    "scale_cm_per_px": 0.2163,
+    "measurements_dir": "measurements/3.2V_0.97Hz",
+    "csv_file": "tracking.csv",
+    "tracking_quality": "untracked",
+    "notes": "",
+    "tag_frame": 0
+  },
+  "3.2V_0.98Hz": {
+    "video_file": "3.2V_0.98Hz.mov",
+    "config_description": "3.2V_0.98Hz",
+    "drive_voltage_v": 3.2,
+    "drive_freq_hz": 0.98,
+    "repeat_number": 1,
+    "arm_length_cm": 33.1,
+    "arm_length_px": 153,
+    "pivot_px": [
+      663,
+      332
+    ],
+    "scale_cm_per_px": 0.2163,
+    "measurements_dir": "measurements/3.2V_0.98Hz",
+    "csv_file": "tracking.csv",
+    "tracking_quality": "untracked",
+    "notes": "",
+    "tag_frame": 0
+  },
+  "3.2V_0.99Hz": {
+    "video_file": "3.2V_0.99Hz.mov",
+    "config_description": "3.2V_0.99Hz",
+    "drive_voltage_v": 3.2,
+    "drive_freq_hz": 0.99,
+    "repeat_number": 1,
+    "arm_length_cm": 33.1,
+    "arm_length_px": 153,
+    "pivot_px": [
+      663,
+      332
+    ],
+    "scale_cm_per_px": 0.2163,
+    "measurements_dir": "measurements/3.2V_0.99Hz",
+    "csv_file": "tracking.csv",
+    "tracking_quality": "untracked",
+    "notes": "",
+    "tag_frame": 0
+  },
+  "3.2V_0.9Hz": {
+    "video_file": "3.2V_0.9Hz.mov",
+    "config_description": "3.2V_0.9Hz",
+    "drive_voltage_v": 3.2,
+    "drive_freq_hz": 0.9,
+    "repeat_number": 1,
+    "arm_length_cm": 33.1,
+    "arm_length_px": 153,
+    "pivot_px": [
+      663,
+      332
+    ],
+    "scale_cm_per_px": 0.2163,
+    "measurements_dir": "measurements/3.2V_0.9Hz",
+    "csv_file": "tracking.csv",
+    "tracking_quality": "untracked",
+    "notes": "",
+    "tag_frame": 0
+  },
+  "3.2V_1.00Hz": {
+    "video_file": "3.2V_1.00Hz.mov",
+    "config_description": "3.2V_1.00Hz",
+    "drive_voltage_v": 3.2,
+    "drive_freq_hz": 1.0,
+    "repeat_number": 1,
+    "arm_length_cm": 33.1,
+    "arm_length_px": 153,
+    "pivot_px": [
+      663,
+      332
+    ],
+    "scale_cm_per_px": 0.2163,
+    "measurements_dir": "measurements/3.2V_1.00Hz",
+    "csv_file": "tracking.csv",
+    "tracking_quality": "untracked",
+    "notes": "",
+    "tag_frame": 0
+  },
+  "3.2V_1.09Hz": {
+    "video_file": "3.2V_1.09Hz.mov",
+    "config_description": "3.2V_1.09Hz",
+    "drive_voltage_v": 3.2,
+    "drive_freq_hz": 1.09,
+    "repeat_number": 1,
+    "arm_length_cm": 33.1,
+    "arm_length_px": 153,
+    "pivot_px": [
+      663,
+      332
+    ],
+    "scale_cm_per_px": 0.2163,
+    "measurements_dir": "measurements/3.2V_1.09Hz",
+    "csv_file": "tracking.csv",
+    "tracking_quality": "untracked",
+    "notes": "",
+    "tag_frame": 0
+  },
+  "3.2V_1.15Hz": {
+    "video_file": "3.2V_1.15Hz.mov",
+    "config_description": "3.2V_1.15Hz",
+    "drive_voltage_v": 3.2,
+    "drive_freq_hz": 1.15,
+    "repeat_number": 1,
+    "arm_length_cm": 33.1,
+    "arm_length_px": 153,
+    "pivot_px": [
+      663,
+      332
+    ],
+    "scale_cm_per_px": 0.2163,
+    "measurements_dir": "measurements/3.2V_1.15Hz",
+    "csv_file": "tracking.csv",
+    "tracking_quality": "untracked",
+    "notes": "",
+    "tag_frame": 0
+  },
+  "3.2V_1.16Hz": {
+    "video_file": "3.2V_1.16Hz.mov",
+    "config_description": "3.2V_1.16Hz",
+    "drive_voltage_v": 3.2,
+    "drive_freq_hz": 1.16,
+    "repeat_number": 1,
+    "arm_length_cm": 33.1,
+    "arm_length_px": 153,
+    "pivot_px": [
+      663,
+      332
+    ],
+    "scale_cm_per_px": 0.2163,
+    "measurements_dir": "measurements/3.2V_1.16Hz",
+    "csv_file": "tracking.csv",
+    "tracking_quality": "untracked",
+    "notes": "",
+    "tag_frame": 0
+  },
+  "3.2V_1.17Hz": {
+    "video_file": "3.2V_1.17Hz.mov",
+    "config_description": "3.2V_1.17Hz",
+    "drive_voltage_v": 3.2,
+    "drive_freq_hz": 1.17,
+    "repeat_number": 1,
+    "arm_length_cm": 33.1,
+    "arm_length_px": 153,
+    "pivot_px": [
+      663,
+      332
+    ],
+    "scale_cm_per_px": 0.2163,
+    "measurements_dir": "measurements/3.2V_1.17Hz",
+    "csv_file": "tracking.csv",
+    "tracking_quality": "untracked",
+    "notes": "",
+    "tag_frame": 0
+  },
+  "3.2V_1.18Hz": {
+    "video_file": "3.2V_1.18Hz.mov",
+    "config_description": "3.2V_1.18Hz",
+    "drive_voltage_v": 3.2,
+    "drive_freq_hz": 1.18,
+    "repeat_number": 1,
+    "arm_length_cm": 33.1,
+    "arm_length_px": 153,
+    "pivot_px": [
+      663,
+      332
+    ],
+    "scale_cm_per_px": 0.2163,
+    "measurements_dir": "measurements/3.2V_1.18Hz",
+    "csv_file": "tracking.csv",
+    "tracking_quality": "untracked",
+    "notes": "",
+    "tag_frame": 0
+  },
+  "3.2V_1.19Hz": {
+    "video_file": "3.2V_1.19Hz.mov",
+    "config_description": "3.2V_1.19Hz",
+    "drive_voltage_v": 3.2,
+    "drive_freq_hz": 1.19,
+    "repeat_number": 1,
+    "arm_length_cm": 33.1,
+    "arm_length_px": 153,
+    "pivot_px": [
+      663,
+      332
+    ],
+    "scale_cm_per_px": 0.2163,
+    "measurements_dir": "measurements/3.2V_1.19Hz",
+    "csv_file": "tracking.csv",
+    "tracking_quality": "untracked",
+    "notes": "",
+    "tag_frame": 0
+  },
+  "3.2V_1.20Hz": {
+    "video_file": "3.2V_1.20Hz.mov",
+    "config_description": "3.2V_1.20Hz",
+    "drive_voltage_v": 3.2,
+    "drive_freq_hz": 1.2,
+    "repeat_number": 1,
+    "arm_length_cm": 33.1,
+    "arm_length_px": 153,
+    "pivot_px": [
+      663,
+      332
+    ],
+    "scale_cm_per_px": 0.2163,
+    "measurements_dir": "measurements/3.2V_1.20Hz",
+    "csv_file": "tracking.csv",
+    "tracking_quality": "untracked",
+    "notes": "",
+    "tag_frame": 0
+  },
+  "3.2V_1.21Hz": {
+    "video_file": "3.2V_1.21Hz.mov",
+    "config_description": "3.2V_1.21Hz",
+    "drive_voltage_v": 3.2,
+    "drive_freq_hz": 1.21,
+    "repeat_number": 1,
+    "arm_length_cm": 33.1,
+    "arm_length_px": 153,
+    "pivot_px": [
+      663,
+      332
+    ],
+    "scale_cm_per_px": 0.2163,
+    "measurements_dir": "measurements/3.2V_1.21Hz",
+    "csv_file": "tracking.csv",
+    "tracking_quality": "untracked",
+    "notes": "",
+    "tag_frame": 0
+  },
+  "3.2V_1.22Hz": {
+    "video_file": "3.2V_1.22Hz.mov",
+    "config_description": "3.2V_1.22Hz",
+    "drive_voltage_v": 3.2,
+    "drive_freq_hz": 1.22,
+    "repeat_number": 1,
+    "arm_length_cm": 33.1,
+    "arm_length_px": 153,
+    "pivot_px": [
+      663,
+      332
+    ],
+    "scale_cm_per_px": 0.2163,
+    "measurements_dir": "measurements/3.2V_1.22Hz",
+    "csv_file": "tracking.csv",
+    "tracking_quality": "untracked",
+    "notes": "",
+    "tag_frame": 0
+  },
+  "3.2V_1.23Hz": {
+    "video_file": "3.2V_1.23Hz.mov",
+    "config_description": "3.2V_1.23Hz",
+    "drive_voltage_v": 3.2,
+    "drive_freq_hz": 1.23,
+    "repeat_number": 1,
+    "arm_length_cm": 33.1,
+    "arm_length_px": 153,
+    "pivot_px": [
+      663,
+      332
+    ],
+    "scale_cm_per_px": 0.2163,
+    "measurements_dir": "measurements/3.2V_1.23Hz",
+    "csv_file": "tracking.csv",
+    "tracking_quality": "untracked",
+    "notes": "",
+    "tag_frame": 0
+  },
+  "3.2V_1.24Hz": {
+    "video_file": "3.2V_1.24Hz.mov",
+    "config_description": "3.2V_1.24Hz",
+    "drive_voltage_v": 3.2,
+    "drive_freq_hz": 1.24,
+    "repeat_number": 1,
+    "arm_length_cm": 33.1,
+    "arm_length_px": 153,
+    "pivot_px": [
+      663,
+      332
+    ],
+    "scale_cm_per_px": 0.2163,
+    "measurements_dir": "measurements/3.2V_1.24Hz",
+    "csv_file": "tracking.csv",
+    "tracking_quality": "untracked",
+    "notes": "",
+    "tag_frame": 0
+  },
+  "3.2V_1.25Hz": {
+    "video_file": "3.2V_1.25Hz.mov",
+    "config_description": "3.2V_1.25Hz",
+    "drive_voltage_v": 3.2,
+    "drive_freq_hz": 1.25,
+    "repeat_number": 1,
+    "arm_length_cm": 33.1,
+    "arm_length_px": 153,
+    "pivot_px": [
+      663,
+      332
+    ],
+    "scale_cm_per_px": 0.2163,
+    "measurements_dir": "measurements/3.2V_1.25Hz",
+    "csv_file": "tracking.csv",
+    "tracking_quality": "untracked",
+    "notes": "",
+    "tag_frame": 0
+  },
+  "3.2V_1.26Hz": {
+    "video_file": "3.2V_1.26Hz.mov",
+    "config_description": "3.2V_1.26Hz",
+    "drive_voltage_v": 3.2,
+    "drive_freq_hz": 1.26,
+    "repeat_number": 1,
+    "arm_length_cm": 33.1,
+    "arm_length_px": 153,
+    "pivot_px": [
+      663,
+      332
+    ],
+    "scale_cm_per_px": 0.2163,
+    "measurements_dir": "measurements/3.2V_1.26Hz",
+    "csv_file": "tracking.csv",
+    "tracking_quality": "untracked",
+    "notes": "",
+    "tag_frame": 0
+  },
+  "3.2V_1.27Hz": {
+    "video_file": "3.2V_1.27Hz.mov",
+    "config_description": "3.2V_1.27Hz",
+    "drive_voltage_v": 3.2,
+    "drive_freq_hz": 1.27,
+    "repeat_number": 1,
+    "arm_length_cm": 33.1,
+    "arm_length_px": 153,
+    "pivot_px": [
+      663,
+      332
+    ],
+    "scale_cm_per_px": 0.2163,
+    "measurements_dir": "measurements/3.2V_1.27Hz",
+    "csv_file": "tracking.csv",
+    "tracking_quality": "untracked",
+    "notes": "",
+    "tag_frame": 0
+  },
+  "3.2V_1.28Hz": {
+    "video_file": "3.2V_1.28Hz.mov",
+    "config_description": "3.2V_1.28Hz",
+    "drive_voltage_v": 3.2,
+    "drive_freq_hz": 1.28,
+    "repeat_number": 1,
+    "arm_length_cm": 33.1,
+    "arm_length_px": 153,
+    "pivot_px": [
+      663,
+      332
+    ],
+    "scale_cm_per_px": 0.2163,
+    "measurements_dir": "measurements/3.2V_1.28Hz",
+    "csv_file": "tracking.csv",
+    "tracking_quality": "untracked",
+    "notes": "",
+    "tag_frame": 0
+  },
+  "3.2V_1.29Hz": {
+    "video_file": "3.2V_1.29Hz.mov",
+    "config_description": "3.2V_1.29Hz",
+    "drive_voltage_v": 3.2,
+    "drive_freq_hz": 1.29,
+    "repeat_number": 1,
+    "arm_length_cm": 33.1,
+    "arm_length_px": 153,
+    "pivot_px": [
+      663,
+      332
+    ],
+    "scale_cm_per_px": 0.2163,
+    "measurements_dir": "measurements/3.2V_1.29Hz",
+    "csv_file": "tracking.csv",
+    "tracking_quality": "untracked",
+    "notes": "",
+    "tag_frame": 0
+  },
+  "3.2V_1.30Hz": {
+    "video_file": "3.2V_1.30Hz.mov",
+    "config_description": "3.2V_1.30Hz",
+    "drive_voltage_v": 3.2,
+    "drive_freq_hz": 1.3,
+    "repeat_number": 1,
+    "arm_length_cm": 33.1,
+    "arm_length_px": 153,
+    "pivot_px": [
+      663,
+      332
+    ],
+    "scale_cm_per_px": 0.2163,
+    "measurements_dir": "measurements/3.2V_1.30Hz",
+    "csv_file": "tracking.csv",
+    "tracking_quality": "untracked",
+    "notes": "",
+    "tag_frame": 0
+  },
+  "3.2V_1.31Hz": {
+    "video_file": "3.2V_1.31Hz.mov",
+    "config_description": "3.2V_1.31Hz",
+    "drive_voltage_v": 3.2,
+    "drive_freq_hz": 1.31,
+    "repeat_number": 1,
+    "arm_length_cm": 33.1,
+    "arm_length_px": 153,
+    "pivot_px": [
+      663,
+      332
+    ],
+    "scale_cm_per_px": 0.2163,
+    "measurements_dir": "measurements/3.2V_1.31Hz",
+    "csv_file": "tracking.csv",
+    "tracking_quality": "untracked",
+    "notes": "",
+    "tag_frame": 0
+  },
+  "3.2V_1.32Hz": {
+    "video_file": "3.2V_1.32Hz.mov",
+    "config_description": "3.2V_1.32Hz",
+    "drive_voltage_v": 3.2,
+    "drive_freq_hz": 1.32,
+    "repeat_number": 1,
+    "arm_length_cm": 33.1,
+    "arm_length_px": 153,
+    "pivot_px": [
+      663,
+      332
+    ],
+    "scale_cm_per_px": 0.2163,
+    "measurements_dir": "measurements/3.2V_1.32Hz",
+    "csv_file": "tracking.csv",
+    "tracking_quality": "untracked",
+    "notes": "",
+    "tag_frame": 0
+  },
+  "3.2V_1.33Hz_1": {
+    "video_file": "3.2V_1.33Hz_1.mov",
+    "config_description": "3.2V_1.33Hz_1",
+    "drive_voltage_v": 3.2,
+    "drive_freq_hz": 1.33,
+    "repeat_number": 1,
+    "arm_length_cm": 33.1,
+    "arm_length_px": 153,
+    "pivot_px": [
+      663,
+      332
+    ],
+    "scale_cm_per_px": 0.2163,
+    "measurements_dir": "measurements/3.2V_1.33Hz_1",
+    "csv_file": "tracking.csv",
+    "tracking_quality": "untracked",
+    "notes": "",
+    "tag_frame": 0
+  },
+  "3.2V_1.33Hz_2": {
+    "video_file": "3.2V_1.33Hz_2.mov",
+    "config_description": "3.2V_1.33Hz_2",
+    "drive_voltage_v": 3.2,
+    "drive_freq_hz": 1.33,
+    "repeat_number": 2,
+    "arm_length_cm": 33.1,
+    "arm_length_px": 153,
+    "pivot_px": [
+      663,
+      332
+    ],
+    "scale_cm_per_px": 0.2163,
+    "measurements_dir": "measurements/3.2V_1.33Hz_2",
+    "csv_file": "tracking.csv",
+    "tracking_quality": "untracked",
+    "notes": "",
+    "tag_frame": 0
+  },
+  "3.2V_1.34Hz": {
+    "video_file": "3.2V_1.34Hz.mov",
+    "config_description": "3.2V_1.34Hz",
+    "drive_voltage_v": 3.2,
+    "drive_freq_hz": 1.34,
+    "repeat_number": 1,
+    "arm_length_cm": 33.1,
+    "arm_length_px": 153,
+    "pivot_px": [
+      663,
+      332
+    ],
+    "scale_cm_per_px": 0.2163,
+    "measurements_dir": "measurements/3.2V_1.34Hz",
+    "csv_file": "tracking.csv",
+    "tracking_quality": "untracked",
+    "notes": "",
+    "tag_frame": 0
   }
 }
