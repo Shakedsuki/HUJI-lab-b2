@@ -51,7 +51,6 @@ sys.path.insert(0, os.path.join(ROOT, "scripts", "utils"))
 from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS  # noqa: E402
 
 SCRIPT_VERIFY     = os.path.join(ROOT, "scripts", "processing", "verify_tracking.py")
-SCRIPT_INTERP     = os.path.join(ROOT, "scripts", "processing", "interpolate_suspects.py")
 SCRIPT_TRACK_ONE  = os.path.join(ROOT, "scripts", "utils", "track_one.py")
 SCRIPT_OVERRIDE   = os.path.join(ROOT, "scripts", "utils", "override_frame.py")
 SCRIPT_BULK       = os.path.join(ROOT, "scripts", "utils", "bulk_track.py")
@@ -59,13 +58,9 @@ SCRIPT_STATUS     = os.path.join(ROOT, "scripts", "utils", "video_status.py")
 SCRIPT_REPORT     = os.path.join(ROOT, "scripts", "utils", "generate_status_report.py")
 SCRIPT_ROADMAP    = os.path.join(ROOT, "scripts", "utils", "generate_roadmap.py")
 SCRIPT_AUDIT      = os.path.join(ROOT, "scripts", "utils", "audit.py")
-SCRIPT_TRIAGE     = os.path.join(ROOT, "scripts", "utils", "triage.py")
-SCRIPT_SUSPECTS   = os.path.join(ROOT, "scripts", "utils", "suspects_summary.py")
 SCRIPT_BATCH_FIGS = os.path.join(ROOT, "scripts", "utils", "batch_figures.py")
 SCRIPT_COMBINED   = os.path.join(ROOT, "scripts", "analysis", "combined_video.py")
 SCRIPT_ANALYZE    = os.path.join(ROOT, "scripts", "analysis", "chaos_analyze.py")
-SCRIPT_FRICTION   = os.path.join(ROOT, "scripts", "analysis", "friction_fit.py")
-SCRIPT_FRIC_CMP   = os.path.join(ROOT, "scripts", "analysis", "friction_compare.py")
 SCRIPT_POINCARE   = os.path.join(ROOT, "scripts", "analysis", "poincare.py")
 SCRIPT_LYAPUNOV   = os.path.join(ROOT, "scripts", "analysis", "lyapunov.py")
 SCRIPT_DRIVEN_POIN = os.path.join(ROOT, "scripts", "analysis", "driven_poincare.py")
@@ -230,21 +225,6 @@ def cmd_audit(args):
     return run_script(SCRIPT_AUDIT, *extra)
 
 
-def cmd_triage(args):
-    extra = []
-    if args.auto:   extra.append("--auto")
-    if args.once:   extra.append("--once")
-    if args.filter: extra += ["--filter", args.filter]
-    return run_script(SCRIPT_TRIAGE, *extra)
-
-
-def cmd_suspects(args):
-    extra = [args.stem]
-    if args.gap is not None:
-        extra += ["--gap", str(args.gap)]
-    return run_script(SCRIPT_SUSPECTS, *extra)
-
-
 def cmd_render(args):
     """Render the original video with the existing tracking overlaid
     on top, plus phase-space plots. Reads tracking.csv only — no
@@ -263,29 +243,6 @@ def cmd_analyze(args):
     if args.n_c is not None:
         extra += ["--n-c", str(args.n_c)]
     return run_script(SCRIPT_ANALYZE, *extra)
-
-
-def cmd_friction_fit(args):
-    """Fit a friction model to the clip's mechanical-energy decay.
-    Compares exponential (Stokes drag) and power-law fits; writes
-    measurements/<stem>/friction_fit.png."""
-    extra = ["--stem", args.stem]
-    if args.smooth_window is not None:
-        extra += ["--smooth-window", str(args.smooth_window)]
-    if args.no_plot:
-        extra.append("--no-plot")
-    return run_script(SCRIPT_FRICTION, *extra)
-
-
-def cmd_friction_compare(args):
-    """Run friction_fit on every clip and compare τ vs initial
-    amplitude. Outputs data/friction_comparison.{csv,png}."""
-    extra = []
-    if args.filter:    extra += ["--filter", args.filter]
-    if args.pass_only: extra.append("--pass-only")
-    if args.smooth_window is not None:
-        extra += ["--smooth-window", str(args.smooth_window)]
-    return run_script(SCRIPT_FRIC_CMP, *extra)
 
 
 def cmd_poincare(args):
@@ -379,13 +336,6 @@ BATCH / DRIVER COMMANDS
   chaos next --stem <stem>   same loop but only one clip
   chaos bulk                 sequential bulk pass over plannable pendings
   chaos bulk --dry-run       show the plan without tracking anything
-  chaos triage               walk non-PASS clips, dispatch the right
-                             repair tool per clip
-                             --auto      auto-apply override-bucket fixes
-                             --once      dispatch a single clip and exit
-                             --filter S  only consider clips matching S
-  chaos suspects <stem>      decompose a clip's suspect count into per-check
-                             buckets + cluster sizes
   chaos render <stem>        render the original video with marker rings +
                              phase plots overlaid (uses existing tracking;
                              no re-track). Output: measurements/<stem>/
@@ -394,9 +344,6 @@ BATCH / DRIVER COMMANDS
                              Melbourne 2004), spectral entropy, inversion
                              stats. Verdict: CHAOTIC / BORDERLINE / REGULAR.
                              Flags: --no-plot  --n-c N
-  chaos friction-fit <stem>  fit exponential / power-law friction models to
-                             the clip's energy decay. Reports best model +
-                             writes friction_fit.png
   chaos poincare <stem>      true 2D Poincaré section at
                              theta1+theta2=0 (upward). Writes poincare.png
                              and poincare.csv
@@ -689,23 +636,6 @@ def build_parser():
     p_next.add_argument("--stem", default=None, metavar="<stem>",
         help="optional: process only this stem instead of the full queue")
 
-    p_triage = sub.add_parser("triage",
-        help="walk through non-PASS clips, dispatch the right repair tool per clip")
-    p_triage.add_argument("--auto", action="store_true",
-        help="auto-apply override-bucket fixes; still prompts for "
-             "fix/tune/review buckets")
-    p_triage.add_argument("--once", action="store_true",
-        help="dispatch a single clip and exit (default: loop)")
-    p_triage.add_argument("--filter", metavar="SUBSTR",
-        help="only consider clips whose stem matches SUBSTR")
-
-    p_susp = sub.add_parser("suspects",
-        help="decompose a clip's suspect count into per-check buckets and clusters")
-    p_susp.add_argument("stem", metavar="<stem>",
-        help="config_description, e.g. th1_p180_th2_m179")
-    p_susp.add_argument("--gap", type=int, default=None, metavar="FRAMES",
-        help="cluster gap in frames (default 10)")
-
     p_render = sub.add_parser("render",
         help="render the source video with existing tracking overlaid; "
              "no re-tracking, just visualization")
@@ -721,26 +651,6 @@ def build_parser():
         help="skip writing measurements/<stem>/chaos_analyze.png")
     p_analyze.add_argument("--n-c", type=int, default=None, metavar="N",
         help="random c values for the 0-1 test (default 50)")
-
-    p_fric = sub.add_parser("friction-fit",
-        help="fit a friction model (exponential / power-law) to the "
-             "clip's mechanical-energy decay")
-    p_fric.add_argument("stem", metavar="<stem>",
-        help="config_description, e.g. th1_p044_th2_m001")
-    p_fric.add_argument("--smooth-window", type=float, default=None,
-        metavar="SECONDS",
-        help="moving-mean window for the energy envelope (default 0.5s)")
-    p_fric.add_argument("--no-plot", action="store_true",
-        help="skip writing friction_fit.png")
-
-    p_fcmp = sub.add_parser("friction-compare",
-        help="run friction_fit across every clip; compare τ vs initial amplitude")
-    p_fcmp.add_argument("--filter", metavar="SUBSTR",
-        help="only clips whose stem contains SUBSTR")
-    p_fcmp.add_argument("--pass-only", action="store_true",
-        help="only include currently-PASS clips")
-    p_fcmp.add_argument("--smooth-window", type=float, default=None,
-        metavar="SECONDS")
 
     p_poin = sub.add_parser("poincare",
         help="Phase 2 — true 2D Poincaré section at theta2_abs=0, upward")
@@ -818,12 +728,8 @@ HANDLERS = {
     "verify":   cmd_verify,
     "bulk":     cmd_bulk,
     "next":     cmd_next,
-    "triage":   cmd_triage,
-    "suspects":  cmd_suspects,
     "render":       cmd_render,
     "analyze":          cmd_analyze,
-    "friction-fit":     cmd_friction_fit,
-    "friction-compare": cmd_friction_compare,
     "poincare":         cmd_poincare,
     "lyapunov":         cmd_lyapunov,
     "driven-poincare":    cmd_driven_poincare,
