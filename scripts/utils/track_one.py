@@ -55,8 +55,6 @@ LOG_FILE         = os.path.join(DATA_DIR, "track_one_log.txt")
 # (PR C); driven motion is now the only regime the pipeline targets.
 TRACKER_SCRIPT  = os.path.join(REPO_ROOT, "scripts", "processing", "bgr_tracker.py")
 VERIFY_SCRIPT   = os.path.join(REPO_ROOT, "scripts", "processing", "verify_tracking.py")
-INTERP_SCRIPT   = os.path.join(REPO_ROOT, "scripts", "processing",
-                               "interpolate_suspects.py")
 
 # scripts/utils is already in sys.path because Python auto-adds the
 # script's directory; this re-affirms it for the case where track_one
@@ -65,12 +63,6 @@ EXPERIMENTS_FILE = EXPERIMENTS
 from render import render_verdict  # noqa: E402
 from thresholds import (  # noqa: E402
     ARM_LEN_THRESHOLD_PCT,
-    OMEGA_CAP_HOLDING,
-    THETA_RESIDUAL_CAP_DEG,
-    ENERGY_SPIKE_FACTOR,
-    ARM_LENGTH_TREND_WINDOW,
-    PIVOT_DRIFT_FAIL_PX,
-    ARM_LENGTH_CM,
 )
 
 # ─────────────────────────────────────────────
@@ -330,15 +322,23 @@ def compute_verdict(metrics, n_suspects_post_interp):
     """
     Returns (status, reasons_list) where status ∈ {PASS, WARN, FAIL}.
 
-    Brief 13: the legacy `n_suspects_post_interp` parameter is the
-    union of ω-cap + every Brief 5/6 physics check. That double-counts
-    physics suspects (each check has its own dedicated reason below)
-    and inflates WARN verdicts on otherwise-clean tracking. We now
-    prefer `metrics["n_omega_cap_suspects"]` — the count of frames
-    flagged ONLY by the ω-cap mask, which is what
-    interpolate_suspects.py can actually fix. The parameter is kept
-    for callers that haven't migrated; it's only used as a fallback
-    when the new metric is absent (older verification.csv).
+    Verdict surface (PR D — driven-only pipeline)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    Free-swing physics checks (release-energy ceiling, fixed-pivot
+    drift, θ-prediction residual, holding-phase ω, trend arm-length,
+    energy rolling spike) have been removed — they all produced
+    near-universal false positives on driven clips. What's left:
+
+      * dropout band  — > 10% → FAIL,  5-10% → WARN reason
+      * peak |ω₂|     — > 4000 °/s → FAIL,  > 1500 °/s → WARN reason
+      * arm-length    — any rigid-rod violation → WARN reason
+      * |Δω| spike    — any unphysical acceleration → WARN reason
+      * marker swap   — any swap candidate       → WARN reason
+      * ω-cap suspects→ count → WARN reason
+
+    The `n_suspects_post_interp` parameter is retained for callers
+    that still pass it, but interpolation has been retired on the
+    driven path so the count is the same as the pre-interp count.
     """
     reasons = []
     drop = metrics.get("free_swing_dropout_pct")
@@ -359,30 +359,17 @@ def compute_verdict(metrics, n_suspects_post_interp):
     if drop > PASS_DROPOUT_PCT:
         reasons.append(f"free-swing dropout {drop:.1f}% in 5–10% band")
 
-    # Brief 13: report only ω-cap suspects under "residual suspects
-    # post-interpolation" — interpolation only acts on the ω-cap mask,
-    # so physics-check suspects don't belong in this count. Fall back
-    # to the union count when the new column is missing (older CSVs).
     n_omega_cap_post = metrics.get("n_omega_cap_suspects")
     if n_omega_cap_post is None:
         n_omega_cap_post = n_suspects_post_interp
     if n_omega_cap_post > 0:
-        reasons.append(
-            f"{n_omega_cap_post} ω-cap suspects survived interpolation")
+        reasons.append(f"{n_omega_cap_post} ω-cap suspect frame(s)")
 
     if peak2 > PEAK_OMEGA_PHYSICAL:
         reasons.append(
             f"peak |ω₂| {peak2:.0f}°/s > {PEAK_OMEGA_PHYSICAL:.0f}°/s "
             f"physical rule-of-thumb")
 
-    # Brief 3: holding-phase suspects (markers should be stationary).
-    n_hold_susp = metrics.get("n_holding_suspects", 0)
-    if n_hold_susp > 0:
-        reasons.append(
-            f"{n_hold_susp} holding-phase suspects "
-            f"(|ω| > {OMEGA_CAP_HOLDING:.0f}°/s while stationary)")
-
-    # Brief 3: arm-length rigidity violations (rigid-body sanity).
     n_arm = metrics.get("n_arm_violations", 0)
     if n_arm > 0:
         dev_max = metrics.get("arm_length_dev_max_pct") or 0.0
@@ -390,89 +377,20 @@ def compute_verdict(metrics, n_suspects_post_interp):
             f"{n_arm} arm-length violation(s) "
             f"(max deviation {dev_max:.1f}%) — tracker latched on wrong object")
 
-    # Brief 5: angular-acceleration spikes — unphysical Δω between
-    # consecutive frames. Catches latches onto slow wrong objects that
-    # ω alone misses. > 3 of these tips a borderline PASS into WARN.
     n_accel = metrics.get("n_accel_suspects", 0)
     if n_accel > 0:
         reasons.append(
             f"{n_accel} frame(s) with |Δω| spike "
             f"(unphysical acceleration)")
 
-    # Brief 5: marker-swap candidates — green/red appear to exchange
-    # positions between consecutive frames.
     n_swap = metrics.get("n_swap_suspects", 0)
     if n_swap > 0:
         reasons.append(
             f"{n_swap} frame(s) where green/red markers "
             f"appear to have swapped labels")
 
-    # ── Brief 6 — physics checks ──────────────────────────────────────
-    # State track for the running verdict status. We may need to
-    # upgrade WARN→FAIL when the energy-ceiling fraction or trend-arm
-    # fraction is high, so threading status through these branches.
-    status = "PASS" if not reasons else "WARN"
-
-    # Trend arm-length runs first because a high trend-window count
-    # signals a long, stable wrong-target episode that interpolation
-    # cannot fix — should usually FAIL.
-    n_tw = metrics.get("n_trend_arm_windows",  0)
-    n_ts = metrics.get("n_trend_arm_suspects", 0)
-    n_free = metrics.get("n_free_swing", 1) or 1
-    if n_tw > 0:
-        frac = n_ts / max(n_free, 1)
-        reasons.append(
-            f"{n_tw} window(s) of {ARM_LENGTH_TREND_WINDOW} frames "
-            f"show arm-length drift from the reference window "
-            f"({100*frac:.1f}% of free_swing affected) — "
-            f"stable wrong-target episode suspected")
-        status = "FAIL" if frac > 0.15 else "WARN"
-
-    # θ-residual: a few are reviewable; many means systematic.
-    n_res = metrics.get("n_residual_suspects", 0)
-    if n_res > 0:
-        reasons.append(
-            f"{n_res} frame(s) with θ-prediction residual "
-            f"> {THETA_RESIDUAL_CAP_DEG:.1f}° "
-            f"(position inconsistent with recent velocity)")
-        if n_res > 5 and status == "PASS":
-            status = "WARN"
-
-    # Energy ceiling — strong signal of stable wrong-target latch.
-    n_ceil = metrics.get("n_energy_ceiling_suspects", 0)
-    n_roll = metrics.get("n_energy_rolling_spikes",   0)
-    if n_ceil > 0:
-        frac = n_ceil / max(n_free, 1)
-        reasons.append(
-            f"{n_ceil} frame(s) exceed release-energy ceiling "
-            f"({100*frac:.1f}% of free_swing) — "
-            f"probable stable wrong-target latch")
-        if frac > 0.10:
-            status = "FAIL"
-        elif status != "FAIL":
-            status = "WARN"
-
-    if n_roll > 0 and status != "FAIL":
-        reasons.append(
-            f"{n_roll} frame(s) show rolling energy spike "
-            f"(>{ENERGY_SPIKE_FACTOR:.1f}× baseline) — "
-            f"tracker likely jumped briefly to wrong object")
-        if status == "PASS":
-            status = "WARN"
-
-    # Pivot drift — run-level geometry check.
-    drift = metrics.get("pivot_drift_px")
-    if (drift is not None
-            and not (isinstance(drift, float) and math.isnan(drift))
-            and drift >= PIVOT_DRIFT_FAIL_PX):
-        reasons.append(
-            f"inferred pivot drifts {drift:.1f}px from hardcoded "
-            f"PIVOT — ring geometry may be miscalibrated")
-        if status == "PASS":
-            status = "WARN"
-
     if reasons:
-        return status, reasons
+        return "WARN", reasons
     return "PASS", ["dropout, suspects, and ω all within thresholds"]
 
 # ─────────────────────────────────────────────
@@ -506,41 +424,6 @@ def _load_top_suspect_frames(meas_dir, n=5):
                 continue
     candidates.sort(key=lambda c: -c["om2"])
     return candidates[:n]
-
-def compute_energy_omega_cap(entry: dict):
-    """
-    Brief 7 — IC-aware energy cap.
-    Derives the physical upper bound on |ω₂| from release ICs.
-    Conservative: assumes all release energy concentrates in arm-2
-    rotation. Returns °/s, or None if release ICs are unavailable.
-    """
-    th1 = entry.get("theta1_release")
-    th2 = entry.get("theta2_release")
-    if th1 is None or th2 is None:
-        return None
-
-    L = ARM_LENGTH_CM / 100.0
-    g = 9.8
-
-    th1_r     = math.radians(float(th1))
-    th2_abs_r = math.radians(float(th1) + float(th2))
-
-    # PE at release (both arms, reference = hanging straight down).
-    PE = g * L * (1 - math.cos(th1_r)) + g * L * (1 - math.cos(th2_abs_r))
-
-    KE = 0.0
-    w1 = entry.get("omega1_release")
-    w2 = entry.get("omega2_release")
-    if w1 is not None and w2 is not None:
-        w1_r = math.radians(abs(float(w1)))
-        w2_r = math.radians(abs(float(w2)))
-        KE = 0.5 * (L * w1_r) ** 2 + 0.5 * (L * (w1_r + w2_r)) ** 2
-
-    E_total = PE + KE
-    if E_total <= 0:
-        return None
-
-    return math.degrees(math.sqrt(2.0 * E_total) / L)
 
 def build_actionable_steps(stem, metrics_post, reasons, status,
                            suspect_frames=None, *, entry=None,
@@ -599,10 +482,10 @@ def build_actionable_steps(stem, metrics_post, reasons, status,
             "text": (
                 f"{drop:.1f}% free-swing dropout ({n_drop_free} frames).\n"
                 f"  Open verification.png and check for a cluster of red\n"
-                f"  markers in a narrow window — that indicates occlusion\n"
-                f"  or lighting. Even distribution → HSV recalibration."
+                f"  markers in a narrow window — that indicates occlusion,\n"
+                f"  lighting issues, or the markers leaving the crop window."
             ),
-            "command": f"chaos tune {stem}",
+            "command": None,
         })
 
     # C) free-swing dropout above WARN — auto-FAIL
@@ -613,10 +496,11 @@ def build_actionable_steps(stem, metrics_post, reasons, status,
             "text": (
                 f"{drop:.1f}% free-swing dropout — exceeds "
                 f"{WARN_DROPOUT_PCT}% FAIL threshold.\n"
-                f"  This run likely cannot be salvaged without re-tracking.\n"
-                f"  Step 1: Recalibrate HSV. Step 2: re-run chaos track."
+                f"  Run is likely unrecoverable. Re-shoot the clip with\n"
+                f"  consistent lighting and the markers inside the\n"
+                f"  CROP_X_START..CROP_X_END window."
             ),
-            "command": f"chaos tune {stem}",
+            "command": None,
         })
 
     # D) arm-length violations
@@ -630,29 +514,13 @@ def build_actionable_steps(stem, metrics_post, reasons, status,
             "text": (
                 f"{n_arm} frame(s) violate rigid-arm constraint "
                 f"(max deviation: {(arm_dev_max or 0):.1f}%).\n"
-                f"  These frames show the tracker latched onto a wrong\n"
-                f"  object. They cannot be fixed by interpolation alone —\n"
-                f"  inspect each frame visually and correct or mark unresolvable."
+                f"  These frames likely caught a wrong object. Inspect\n"
+                f"  verification.png; consider chaos override on outliers."
             ),
             "command": f"chaos verify {stem}",
         })
 
-    # E) holding-phase suspects
-    n_hold = metrics_post.get("n_holding_suspects", 0)
-    if n_hold > 0:
-        steps.append({
-            "priority": "review",
-            "category": "holding_suspect",
-            "text": (
-                f"{n_hold} frame(s) in holding phase have "
-                f"|ω| > {OMEGA_CAP_HOLDING:.0f} °/s.\n"
-                f"  The pendulum should be stationary here — this is\n"
-                f"  tracker noise. Acceptable if 1-2; concerning if > 5."
-            ),
-            "command": None,
-        })
-
-    # F) peak ω₂ above physical rule-of-thumb
+    # E) peak ω₂ above physical rule-of-thumb
     peak2 = metrics_post.get("peak_omega2", 0.0)
     if PEAK_OMEGA_PHYSICAL < peak2 <= PEAK_OMEGA_ABSURD:
         steps.append({
@@ -674,103 +542,12 @@ def build_actionable_steps(stem, metrics_post, reasons, status,
                 f"Peak |ω₂| = {peak2:.0f} °/s > {PEAK_OMEGA_ABSURD:.0f} °/s "
                 f"absurd threshold.\n"
                 f"  Almost certainly a tracking error, not physics.\n"
-                f"  Manual correction or re-tracking required."
-            ),
-            "command": f"chaos fix {stem}",
-        })
-
-    # ── Brief 6 ──────────────────────────────────────────────────────
-    n_tw = metrics_post.get("n_trend_arm_windows", 0)
-    n_ts = metrics_post.get("n_trend_arm_suspects", 0)
-    if n_tw > 0:
-        steps.append({
-            "priority": "required",
-            "category": "arm_length",
-            "text": (
-                f"{n_tw} window(s) of {ARM_LENGTH_TREND_WINDOW} frames "
-                f"show sustained arm-length drift ({n_ts} frames total).\n"
-                f"  The tracker likely latched onto a non-marker object "
-                f"for an extended run. The per-frame arm check cannot "
-                f"catch this because the global median was corrupted.\n"
-                f"  Interpolation will not fix a run this long.\n"
-                f"  Add a seed at the latch entry point, or recalibrate "
-                f"HSV and re-track."
-            ),
-            "command": f"chaos fix {stem}",
-        })
-
-    n_res = metrics_post.get("n_residual_suspects", 0)
-    if n_res > 0:
-        steps.append({
-            "priority": "review",
-            "category": "suspect_frame",
-            "text": (
-                f"{n_res} frame(s) show θ position inconsistent with "
-                f"recent velocity (residual > "
-                f"{THETA_RESIDUAL_CAP_DEG:.1f}°).\n"
-                f"  Likely: slow background object near the ring during "
-                f"low-velocity phase.\n"
-                f"  Check verification.png for position scatter near "
-                f"ω zero-crossings."
-            ),
-            "command": f"chaos verify {stem}",
-        })
-
-    n_ceil = metrics_post.get("n_energy_ceiling_suspects", 0)
-    n_roll = metrics_post.get("n_energy_rolling_spikes",   0)
-    if n_ceil > 0:
-        n_free = max(metrics_post.get("n_free_swing", 1) or 1, 1)
-        frac = n_ceil / n_free
-        steps.append({
-            "priority": "required",
-            "category": "suspect_frame",
-            "text": (
-                f"{n_ceil} frames ({100*frac:.1f}% of free_swing) exceed "
-                f"the release-energy ceiling.\n"
-                f"  Signature of a sustained wrong-target latch — the "
-                f"tracker followed a non-marker object for an extended run.\n"
-                f"  Single-frame interpolation cannot fix this. "
-                f"Add a seed at the latch entry point or recalibrate HSV."
-            ),
-            "command": f"chaos fix {stem}",
-        })
-
-    if n_roll > 0 and n_ceil == 0:
-        steps.append({
-            "priority": "review",
-            "category": "suspect_frame",
-            "text": (
-                f"{n_roll} frame(s) show brief energy spikes above the "
-                f"rolling baseline.\n"
-                f"  Likely: tracker briefly latched onto a wrong object "
-                f"and returned. Interpolation may fix these."
+                f"  Use chaos override on the worst frame."
             ),
             "command": f"chaos override {stem}",
         })
 
-    # ── Brief 7 — IC-aware energy cap ────────────────────────────────
-    peak2 = metrics_post.get("peak_omega2", 0.0)
-    if energy_cap is not None and peak2 > energy_cap * 1.2:
-        ic_th1 = (entry or {}).get("theta1_release")
-        ic_th2 = (entry or {}).get("theta2_release")
-        ic_str = (f"θ₁={float(ic_th1):.1f}°, θ₂={float(ic_th2):.1f}°"
-                  if ic_th1 is not None and ic_th2 is not None
-                  else "(release ICs unavailable)")
-        steps.append({
-            "priority": "required",
-            "category": "suspect_frame",
-            "text": (
-                f"Peak |ω₂| = {peak2:.0f} °/s exceeds the IC-derived "
-                f"energy cap of {energy_cap:.0f} °/s.\n"
-                f"  Release: {ic_str}.\n"
-                f"  A pendulum released from this configuration physically "
-                f"cannot reach {peak2:.0f} °/s.\n"
-                f"  This is a tracking error, not chaotic motion."
-            ),
-            "command": f"chaos override {stem}",
-        })
-
-    # G) PASS — no issues found
+    # F) PASS — no issues found
     if status == "PASS" and not steps:
         steps.append({
             "priority": "info",
@@ -866,8 +643,6 @@ def parse_args():
                    help="Path to .mov in data/videos/ (positional, optional).")
     p.add_argument("--stem", default=None,
                    help="config_description (e.g. th1_p047_th2_m002).")
-    p.add_argument("--no-interpolate", action="store_true",
-                   help="Skip interpolate_suspects even if hidden suspects exist.")
     p.add_argument("--no-debug", action="store_true", default=True,
                    help="Skip debug.mp4 generation (default: skip).")
     p.add_argument("--debug", action="store_true",
@@ -903,52 +678,32 @@ def main():
                   total_elapsed=time.time() - t_total)
         return rc
 
-    # ── 2. Verify (pre-interpolation) ──────────────────────────────────
+    # ── 2. Verify ──────────────────────────────────────────────────────
     rc, _ = run([sys.executable, VERIFY_SCRIPT, "--stem", stem,
                  "--omega-cap", str(args.omega_cap), "--no-plot"],
-                label="verify_tracking (pre)")
+                label="verify_tracking")
     if rc != 0:
         emit_card(stem, video_path, key, entry,
                   status="FAIL", reasons=[f"verify_tracking exit {rc}"],
                   metrics_pre=None, metrics_post=None,
                   n_interpolated=0,
-                  hsv_kind=hsv_kind_for_video(os.path.basename(video_path)),
+                  hsv_kind=None,
                   total_elapsed=time.time() - t_total)
         return rc
-    metrics_pre = read_verification_metrics(meas_dir)
-    n_suspects_pre = (metrics_pre or {}).get("n_suspect_hidden", 0)
-
-    # ── 3. Interpolate (only if there are suspects and --no-interpolate
-    #      wasn't passed) ─────────────────────────────────────────────
+    metrics = read_verification_metrics(meas_dir)
+    # No interpolation step on the driven pipeline — BGR tracker doesn't
+    # produce silent fallback-latch failures, so any suspects left here
+    # are real and shouldn't be linearly back-projected away.
+    metrics_pre  = metrics
+    metrics_post = metrics
     n_interp = 0
-    if n_suspects_pre > 0 and not args.no_interpolate:
-        rc, _ = run([sys.executable, INTERP_SCRIPT, "--stem", stem,
-                     "--omega-cap", str(args.omega_cap)],
-                    label="interpolate_suspects")
-        if rc != 0:
-            emit_card(stem, video_path, key, entry,
-                      status="FAIL", reasons=[f"interpolate_suspects exit {rc}"],
-                      metrics_pre=metrics_pre, metrics_post=metrics_pre,
-                      n_interpolated=0,
-                      hsv_kind=hsv_kind_for_video(os.path.basename(video_path)),
-                      total_elapsed=time.time() - t_total)
-            return rc
-        # interpolate_suspects already ran verify internally; re-read.
-        metrics_post = read_verification_metrics(meas_dir)
-        # Number actually interpolated comes from the registry mutation.
-        reg_after = load_registry()
-        e_after = (find_entry_by_stem(reg_after, stem)[1] or {})
-        n_interp = int(e_after.get("suspect_frames_interpolated", 0))
-    else:
-        metrics_post = metrics_pre
 
-    # ── 4. Compute verdict ─────────────────────────────────────────────
+    # ── 3. Compute verdict ─────────────────────────────────────────────
     n_susp_post = (metrics_post or {}).get("n_suspect_hidden", 0)
     status, reasons = compute_verdict(metrics_post, n_susp_post)
 
     # ── 5. Build actionable steps + emit card + maybe mark verified ───
     suspect_frames = _load_top_suspect_frames(meas_dir, n=5)
-    energy_cap = compute_energy_omega_cap(entry)
     actionable_steps = build_actionable_steps(
         stem=stem,
         metrics_post=metrics_post or metrics_pre or {},
@@ -956,7 +711,7 @@ def main():
         status=status,
         suspect_frames=suspect_frames,
         entry=entry,
-        energy_cap=energy_cap,
+        energy_cap=None,
     )
     emit_card(stem, video_path, key, entry,
               status=status, reasons=reasons,
@@ -965,7 +720,7 @@ def main():
               hsv_kind=hsv_kind_for_video(os.path.basename(video_path)),
               total_elapsed=time.time() - t_total,
               actionable_steps=actionable_steps,
-              energy_omega_cap=energy_cap)
+              energy_omega_cap=None)
     maybe_mark_verified(stem, status, reasons)
     return 0 if status != "FAIL" else 1
 

@@ -58,9 +58,6 @@ from thresholds import (  # noqa: E402
     PEAK_OMEGA_ABSURD,
     OMEGA_BAR_MAX,
     DROPOUT_BAR_MAX,
-    OMEGA_HOLD_THRESHOLD,
-    PIVOT_DRIFT_WARN_PX,
-    PIVOT_DRIFT_FAIL_PX,
 )
 from csv_helpers import is_clean_row, find_neighbours  # noqa: E402,F401
 
