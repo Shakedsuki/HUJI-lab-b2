@@ -75,7 +75,6 @@ except (AttributeError, OSError):
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
 
-TRACKER_SCRIPT   = os.path.join(REPO_ROOT, "scripts", "processing", "ring_tracker.py")
 TRACK_ONE_SCRIPT = os.path.join(REPO_ROOT, "scripts", "utils", "track_one.py")
 BULK_LOG_FILE    = os.path.join(REPO_ROOT, "data", "bulk_tracking_log.json")
 
