@@ -1,0 +1,2466 @@
+#LyX 2.4 created this file. For more info see https://www.lyx.org/
+\lyxformat 620
+\begin_document
+\begin_header
+\save_transient_properties true
+\origin unavailable
+\textclass article
+\use_default_options true
+\maintain_unincluded_children no
+\language hebrew
+\language_package default
+\inputencoding utf8
+\fontencoding auto
+\font_roman "default" "default"
+\font_sans "default" "default"
+\font_typewriter "default" "default"
+\font_math "auto" "auto"
+\font_default_family default
+\use_non_tex_fonts false
+\font_sc false
+\font_roman_osf false
+\font_sans_osf false
+\font_typewriter_osf false
+\font_sf_scale 100 100
+\font_tt_scale 100 100
+\use_microtype false
+\use_dash_ligatures true
+\graphics default
+\default_output_format default
+\output_sync 0
+\bibtex_command default
+\index_command default
+\float_placement H
+\float_alignment class
+\paperfontsize default
+\spacing single
+\use_hyperref false
+\papersize default
+\use_geometry true
+\use_package amsmath 1
+\use_package amssymb 1
+\use_package cancel 1
+\use_package esint 1
+\use_package mathdots 1
+\use_package mathtools 1
+\use_package mhchem 1
+\use_package stackrel 1
+\use_package stmaryrd 1
+\use_package undertilde 1
+\cite_engine basic
+\cite_engine_type default
+\biblio_style plain
+\use_bibtopic false
+\use_indices false
+\paperorientation portrait
+\suppress_date false
+\justification true
+\use_refstyle 1
+\use_formatted_ref 0
+\use_minted 0
+\use_lineno 0
+\index Index
+\shortcut idx
+\color #008080
+\end_index
+\leftmargin 1cm
+\topmargin 1.5cm
+\rightmargin 1cm
+\bottommargin 2.54cm
+\secnumdepth 3
+\tocdepth 3
+\paragraph_separation indent
+\paragraph_indentation default
+\is_math_indent 0
+\math_numbering_side default
+\quotes_style hebrew
+\dynamic_quotes 0
+\papercolumns 1
+\papersides 1
+\paperpagestyle default
+\tablestyle default
+\tracking_changes false
+\output_changes false
+\change_bars false
+\postpone_fragile_content true
+\html_math_output 0
+\html_css_as_file 0
+\html_be_strict false
+\docbook_table_output 0
+\docbook_mathml_prefix 1
+\html_math_img_scale 1.1
+\end_header
+
+\begin_body
+
+\begin_layout Standard
+\begin_inset Box Doublebox
+position "t"
+hor_pos "c"
+has_inner_box 1
+inner_pos "c"
+use_parbox 0
+use_makebox 0
+width "100col%"
+special "none"
+height "1in"
+height_special "totalheight"
+thickness "0.4pt"
+separation "20pt"
+shadowsize "4pt"
+framecolor "black"
+backgroundcolor "none"
+status open
+
+\begin_layout Plain Layout
+\paragraph_spacing double
+\align center
+
+\series bold
+\size huge
+(
+\numeric on
+77335
+\numeric off
+) מעבדה בפיזיקה ב
+\family roman
+\shape up
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\shape default
+\emph default
+\numeric on
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+1
+\numeric off
+ | ניסוי
+\family roman
+\shape up
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\shape default
+\emph default
+\numeric on
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+2
+\family roman
+\shape up
+\emph off
+\numeric off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ התאבכות
+\end_layout
+
+\begin_layout Plain Layout
+\align center
+שמות:
+ אלעד רייכמן | ת
+\begin_inset Quotes erd
+\end_inset
+
+ז:
+
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\numeric on
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+206944928
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\numeric off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\end_layout
+
+\begin_layout Plain Layout
+\align center
+וניר כהן | ת
+\begin_inset Quotes erd
+\end_inset
+
+ז:
+
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\numeric on
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+209720838
+\end_layout
+
+\begin_layout Plain Layout
+\align center
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+today
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+
+\lang american
+\begin_inset Formula 
+\[
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Subsection*
+
+\series bold
+\shape smallcaps
+\size larger
+מטרת הניסוי
+\end_layout
+
+\begin_layout Standard
+מטרת הניסוי הייתה לבחון כיצד נראית תבנית הדיפרקציה הנוצרת מהארת לייזר על מגוון תבניות שונות של חרכים,
+ ולבחון את מידת ההתאמה של קירוב פראונהופר לתוצאות הניסיוניות.
+ בנוסף,
+ נבדק האם במקרים שבהם קירוב פראונהופר לא תאם את תוצאות הניסוי,
+ ניתן להסביר זאת באמצעות קירוב פרנל.
+ בפרט,
+ נבדקה תקפות הקירוב עבור סידורים של חרך בודד,
+ שני חרכים וסריג עקיפה,
+ וכן נבחן גבול התקפות שלו באמצעות השוואה לדיפרקציה מתיל דק בתחום פרנל.
+ 
+\end_layout
+
+\begin_layout Standard
+הנוסחה התיאורטית הכללית,
+ ממנה נגזרים המקרים הפרטיים בקירוב פראונהופר,
+ מתארת את עוצמת האור 
+\begin_inset Formula $I$
+\end_inset
+
+ במישור רחוק מן הלייזר:
+\begin_inset Formula 
+\[
+I(\theta)=I_{0}\left(\frac{\sin\beta}{\beta}\right)^{2}\left(\frac{\sin\left(\frac{N\delta}{2}\right)}{\sin\left(\frac{\delta}{2}\right)}\right)^{2}+B
+\]
+
+\end_inset
+
+
+\begin_inset Formula 
+\[
+\beta=\frac{\pi a}{\lambda}\sin(\theta-\varphi),\qquad\delta=\frac{2\pi d}{\lambda}\sin(\theta-\varphi)
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+כאשר 
+\begin_inset Formula $\theta$
+\end_inset
+
+ היא הזווית ביחס לכיוון קרן הלייזר,
+ 
+\begin_inset Formula $a$
+\end_inset
+
+ הוא רוחב חרך אפקטיבי,
+ 
+\begin_inset Formula $d$
+\end_inset
+
+ המרחק בין החרכים,
+ 
+\begin_inset Formula $N$
+\end_inset
+
+ מספר החרכים המוארים האפקטיבי,
+ 
+\begin_inset Formula $\varphi$
+\end_inset
+
+ הסטה זוויתית,
+ 
+\begin_inset Formula $I_{0}$
+\end_inset
+
+ נרמול לעוצמה ו-
+\begin_inset Formula $B$
+\end_inset
+
+ תוספת הנובעת מרעש רקע.
+ 
+\begin_inset Newline newline
+\end_inset
+
+במקרה של תיל דק,
+ על פי עקרון בבינה (
+\begin_inset Formula $\text{Babinet}$
+\end_inset
+
+),
+ התבנית המתקבלת של העוצמה אמורה להיות זהה לזו של חרך יחיד באותו עובי (כמסכים משלימים) - ראו את
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+\lang american
+Optics fifth edition - Eugene Hecht
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+\lang hebrew
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+פרק
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\numeric on
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+10.3.11
+\numeric off
+.
+ הגישה הקלאסית לבדיקת תאוריה זו היא למדוד את העובי של התיל עצמו דרך תבנית ההתאבכות.
+ תהליך חילוץ עובי התיל כולל חיסור של מדידה ללא תיל ממדידה עם התיל (בשביל להוריד רעשים ואת הגאוסיאן של הלייזר שעובר מסביב לתיל) ואז ביצוע התמרת פורייה לסיגנל המתקבל.
+ תאורטית אמורה להתקבל פונקציית
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+\lang american
+rect
+\lang hebrew
+ שרוחבה פרופורציונלי לעובי התיל,
+ ולהשוות את רוחבה לגודל שנמדד במיקרומטר.
+ ניסינו לבצע את הניתוח בצורה זאת.
+\end_layout
+
+\begin_layout Subsection*
+
+\series bold
+\shape smallcaps
+\size larger
+מערכת הניסוי
+\end_layout
+
+\begin_layout Standard
+איור 1 מציג דיאגרמה סכמטית של מערכת הניסוי.
+ המערכת מורכבת ממכשיר המייצר קרן לייזר אל תוך מתקן שיכול להחזיק סוגים שונים של תבניות.
+ קרן הלייזר עוברת דיפרקציה,
+ ולאחר מרחק מסויים נקלטת בחיישן עוצמת אור.
+ חיישן עוצמת האור נמצא על זרוע שניתנת לסיבוב,
+ וכך אנו יכולים למדוד את עוצמת הלייזר בזוויות שונות.
+ הזווית עצמה נמדדת בעזרת חיישן שמבוסס על התנגדות שמשתנה לפי הזווית.
+ אורך הגל של הלייזר הוא 
+\begin_inset Formula $632.8\,nm$
+\end_inset
+
+,
+ וסוגי התבניות שהשתמשנו בהן הן חרך בודד בכמה עוביים שונים,
+ חרך כפול בכמה עוביים ומרחקים בין החרכים,
+ סט של
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\numeric on
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+5
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\numeric off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+חרכים,
+ סריג חרכים,
+ ותיל בשני עוביים שונים.
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset Float figure
+placement H
+alignment center
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename diagram.png
+	lyxscale 10
+	scale 60
+
+\end_inset
+
+
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+דיאגרמה של מערכת הניסוי.
+ המערכת מורכבת ממכשיר המייצר קרן לייזר,
+ מתקן שיכול להחזיק סוגים שונים של תבניות וחיישן עוצמת אור.
+ חיישן עוצמת האור נמצא על זרוע שניתנת לסיבוב,
+ עם חיישן שבודק מה הזווית.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+
+\series bold
+\shape smallcaps
+\size larger
+תוצאות
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+placement H
+alignment center
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename 1 slit a.png
+	lyxscale 20
+	scale 51
+
+\end_inset
+
+
+\begin_inset Graphics
+	filename 1 slit b.png
+	lyxscale 20
+	scale 50
+
+\end_inset
+
+
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+גרפים של עוצמת האור כתלות בזווית בעבור חרך בודד,
+ כאשר ההבדל בין הגרפים הוא עובי החרך במדידה.
+ עבור השמאלי העובי היה
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+
+\begin_inset Formula $0.8\ mm$
+\end_inset
+
+,
+ ועבור הימני 
+\begin_inset Formula $0.16\ mm$
+\end_inset
+
+.
+ ביצענו התאמה לפי קירוב פראונהופר לחרך בודד.
+ בהתאמה השארנו את אורך הגל של הלייזר כפרמטר חופשי,
+ וקיבלנו את ההתאמות 
+\begin_inset Formula $\lambda_{\text{fit}}=603\pm1\,nm$
+\end_inset
+
+ לשמאלי ו 
+\begin_inset Formula $\lambda_{\text{fit}}=607\pm1\,nm$
+\end_inset
+
+ לימני.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+בוצעו שתי דגימות עם תבניות של חרך בודד בעוביים שונים,
+ את המדידות ניתן לראות באיור
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\numeric on
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+2
+\numeric off
+.
+ להן ביצענו התאמה לפי קירוב פראונהופר,
+ עם פרמטרים חופשיים של עוצמה מקסימלית,
+ הסטה בזווית ואורך הגל.
+ קיבלנו שני קירובים לאורך הגל,
+ והם:
+ 
+\begin_inset Formula $\lambda_{\text{fit}}=607\pm1\,nm,\lambda_{\text{fit}}=603\pm1\,nm$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+בוצעו שתי דגימות עם תבניות של שני חרכים בעוביים שונים ומרחקים שונים בין החרכים,
+ את המדידות ניתן לראות באיור
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\numeric on
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+3
+\numeric off
+.
+ הותאמה להן הנוסחה המתאימה לפי קירוב פראונהופר,
+ עם פרמטרים חופשיים של עוצמה מקסימלית,
+ הסטה בזווית ואורך הגל.
+ קיבלנו שני קירובים לאורך הגל,
+ והם:
+ 
+\begin_inset Formula $\lambda_{\text{fit}}=614\pm2\,nm,\lambda_{\text{fit}}=606\pm2\,nm$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+placement H
+alignment center
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename 2 slit b.png
+	lyxscale 20
+	scale 44
+
+\end_inset
+
+
+\begin_inset Graphics
+	filename 2 slit a.png
+	lyxscale 20
+	scale 44
+
+\end_inset
+
+
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+גרפים של עוצמת האור כתלות בזווית בעבור שני חרכים,
+ כאשר ההבדל בין הגרפים הוא עובי החרכים במדידה והמרחק ביניהם.
+ העוביים היו 
+\begin_inset Formula $a_{1}=0.04\,mm,a_{2}=0.08\,mm$
+\end_inset
+
+ והמרחקים בין החרכים היו 
+\begin_inset Formula $d_{1}=0.25\,mm,d_{2}=0.5\,mm$
+\end_inset
+
+ בסדר של שמאל לימין בגרפים.
+ ביצענו התאמה לפי קירוב פראונהופר לחרך כפול.
+ בהתאמה השארנו את אורך הגל של הלייזר כפרמטר חופשי,
+ וקיבלנו את הקירוב 
+\begin_inset Formula $\lambda_{\text{fit}}=614\pm2\,nm$
+\end_inset
+
+ לשמאלי ו 
+\begin_inset Formula $\lambda_{\text{fit}}=606\pm2\,nm$
+\end_inset
+
+ לימני.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset Float figure
+placement H
+alignment center
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+
+\series bold
+\shape smallcaps
+\size larger
+\begin_inset Graphics
+	filename ../../part 2/report stuff/5_slits.png
+	lyxscale 10
+	scale 45
+
+\end_inset
+
+
+\series default
+\shape default
+\size default
+
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+גרף של עוצמת האור כתלות בזווית.
+ בדגימה זאת השתמשנו בתבנית עם שני חרכים בעובי 
+\begin_inset Formula $0.04\,mm$
+\end_inset
+
+ ועם מרחק ביניהם של 
+\begin_inset Formula $0.125\,mm$
+\end_inset
+
+.
+ ביצענו התאמה לפי קירוב פראונהופר לחרך כפול.
+ בהתאמה השארנו את אורך הגל של הלייזר כפרמטר חופשי,
+ וקיבלנו את הקירוב 
+\begin_inset Formula $\lambda_{\text{fit}}=615\pm2\,nm$
+\end_inset
+
+.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+הניסוי האחרון שנעשה בסדרה הזו הוא עם תבנית של חמישה חרכים בעוביים שונים ומרחקים שונים בין החרכים וניתן לראות את המדידה באיור
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\numeric on
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+4
+\numeric off
+.
+ גם למדידה זו בוצעה התאמה לפי קירוב פראונהופר,
+ עם אותם הפרמטרים והתקבל קירוב לאורך הגל:
+ 
+\begin_inset Formula $\lambda_{\text{fit}}=615\pm2\,nm$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+placement h
+alignment center
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+
+\lang american
+\begin_inset Graphics
+	filename ../../part 2/report stuff/50lines_lattice.png
+	lyxscale 10
+	scale 35
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+תבנית הדיפרקציה כתלות בזווית 𝜃 עבור סריג חרכים.
+ הנקודות מייצגות את הנתונים הנמדדים,
+ והקו הרציף מייצג התאמה למודל פראונהופר של סריג בעל 𝑁 חרכים,
+ כאשר הניסו נעשה על סריג עם צפיפות של
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\numeric on
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+50
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\numeric off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+חרכים למילימטר.
+ ההתאמה בוצעה עבור פרמטרים אפקטיביים של מספר החרכים,
+ רוחב החרך ומרחק בין החרכים,
+ תוך הנחת אורך גל באורך 
+\begin_inset Formula $\lambda=632.8\,nm$
+\end_inset
+
+.
+ נשים לב שהמרחקים בין מקסימומים שונים אינם סימטריים סביב הזווית המרכזית.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+באיור
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\numeric on
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+5
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\numeric off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+רואים את התאמת תוצאות הניסוי על מודל פראונהופר של סריג 
+\begin_inset Formula $N$
+\end_inset
+
+ חרכים,
+ ואת הפרמטרים 
+\begin_inset Formula $a,d$
+\end_inset
+
+ כי לא היה לנו את המידע המדויק על הסריג,
+ אלא רק צפיפות החרכים שהיא
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\numeric on
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+50
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\numeric off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+חרכים למילימטר.
+ מההתאמה התקבל בקירוב:
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula $N\approx20,a_{\text{fit}}=9750\pm2851\,\mathrm{nm},d_{\text{fit}}=17100\pm53\,\mathrm{nm},\varphi_{\text{fit}}=0.002\,\mathrm{rad}$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+placement H
+alignment center
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+
+\lang american
+\begin_inset Graphics
+	filename naive_analysis_wire_failure.png
+	lyxscale 10
+	scale 31
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+התמרת פורייה של הפרש העוצמה 
+\begin_inset Formula $ΔI(\theta)$
+\end_inset
+
+ עבור דיפרקציה מתיל דק ברוחב
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\numeric on
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+0.13
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\numeric off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+מילימטר,
+ מוצגת כתלות בתדר הזוויתי 
+\begin_inset Formula $𝑘$
+\end_inset
+
+ (ביחידות של מחזורים לרדיאן).
+ ההתמרה חושבה לאחר חיסור תבנית האינטנסיביות של האלומה ללא תיל למען צמצום רעש.
+ לעומת המצופה לא מתקבל צורת
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+\lang american
+rect
+\lang hebrew
+.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+באיור
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\numeric on
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+6
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\numeric off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+מוצגת התמרת פורייה של הפרש העוצמה בין מדידה ללא תיל ומדידה עם תיל.
+ בבירור ההתמרה אינה
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+\lang american
+rect
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+\lang hebrew
+ מה שמונע את הסקת
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+ רוחב התיל בצורה הקלאסית.
+ לכן נציג ניתוח אחר שביצענו לתוצאות הניסוי.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+placement H
+alignment center
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename ../../part 2/report stuff/wire_0.23mm_difrraction_fresner_edit.png
+	lyxscale 10
+	scale 23
+
+\end_inset
+
+
+\begin_inset Graphics
+	filename ../../part 2/report stuff/wire_13mm_difrraction_fresner_edit.png
+	lyxscale 10
+	scale 23
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+התאמה של קירוב פרנל לניסוי על תילים דקים.
+ בגרף השמאלי התיל ברוחב
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\numeric on
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+
+\begin_inset Formula $0.13\ mm$
+\end_inset
+
+
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\numeric off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+מילימטר,
+ ובימני 
+\begin_inset Formula $0.23\ mm$
+\end_inset
+
+.
+ בגרף השמאלי רואים שמתקבלת התאמה בינונית אך יותר איכותית מאשר הניתוח הקלאסי.
+ בגרף הימני לעומת זאת ההתאמה טובה מאוד.
+ לעומת צורת הניתוח הקלאסית,
+ הפרמטר המותאם במקרה זה הוא המרחק מהתיל לחיישן המודד את עוצמת האור.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+ כתחליף לניתוח המקורי בוצעה התאמות לקירוב פרנל בצורה נומרית,
+ אותו ניתן לראות באיור
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\numeric on
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+7
+\numeric off
+.
+ הפרמטרים המותאמים היו 
+\begin_inset Formula $s$
+\end_inset
+
+ מרחק התיל מהחיישן,
+ 
+\begin_inset Formula $w_{0}$
+\end_inset
+
+ רוחב אלומת הלייזר.
+ הפרמטר הנתון היה רוחב התילים שנמדדו במעבדה 
+\begin_inset Formula $a_{1}=0.13\pm0.005\,\mathrm{mm}$
+\end_inset
+
+
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+ו-
+\begin_inset Formula $a_{2}=0.233\pm0.005\,mm$
+\end_inset
+
+.
+ עבור התיל הדק התקבלו ההתאמות 
+\begin_inset Formula $s=0.30\pm0.05\,\mathrm{m},w_{0}=0.575\pm0.03\,\mathrm{mm}$
+\end_inset
+
+ ואילו לתיל העבה התקבלו ההתאמות 
+\begin_inset Formula $s=0.40\pm0.05\,\mathrm{m},w_{0}=0.325\pm0.02\,\mathrm{mm}$
+\end_inset
+
+.
+ ניתן לראות בנספחים פירוט על אופן ביצוע ההתאמה.
+ ההתאמה שהתקבלה בתחום המדידה הרלוונטי טובה,
+ והערכה לכך היא השוואת 
+\begin_inset Formula $s$
+\end_inset
+
+ לערך שנמדד במעבדה כ-
+\begin_inset Formula $0.47\pm0.05\,meter$
+\end_inset
+
+.
+\begin_inset Formula 
+\[
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+
+\series bold
+\shape smallcaps
+\size larger
+דיון
+\end_layout
+
+\begin_layout Standard
+בחרך בודד,
+ כפול ומערכת של חמישה חרכים קיבלנו שההתאמה לקירוב פראונהופר עבדה בצורה טובה.
+ עבור מדידת אורך הגל של הלייזר קיבלנו תוצאות מעט רחוקות מהערך הרשום על הלייזר,
+ שהוא 
+\begin_inset Formula $632.8nm$
+\end_inset
+
+.
+ ייתכן שזה נובע מהתנודות בעוצמת הלייזר שראינו בדגימת זווית קבועה.
+\end_layout
+
+\begin_layout Standard
+בעבור סריג חרכים,
+ רצינו לחלץ מתוך ההתאמה מה הצפיפות ולראות אם היא תואמת את המציאות.
+ לצורך כך רצינו לחלץ את ה
+\begin_inset Formula $d$
+\end_inset
+
+ המשוער מן ההתאמה,
+ אך היות שההתאמה תלויה ביחס 
+\begin_inset Formula $\frac{d}{\lambda}$
+\end_inset
+
+,
+ רצינו לתקן לפי ה
+\begin_inset Formula $\lambda$
+\end_inset
+
+ שקיבלנו מההתאמה ביחס לערך האמיתי.
+ מהמדידות הראשוניות מצאנו ערך אופייני 
+\begin_inset Formula $\lambda\approx607\,\mathrm{nm}$
+\end_inset
+
+,
+ ולכן נקבל
+\begin_inset Formula 
+\[
+d_{\text{true}}=d_{\text{fit}}\cdot\frac{\lambda_{0}}{\lambda}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+כאשר נסמן את אורך הגל של הלייזר 
+\begin_inset Formula $\lambda_{0}=632.8\,\mathrm{nm}$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+ולכן:
+\begin_inset Formula 
+\[
+d_{\text{true}}\;=\;17100\,\mathrm{nm}\cdot\frac{632.8}{607}\;\approx\;17830\pm50\,\mathrm{nm}\;=\;0.01783\pm0.00005\,\mathrm{mm}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+ונקבל לפי המודל שיש 
+\begin_inset Formula $\frac{1}{0.01783}=56\pm2$
+\end_inset
+
+ חרכים למילימטר.
+ זוהי תוצאה קרובה יחסית לערך הרשום של
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\numeric on
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+50
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\numeric off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+חרכים למילימטר,
+ אך עדיין יש סטייה.
+ ייתכן שחוסר הדיוק נובע מתאורה ממקומות שונים בחדר.
+ 
+\begin_inset Newline newline
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+בניתוח התיל,
+ הפונקציה המותאמת כללה אינטגרל נומרי תחת קירוב פרנל,
+ שכן קירוב פראונהופר כבר לא תקף במדידה זאת - כפי שגם ניתן לראות בגרף.
+ חיזוק נוסף לכך התקבל מניתוח הפרש העוצמות בין המדידות עם וללא התיל.
+ עלה כי התמרת פורייה של ההפרש אינה מתוארת היטב על ידי פונקציית
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+\lang american
+rect
+\lang hebrew
+,
+ שהיא הפונקצייה הצפויה תחת קירוב פראונהופר.
+ לכן הוסק כי נדרש תיאור פיזיקלי מלא יותר הכולל את פרופיל האלומה ותנאי ההתפשטות בתחום פרנל.
+\end_layout
+
+\begin_layout Standard
+מספר פרנל בניסוי עם התיל בעובי
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\numeric on
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+0.13
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\numeric off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+מילימטר הוא:
+\begin_inset Formula 
+\[
+F=\frac{a^{2}}{\lambda s}\approx\frac{(0.13\cdot10^{-3})^{2}}{632.8\cdot10^{-9}\cdot57\cdot10^{-2}}\approx0.047
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+ולתיל בעובי
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\numeric on
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+0.23
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\numeric off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+מילימטר:
+\begin_inset Formula 
+\[
+F=\frac{a^{2}}{\lambda s}\approx\frac{(0.23\cdot10^{-3})^{2}}{632.8\cdot10^{-9}\cdot57\cdot10^{-2}}\approx0.15
+\]
+
+\end_inset
+
+בעוד שקירוב פרנל תקף ל-
+\begin_inset Formula $F\approx1$
+\end_inset
+
+,
+ קירוב פראונהופר דורש ל-
+\begin_inset Formula $F<<1$
+\end_inset
+
+.
+ בעבור התיל העבה התנאי לקירוב פראונהופר גבולי,
+ מה שמצדיק את השימוש בקירוב פרנל.
+ חיזוק נוסף לאמינות ההתאמה מתקבל מהשוואת רוחב האלומה 
+\begin_inset Formula $w_{0}$
+\end_inset
+
+ שחולץ מהמודל.
+ רוחב זה שקול ל 
+\begin_inset Formula $\frac{w_{0}}{d}\approx16$
+\end_inset
+
+ חרכים (עבור צפיפות החרכים של 
+\numeric on
+
+\begin_inset Formula $d=\frac{1}{50}\negmedspace mm$
+\end_inset
+
+
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\numeric off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+),
+ תוצאה התואמת את ההערכה ממדידת הסריג,
+ כאשר שם קיבלנו 
+\begin_inset Formula $N\approx20$
+\end_inset
+
+.
+ 
+\begin_inset Formula 
+\[
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+
+\series bold
+\shape smallcaps
+\size larger
+נספחים
+\end_layout
+
+\begin_layout Standard
+נוסחאות לגרפים לפי סדר - 
+\end_layout
+
+\begin_layout Standard
+הנוסחה שהשתמשנו בה להתאמה בחרך אחד היא:
+\begin_inset Formula 
+\[
+I\left(v\right)=I_{0}\left(\frac{\sin\left(\frac{\pi a}{\lambda}\sin\left(\theta\left(v\right)-\varphi\right)\right)}{\frac{\pi a}{\lambda}\sin\left(\theta\left(v\right)-\varphi\right)}\right)^{2}+c
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+כאשר 
+\begin_inset Formula $a$
+\end_inset
+
+ רוחב החרך,
+ 
+\begin_inset Formula $\varphi$
+\end_inset
+
+ הסטה בזווית (נובעת מכך שהחיישן לא מאופס),
+ 
+\begin_inset Formula $\lambda$
+\end_inset
+
+ אורך הגל,
+ 
+\begin_inset Formula $I_{0}$
+\end_inset
+
+ העוצמה המקסימלית,
+ 
+\begin_inset Formula $c$
+\end_inset
+
+ תוספת שנובעת מאור קבוע מהסביבה.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula $\theta\left(v\right)$
+\end_inset
+
+ היא פונקציה הממירה מהמתח של סנסור הזווית לזוויות,
+ ולפי המדידה הראשונית שעשינו מצאנו:
+\begin_inset Formula 
+\[
+\theta\left(v\right)=\frac{\pi}{180}\left(5.5617v-0.0303\right)
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+(עם המרה לראדיאנים).
+\end_layout
+
+\begin_layout Standard
+בהתאמות הקבועים היו 
+\begin_inset Formula $a,\theta$
+\end_inset
+
+,
+ ומה שחילצנו היה 
+\begin_inset Formula $\lambda,\varphi,I_{0}$
+\end_inset
+
+.
+\begin_inset Formula 
+\[
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+הנוסחה שהשתמשנו בה להתאמה בשני חרכים
+\begin_inset Formula 
+\[
+I\left(v\right)=I_{0}\cos^{2}\left(\frac{\pi d}{\lambda}\sin\left(\theta\left(v\right)-\varphi\right)\right)\left(\frac{\sin\left(\frac{\pi a}{\lambda}\sin\left(\theta\left(v\right)-\varphi\right)\right)}{\frac{\pi a}{\lambda}\sin\left(\theta\left(v\right)-\varphi\right)}\right)^{2}+c
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+כאשר פה נוסף רק הפרמטר 
+\begin_inset Formula $d$
+\end_inset
+
+,
+ כמרחק בין החרכים.
+\end_layout
+
+\begin_layout Standard
+לקירוב עוצמת הלייזר כתלות בזווית כאשר הוא עובר בסריג השתמשנו בנוסחה:
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+I(\theta)=I_{0}\left(\frac{\sin\beta}{\beta}\right)^{2}\left(\frac{\sin\left(\frac{N\delta}{2}\right)}{\sin\left(\frac{\delta}{2}\right)}\right)^{2}+B
+\]
+
+\end_inset
+
+
+\begin_inset Formula 
+\[
+\beta=\frac{\pi a}{\lambda}\sin(\theta-\varphi),\qquad\delta=\frac{2\pi d}{\lambda}\sin(\theta-\varphi)
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+כאשר 
+\begin_inset Formula $a$
+\end_inset
+
+ הוא רוחב חרך אפקטיבי,
+ 
+\begin_inset Formula $d$
+\end_inset
+
+ המרחק בין החרכים,
+ 
+\begin_inset Formula $N$
+\end_inset
+
+ מספר החרכים המוארים האפקטיבי,
+ 
+\begin_inset Formula $\varphi$
+\end_inset
+
+ הסטה זוויתית,
+ 
+\begin_inset Formula $I_{0}$
+\end_inset
+
+ נרמול לעוצמה ו-
+\begin_inset Formula $B$
+\end_inset
+
+ רעש רקע.
+\begin_inset Newline newline
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+קירוב פרנל נומרי נעשה בצורה הבאה.
+ התחלנו מהקירוב:
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+U(x,s)=\frac{e^{iks}}{i\lambda s}\int U_{\text{in}}(x')e{}^{\left[\frac{ik}{2s}(x-x')^{2}\right]}dx'
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+כאשר 
+\begin_inset Formula $U_{in}(x′)$
+\end_inset
+
+ הוא השדה החשמלי מהלייזר במישור החוט,
+ 
+\begin_inset Formula $𝑠$
+\end_inset
+
+ המרחק בין החוט למישור המדידה,
+ 
+\begin_inset Formula $\lambda$
+\end_inset
+
+ אורך הגל ו-
+\begin_inset Formula $𝑘=\frac{2\pi}{\lambda}$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+השתמשנו במודל נומרי של פרנל לתיל אטום עם אלומה גאוסיאנית (בספרות כך נראה שנהוג למדל רוחב של קרן לייזר).
+ במישור החוט 
+\begin_inset Formula $(s=0)$
+\end_inset
+
+ הנחנו שדה כניסה:
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\[
+U_{\text{in}}(x)=e^{-\left(\frac{x}{w_{0}}\right)^{2}}e^{ikx\sin\varphi}\cdot\left[1-rect\left(\frac{x}{a}\right)\right]
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+אלומה גאוסיאנית המאופיינת על ידי שונות 
+\begin_inset Formula $\frac{w_{0}}{2}$
+\end_inset
+
+,
+ הטיה זוויתית קטנה 
+\begin_inset Formula $\varphi$
+\end_inset
+
+,
+ ותיל ברוחב 
+\begin_inset Formula $a$
+\end_inset
+
+.
+ סופית קירבנו 
+\begin_inset Formula $x\approx s\theta$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+את התפשטות השדה חישבנו נומרית בעזרת
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+\lang american
+FFT
+\lang hebrew
+,
+ ואת העוצמה חישבנו לפי:
+\begin_inset Formula 
+\[
+I(x,s)=|U(x,s)|^{2}
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+בסוף נעשתה סריקה על 
+\begin_inset Formula $s,w_{0}$
+\end_inset
+
+ בטווח 
+\begin_inset Formula $[0.1,2]\,meter,[0,2]$
+\end_inset
+
+ כאשר 
+\begin_inset Formula $s$
+\end_inset
+
+ נבדק בקפיצות של 
+\begin_inset Formula $0.1$
+\end_inset
+
+ מטר.
+\end_layout
+
+\end_body
+\end_document
