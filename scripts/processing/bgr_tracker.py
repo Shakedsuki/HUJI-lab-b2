@@ -50,9 +50,8 @@ Usage
     # Or by stem, when called directly:
     python scripts/processing/bgr_tracker.py --stem 4V_1.9Hz --force
 
-The --no-debug / --skip-probe / --yes-to-warn flags are accepted as
-no-ops so this script is a drop-in replacement for ring_tracker.py in
-the track_one.py invocation chain.
+The --no-debug flag is accepted as a no-op for compatibility with the
+track_one.py invocation chain.
 """
 
 import argparse
@@ -267,14 +266,8 @@ def parse_args():
                     help="config_description (registry key) for the clip.")
     ap.add_argument("--force", action="store_true",
                     help="Overwrite existing tracking.csv.")
-    # Compatibility no-ops — accepted so this script is drop-in for the
-    # ring_tracker invocation in track_one.py.
     ap.add_argument("--no-debug", action="store_true",
                     help="(no-op) bgr_tracker produces no debug video.")
-    ap.add_argument("--skip-probe", action="store_true",
-                    help="(no-op) bgr_tracker has no HSV adequacy probe.")
-    ap.add_argument("--yes-to-warn", action="store_true",
-                    help="(no-op) bgr_tracker has no HSV adequacy WARN.")
     return ap.parse_args()
 
 

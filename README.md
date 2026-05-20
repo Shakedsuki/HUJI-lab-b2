@@ -97,12 +97,9 @@ PIPELINE
   chaos bulk [--dry-run] [--redo]  unattended pass over plannable clips
 
 PER-CLIP
-  chaos tune <stem>                HSV calibration (interactive)
   chaos track <stem> [--debug]     track + verify + interpolate + verdict
   chaos verify <stem>              standalone QA on existing tracking.csv
-  chaos fix <stem>                 manual seed picker + re-track
   chaos override <stem> --frame N  patch one row of tracking.csv
-  chaos auto-seed <stem>           interpolate seeds from violation clusters
   chaos render <stem>              render combined.mp4 (video + overlay)
 
 INSPECTION
@@ -130,7 +127,7 @@ ANALYSIS
 
 - **PASS** — auto-marks `tracking_quality=verified`; ready for downstream analysis
 - **WARN** — tracking probably fine but a physics check fired; review or run `chaos triage`
-- **FAIL** — broken; needs `chaos fix`, `chaos tune` + `chaos track`, or `chaos override`
+- **FAIL** — broken; needs `chaos override` or a re-track with adjusted thresholds
 
 ### Outputs per clip
 
@@ -142,7 +139,6 @@ ANALYSIS
 | `verification.csv` | `chaos verify` | + ω, suspect flags from 7 physics checks |
 | `verification.png` | `chaos verify` | θ / ω timelines, suspect dots |
 | `verification_meta.json` | `chaos verify` | run-level (pivot drift, E_release) |
-| `seeds.json` | `chaos fix` / `auto-seed` | manual + interpolated seed positions |
 | `combined.mp4` | `chaos render` | source video + marker overlay + phase plots |
 | `phase_panels.png`, `phase_3d_*` | analysis scripts | post-tracking physics figures |
 | `friction_fit.png` | `chaos friction-fit` | E(t) + decay-model fit |
@@ -152,7 +148,7 @@ Plus the cross-clip rollup at `week3-pendulum-free-swing/data/status_report.xlsx
 
 ### More
 
-- [`week3-pendulum-free-swing/docs/PIPELINE.md`](week3-pendulum-free-swing/docs/PIPELINE.md) — keystroke-level walkthrough, HSV/fix-up keyboard refs, geometry calibration, troubleshooting
+- [`week3-pendulum-free-swing/docs/PIPELINE.md`](week3-pendulum-free-swing/docs/PIPELINE.md) — keystroke-level walkthrough (archive of the pre-BGR pipeline)
 - `chaos help` — same cheat sheet on stdout
 - `chaos <cmd> --help` — flag list for any subcommand
 
@@ -192,15 +188,14 @@ Phase portraits · Poincaré sections (stroboscopic at θ₁ = 0, ω₁ > 0) · 
 
 ### The shared pendulum pipeline
 
-The video-tracking pipeline under [`scripts/`](scripts/) serves Weeks 3 and 4
-both. Switch between them via the `CHAOS_PHASE` environment variable:
+The video-tracking pipeline under [`scripts/`](scripts/) targets driven
+motion (Week 4). The Week 3 free-swing data and figures remain on disk
+as archive, but the HSV-based tracker that produced them has been
+retired — only `bgr_tracker.py` is active in the current pipeline.
 
 ```bash
-# Week 3 (default)
-CHAOS_PHASE=week3-pendulum-free-swing  python scripts/processing/ring_tracker.py ...
-
-# Week 4
-CHAOS_PHASE=week4-pendulum-motor-driven python scripts/processing/bgr_tracker.py ...
+# Driven tracking (default — week4-pendulum-motor-driven)
+CHAOS_PHASE=week4-pendulum-motor-driven python scripts/processing/bgr_tracker.py <video> --force
 ```
 
 (The legacy values `phase1-free-swing` / `phase2-motor-driven` still work and

@@ -46,23 +46,17 @@ except (AttributeError, OSError):
     pass
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT, PHASE  # noqa: E402
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
 
 LOG_FILE         = os.path.join(DATA_DIR, "track_one_log.txt")
 
-# Phase-aware tracker selection. Phase 1 (free-swing) uses ring_tracker;
-# Phase 2 (motor-driven) uses bgr_tracker — Cohen's direct BGR detection
-# wrapped in pipeline I/O, which outperforms the HSV+ring stack on the
-# chaotic driven clips (see scripts/processing/bgr_tracker.py header).
-RING_TRACKER_SCRIPT = os.path.join(REPO_ROOT, "scripts", "processing", "ring_tracker.py")
-BGR_TRACKER_SCRIPT  = os.path.join(REPO_ROOT, "scripts", "processing", "bgr_tracker.py")
-TRACKER_SCRIPT      = (BGR_TRACKER_SCRIPT
-                       if PHASE == "week4-pendulum-motor-driven"
-                       else RING_TRACKER_SCRIPT)
+# Tracker — Cohen's BGR detection wrapped in pipeline I/O. The HSV ring
+# tracker that previously sat behind a phase switch has been removed
+# (PR C); driven motion is now the only regime the pipeline targets.
+TRACKER_SCRIPT  = os.path.join(REPO_ROOT, "scripts", "processing", "bgr_tracker.py")
 VERIFY_SCRIPT   = os.path.join(REPO_ROOT, "scripts", "processing", "verify_tracking.py")
 INTERP_SCRIPT   = os.path.join(REPO_ROOT, "scripts", "processing",
                                "interpolate_suspects.py")
-GLOBAL_HSV_FILE = os.path.join(DATA_DIR, "hsv_values.json")
 
 # scripts/utils is already in sys.path because Python auto-adds the
 # script's directory; this re-affirms it for the case where track_one
@@ -874,10 +868,6 @@ def parse_args():
                    help="config_description (e.g. th1_p047_th2_m002).")
     p.add_argument("--no-interpolate", action="store_true",
                    help="Skip interpolate_suspects even if hidden suspects exist.")
-    p.add_argument("--skip-probe", action="store_true",
-                   help="Pass --skip-probe to ring_tracker (skip HSV adequacy check).")
-    p.add_argument("--yes-to-warn", action="store_true",
-                   help="Pass --yes-to-warn to ring_tracker (auto-confirm WARN).")
     p.add_argument("--no-debug", action="store_true", default=True,
                    help="Skip debug.mp4 generation (default: skip).")
     p.add_argument("--debug", action="store_true",
@@ -902,34 +892,14 @@ def main():
     track_cmd = [sys.executable, TRACKER_SCRIPT, video_path, "--force"]
     if not args.debug:
         track_cmd.append("--no-debug")
-    if args.skip_probe:
-        track_cmd.append("--skip-probe")
-    if args.yes_to_warn:
-        track_cmd.append("--yes-to-warn")
-    tracker_label = ("bgr_tracker"
-                     if PHASE == "week4-pendulum-motor-driven"
-                     else "ring_tracker")
-    rc, _ = run(track_cmd, label=tracker_label)
+    rc, _ = run(track_cmd, label="bgr_tracker")
     if rc != 0:
-        # Ring_tracker uses specific non-zero codes for known abort paths:
-        #   2 = HSV adequacy probe ABORT
-        #   3 = User cancelled at WARN prompt
-        # Anything else is an unexpected error (or the user cancelled the
-        # frame picker). Surface the most actionable next step.
-        if rc == 2:
-            reason = (f"HSV adequacy below {40}% — re-run "
-                      f"hsv_tuner.py on this video and try again. "
-                      f"(--skip-probe overrides if needed.)")
-        elif rc == 3:
-            reason = "User cancelled at HSV WARN prompt; no tracking attempted."
-        else:
-            reason = (f"ring_tracker exit {rc} — likely picker cancellation "
-                      f"or unexpected error.")
+        reason = f"bgr_tracker exit {rc} — unexpected error."
         emit_card(stem, video_path, key, entry,
                   status="FAIL", reasons=[reason],
                   metrics_pre=None, metrics_post=None,
                   n_interpolated=0,
-                  hsv_kind=hsv_kind_for_video(os.path.basename(video_path)),
+                  hsv_kind=None,
                   total_elapsed=time.time() - t_total)
         return rc
 
