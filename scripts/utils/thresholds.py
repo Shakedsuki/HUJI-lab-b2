@@ -46,32 +46,18 @@ PEAK_OMEGA_ABSURD    = 4000.0   # above this is almost certainly tracker error
 OMEGA_BAR_MAX        = 4000.0   # ω bars saturate at the absurd line
 DROPOUT_BAR_MAX      = 15.0     # dropout bars saturate at 1.5× the WARN line
 
-# Holding-phase noise floor: anything above this in holding is tracker
-# noise (markers shouldn't move much before release). OMEGA_HOLD_THRESHOLD
-# is the legacy name kept for the rich-bar tinting; OMEGA_CAP_HOLDING is
-# the per-frame suspect-flagging cap used by verify_tracking. They are
-# the same number, but each name carries a distinct intent so callers
-# pick the one that matches the meaning at the call site.
-OMEGA_HOLD_THRESHOLD = 100.0
-OMEGA_CAP_HOLDING    = 100.0
-
 # Rigid-body sanity: arm 2 is a physical rod, so the pixel distance
 # between the green pivot and the red tip should be approximately
 # constant. A frame whose arm-length deviates by more than this %
-# of the median is flagged as a tracking error (caught even when
-# dropout=0 and |ω| is below cap — different failure mode from the
-# ω check).
+# of the median is flagged as a tracking error.
 ARM_LEN_THRESHOLD_PCT = 10.0
 
 # Maximum |Δω| between consecutive clean frames in degrees/second.
-# Physical Δω_max ≈ (g/L)·dt ≈ 27 °/s at 60fps; we use 200 to leave
+# Physical Δω_max ≈ (g/L)·dt ≈ 27 °/s at 60 fps; we use 200 to leave
 # generous headroom for close-approach dynamics. Catches a different
 # failure mode from the absolute ω cap: when the tracker latches onto
 # a slow-moving wrong object, ω is small but the transition jump
 # spikes Δω.
-# Brief 6 calibration: 99th-percentile |Δω| on clean clips
-# th1_p044_th2_m001 and th1_p047_th2_m002 measured at 102.9 and
-# 94.2 °/s respectively — comfortably below 200, so the cap stays.
 DELTA_OMEGA_CAP = 200.0
 
 # Marker swap detection. If the cross-pairing distance (green→red',
@@ -80,27 +66,11 @@ DELTA_OMEGA_CAP = 200.0
 # swapped the marker labels than continued normal motion.
 SWAP_RATIO_THRESHOLD = 0.7
 
-# Brief 6 — physics checks
-THETA_RESIDUAL_CAP_DEG    = 5.0    # ° prediction residual gate
-# Brief 14 calibration (2026-05-02): on clean clips with SG-smoothed
-# ω, p99 of E[i] / median(E[i-5:i]) is 1.38–1.68 and the maximum
-# observed is 2.24. The previous 1.3 threshold flagged 3–6% of clean
-# frames as spurious "spikes." Bumped to 2.0 — catches real
-# wrong-target jumps (3-10× inflation) without firing on natural
-# pendulum oscillation through swing extremes.
-ENERGY_SPIKE_FACTOR       = 2.0
-ENERGY_SMOOTH_WINDOW      = 5      # frames for rolling median baseline
-ENERGY_RELEASE_HEADROOM   = 1.15   # E[i] ≤ E_release * this before flagging
-PIVOT_DRIFT_WARN_PX       = 5.0    # px
-PIVOT_DRIFT_FAIL_PX       = 15.0   # px
-
-# Brief 6 Check D — trend arm-length
-ARM_LENGTH_TREND_WINDOW   = 100    # frames per sliding window
-ARM_LENGTH_TREND_DEV_PCT  = 5.0    # % deviation from reference window
-
-# Brief 7 (absorbed) — IC-aware energy cap
-# Phase 2 ARM_LENGTH_CM: measure physically in lab (ruler from pivot bolt to
-# green marker center) and update the if-branch below.
+# ARM_LENGTH_CM: physical arm length, used by analysis scripts that
+# convert pixel measurements to physical units. Phase-aware because the
+# Week 3 rig used a 35 cm arm and the Week 4 rig was repositioned with
+# a 33.1 cm effective length (see PIVOT/ARM_LENGTH_PX block below for
+# the derivation).
 if _PHASE == "week4-pendulum-motor-driven":
     # Cross-phase digital calibration (2026-05-13):
     # Phase 1 scale = 35.0 cm / 162 px = 0.2160 cm/px.
