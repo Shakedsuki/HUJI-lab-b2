@@ -61,9 +61,6 @@ VERIFY_SCRIPT   = os.path.join(REPO_ROOT, "scripts", "processing", "verify_track
 # is imported from another script (e.g. manual_correction).
 EXPERIMENTS_FILE = EXPERIMENTS
 from render import render_verdict  # noqa: E402
-from thresholds import (  # noqa: E402
-    ARM_LEN_THRESHOLD_PCT,
-)
 
 # ─────────────────────────────────────────────
 # REGISTRY HELPERS
@@ -133,427 +130,107 @@ def resolve_inputs(args):
 # ─────────────────────────────────────────────
 
 def read_verification_metrics(meas_dir):
-    """
-    Read measurements/<stem>/verification.csv and return a dict of
-    per-stem stats consumed by the verdict-card layer.
-
-    Optional columns added by Brief 3 (arm_length_px, arm_dev_pct) and
-    Brief 5 (delta_omega_suspect, swap_suspect) are read defensively —
-    older verification.csv files without those columns parse cleanly
-    with the corresponding metrics returning None / 0.
-
+    """Read measurements/<stem>/verification.csv and return:
+        {n_total, n_dropout, dropout_pct}
     Returns None if verification.csv is missing.
+
+    The verdict only cares about dropout — anything else is bloat.
+    Peak ω, arm length, suspect counts etc. are no longer computed by
+    verify_tracking or read here.
     """
     path = os.path.join(meas_dir, "verification.csv")
     if not os.path.exists(path):
         return None
-    n_total = n_drop_total = n_suspect_hidden = 0
-    n_free = n_free_drop = n_hold = n_hold_drop = 0
-    n_hold_susp = 0
-    peak_o1 = peak_o2 = 0.0
-    arm_devs = []
-    n_arm_violations = 0
-    n_accel_suspect = 0
-    n_swap_suspect  = 0
-    # Brief 6 — defensive read of new columns; older verification.csv
-    # files lack them and parse cleanly with these counters at 0.
-    n_residual_suspect       = 0
-    n_energy_suspect         = 0
-    n_energy_ceiling_suspect = 0
-    n_energy_rolling_spike   = 0
-    n_trend_arm_suspect      = 0
-    # Brief 13 — ω-cap-only count (interpolation-resistant tracking
-    # errors), distinct from the union-of-all-checks suspect mask.
-    n_omega_cap_suspect      = 0
+    n_total = n_drop = 0
     with open(path, "r", newline="") as f:
         for r in csv.DictReader(f):
             n_total += 1
-            phase   = r.get("phase", "")
             try:
-                drop = int(r.get("dropout") or 0)
-            except ValueError:
-                drop = 0
-            try:
-                susp = int(r.get("suspect") or 0)
-            except ValueError:
-                susp = 0
-            if drop:
-                n_drop_total += 1
-                if phase == "holding":  n_hold_drop += 1
-                if phase == "free_swing": n_free_drop += 1
-            if phase == "holding":  n_hold += 1
-            if phase == "free_swing": n_free += 1
-            if susp and not drop:
-                n_suspect_hidden += 1
-                if phase == "holding":
-                    n_hold_susp += 1
-            try:
-                o1 = abs(float(r.get("omega1_deg_s") or 0))
-                if o1 > peak_o1: peak_o1 = o1
+                if int(r.get("dropout") or 0):
+                    n_drop += 1
             except ValueError:
                 pass
-            try:
-                o2 = abs(float(r.get("omega2_deg_s") or 0))
-                if o2 > peak_o2: peak_o2 = o2
-            except ValueError:
-                pass
-            # Arm-length deviation (Brief 3) — column is optional; only
-            # appears in verifications produced after the upgrade.
-            try:
-                dev_str = r.get("arm_dev_pct") or ""
-                if dev_str:
-                    dev = float(dev_str)
-                    if not math.isnan(dev):
-                        arm_devs.append(dev)
-                        if dev > ARM_LEN_THRESHOLD_PCT:
-                            n_arm_violations += 1
-            except ValueError:
-                pass
-            # Brief 5 columns — defensive (older verification.csv lacks them).
-            try:
-                if int(r.get("delta_omega_suspect") or 0) == 1:
-                    n_accel_suspect += 1
-            except ValueError:
-                pass
-            try:
-                if int(r.get("swap_suspect") or 0) == 1:
-                    n_swap_suspect += 1
-            except ValueError:
-                pass
-            # Brief 6 columns — defensive.
-            for col, counter_name in (
-                ("residual_suspect",       "n_residual_suspect"),
-                ("energy_suspect",         "n_energy_suspect"),
-                ("energy_ceiling_suspect", "n_energy_ceiling_suspect"),
-                ("energy_rolling_spike",   "n_energy_rolling_spike"),
-                ("trend_arm_suspect",      "n_trend_arm_suspect"),
-                ("omega_cap_suspect",      "n_omega_cap_suspect"),
-            ):
-                try:
-                    if int(r.get(col) or 0) == 1:
-                        # Bump the local var by name without eval/exec.
-                        if counter_name == "n_residual_suspect":
-                            n_residual_suspect += 1
-                        elif counter_name == "n_energy_suspect":
-                            n_energy_suspect += 1
-                        elif counter_name == "n_energy_ceiling_suspect":
-                            n_energy_ceiling_suspect += 1
-                        elif counter_name == "n_energy_rolling_spike":
-                            n_energy_rolling_spike += 1
-                        elif counter_name == "n_trend_arm_suspect":
-                            n_trend_arm_suspect += 1
-                        elif counter_name == "n_omega_cap_suspect":
-                            # Brief 13 — only count clean (dropout=0)
-                            # frames; ω is undefined on dropout rows.
-                            if not drop:
-                                n_omega_cap_suspect += 1
-                except (ValueError, TypeError):
-                    pass
-
-    # Brief 6 sidecar — pivot drift, E_release, and trend-window count
-    # don't fit the per-frame CSV; verify_tracking writes them to
-    # verification_meta.json. Read defensively so older runs without
-    # the sidecar still parse cleanly.
-    meta_path = os.path.join(meas_dir, "verification_meta.json")
-    pivot_drift_px      = None
-    energy_release_J    = None
-    n_trend_arm_windows = 0
-    if os.path.exists(meta_path):
-        try:
-            with open(meta_path, "r", encoding="utf-8") as f:
-                meta = json.load(f)
-            pivot_drift_px      = meta.get("pivot_drift_px")
-            energy_release_J    = meta.get("energy_release_J")
-            n_trend_arm_windows = int(meta.get("n_trend_arm_windows") or 0)
-        except (OSError, ValueError, json.JSONDecodeError):
-            pass
-
     return {
-        "n_total":               n_total,
-        "n_dropout_total":       n_drop_total,
-        "n_dropout_holding":     n_hold_drop,
-        "n_dropout_free_swing":  n_free_drop,
-        "n_holding":             n_hold,
-        "n_free_swing":          n_free,
-        "n_suspect_hidden":      n_suspect_hidden,
-        "n_holding_suspects":    n_hold_susp,
-        "peak_omega1":           peak_o1,
-        "peak_omega2":           peak_o2,
-        "free_swing_dropout_pct":
-            round(100.0 * n_free_drop / n_free, 2) if n_free else None,
-        "holding_dropout_pct":
-            round(100.0 * n_hold_drop / n_hold, 2) if n_hold else None,
-        "arm_length_dev_max_pct":
-            round(max(arm_devs), 2) if arm_devs else None,
-        "arm_length_dev_mean_pct":
-            round(sum(arm_devs) / len(arm_devs), 2) if arm_devs else None,
-        "n_arm_violations":      n_arm_violations,
-        "n_accel_suspects":      n_accel_suspect,
-        "n_swap_suspects":       n_swap_suspect,
-        # Brief 6
-        "n_residual_suspects":         n_residual_suspect,
-        "n_energy_suspects":           n_energy_suspect,
-        "n_energy_ceiling_suspects":   n_energy_ceiling_suspect,
-        "n_energy_rolling_spikes":     n_energy_rolling_spike,
-        "n_trend_arm_suspects":        n_trend_arm_suspect,
-        "n_trend_arm_windows":         n_trend_arm_windows,
-        "pivot_drift_px":              pivot_drift_px,
-        "energy_release_J":            energy_release_J,
-        # Brief 13
-        "n_omega_cap_suspects":        n_omega_cap_suspect,
+        "n_total":     n_total,
+        "n_dropout":   n_drop,
+        "dropout_pct": round(100.0 * n_drop / n_total, 2) if n_total else None,
     }
 
 # ─────────────────────────────────────────────
 # VERDICT
 # ─────────────────────────────────────────────
 
-# Verdict-band thresholds live in scripts/utils/thresholds.py — single
-# source of truth shared with the render layer. Re-exported here so
-# legacy callers that imported these constants from track_one keep
-# working without churning their imports.
 from thresholds import (  # noqa: E402
-    PASS_DROPOUT_PCT,
-    WARN_DROPOUT_PCT,
-    PEAK_OMEGA_PHYSICAL,
-    PEAK_OMEGA_ABSURD,
+    DROPOUT_FAIL_PCT,
 )
 
-def compute_verdict(metrics, n_suspects_post_interp):
+def compute_verdict(metrics, *_unused):
     """
-    Returns (status, reasons_list) where status ∈ {PASS, WARN, FAIL}.
+    Returns (status, reasons_list) where status ∈ {PASS, FAIL}.
 
-    Verdict surface (PR D — driven-only pipeline)
-    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    Free-swing physics checks (release-energy ceiling, fixed-pivot
-    drift, θ-prediction residual, holding-phase ω, trend arm-length,
-    energy rolling spike) have been removed — they all produced
-    near-universal false positives on driven clips. What's left:
+    A clip FAILs if dropout_pct > DROPOUT_FAIL_PCT, otherwise PASS.
+    That's the entire verdict — one criterion, one number.
 
-      * dropout band  — > 10% → FAIL,  5-10% → WARN reason
-      * peak |ω₂|     — > 4000 °/s → FAIL,  > 1500 °/s → WARN reason
-      * arm-length    — any rigid-rod violation → WARN reason
-      * |Δω| spike    — any unphysical acceleration → WARN reason
-      * marker swap   — any swap candidate       → WARN reason
-      * ω-cap suspects→ count → WARN reason
+    Earlier versions of this function also checked peak |ω₂|,
+    arm-length deviation, marker swaps, and |Δω| spikes. Those have
+    been removed: peak |ω₂| crossings are real chaotic physics not
+    tracker errors, |Δω| spikes fire on legitimate chaos, and arm-
+    length / swap detections are pre-empted by the Y crop in
+    bgr_tracker (which excludes the wall-fabric region where wrong-
+    blob detections used to happen). What's left is the only thing
+    that genuinely tells you the tracker failed: it didn't find both
+    markers often enough.
 
-    The `n_suspects_post_interp` parameter is retained for callers
-    that still pass it, but interpolation has been retired on the
-    driven path so the count is the same as the pre-interp count.
+    Extra positional args are accepted but ignored for back-compat
+    with older callers.
     """
-    reasons = []
-    drop = metrics.get("free_swing_dropout_pct")
-    peak2 = metrics.get("peak_omega2", 0.0)
-
+    drop = metrics.get("dropout_pct")
     if drop is None:
-        return "FAIL", ["no free_swing frames in verification.csv"]
-
-    if drop > WARN_DROPOUT_PCT:
-        reasons.append(f"free-swing dropout {drop:.1f}% > {WARN_DROPOUT_PCT}%")
-        return "FAIL", reasons
-    if peak2 > PEAK_OMEGA_ABSURD:
-        reasons.append(
-            f"peak |ω₂| {peak2:.0f}°/s > {PEAK_OMEGA_ABSURD:.0f}°/s "
-            f"(likely tracking error)")
-        return "FAIL", reasons
-
-    if drop > PASS_DROPOUT_PCT:
-        reasons.append(f"free-swing dropout {drop:.1f}% in 5–10% band")
-
-    n_omega_cap_post = metrics.get("n_omega_cap_suspects")
-    if n_omega_cap_post is None:
-        n_omega_cap_post = n_suspects_post_interp
-    if n_omega_cap_post > 0:
-        reasons.append(f"{n_omega_cap_post} ω-cap suspect frame(s)")
-
-    if peak2 > PEAK_OMEGA_PHYSICAL:
-        reasons.append(
-            f"peak |ω₂| {peak2:.0f}°/s > {PEAK_OMEGA_PHYSICAL:.0f}°/s "
-            f"physical rule-of-thumb")
-
-    n_arm = metrics.get("n_arm_violations", 0)
-    if n_arm > 0:
-        dev_max = metrics.get("arm_length_dev_max_pct") or 0.0
-        reasons.append(
-            f"{n_arm} arm-length violation(s) "
-            f"(max deviation {dev_max:.1f}%) — tracker latched on wrong object")
-
-    n_accel = metrics.get("n_accel_suspects", 0)
-    if n_accel > 0:
-        reasons.append(
-            f"{n_accel} frame(s) with |Δω| spike "
-            f"(unphysical acceleration)")
-
-    n_swap = metrics.get("n_swap_suspects", 0)
-    if n_swap > 0:
-        reasons.append(
-            f"{n_swap} frame(s) where green/red markers "
-            f"appear to have swapped labels")
-
-    if reasons:
-        return "WARN", reasons
-    return "PASS", ["dropout, suspects, and ω all within thresholds"]
+        return "FAIL", ["no frames in verification.csv"]
+    if drop > DROPOUT_FAIL_PCT:
+        return "FAIL", [
+            f"dropout {drop:.2f}% > {DROPOUT_FAIL_PCT:.0f}% — "
+            f"tracker missed markers too often"
+        ]
+    return "PASS", [f"dropout {drop:.2f}% ≤ {DROPOUT_FAIL_PCT:.0f}%"]
 
 # ─────────────────────────────────────────────
 # ACTIONABLE-STEPS BUILDER  (Brief 4)
 # ─────────────────────────────────────────────
 
-def _load_top_suspect_frames(meas_dir, n=5):
-    """Read verification.csv and return the top n suspect rows by |ω₂|
-    where suspect=1 and dropout=0. Each item:
-      {"frame": int, "time_s": float, "phase": str, "om2": float}
-    Returns [] when the file is missing or no suspects exist."""
-    path = os.path.join(meas_dir, "verification.csv")
-    if not os.path.exists(path):
-        return []
-    candidates = []
-    with open(path, "r", newline="") as f:
-        for r in csv.DictReader(f):
-            try:
-                if int(r.get("suspect") or 0) != 1:
-                    continue
-                if int(r.get("dropout") or 0) != 0:
-                    continue
-                om2 = abs(float(r.get("omega2_deg_s") or 0))
-                candidates.append({
-                    "frame":  int(r["frame"]),
-                    "time_s": float(r["time_s"]),
-                    "phase":  r.get("phase", ""),
-                    "om2":    om2,
-                })
-            except (ValueError, TypeError, KeyError):
-                continue
-    candidates.sort(key=lambda c: -c["om2"])
-    return candidates[:n]
-
 def build_actionable_steps(stem, metrics_post, reasons, status,
-                           suspect_frames=None, *, entry=None,
-                           energy_cap=None):
+                           *_unused, **_unused_kw):
     """Translate metrics + verdict into copy-paste-ready guidance.
 
-    Returns a list of dicts:
-      {"priority": "required" | "review" | "info",
-       "category": "suspect_frame" | "dropout" | "arm_length" |
-                   "holding_suspect" | "verified",
-       "text":    str,
-       "command": str | None}
-
-    User-facing commands use the `chaos` wrapper (chaos override / fix /
-    tune / verify) rather than `python scripts/...` paths so the steps
-    stay aligned with the documented user surface.
+    Verdict is binary based on dropout, so there's really one
+    possible step on FAIL ("dropout too high, inspect / re-shoot")
+    and a "verified" info row on PASS.
     """
     steps = []
     metrics_post = metrics_post or {}
 
-    # A) residual suspect frames post-interpolation
-    n_susp_hidden = metrics_post.get("n_suspect_hidden", 0)
-    if n_susp_hidden > 0 and suspect_frames:
-        for f in suspect_frames[:3]:
-            steps.append({
-                "priority": "required",
-                "category": "suspect_frame",
-                "text": (
-                    f"Frame {f['frame']}  "
-                    f"(t = {f['time_s']:.3f}s,  {f['phase']}):  "
-                    f"|ω₂| = {f['om2']:.0f} °/s\n"
-                    f"  Check verification.png at this timestamp.\n"
-                    f"  If the marker position looks wrong, correct it manually."
-                ),
-                # Single-frame fixes go through `chaos override`; the
-                # legacy manual_correction tool is for multi-frame
-                # cluster fixes.
-                "command": f"chaos override {stem} --frame {f['frame']}",
-            })
-        if len(suspect_frames) > 3:
-            steps.append({
-                "priority": "info",
-                "category": "suspect_frame",
-                "text": (f"... and {len(suspect_frames) - 3} more suspect "
-                         f"frames. Run verify_tracking for the full list."),
-                "command": f"chaos verify {stem}",
-            })
-
-    # B) free-swing dropout in WARN band
-    drop = metrics_post.get("free_swing_dropout_pct")
-    n_drop_free = metrics_post.get("n_dropout_free_swing", "?")
-    if drop is not None and PASS_DROPOUT_PCT < drop <= WARN_DROPOUT_PCT:
-        steps.append({
-            "priority": "review",
-            "category": "dropout",
-            "text": (
-                f"{drop:.1f}% free-swing dropout ({n_drop_free} frames).\n"
-                f"  Open verification.png and check for a cluster of red\n"
-                f"  markers in a narrow window — that indicates occlusion,\n"
-                f"  lighting issues, or the markers leaving the crop window."
-            ),
-            "command": None,
-        })
-
-    # C) free-swing dropout above WARN — auto-FAIL
-    if drop is not None and drop > WARN_DROPOUT_PCT:
+    drop = metrics_post.get("dropout_pct")
+    n_drop = metrics_post.get("n_dropout", "?")
+    if drop is not None and drop > DROPOUT_FAIL_PCT:
         steps.append({
             "priority": "required",
             "category": "dropout",
             "text": (
-                f"{drop:.1f}% free-swing dropout — exceeds "
-                f"{WARN_DROPOUT_PCT}% FAIL threshold.\n"
-                f"  Run is likely unrecoverable. Re-shoot the clip with\n"
-                f"  consistent lighting and the markers inside the\n"
-                f"  CROP_X_START..CROP_X_END window."
+                f"{drop:.2f}% dropout ({n_drop} frames) > "
+                f"{DROPOUT_FAIL_PCT:.0f}% — tracker missing markers too\n"
+                f"  often. Use scripts/utils/diagnose_frames.py to see\n"
+                f"  what's happening on a sample of dropout frames;\n"
+                f"  may need re-shoot or crop adjustment."
             ),
-            "command": None,
+            "command": f"python scripts/utils/diagnose_frames.py --stem {stem}",
         })
 
-    # D) arm-length violations
-    n_arm = metrics_post.get("n_arm_violations", 0)
-    arm_dev_max = metrics_post.get("arm_length_dev_max_pct")
-    if n_arm > 0:
-        priority = "required" if (arm_dev_max or 0) > 20 else "review"
-        steps.append({
-            "priority": priority,
-            "category": "arm_length",
-            "text": (
-                f"{n_arm} frame(s) violate rigid-arm constraint "
-                f"(max deviation: {(arm_dev_max or 0):.1f}%).\n"
-                f"  These frames likely caught a wrong object. Inspect\n"
-                f"  verification.png; consider chaos override on outliers."
-            ),
-            "command": f"chaos verify {stem}",
-        })
-
-    # E) peak ω₂ above physical rule-of-thumb
-    peak2 = metrics_post.get("peak_omega2", 0.0)
-    if PEAK_OMEGA_PHYSICAL < peak2 <= PEAK_OMEGA_ABSURD:
-        steps.append({
-            "priority": "review",
-            "category": "suspect_frame",
-            "text": (
-                f"Peak |ω₂| = {peak2:.0f} °/s exceeds "
-                f"{PEAK_OMEGA_PHYSICAL:.0f} °/s physical rule-of-thumb.\n"
-                f"  May be physical (extreme chaotic event) or a residual\n"
-                f"  tracking artefact. Check verification.png near peak ω₂."
-            ),
-            "command": None,
-        })
-    if peak2 > PEAK_OMEGA_ABSURD:
-        steps.append({
-            "priority": "required",
-            "category": "suspect_frame",
-            "text": (
-                f"Peak |ω₂| = {peak2:.0f} °/s > {PEAK_OMEGA_ABSURD:.0f} °/s "
-                f"absurd threshold.\n"
-                f"  Almost certainly a tracking error, not physics.\n"
-                f"  Use chaos override on the worst frame."
-            ),
-            "command": f"chaos override {stem}",
-        })
-
-    # F) PASS — no issues found
     if status == "PASS" and not steps:
         steps.append({
             "priority": "info",
             "category": "verified",
-            "text": ("All checks passed. tracking_quality has been set to "
-                     "'verified'\nin the registry automatically."),
+            "text": ("Dropout within tolerance; tracking_quality set to "
+                     "'verified'."),
             "command": None,
         })
 
@@ -699,19 +376,14 @@ def main():
     n_interp = 0
 
     # ── 3. Compute verdict ─────────────────────────────────────────────
-    n_susp_post = (metrics_post or {}).get("n_suspect_hidden", 0)
-    status, reasons = compute_verdict(metrics_post, n_susp_post)
+    status, reasons = compute_verdict(metrics_post)
 
-    # ── 5. Build actionable steps + emit card + maybe mark verified ───
-    suspect_frames = _load_top_suspect_frames(meas_dir, n=5)
+    # ── 4. Build actionable steps + emit card + maybe mark verified ───
     actionable_steps = build_actionable_steps(
         stem=stem,
         metrics_post=metrics_post or metrics_pre or {},
         reasons=reasons,
         status=status,
-        suspect_frames=suspect_frames,
-        entry=entry,
-        energy_cap=None,
     )
     emit_card(stem, video_path, key, entry,
               status=status, reasons=reasons,

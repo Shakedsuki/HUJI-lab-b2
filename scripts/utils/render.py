@@ -52,11 +52,7 @@ from rich.text import Text
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from thresholds import (  # noqa: E402
-    PASS_DROPOUT_PCT,
-    WARN_DROPOUT_PCT,
-    PEAK_OMEGA_PHYSICAL,
-    PEAK_OMEGA_ABSURD,
-    OMEGA_BAR_MAX,
+    DROPOUT_FAIL_PCT,
     DROPOUT_BAR_MAX,
 )
 from csv_helpers import is_clean_row, find_neighbours  # noqa: E402,F401
@@ -87,20 +83,17 @@ ACTIONABLE_STEP_PRIORITIES = ("required", "review", "info")
 # COLOUR + BAR HELPERS
 # ─────────────────────────────────────────────
 
-def _omega_color(value: float) -> str:
-    if value <= PEAK_OMEGA_PHYSICAL:
-        return "green"
-    if value <= PEAK_OMEGA_ABSURD:
-        return "yellow"
-    return "red"
-
-
 def _dropout_color(pct: float) -> str:
-    if pct < PASS_DROPOUT_PCT:
+    if pct <= DROPOUT_FAIL_PCT:
         return "green"
-    if pct < WARN_DROPOUT_PCT:
-        return "yellow"
     return "red"
+
+
+def _omega_color(value: float) -> str:
+    """Vestigial stub — referenced only by legacy verification-render
+    helpers that aren't called by the current pipeline. Returns
+    'white' so any incidental call doesn't crash."""
+    return "white"
 
 
 def _make_bar(value: float, max_val: float, width: int = 20,
@@ -111,32 +104,10 @@ def _make_bar(value: float, max_val: float, width: int = 20,
     return f"[{color}]{'━' * filled}[/{color}]{'░' * empty}"
 
 
-def _make_omega_bar(value: float, width: int = 20) -> str:
-    """ω bar with a tick at the physical-RoT line. Filled chars are
-    coloured by _omega_color(value); the tick stays visible regardless
-    of fill state."""
-    threshold_pos = int(round(PEAK_OMEGA_PHYSICAL / OMEGA_BAR_MAX * width))
-    value_pos = min(int(round(value / OMEGA_BAR_MAX * width)), width)
-    color = _omega_color(value)
-
-    parts = []
-    for i in range(width):
-        if i == threshold_pos:
-            ch = "┊"
-            parts.append(ch)
-        elif i < value_pos:
-            parts.append(f"[{color}]━[/{color}]")
-        else:
-            parts.append("░")
-    return "".join(parts)
-
-
 def _make_dropout_bar(pct: float, width: int = 20) -> str:
-    """Three-zone dropout bar: filled chars coloured by which threshold
-    zone they sit in; unfilled chars dim. Lets the user read both
-    'how big' (length) and 'how bad' (colour) at once."""
-    pass_end = int(round(PASS_DROPOUT_PCT / DROPOUT_BAR_MAX * width))
-    warn_end = int(round(WARN_DROPOUT_PCT / DROPOUT_BAR_MAX * width))
+    """Two-zone dropout bar: green up to DROPOUT_FAIL_PCT, red beyond."""
+    pass_end = int(round(DROPOUT_FAIL_PCT / DROPOUT_BAR_MAX * width))
+    warn_end = pass_end  # binary verdict, no middle band
     value_pos = min(int(round(pct / DROPOUT_BAR_MAX * width)), width)
 
     parts = []
@@ -528,16 +499,14 @@ def render_interpolation_plan(suspect_idxs: list,
 
 _STATUS_BADGE = {
     "PASS": ("[bold green]✓  PASS[/]",   "green"),
-    "WARN": ("[bold yellow]⚠  WARN[/]",  "yellow"),
     "FAIL": ("[bold red]✗  FAIL[/]",     "red"),
 }
 
 _GENERIC_NEXT_STEPS = {
     "PASS": "tracking_quality auto-set to 'verified' in the registry.",
-    "WARN": ("Review verification.png; if acceptable, "
-             "set tracking_quality=verified manually."),
-    "FAIL": ("Inspect debug.mp4 or re-run with --debug; consider "
-             "hsv_tuner re-calibration or a different release frame."),
+    "FAIL": ("Inspect verification.png and the diagnostic frames "
+             "(scripts/utils/diagnose_frames.py); fix outliers with "
+             "chaos override, or accept the clip as untrackable."),
 }
 
 
@@ -581,104 +550,29 @@ def render_verdict(stem: str,
 
     # ── Signal Quality ─────────────────────────────────────────────
     metrics = metrics_post or metrics_pre or {}
-    n_free      = metrics.get("n_free_swing", "—")
-    n_init      = entry.get("init_frame", "—")
-    n_release   = entry.get("release_frame", "—")
-    drop_free_pre  = (metrics_pre  or {}).get("free_swing_dropout_pct")
-    drop_free_post = (metrics_post or {}).get("free_swing_dropout_pct")
-    drop_hold_pre  = (metrics_pre  or {}).get("holding_dropout_pct")
-    drop_hold_post = (metrics_post or {}).get("holding_dropout_pct")
-    n_drop_free = metrics.get("n_dropout_free_swing", "—")
-    n_drop_hold = metrics.get("n_dropout_holding",    "—")
-    n_susp_pre  = (metrics_pre  or {}).get("n_suspect_hidden", 0)
-    n_susp_post = (metrics_post or {}).get("n_suspect_hidden", 0)
+    n_total = metrics.get("n_total", "—")
+    n_drop  = metrics.get("n_dropout", "—")
+    drop_pct = metrics.get("dropout_pct")
 
     sq_table = _kv_table()
-    sq_table.add_row(
-        "frames",
-        f"init {n_init}  /  release {n_release}  /  free {n_free}")
-
-    drop_hold_color = (_dropout_color(drop_hold_post or drop_hold_pre or 0)
-                       if (drop_hold_pre is not None or
-                           drop_hold_post is not None) else "white")
-    sq_table.add_row(
-        "holding dropout",
-        _format_pre_post(drop_hold_pre, drop_hold_post,
-                         drop_hold_color, n_drop_hold))
-
-    drop_free_color = (_dropout_color(drop_free_post or drop_free_pre or 0)
-                       if (drop_free_pre is not None or
-                           drop_free_post is not None) else "white")
-    sq_table.add_row(
-        "free dropout",
-        _format_pre_post(drop_free_pre, drop_free_post,
-                         drop_free_color, n_drop_free))
-
-    if n_susp_post == 0:
-        susp_color = "green"
-    elif n_susp_post <= 2:
-        susp_color = "yellow"
+    sq_table.add_row("frames", str(n_total))
+    if drop_pct is not None:
+        color = _dropout_color(drop_pct)
+        bar = _make_dropout_bar(drop_pct)
+        sq_table.add_row(
+            "dropout",
+            f"[{color}]{drop_pct:.2f}%[/]  {bar}  ({n_drop} frames)")
     else:
-        susp_color = "red"
-    if n_interpolated > 0:
-        suspects_cell = (f"pre: {n_susp_pre}  [dim]→  interp: "
-                         f"{n_interpolated}  →[/]  post: "
-                         f"[{susp_color}]{n_susp_post}[/]")
-    else:
-        suspects_cell = f"[{susp_color}]{n_susp_pre}[/]"
-    sq_table.add_row("suspects", suspects_cell)
-
-    # ── Physical Diagnostics ───────────────────────────────────────
-    peak1 = (metrics_post or metrics_pre or {}).get("peak_omega1", 0.0)
-    peak2 = (metrics_post or metrics_pre or {}).get("peak_omega2", 0.0)
-
-    def omega_value(peak_val, ic_cap=None):
-        color = _omega_color(peak_val)
-        bar   = _make_omega_bar(peak_val)
-        note  = ("  [dim]⚠ > 1500 limit[/]"
-                 if peak_val > PEAK_OMEGA_PHYSICAL else "")
-        if ic_cap is not None and peak_val > ic_cap:
-            note += f"  [red]⚠ > {ic_cap:.0f} IC cap[/]"
-        return f"[{color}]{peak_val:.0f} °/s[/]  {bar}{note}"
-
-    pd_table = _kv_table()
-    pd_table.add_row("peak |ω₁|", omega_value(peak1))
-    pd_table.add_row("peak |ω₂|",
-                     omega_value(peak2, ic_cap=energy_omega_cap))
-
-    if energy_omega_cap is not None:
-        if peak2 <= energy_omega_cap:
-            cap_color = "green"
-        elif peak2 <= energy_omega_cap * 1.2:
-            cap_color = "yellow"
-        else:
-            cap_color = "red"
-        pd_table.add_row(
-            "IC energy cap",
-            f"[{cap_color}]{energy_omega_cap:.0f} °/s[/]  "
-            f"[dim](from release ICs)[/]")
-
-    arm_dev = (metrics_post or {}).get("arm_length_dev_max_pct")
-    if arm_dev is not None:
-        if arm_dev < 5:
-            dev_color = "green"
-        elif arm_dev < 10:
-            dev_color = "yellow"
-        else:
-            dev_color = "red"
-        pd_table.add_row("arm L deviation",
-                         f"[{dev_color}]{arm_dev:.1f}%[/] max")
+        sq_table.add_row("dropout", "—")
 
     body = [
         Rule("Identity", style="dim"), id_table,
         Rule("Signal Quality", style="dim"), sq_table,
-        Rule("Physical Diagnostics", style="dim"), pd_table,
     ]
 
     # ── Reasons (optional inner Panel) ─────────────────────────────
     if reasons:
-        reason_color = {"PASS": "green", "WARN": "yellow",
-                        "FAIL": "red"}[status]
+        reason_color = {"PASS": "green", "FAIL": "red"}.get(status, "yellow")
         reason_text = Text()
         for i, r in enumerate(reasons):
             if i:
@@ -745,7 +639,6 @@ def render_verdict(stem: str,
 
 _VERDICT_BADGE_BULK = {
     "PASS": "[bold green]✓ PASS[/]",
-    "WARN": "[bold yellow]⚠ WARN[/]",
     "FAIL": "[bold red]✗ FAIL[/]",
 }
 
@@ -769,12 +662,13 @@ def render_bulk_summary(results: list) -> None:
     t.add_column("Free Dropout", style="white")
     t.add_column("Elapsed",      justify="right", style="dim")
 
-    n_pass = n_warn = n_fail = 0
+    n_pass = n_fail = 0
     for i, r in enumerate(rows, start=1):
         status = r.get("status", "FAIL")
-        if status == "PASS": n_pass += 1
-        elif status == "WARN": n_warn += 1
-        else: n_fail += 1
+        if status == "PASS":
+            n_pass += 1
+        else:
+            n_fail += 1
         verdict_cell = _VERDICT_BADGE_BULK.get(status,
                                                _VERDICT_BADGE_BULK["FAIL"])
         d = r.get("dropout_pct")
@@ -790,8 +684,7 @@ def render_bulk_summary(results: list) -> None:
                   drop_cell,
                   f"{float(r.get('elapsed_s', 0)):.0f}s")
     console.print(t)
-    console.print(f"  {n_pass} passed  ·  {n_warn} warned  ·  "
-                  f"{n_fail} failed")
+    console.print(f"  {n_pass} passed  ·  {n_fail} failed")
 
 
 # ─────────────────────────────────────────────
@@ -854,11 +747,10 @@ if __name__ == "__main__":
         video_path=r"C:\dev\chaos\Videos\th1_p001_th2_p093.mov",
         key="th1_p001_th2_p093",
         entry=mock_entry,
-        status="WARN",
+        status="FAIL",
         reasons=[
-            "free-swing dropout 7.1% in 5-10% band",
-            "1 residual suspect post-interpolation",
-            "peak |omega2| 2426 deg/s > 1500 deg/s physical rule-of-thumb",
+            "dropout 7.1% > 5% — tracker missed markers too often",
+            "3 arm-length violation(s) (max 18%) — wrong-blob signal",
         ],
         metrics_pre=mock_metrics_pre,
         metrics_post=mock_metrics_post,
@@ -871,7 +763,7 @@ if __name__ == "__main__":
     print(f"\n[exported text length: {len(txt)} chars, locked width "
           f"{LOG_CONSOLE_WIDTH}]\n")
     render_bulk_summary([
-        {"stem": "th1_p001_th2_p093", "status": "WARN",
+        {"stem": "th1_p001_th2_p093", "status": "FAIL",
          "dropout_pct": 7.12, "elapsed_s": 42.0},
         {"stem": "th1_p180_th2_m179", "status": "PASS",
          "dropout_pct": 2.1,  "elapsed_s": 118.0},

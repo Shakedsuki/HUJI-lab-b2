@@ -1,32 +1,25 @@
 """
 capture_bgr_baseline.py
 -----------------------
-Capture a per-frame BGR-centroid baseline for one Week 4 clip using the
-detection logic from week4-pendulum-motor-driven/legacy/get_video_coords.py,
-verbatim.
+Capture a per-frame BGR-centroid baseline for one Week 4 clip.
 
-Why this exists
-~~~~~~~~~~~~~~~
-The integration of get_video_coords.py into the pipeline (as
-scripts/processing/bgr_tracker.py) is a refactor: the BGR detection
-math doesn't change, only its plumbing does. To prove the refactor is
-correct, we freeze what the standalone script produces today and diff
-the wrapped tracker's output against it.
+The BGR detection body (colour ranges + fallback chain + moment
+centroids) is COPY-PASTED from
+week4-pendulum-motor-driven/legacy/get_video_coords.py lines 42-69
+verbatim — Cohen's detection logic is the authoritative reference.
 
-The per-frame body of the main loop (mask construction, fallback chain,
-moment-centroid extraction) is COPY-PASTED from
-week4-pendulum-motor-driven/legacy/get_video_coords.py lines 16-93. The
-ONLY behavioural changes vs. the standalone:
-  * video path comes from --stem instead of being hardcoded
-  * a frame index counter is maintained (it's not used inside the
-    detection block — only for the CSV output)
-  * the `data` list is written to a CSV at the end
+Crop window: `frame[:, CROP_X_START:CROP_X_END, :]` — Cohen's
+original X-only crop. Y is unconstrained.
 
 Output: week4-pendulum-motor-driven/baselines/<stem>/centroids.csv
         columns: frame, time_s, gx_crop, gy_crop, rx_crop, ry_crop
-        - Pixel coords are in the CROPPED frame (350:950 column range),
-          matching what the standalone script computes.
-        - Empty cell = no detection (None in the standalone).
+        - Pixel coords are in the CROPPED frame (relative to the
+          top-left of the [:, CROP_X_START..CROP_X_END] sub-rectangle).
+        - Empty cell = no detection.
+
+The frozen baselines this script produces are the regression reference
+that scripts/utils/verify_bgr_baseline.py diffs the wrapped tracker's
+output against.
 
 Usage
 ~~~~~
@@ -44,8 +37,10 @@ import numpy as np
 from tqdm import tqdm
 
 os.environ.setdefault("CHAOS_PHASE", "week4-pendulum-motor-driven")
+# Import path setup first.
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from paths import VIDEOS_DIR, PHASE_ROOT, EXPERIMENTS, REPO_ROOT  # noqa: E402
+from thresholds import CROP_X_START, CROP_X_END  # noqa: E402
 
 BASELINES_DIR = os.path.join(PHASE_ROOT, "baselines")
 
@@ -120,7 +115,10 @@ def main():
 
         time_sec = cap.get(cv2.CAP_PROP_POS_MSEC) / 1000.0
         # hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
-        frame=frame[:,350:950,:]
+        # Cohen's X-only crop. PR #42 tried adding a Y crop here too
+        # but it cut off legitimate inverted-marker positions, so
+        # PR #43 reverted to the X-only crop.
+        frame=frame[:, CROP_X_START:CROP_X_END, :]
         # Create masks
         mask_g = cv2.inRange(frame, green_lower, green_upper)
         mask_r = cv2.inRange(frame, red_lower1, red_upper1)

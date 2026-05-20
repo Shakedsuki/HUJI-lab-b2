@@ -1,21 +1,14 @@
 """
 thresholds.py
 --------------
-Single source of truth for the verdict-band thresholds and bar-scale
-constants used across track_one, render, and any other tooling that
-reports on tracking quality.
+Single source of truth for the verdict threshold and the BGR-tracker
+crop / colour constants used across the pipeline.
 
-Why this module exists
-~~~~~~~~~~~~~~~~~~~~~~
-PASS_DROPOUT_PCT, WARN_DROPOUT_PCT, PEAK_OMEGA_PHYSICAL, and
-PEAK_OMEGA_ABSURD show up in two places: the verdict-computation logic
-in track_one.compute_verdict, and any pretty-printing layer that
-colour-codes those numbers (now scripts/utils/render.py). Defining
-them in one module guarantees the verdict label and its visual
-representation can never drift out of sync.
+Verdict is binary: PASS or FAIL.
+  * dropout > DROPOUT_FAIL_PCT  → FAIL
+  * otherwise                   → PASS
 
-Constants are plain literals; importers use them via
-`from scripts.utils.thresholds import PASS_DROPOUT_PCT` etc.
+That's it. One criterion.
 
 Conventions
 ~~~~~~~~~~~
@@ -33,38 +26,12 @@ _LEGACY_ALIASES = {
 _raw_phase = _os.environ.get("CHAOS_PHASE", "week3-pendulum-free-swing")
 _PHASE     = _LEGACY_ALIASES.get(_raw_phase, _raw_phase)
 
-# Verdict bands — applied to free-swing dropout %.
-PASS_DROPOUT_PCT     = 5.0      # ≤ this → PASS
-WARN_DROPOUT_PCT     = 10.0     # ≤ this → WARN; > this → FAIL
+# Verdict threshold — single criterion.
+DROPOUT_FAIL_PCT     = 5.0      # > this → FAIL
 
-# Physical sanity bounds for arm-2 angular velocity in chaotic regime.
-PEAK_OMEGA_PHYSICAL  = 1500.0   # rule-of-thumb maximum for real chaos
-PEAK_OMEGA_ABSURD    = 4000.0   # above this is almost certainly tracker error
-
-# Bar-scale maxima — used by render.py to fix the visual range so a
-# single bar's length is comparable across tools and runs.
-OMEGA_BAR_MAX        = 4000.0   # ω bars saturate at the absurd line
-DROPOUT_BAR_MAX      = 15.0     # dropout bars saturate at 1.5× the WARN line
-
-# Rigid-body sanity: arm 2 is a physical rod, so the pixel distance
-# between the green pivot and the red tip should be approximately
-# constant. A frame whose arm-length deviates by more than this %
-# of the median is flagged as a tracking error.
-ARM_LEN_THRESHOLD_PCT = 10.0
-
-# Maximum |Δω| between consecutive clean frames in degrees/second.
-# Physical Δω_max ≈ (g/L)·dt ≈ 27 °/s at 60 fps; we use 200 to leave
-# generous headroom for close-approach dynamics. Catches a different
-# failure mode from the absolute ω cap: when the tracker latches onto
-# a slow-moving wrong object, ω is small but the transition jump
-# spikes Δω.
-DELTA_OMEGA_CAP = 200.0
-
-# Marker swap detection. If the cross-pairing distance (green→red',
-# red→green') is less than SWAP_RATIO_THRESHOLD × the same-pairing
-# distance (green→green', red→red'), the tracker has more likely
-# swapped the marker labels than continued normal motion.
-SWAP_RATIO_THRESHOLD = 0.7
+# Bar-scale maximum — used by render.py to size the dropout bar in
+# the verdict card so the bar length is comparable across runs.
+DROPOUT_BAR_MAX      = 7.5      # 1.5× the FAIL line
 
 # ARM_LENGTH_CM: physical arm length, used by analysis scripts that
 # convert pixel measurements to physical units. Phase-aware because the
@@ -102,18 +69,11 @@ else:
     PIVOT         = (608, 355)
     ARM_LENGTH_PX = 162
 
-# Phase 2 BGR tracker — colour ranges and crop window used by
-# scripts/processing/bgr_tracker.py. Values are lifted verbatim from
-# week4-pendulum-motor-driven/legacy/get_video_coords.py (cohen) — the standalone script whose
-# detection logic the pipeline-integrated tracker wraps. The verbatim
-# block in scripts/utils/capture_bgr_baseline.py is the regression
-# reference for these values; if you change them here, the frozen
-# baselines in week4-pendulum-motor-driven/baselines/ become invalid.
-#
-# Frame column window: the BGR tracker operates on frame[:, CROP_X_START:CROP_X_END, :]
-# (rig is fixed to the wall; pendulum lives in columns 350..950 of a
-# 1920-wide frame). The PIVOT (663, 332) lies inside this window — at
-# column 313 in the cropped frame.
+# BGR tracker crop window — Cohen's original X-only crop from
+# chaos/get_video_coords.py. No Y bound: any Y crop tight enough to
+# exclude the upper wall fabric on low-amplitude 3.2V clips also cut
+# off legitimate red-marker positions in high-amplitude clips like
+# 4V_0.6Hz (98% → 75% both-found regression). Reverted in PR #43.
 CROP_X_START = 350
 CROP_X_END   = 950
 
