@@ -4,7 +4,7 @@ verify_bgr_baseline.py
 Regression check: assert that the integrated bgr_tracker.py produces
 output identical to the frozen baselines from
 scripts/utils/capture_bgr_baseline.py — which themselves are
-provably what chaos/get_video_coords.py (cohen) produces, because the
+provably what week4-pendulum-motor-driven/legacy/get_video_coords.py (cohen) produces, because the
 detection body is copy-pasted verbatim.
 
 This is the acceptance gate for the BGR-tracker integration: if all
@@ -46,7 +46,7 @@ import math
 import os
 import sys
 
-os.environ.setdefault("CHAOS_PHASE", "phase2-motor-driven")
+os.environ.setdefault("CHAOS_PHASE", "week4-pendulum-motor-driven")
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from paths import PHASE_ROOT, MEAS_DIR, REPO_ROOT  # noqa: E402
 from thresholds import PIVOT, CROP_X_START  # noqa: E402

@@ -1,8 +1,9 @@
 """
 capture_bgr_baseline.py
 -----------------------
-Capture a per-frame BGR-centroid baseline for one Phase 2 clip using the
-detection logic from chaos/get_video_coords.py, verbatim.
+Capture a per-frame BGR-centroid baseline for one Week 4 clip using the
+detection logic from week4-pendulum-motor-driven/legacy/get_video_coords.py,
+verbatim.
 
 Why this exists
 ~~~~~~~~~~~~~~~
@@ -13,14 +14,15 @@ correct, we freeze what the standalone script produces today and diff
 the wrapped tracker's output against it.
 
 The per-frame body of the main loop (mask construction, fallback chain,
-moment-centroid extraction) is COPY-PASTED from chaos/get_video_coords.py
-lines 16-93. The ONLY behavioural changes vs. the standalone:
+moment-centroid extraction) is COPY-PASTED from
+week4-pendulum-motor-driven/legacy/get_video_coords.py lines 16-93. The
+ONLY behavioural changes vs. the standalone:
   * video path comes from --stem instead of being hardcoded
   * a frame index counter is maintained (it's not used inside the
     detection block — only for the CSV output)
   * the `data` list is written to a CSV at the end
 
-Output: phase2-motor-driven/baselines/<stem>/centroids.csv
+Output: week4-pendulum-motor-driven/baselines/<stem>/centroids.csv
         columns: frame, time_s, gx_crop, gy_crop, rx_crop, ry_crop
         - Pixel coords are in the CROPPED frame (350:950 column range),
           matching what the standalone script computes.
@@ -41,7 +43,7 @@ import cv2
 import numpy as np
 from tqdm import tqdm
 
-os.environ.setdefault("CHAOS_PHASE", "phase2-motor-driven")
+os.environ.setdefault("CHAOS_PHASE", "week4-pendulum-motor-driven")
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from paths import VIDEOS_DIR, PHASE_ROOT, EXPERIMENTS, REPO_ROOT  # noqa: E402
 
@@ -82,7 +84,7 @@ def main():
 
     # ============================================================
     # BEGIN VERBATIM BLOCK
-    # Copy-pasted from chaos/get_video_coords.py lines 16-93.
+    # Copy-pasted from week4-pendulum-motor-driven/legacy/get_video_coords.py lines 16-93.
     # Only difference: video path is `video_path` (arg) instead of the
     # hardcoded literal, and `frame_idx` is tracked for the CSV.
     # DO NOT REFACTOR THIS BLOCK — it is the regression reference.

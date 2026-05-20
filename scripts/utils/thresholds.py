@@ -25,7 +25,13 @@ Conventions
 
 import os as _os
 
-_PHASE = _os.environ.get("CHAOS_PHASE", "phase1-free-swing")
+# Legacy-name aliases mirror scripts/utils/paths.py — keep in sync.
+_LEGACY_ALIASES = {
+    "phase1-free-swing":  "week3-pendulum-free-swing",
+    "phase2-motor-driven": "week4-pendulum-motor-driven",
+}
+_raw_phase = _os.environ.get("CHAOS_PHASE", "week3-pendulum-free-swing")
+_PHASE     = _LEGACY_ALIASES.get(_raw_phase, _raw_phase)
 
 # Verdict bands — applied to free-swing dropout %.
 PASS_DROPOUT_PCT     = 5.0      # ≤ this → PASS
@@ -95,7 +101,7 @@ ARM_LENGTH_TREND_DEV_PCT  = 5.0    # % deviation from reference window
 # Brief 7 (absorbed) — IC-aware energy cap
 # Phase 2 ARM_LENGTH_CM: measure physically in lab (ruler from pivot bolt to
 # green marker center) and update the if-branch below.
-if _PHASE == "phase2-motor-driven":
+if _PHASE == "week4-pendulum-motor-driven":
     # Cross-phase digital calibration (2026-05-13):
     # Phase 1 scale = 35.0 cm / 162 px = 0.2160 cm/px.
     # Phase 2 ARM_LENGTH_PX = 153 px (circle fit, p95 residual 2.0 px).
@@ -119,7 +125,7 @@ else:
 #   3V_1Hz.mov + 4V_1Hz.mov + 4V_2Hz.mov
 #   center (663.7, 329.7)  r = 153.0 px
 #   fit residuals: std=0.58px  median=0.81px  p95=2.01px  (3308 inliers)
-if _PHASE == "phase2-motor-driven":
+if _PHASE == "week4-pendulum-motor-driven":
     PIVOT         = (663, 332)   # refined by hsv_tuner P-key (2026-05-13)
     ARM_LENGTH_PX = 153
 else:
@@ -128,11 +134,11 @@ else:
 
 # Phase 2 BGR tracker — colour ranges and crop window used by
 # scripts/processing/bgr_tracker.py. Values are lifted verbatim from
-# chaos/get_video_coords.py (cohen) — the standalone script whose
+# week4-pendulum-motor-driven/legacy/get_video_coords.py (cohen) — the standalone script whose
 # detection logic the pipeline-integrated tracker wraps. The verbatim
 # block in scripts/utils/capture_bgr_baseline.py is the regression
 # reference for these values; if you change them here, the frozen
-# baselines in phase2-motor-driven/baselines/ become invalid.
+# baselines in week4-pendulum-motor-driven/baselines/ become invalid.
 #
 # Frame column window: the BGR tracker operates on frame[:, CROP_X_START:CROP_X_END, :]
 # (rig is fixed to the wall; pendulum lives in columns 350..950 of a

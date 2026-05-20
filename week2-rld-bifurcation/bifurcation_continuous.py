@@ -277,7 +277,7 @@ def main():
         fig3d.write_html(out_3d, include_plotlyjs='cdn')
         print(f"Saved 3D interactive plot → {out_3d}")
         print("Commit and push, then view at:")
-        print("  https://shakedsuki.github.io/HUJI-lab-b2/chaos/chaos/part2/bifurcation_continuous_3d.html")
+        print("  https://shakedsuki.github.io/HUJI-lab-b2/week2-rld-bifurcation/bifurcation_continuous_3d.html")
 
     except ImportError:
         print("plotly not installed — skipping 3D plot.  pip install plotly")
