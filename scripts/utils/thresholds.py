@@ -125,3 +125,29 @@ if _PHASE == "phase2-motor-driven":
 else:
     PIVOT         = (608, 355)
     ARM_LENGTH_PX = 162
+
+# Phase 2 BGR tracker — colour ranges and crop window used by
+# scripts/processing/bgr_tracker.py. Values are lifted verbatim from
+# chaos/get_video_coords.py (cohen) — the standalone script whose
+# detection logic the pipeline-integrated tracker wraps. The verbatim
+# block in scripts/utils/capture_bgr_baseline.py is the regression
+# reference for these values; if you change them here, the frozen
+# baselines in phase2-motor-driven/baselines/ become invalid.
+#
+# Frame column window: the BGR tracker operates on frame[:, CROP_X_START:CROP_X_END, :]
+# (rig is fixed to the wall; pendulum lives in columns 350..950 of a
+# 1920-wide frame). The PIVOT (663, 332) lies inside this window — at
+# column 313 in the cropped frame.
+CROP_X_START = 350
+CROP_X_END   = 950
+
+# BGR colour ranges (NOT HSV). cv2.inRange-compatible (lo, hi) tuples.
+# Green is detected in one pass; red has three sequential fallback
+# ranges — the first one to produce a non-empty mask wins.
+GREEN_BGR_LO = (0, 100, 0)
+GREEN_BGR_HI = (70, 255, 90)
+RED_BGR_RANGES = (
+    ((0, 0, 100), (45, 75, 255)),
+    ((0, 0, 110), (60, 80, 255)),
+    ((0, 0, 125), (75, 95, 255)),
+)

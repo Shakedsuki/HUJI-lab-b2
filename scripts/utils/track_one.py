@@ -50,7 +50,15 @@ from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa
 
 LOG_FILE         = os.path.join(DATA_DIR, "track_one_log.txt")
 
-TRACKER_SCRIPT  = os.path.join(REPO_ROOT, "scripts", "processing", "ring_tracker.py")
+# Phase-aware tracker selection. Phase 1 (free-swing) uses ring_tracker;
+# Phase 2 (motor-driven) uses bgr_tracker — Cohen's direct BGR detection
+# wrapped in pipeline I/O, which outperforms the HSV+ring stack on the
+# chaotic driven clips (see scripts/processing/bgr_tracker.py header).
+RING_TRACKER_SCRIPT = os.path.join(REPO_ROOT, "scripts", "processing", "ring_tracker.py")
+BGR_TRACKER_SCRIPT  = os.path.join(REPO_ROOT, "scripts", "processing", "bgr_tracker.py")
+TRACKER_SCRIPT      = (BGR_TRACKER_SCRIPT
+                       if os.environ.get("CHAOS_PHASE") == "phase2-motor-driven"
+                       else RING_TRACKER_SCRIPT)
 VERIFY_SCRIPT   = os.path.join(REPO_ROOT, "scripts", "processing", "verify_tracking.py")
 INTERP_SCRIPT   = os.path.join(REPO_ROOT, "scripts", "processing",
                                "interpolate_suspects.py")
@@ -898,7 +906,10 @@ def main():
         track_cmd.append("--skip-probe")
     if args.yes_to_warn:
         track_cmd.append("--yes-to-warn")
-    rc, _ = run(track_cmd, label="ring_tracker")
+    tracker_label = ("bgr_tracker"
+                     if os.environ.get("CHAOS_PHASE") == "phase2-motor-driven"
+                     else "ring_tracker")
+    rc, _ = run(track_cmd, label=tracker_label)
     if rc != 0:
         # Ring_tracker uses specific non-zero codes for known abort paths:
         #   2 = HSV adequacy probe ABORT
