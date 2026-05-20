@@ -106,8 +106,6 @@ INSPECTION
   chaos status                     who's tracked / pending
   chaos roadmap                    per-clip status table (docs/tracking_roadmap.md)
   chaos report                     Excel summary (data/status_report.xlsx)
-  chaos suspects <stem>            decompose suspect counts by check
-  chaos triage [--auto] [--once]   walk non-PASS clips, dispatch right tool
 
 REGISTRY
   chaos audit                      re-validate verified clips against current logic
@@ -115,7 +113,8 @@ REGISTRY
   chaos audit --upgrade --apply    also promote new PASSes to verified
 
 ANALYSIS
-  chaos friction-fit <stem>        fit decay model to mechanical energy
+  chaos analyze <stem>             chaos physics: 0-1 test, spectral entropy, verdict
+  chaos render <stem>              render combined.mp4 (video + overlay)
 
   chaos help                       full cheat sheet
   chaos <cmd> --help               flags for any subcommand
@@ -126,7 +125,7 @@ ANALYSIS
 ### Verdict bands
 
 - **PASS** — auto-marks `tracking_quality=verified`; ready for downstream analysis
-- **WARN** — tracking probably fine but a physics check fired; review or run `chaos triage`
+- **WARN** — tracking probably fine but a physics check fired; review `verification.png` or `chaos override <stem> --frame N`
 - **FAIL** — broken; needs `chaos override` or a re-track with adjusted thresholds
 
 ### Outputs per clip
@@ -141,7 +140,6 @@ ANALYSIS
 | `verification_meta.json` | `chaos verify` | run-level (pivot drift, E_release) |
 | `combined.mp4` | `chaos render` | source video + marker overlay + phase plots |
 | `phase_panels.png`, `phase_3d_*` | analysis scripts | post-tracking physics figures |
-| `friction_fit.png` | `chaos friction-fit` | E(t) + decay-model fit |
 | `debug.mp4` | `chaos track --debug` | tracker-internal annotated video (large) |
 
 Plus the cross-clip rollup at `week3-pendulum-free-swing/data/status_report.xlsx` (`chaos report`) and `week3-pendulum-free-swing/docs/tracking_roadmap.md` (`chaos roadmap`).
