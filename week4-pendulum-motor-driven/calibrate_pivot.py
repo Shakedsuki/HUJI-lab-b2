@@ -1,5 +1,5 @@
 """
-calibrate_pivot.py  —  Phase 2 rig calibration
+calibrate_pivot.py  —  Week 4 (motor-driven) rig calibration
 ------------------------------------------------
 Detects the green marker (Pivot β) across all frames of one or more video
 clips, fits a circle to the collected pixel positions, and reports:
@@ -10,9 +10,9 @@ clips, fits a circle to the collected pixel positions, and reports:
 Also writes a diagnostic PNG showing detected positions + fitted circle.
 
 Usage:
-    python phase2-motor-driven/calibrate_pivot.py
-    python phase2-motor-driven/calibrate_pivot.py --videos 3V_1Hz.mov 4V_2Hz.mov
-    python phase2-motor-driven/calibrate_pivot.py --hsv-h 40 100 --hsv-s 80 255 --hsv-v 40 255
+    python week4-pendulum-motor-driven/calibrate_pivot.py
+    python week4-pendulum-motor-driven/calibrate_pivot.py --videos 3V_1Hz.mov 4V_2Hz.mov
+    python week4-pendulum-motor-driven/calibrate_pivot.py --hsv-h 40 100 --hsv-s 80 255 --hsv-v 40 255
 """
 
 import argparse
@@ -158,7 +158,7 @@ def save_diagnostic(all_pts, pivot, arm_px, per_video, out_path):
 def parse_args():
     p = argparse.ArgumentParser(description="Phase 2 PIVOT + ARM_LENGTH_PX calibration.")
     p.add_argument("--videos", nargs="+", default=None,
-                   help="Video filenames in phase2-motor-driven/videos/ "
+                   help="Video filenames in week4-pendulum-motor-driven/videos/ "
                         "(default: all .mov files)")
     p.add_argument("--hsv-h", nargs=2, type=int,
                    default=[DEFAULT_H_MIN, DEFAULT_H_MAX],

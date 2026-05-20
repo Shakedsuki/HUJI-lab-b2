@@ -1,10 +1,20 @@
-# Chaos — Double-Pendulum Tracking Lab & RLD Circuit Chaos
+# Chaos — Diodes, RLD, and the Double Pendulum
 
-Turn fixed-camera videos of a double pendulum into per-frame angles + angular velocities, with verdicts on tracking quality. Also includes analysis of an RLD (Resistor-Inductor-Diode) circuit exhibiting period-doubling and chaotic behaviour.
+A semester's worth of experiments in nonlinear dynamics and chaos, organized by
+the **week** of the lab in which the work was done.
+
+| Week | Apparatus | What it covers |
+|---|---|---|
+| **[Week 1](week1-diode-iv/)** | Diode + scope | I-V characterization, Shockley fit, junction capacitance C(V) |
+| **[Week 2](week2-rld-bifurcation/)** | RLD circuit + scope | Period-doubling cascade and chaos at ~34 kHz |
+| **[Week 3](week3-pendulum-free-swing/)** | Double pendulum, free swing | Transient chaos, IC sweep, phase portraits, Lyapunov |
+| **[Week 4](week4-pendulum-motor-driven/)** | Motor-driven double pendulum | Driven steady-state attractor, stroboscopic Poincaré, bifurcation across f_drive |
+
+Reports for all weeks live under [`reports/`](reports/).
 
 ---
 
-## Part 1 — Diode Characterisation (`chaos/part1/`)  ← Week 1
+## Week 1 — Diode Characterisation ([`week1-diode-iv/`](week1-diode-iv/))
 
 ### What it does
 Characterises a silicon diode (1N4005): measures the I-V characteristic, fits the Shockley equation, and extracts the junction capacitance C(V).
@@ -24,18 +34,18 @@ Characterises a silicon diode (1N4005): measures the I-V characteristic, fits th
 - **Junction capacitance**: $C_j \propto 1/\sqrt{V}$ — abrupt one-sided PN junction under reverse bias
 
 ### Data (not tracked — too large)
-Raw oscilloscope CSVs live in `chaos/part1/samples/` (gitignored). Acquire from the lab Google Drive.
+Raw oscilloscope CSVs live in `week1-diode-iv/samples/` (gitignored). Acquire from the lab Google Drive.
 
 ---
 
-## Part 2 — RLD Circuit Chaos (`chaos/part2/`)  ← Week 2
+## Week 2 — RLD Circuit Chaos ([`week2-rld-bifurcation/`](week2-rld-bifurcation/))
 
 ### What it does
 Studies nonlinear dynamics in an RLD circuit (R = 470 Ω, L = 100 mH, 1N4005 diode): period-doubling cascade and chaotic behaviour as a function of drive amplitude.
 
 ### Interactive 3D Bifurcation Map
 View the continuous bifurcation map online (GitHub Pages):
-**[→ Open interactive 3D plot](https://shakedsuki.github.io/HUJI-lab-b2/chaos/chaos/part2/bifurcation_continuous_3d.html)**
+**[→ Open interactive 3D plot](https://shakedsuki.github.io/HUJI-lab-b2/week2-rld-bifurcation/bifurcation_continuous_3d.html)**
 *(Enable GitHub Pages in repo Settings → Pages → master / root to activate this link)*
 
 ### Scripts
@@ -52,45 +62,18 @@ View the continuous bifurcation map online (GitHub Pages):
 - **Carrier frequency**: ~34 kHz confirmed by FFT; corresponds to LC resonance with effective junction capacitance
 
 ### Data (not tracked — too large)
-Raw oscilloscope CSVs live in `chaos/part2/samples/` (gitignored). Acquire from the lab Google Drive.
+Raw oscilloscope CSVs live in `week2-rld-bifurcation/samples/` (gitignored). Acquire from the lab Google Drive.
 - `samples/AM/7V.csv` — 1 s AM-sweep recording (1 MS/s, 7 V peak, 0.7 Hz envelope)
 - `samples/*.csv` — discrete amplitude steps for the traditional bifurcation map
 
 ---
 
-## Phase 2 — Motor-Driven Double Pendulum (`phase2-motor-driven/`)  ← Current
+## Week 3 — Free-Swing Double Pendulum ([`week3-pendulum-free-swing/`](week3-pendulum-free-swing/))
 
-### What it is
-
-A driven, damped double pendulum: a DC motor oscillates Arm 1 (upper arm) at a controlled frequency `f_drive` and amplitude proportional to `V_drill`. Arm 2 (lower arm) hangs free from Pivot β. The system can sustain a **strange attractor** — unlike Phase 1 (free swing / transient chaos), continuous energy input from the motor balances dissipation.
-
-The control space is 2D: **`f_drive` (Hz) × `V_drill` (V)**. A sweep in `V_drill` at fixed `f_drive` produces the period-doubling cascade (period-1 → period-2 → period-4 → chaos), mirroring the RLD circuit results from Part 2.
-
-### Control parameters
-
-| Parameter | Physical meaning | Set via |
-|-----------|-----------------|---------|
-| `f_drive` | Driving frequency (Hz) | Function generator |
-| `V_drill` | Driving amplitude proxy | Bench supply Ch2 |
-
-### Clip naming convention
-
-```
-fd_<freq_hz>_vd_<voltage_v>     e.g.  fd_1p5_vd_4v0
-```
-
-### Deliverables
-
-Phase portraits · Poincaré sections (stroboscopic at θ₁ = 0, ω₁ > 0) · Bifurcation diagram (peak θ₂ vs V_drill) · Return maps · Lyapunov exponent · 3D phase animation
-
-### Docs
-
-- [`phase2-motor-driven/docs/SYSTEM_SETUP.md`](phase2-motor-driven/docs/SYSTEM_SETUP.md) — full apparatus, circuit, electronics, and physics reference
-- [`phase2-motor-driven/docs/driven_pendulum_circuit.html`](phase2-motor-driven/docs/driven_pendulum_circuit.html) — annotated HTML circuit diagram (DPDT relay, signal chain, mechanical output)
-
----
-
-## Phase 1 — Free-Swing Double Pendulum Tracking (`scripts/`, `measurements/`, `data/`)
+This is the main tracking-pipeline week. The double pendulum is released from
+a range of initial-condition pairs `(θ₁, θ₂)` and allowed to swing freely. The
+pipeline in `scripts/` turns each recorded video into per-frame angles +
+angular velocities, with verdicts on tracking quality.
 
 ### Setup
 
@@ -98,7 +81,7 @@ Phase portraits · Poincaré sections (stroboscopic at θ₁ = 0, ω₁ > 0) · 
 git clone <this repo>
 cd chaos
 pip install -r requirements.txt
-python scripts/utils/download_videos.py    # raw .mov files from Drive → data/videos/
+python scripts/utils/download_videos.py    # raw .mov files from Drive → week3-pendulum-free-swing/data/videos/
 ```
 
 Drive: [כאוס on Google Drive](https://drive.google.com/drive/folders/1nB9rrpZ1UTdLrKEJudptLbawavkvXWj-). Tested on Python 3.13 / Windows 11 (macOS + Linux work).
@@ -151,7 +134,7 @@ ANALYSIS
 
 ### Outputs per clip
 
-`measurements/<stem>/`:
+`week3-pendulum-free-swing/measurements/<stem>/`:
 
 | File | Source | What it is |
 |---|---|---|
@@ -165,10 +148,70 @@ ANALYSIS
 | `friction_fit.png` | `chaos friction-fit` | E(t) + decay-model fit |
 | `debug.mp4` | `chaos track --debug` | tracker-internal annotated video (large) |
 
-Plus the cross-clip rollup at `data/status_report.xlsx` (`chaos report`) and `docs/tracking_roadmap.md` (`chaos roadmap`).
+Plus the cross-clip rollup at `week3-pendulum-free-swing/data/status_report.xlsx` (`chaos report`) and `week3-pendulum-free-swing/docs/tracking_roadmap.md` (`chaos roadmap`).
 
 ### More
 
-- [`phase1-free-swing/docs/PIPELINE.md`](phase1-free-swing/docs/PIPELINE.md) — keystroke-level walkthrough, HSV/fix-up keyboard refs, geometry calibration, troubleshooting
+- [`week3-pendulum-free-swing/docs/PIPELINE.md`](week3-pendulum-free-swing/docs/PIPELINE.md) — keystroke-level walkthrough, HSV/fix-up keyboard refs, geometry calibration, troubleshooting
 - `chaos help` — same cheat sheet on stdout
 - `chaos <cmd> --help` — flag list for any subcommand
+
+---
+
+## Week 4 — Motor-Driven Double Pendulum ([`week4-pendulum-motor-driven/`](week4-pendulum-motor-driven/))
+
+### What it is
+
+A driven, damped double pendulum: a DC motor oscillates Arm 1 (upper arm) at a controlled frequency `f_drive` and amplitude proportional to `V_drill`. Arm 2 (lower arm) hangs free from Pivot β. The system can sustain a **strange attractor** — unlike Week 3 (free swing / transient chaos), continuous energy input from the motor balances dissipation.
+
+The control space is 2D: **`f_drive` (Hz) × `V_drill` (V)**. A sweep in `V_drill` at fixed `f_drive` produces the period-doubling cascade (period-1 → period-2 → period-4 → chaos), mirroring the RLD circuit results from Week 2.
+
+### Control parameters
+
+| Parameter | Physical meaning | Set via |
+|-----------|-----------------|---------|
+| `f_drive` | Driving frequency (Hz) | Function generator |
+| `V_drill` | Driving amplitude proxy | Bench supply Ch2 |
+
+### Clip naming convention
+
+```
+<voltage>V_<freq>Hz                e.g.  3.2V_1.20Hz
+fd_<freq>_vd_<voltage>             e.g.  fd_1p5_vd_4v0   (specification form)
+```
+
+### Deliverables
+
+Phase portraits · Poincaré sections (stroboscopic at θ₁ = 0, ω₁ > 0) · Bifurcation diagram (peak θ₂ vs V_drill) · Return maps · Lyapunov exponent · 3D phase animation
+
+### Docs
+
+- [`week4-pendulum-motor-driven/docs/SYSTEM_SETUP.md`](week4-pendulum-motor-driven/docs/SYSTEM_SETUP.md) — full apparatus, circuit, electronics, and physics reference
+- [`week4-pendulum-motor-driven/docs/DRIVEN_FIGURES_SPEC.md`](week4-pendulum-motor-driven/docs/DRIVEN_FIGURES_SPEC.md) — specification for stroboscopic Poincaré / bifurcation / Arnold tongue figures
+- [`week4-pendulum-motor-driven/docs/driven_pendulum_circuit.html`](week4-pendulum-motor-driven/docs/driven_pendulum_circuit.html) — annotated HTML circuit diagram (DPDT relay, signal chain, mechanical output)
+
+### The shared pendulum pipeline
+
+The video-tracking pipeline under [`scripts/`](scripts/) serves Weeks 3 and 4
+both. Switch between them via the `CHAOS_PHASE` environment variable:
+
+```bash
+# Week 3 (default)
+CHAOS_PHASE=week3-pendulum-free-swing  python scripts/processing/ring_tracker.py ...
+
+# Week 4
+CHAOS_PHASE=week4-pendulum-motor-driven python scripts/processing/bgr_tracker.py ...
+```
+
+(The legacy values `phase1-free-swing` / `phase2-motor-driven` still work and
+resolve to the new directories for one transition cycle.)
+
+---
+
+## Reports ([`reports/`](reports/))
+
+| Path | What it is |
+|---|---|
+| [`reports/lab-assignment.pdf`](reports/lab-assignment.pdf) | The original course assignment (Diodes + RLC + Dynamical Systems, 2025) |
+| [`reports/week1-2-interim/`](reports/week1-2-interim/) | Interim report covering Weeks 1+2 (diode I-V + RLD chaos): LyX source, final PDF, all figures |
+| [`reports/week3-pendulum-free/`](reports/week3-pendulum-free/) | Pendulum free-swing "Expansion report 1": LyX source, PDF, figures |

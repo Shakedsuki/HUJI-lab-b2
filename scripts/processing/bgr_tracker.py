@@ -2,7 +2,7 @@
 bgr_tracker.py
 --------------
 Phase 2 marker tracker: BGR colour thresholding + image moments,
-wrapping Cohen's detection logic (chaos/get_video_coords.py — preserved
+wrapping Cohen's detection logic (week4-pendulum-motor-driven/legacy/get_video_coords.py — preserved
 verbatim as the regression reference inside
 scripts/utils/capture_bgr_baseline.py) inside canonical pipeline I/O.
 
@@ -31,21 +31,21 @@ What it does NOT do (by design)
 
 I/O
 ~~~
-Reads:  phase2-motor-driven/videos/<video_file>
-        phase2-motor-driven/data/experiments.json
-Writes: phase2-motor-driven/measurements/<stem>/tracking.csv
+Reads:  week4-pendulum-motor-driven/videos/<video_file>
+        week4-pendulum-motor-driven/data/experiments.json
+Writes: week4-pendulum-motor-driven/measurements/<stem>/tracking.csv
             schema: frame, time_s, phase, x_green, y_green, x_red, y_red,
                     theta1_deg, theta2_deg, dropout
                     (matches ring_tracker.py — verify_tracking and the
                      rest of the pipeline consume this unchanged)
-        phase2-motor-driven/data/experiments.json
+        week4-pendulum-motor-driven/data/experiments.json
             entry updated: tracker='bgr', dropout_rate_pct, n_free_frames,
             theta/omega_release, energy_proxy, duration_s, ...
 
 Usage
 ~~~~~
     # Phase 2 default invocation (track_one passes the positional path):
-    python scripts/processing/bgr_tracker.py phase2-motor-driven/videos/4V_1.9Hz.mov --force
+    python scripts/processing/bgr_tracker.py week4-pendulum-motor-driven/videos/4V_1.9Hz.mov --force
 
     # Or by stem, when called directly:
     python scripts/processing/bgr_tracker.py --stem 4V_1.9Hz --force
@@ -121,7 +121,7 @@ def detect_markers_bgr(frame):
 
     Centroids are in CROPPED-frame coords (zero at column CROP_X_START
     in the original frame). Any component is None when its mask had no
-    pixels. Mirrors chaos/get_video_coords.py lines 42-69 exactly.
+    pixels. Mirrors week4-pendulum-motor-driven/legacy/get_video_coords.py lines 42-69 exactly.
     """
     cropped = frame[:, CROP_X_START:CROP_X_END, :]
 

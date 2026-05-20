@@ -1,7 +1,7 @@
 """
 register_phase2_videos.py
 -------------------------
-Scan phase2-motor-driven/videos/ for .mov files and add a pre-tracking
+Scan week4-pendulum-motor-driven/videos/ for .mov files and add a pre-tracking
 entry to experiments.json for any clip that isn't already registered.
 
 Idempotent — existing entries are never modified. Designed to be re-run
@@ -31,9 +31,9 @@ when the clip is actually tracked.
 
 Usage
 ~~~~~
-    CHAOS_PHASE=phase2-motor-driven \\
+    CHAOS_PHASE=week4-pendulum-motor-driven \\
         python scripts/utils/register_phase2_videos.py            # scan + add
-    CHAOS_PHASE=phase2-motor-driven \\
+    CHAOS_PHASE=week4-pendulum-motor-driven \\
         python scripts/utils/register_phase2_videos.py --dry-run  # just report
 """
 
@@ -44,7 +44,7 @@ import os
 import shutil
 import sys
 
-os.environ.setdefault("CHAOS_PHASE", "phase2-motor-driven")
+os.environ.setdefault("CHAOS_PHASE", "week4-pendulum-motor-driven")
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from paths import VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
 from thresholds import PIVOT, ARM_LENGTH_PX, ARM_LENGTH_CM  # noqa: E402

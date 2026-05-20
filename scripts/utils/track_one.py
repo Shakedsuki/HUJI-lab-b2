@@ -46,7 +46,7 @@ except (AttributeError, OSError):
     pass
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT, PHASE  # noqa: E402
 
 LOG_FILE         = os.path.join(DATA_DIR, "track_one_log.txt")
 
@@ -57,7 +57,7 @@ LOG_FILE         = os.path.join(DATA_DIR, "track_one_log.txt")
 RING_TRACKER_SCRIPT = os.path.join(REPO_ROOT, "scripts", "processing", "ring_tracker.py")
 BGR_TRACKER_SCRIPT  = os.path.join(REPO_ROOT, "scripts", "processing", "bgr_tracker.py")
 TRACKER_SCRIPT      = (BGR_TRACKER_SCRIPT
-                       if os.environ.get("CHAOS_PHASE") == "phase2-motor-driven"
+                       if PHASE == "week4-pendulum-motor-driven"
                        else RING_TRACKER_SCRIPT)
 VERIFY_SCRIPT   = os.path.join(REPO_ROOT, "scripts", "processing", "verify_tracking.py")
 INTERP_SCRIPT   = os.path.join(REPO_ROOT, "scripts", "processing",
@@ -907,7 +907,7 @@ def main():
     if args.yes_to_warn:
         track_cmd.append("--yes-to-warn")
     tracker_label = ("bgr_tracker"
-                     if os.environ.get("CHAOS_PHASE") == "phase2-motor-driven"
+                     if PHASE == "week4-pendulum-motor-driven"
                      else "ring_tracker")
     rc, _ = run(track_cmd, label=tracker_label)
     if rc != 0:
