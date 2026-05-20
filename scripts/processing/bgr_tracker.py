@@ -14,10 +14,13 @@ For each frame of the input video:
   red     = centroid from the first non-empty mask in RED_BGR_RANGES
 
 Centroids are un-cropped (gx_orig = gx_crop + CROP_X_START) before
-being written so the canonical PIVOT (663, 332) and ARM_LENGTH_PX (153)
-from thresholds.py apply unchanged to downstream verification, geometry
-checks, and analysis. Angles are computed with the same compute_angle
-convention as ring_tracker (0° = straight down, +90 = right).
+being written, so the canonical PIVOT (663, 332) and ARM_LENGTH_PX
+(153) from thresholds.py apply unchanged to downstream analysis.
+Angles are computed with the convention 0° = straight down, +90 =
+right.
+
+Detection logic (X crop + BGR colour ranges + fallback chain + moment
+math) mirrors chaos/get_video_coords.py lines 42-69 verbatim.
 
 What it does NOT do (by design)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -118,9 +121,16 @@ def angular_diff(a, b):
 def detect_markers_bgr(frame):
     """Return (gx_crop, gy_crop, rx_crop, ry_crop) for one frame.
 
-    Centroids are in CROPPED-frame coords (zero at column CROP_X_START
-    in the original frame). Any component is None when its mask had no
-    pixels. Mirrors week4-pendulum-motor-driven/legacy/get_video_coords.py lines 42-69 exactly.
+    Centroids are returned in CROPPED-frame coords (zero at column
+    CROP_X_START of the original frame). Any component is None when
+    its mask had no pixels.
+
+    BGR detection (colour ranges + fallback chain + moment-centroid
+    math + X crop) mirrors chaos/get_video_coords.py lines 42-69
+    verbatim. No Y crop — Cohen left Y open and any Y crop tight
+    enough to exclude wall-fabric on low-amplitude clips also cut off
+    legitimate marker positions in high-amplitude clips (98%→75% drop
+    on 4V_0.6Hz, reverted in PR #43).
     """
     cropped = frame[:, CROP_X_START:CROP_X_END, :]
 

@@ -132,7 +132,7 @@ def verify_one(stem):
         if abs(b["time_s"] - t["time_s"]) > TIME_TOL_S:
             fails.append((i, f"time_s diff {abs(b['time_s'] - t['time_s']):.2e} > {TIME_TOL_S}"))
 
-        # Un-crop baseline pixels.
+        # Un-crop baseline pixels (X-only crop; Y is unchanged).
         bgx = b["gx_crop"] + CROP_X_START if b["gx_crop"] is not None else None
         bgy = b["gy_crop"]
         brx = b["rx_crop"] + CROP_X_START if b["rx_crop"] is not None else None
