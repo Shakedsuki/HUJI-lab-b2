@@ -23,7 +23,6 @@ rest of the pipeline expects to find BEFORE tracking:
     csv_file            - tracking.csv
     tracking_quality    - "untracked"
     notes               - ""
-    tag_frame           - 0   (Phase 2: pendulum is driven from frame 0)
 
 Post-tracking fields (theta1_release, omega1_release, dropout_rate_pct,
 energy_proxy, ...) are NOT populated here — bgr_tracker writes those
@@ -111,7 +110,6 @@ def make_entry(stem):
         "csv_file":           "tracking.csv",
         "tracking_quality":   "untracked",
         "notes":              "",
-        "tag_frame":          0,
     }
 
 

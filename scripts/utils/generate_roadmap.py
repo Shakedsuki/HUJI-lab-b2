@@ -59,8 +59,6 @@ BUCKETS = [
     ("verified",         "PASS",        "passed verification, in registry as verified"),
     ("tracked-warn",     "WARN",        "tracking.csv exists, dropout/peak ω in WARN band"),
     ("tracked-fail",     "FAIL",        "tracking.csv exists but dropout > 10% or peak ω absurd"),
-    ("hsv-abort",        "HSV-ABORT",   "ring_tracker bailed on the HSV adequacy probe — needs `chaos tune`"),
-    ("needs-picker",     "NEEDS-PICKER","no init/release/tag_frame in registry — needs interactive picker"),
     ("never-attempted",  "PENDING",     "registry entry exists but no track_one run on record"),
 ]
 
@@ -212,13 +210,6 @@ def classify(entry, bulk_entry, meas_dir=None):
             return "tracked-fail", "FAIL"
         return "tracked-warn", "WARN"
 
-    # No tracking CSV — has the bulk runner already attempted this clip?
-    if bulk_entry is not None and bulk_entry.get("returncode") == 2:
-        return "hsv-abort", "HSV-ABORT"
-
-    if entry.get("tag_frame") is None and entry.get("init_frame") is None:
-        return "needs-picker", "NEEDS-PICKER"
-
     return "never-attempted", "PENDING"
 
 def first_attempt_iso(entry, bulk_entry):
@@ -248,18 +239,13 @@ def short_note(entry, bulk_entry, bucket):
         if entry.get("suspect_frames_interpolated"):
             bits.append(f"interp {entry['suspect_frames_interpolated']}")
         return "; ".join(bits) or "review verification.png"
-    if bucket == "hsv-abort":
-        return "global HSV doesn't fit; run `chaos tune <stem>`"
-    if bucket == "needs-picker":
-        return "no tag_frame/init_frame; run `chaos next` to pick init/release"
     if bucket == "never-attempted":
         return "no record in bulk_tracking_log yet"
     return ""
 
 def build_table_rows(reg, bulk_log):
     """Return a list of dicts, one per clip, sorted: PASS first, then
-    WARN, FAIL, HSV-ABORT, NEEDS-PICKER, PENDING — and within each bucket
-    by stem."""
+    WARN, FAIL, PENDING — and within each bucket by stem."""
     bucket_order = {b[0]: i for i, b in enumerate(BUCKETS)}
     rows = []
     for key, entry in reg.items():
@@ -397,28 +383,20 @@ def render_markdown(rows, reg, bulk_log):
     lines.append("## What to do next")
     lines.append("")
     todos = []
-    n_abort = bucket_counts["hsv-abort"]
-    n_picker = bucket_counts["needs-picker"]
     n_pending = bucket_counts["never-attempted"]
     n_warn = bucket_counts["tracked-warn"]
     n_fail = bucket_counts["tracked-fail"]
-    if n_abort:
-        todos.append(f"- **{n_abort} clips need per-clip HSV tuning.** "
-                     f"Run `chaos tune <stem>` then `chaos track <stem>` "
-                     f"on each HSV-ABORT row above.")
-    if n_picker:
-        todos.append(f"- **{n_picker} clips need a manual init/release pick.** "
-                     f"Run `chaos next --stem <stem>` to drop into the picker.")
     if n_pending:
         todos.append(f"- **{n_pending} clips never tracked.** "
                      f"Run `chaos bulk` to attempt them all in one shot.")
     if n_warn:
         todos.append(f"- **{n_warn} clips landed in WARN.** "
                      f"Inspect `measurements/<stem>/verification.png`; if "
-                     f"acceptable, mark verified; otherwise `chaos fix <stem>`.")
+                     f"acceptable, mark verified; otherwise `chaos override "
+                     f"<stem> --frame N` on outliers.")
     if n_fail:
         todos.append(f"- **{n_fail} clips landed in FAIL.** "
-                     f"Re-tune HSV or run `chaos fix <stem>` with seeds.")
+                     f"Likely needs re-shoot or threshold review.")
     if not todos:
         todos.append("- Everything is in PASS. Nothing pending.")
     lines.extend(todos)
@@ -458,8 +436,6 @@ def main():
     print(f"  PASS={bucket_counts['verified']}  "
           f"WARN={bucket_counts['tracked-warn']}  "
           f"FAIL={bucket_counts['tracked-fail']}  "
-          f"HSV-ABORT={bucket_counts['hsv-abort']}  "
-          f"NEEDS-PICKER={bucket_counts['needs-picker']}  "
           f"PENDING={bucket_counts['never-attempted']}")
     return 0
 

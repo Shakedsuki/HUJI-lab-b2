@@ -216,31 +216,26 @@ def resolve_inputs(args):
 def update_registry_entry(reg, key, entry, *, video_file, stem,
                           n_total, n_drop, dropout_pct, duration_s,
                           th1_rel, th2_rel, om1_rel, om2_rel):
-    th1r = math.radians(th1_rel); th2r = math.radians(th2_rel)
-    om1r = math.radians(om1_rel); om2r = math.radians(om2_rel)
-    energy_proxy = round(float(om1r**2 + om2r**2
-                               - 2 * math.cos(th1r) - math.cos(th2r)), 4)
-
+    # Driven-mode registry schema: no init/release/tag frames (always 0),
+    # no ROIs (HSV-only concept), no energy_proxy (release-based and
+    # vacuous when the motor pumps energy in continuously). The
+    # theta*_initial / omega*_initial fields capture frame-0 markers
+    # state — meaningful as initial conditions even though no "release"
+    # event exists.
     base = dict(entry) if entry else {}
     base.update({
         "video_file":         video_file,
-        "init_frame":         0,
-        "release_frame":      0,
-        "green_roi":          None,
-        "red_roi":            None,
         "tracker":            "bgr",
         "arm_length_px":      ARM_LENGTH_PX,
         "arm_length_cm":      ARM_LENGTH_CM,
         "pivot_px":           list(PIVOT),
         "scale_cm_per_px":    round(SCALE_CM_PER_PX, 4),
-        "theta1_release":     round(th1_rel, 4),
-        "theta2_release":     round(th2_rel, 4),
-        "omega1_release":     round(om1_rel, 4),
-        "omega2_release":     round(om2_rel, 4),
-        "energy_proxy":       energy_proxy,
-        "t0_offset_s":        0.0,
+        "theta1_initial":     round(th1_rel, 4),
+        "theta2_initial":     round(th2_rel, 4),
+        "omega1_initial":     round(om1_rel, 4),
+        "omega2_initial":     round(om2_rel, 4),
         "duration_s":         round(duration_s, 3),
-        "n_free_frames":      n_total,
+        "n_frames":           n_total,
         "dropout_rate_pct":   round(dropout_pct, 2),
         "csv_file":           "tracking.csv",
         "measurements_dir":   f"measurements/{stem}",
@@ -248,6 +243,17 @@ def update_registry_entry(reg, key, entry, *, video_file, stem,
         "tracking_quality":   base.get("tracking_quality", "good"),
         "notes":              base.get("notes", ""),
     })
+    # Strip legacy free-swing fields from any pre-existing entry we're
+    # updating, so the registry doesn't accumulate stale schema cruft.
+    for stale_key in ("init_frame", "release_frame", "t0_offset_s",
+                      "tag_frame", "green_roi", "red_roi",
+                      "ring_tolerance", "energy_proxy",
+                      "theta1_release", "theta2_release",
+                      "omega1_release", "omega2_release",
+                      "n_free_frames", "green_click_px", "red_click_px",
+                      "suspect_frames_interpolated",
+                      "interpolation_date"):
+        base.pop(stale_key, None)
     reg[key] = base
 
 

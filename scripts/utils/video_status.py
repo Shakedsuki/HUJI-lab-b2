@@ -1,20 +1,15 @@
 """
 video_status.py
 ---------------
-Print which videos in data/videos/ have been tracked vs. which are still pending.
+Print which videos have been tracked vs. which are still pending.
 
-A video is "tracked" if it has an entry in data/experiments.json with
-release_frame and theta1_release populated and a tracking.csv at the
-entry's measurements_dir path. "Pending" means the file exists in
-data/videos/ but isn't recorded as tracked.
+A video is "tracked" if it has a tracking.csv on disk at the registry
+entry's `measurements_dir`. "Pending" means the file exists under
+videos/ but no tracking.csv has been produced yet.
 
 Run on its own to see the breakdown:
 
     python scripts/utils/video_status.py
-
-Or import the helpers from ring_tracker.py — they share the same logic
-(duplicated rather than imported, to keep ring_tracker self-contained
-and avoid Python package plumbing).
 """
 
 import json
@@ -31,7 +26,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
 
 # ─────────────────────────────────────────────
-# CONSTANTS  (mirrors ring_tracker.py)
+# CONSTANTS
 # ─────────────────────────────────────────────
 
 VIDEO_EXTS = {".mov", ".mp4", ".avi", ".mkv", ".m4v"}
@@ -64,21 +59,11 @@ def load_registry(path=EXPERIMENTS_FILE):
         return {}
 
 def is_tracked(stem, registry, root=PHASE_ROOT):
-    """
-    A video is "tracked" if it has a tracking.csv on disk.
-    Phase 1 additionally requires release_frame and theta1_release (ICs from
-    a held-release run). Phase 2 (motor-driven) starts from rest at 0,0 so
-    those fields are not meaningful — CSV existence is sufficient.
-    """
+    """A video is "tracked" if its registry entry's measurements_dir
+    contains a tracking.csv on disk."""
     entry = _resolve_entry(stem, registry)
     if not entry:
         return False
-    is_phase2 = entry.get("drive_voltage_v") is not None
-    if not is_phase2:
-        if entry.get("release_frame") is None:
-            return False
-        if entry.get("theta1_release") is None:
-            return False
     meas_dir = entry.get("measurements_dir")
     if not meas_dir:
         return False
