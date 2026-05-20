@@ -1,20 +1,13 @@
 """
 override_frame.py
 ------------------
-Surgical CSV-row override for a single frame. Useful when verify_tracking
-flags an isolated bad row and you'd rather edit that one row directly
-than re-run ring_tracker over hundreds of frames.
+Surgical CSV-row override for a single frame. Useful when
+verify_tracking flags an isolated bad row and you'd rather edit that
+one row directly than re-run the tracker.
 
-Difference vs `chaos fix`:
-    chaos fix       — saves seeds.json and re-runs ring_tracker from
-                      the earliest seed forward. Forward-propagating:
-                      one fix fixes the cascade.
-    chaos override  — overwrites a single row of tracking.csv directly.
-                      Frame-local: only that row changes, everything
-                      else stays as ring_tracker found it. Fast (no
-                      re-track) but does not propagate.
-
-Use override for isolated bad frames. Use fix for cascading errors.
+Frame-local: only that row in tracking.csv changes, everything else
+stays as bgr_tracker found it. Fast (no re-track) but does not
+propagate to neighbours.
 
 Usage
 ~~~~~

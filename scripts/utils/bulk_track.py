@@ -1,59 +1,26 @@
 """
 bulk_track.py
 --------------
-Run track_one.py over every pending video in one shot, then print a
+Run track_one.py over every untracked video in one shot, then print a
 per-video dropout report.
 
-(Internally each clip goes through track_one, which itself wraps
-ring_tracker + verify_tracking + interpolate_suspects + verdict card
-emission. So bulk and single-clip runs produce identical artefacts and
-the same PASS/WARN/FAIL banding.)
-
-Why this exists
-~~~~~~~~~~~~~~~
-The interactive flow (run ring_tracker, pick init_frame, pick
-release_frame, watch tracking finish, move on to the next video) is
-fine for one or two clips but gets tedious when 20+ are pending. Most
-pending entries already have `tag_frame` populated by the video tagger,
-which is a good proxy for both init_frame and release_frame: it's the
-frame where markers were positively identified, so it's a safe place
-to start tracking AND a reasonable release point when the user filmed
-already-released chaotic motion.
-
-The script:
-  1. Scans experiments.json for pending entries (no tracking.csv at the
-     measurement folder).
-  2. For each entry without init_frame/release_frame, derives both from
-     `tag_frame` (init = tag_frame, release = tag_frame). Entries that
-     have neither are skipped with a warning — those need the picker.
-  3. Backs up experiments.json before mutating it.
-  4. Runs `ring_tracker.py <video_path> --force --no-debug` as a
-     subprocess for every plannable entry. --no-debug skips the
-     360 MB debug video output by default; pass --debug to keep it.
-  5. After every run, reads the updated registry to capture
-     dropout_rate_pct and other ICs, and writes a JSON sidecar at
-     data/bulk_tracking_log.json so subsequent runs can avoid redoing
-     work.
-  6. Prints a sorted dropout summary at the end with warnings for
-     anything > 10% (likely needs HSV recalibration).
+Each clip goes through track_one (bgr_tracker → verify_tracking →
+verdict card), so bulk and single-clip runs produce identical
+artefacts and the same PASS/WARN/FAIL banding.
 
 Usage
 ~~~~~
-    python scripts/utils/bulk_track.py --dry-run            # show the plan
-    python scripts/utils/bulk_track.py                      # do it
-    python scripts/utils/bulk_track.py --filter th1_p09     # subset
-    python scripts/utils/bulk_track.py --debug              # also write debug.mp4
-    python scripts/utils/bulk_track.py --redo               # re-track already tracked
-    python scripts/utils/bulk_track.py --jobs 1             # forced sequential (default)
+    python scripts/utils/bulk_track.py --dry-run         # show the plan
+    python scripts/utils/bulk_track.py                   # do it
+    python scripts/utils/bulk_track.py --filter 3.2V     # subset
+    python scripts/utils/bulk_track.py --debug           # also write debug.mp4
+    python scripts/utils/bulk_track.py --redo            # re-track already-tracked
 
 Notes
 ~~~~~
-- Defaults to sequential execution (--jobs 1) because ring_tracker is
-  CPU-bound on opencv decoding + matplotlib-free; running multiple
-  in parallel just thrashes the disk and saturates cores. The --jobs
-  flag is reserved for future use.
-- `--no-debug` is the default for bulk runs; pass `--debug` if you
-  specifically need the per-frame annotated MP4.
+- Defaults to sequential execution because bgr_tracker is CPU-bound on
+  OpenCV decoding; running parallel just thrashes disk and cores.
+- `--no-debug` is the bulk default; pass `--debug` for per-frame mp4s.
 """
 
 import argparse
@@ -75,7 +42,6 @@ except (AttributeError, OSError):
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
 
-TRACKER_SCRIPT   = os.path.join(REPO_ROOT, "scripts", "processing", "ring_tracker.py")
 TRACK_ONE_SCRIPT = os.path.join(REPO_ROOT, "scripts", "utils", "track_one.py")
 BULK_LOG_FILE    = os.path.join(REPO_ROOT, "data", "bulk_tracking_log.json")
 
@@ -135,50 +101,27 @@ def is_tracked(entry):
 
 class Plan:
     """One row in the planned bulk run."""
-    __slots__ = ("key", "config_description", "video_path",
-                 "init_frame", "release_frame", "source",
-                 "skip_reason")
+    __slots__ = ("key", "config_description", "video_path", "skip_reason")
 
     def __init__(self, key, config_description, video_path,
-                 init_frame=None, release_frame=None,
-                 source="", skip_reason=None):
+                 skip_reason=None):
         self.key                 = key
         self.config_description  = config_description
         self.video_path          = video_path
-        self.init_frame          = init_frame
-        self.release_frame       = release_frame
-        self.source              = source
         self.skip_reason         = skip_reason
 
     @property
     def runnable(self):
-        return (self.skip_reason is None
-                and self.init_frame is not None
-                and self.release_frame is not None)
-
-def derive_frames(entry):
-    """
-    Resolve (init_frame, release_frame, source_of_decision) for an
-    entry. Returns (None, None, reason) when no resolution is possible.
-
-    Precedence:
-      1. Both init_frame and release_frame already populated → use them.
-      2. tag_frame populated → use it for both.
-      3. Otherwise → unresolvable.
-    """
-    init    = entry.get("init_frame")
-    release = entry.get("release_frame")
-    if init is not None and release is not None:
-        return int(init), int(release), "registry (init/release)"
-    tag = entry.get("tag_frame")
-    if tag is not None:
-        return int(tag), int(tag), "registry (tag_frame)"
-    return None, None, None
+        return self.skip_reason is None
 
 def build_plan(reg, *, filter_substr=None, redo=False):
     """
     Walk the registry and produce a list of Plan rows. `redo=True`
     includes already-tracked entries (which would otherwise be skipped).
+
+    Driven-mode: every clip with a video file and a registry entry is
+    plannable. There's no init/release/tag-frame gate any more — the
+    pendulum starts from rest at frame 0 by construction.
     """
     plans = []
     for key in sorted(reg.keys()):
@@ -205,49 +148,26 @@ def build_plan(reg, *, filter_substr=None, redo=False):
                               skip_reason="already tracked (use --redo)"))
             continue
 
-        init, release, source = derive_frames(entry)
-        if init is None:
-            plans.append(Plan(key, cd, video_path,
-                              skip_reason="no init/release/tag_frame"))
-            continue
-
-        plans.append(Plan(key, cd, video_path,
-                          init_frame=init,
-                          release_frame=release,
-                          source=source))
+        plans.append(Plan(key, cd, video_path))
     return plans
 
 # ─────────────────────────────────────────────
 # RUN ONE
 # ─────────────────────────────────────────────
 
-def prepopulate_frames(reg, plan):
-    """Write init_frame / release_frame into the registry entry."""
-    e = reg[plan.key]
-    e["init_frame"]    = plan.init_frame
-    e["release_frame"] = plan.release_frame
-
 def run_one(plan, no_debug=True, force=True):
-    """
-    Delegate to track_one.py per clip. track_one wraps ring_tracker +
-    verify_tracking + interpolate_suspects + verdict-card emission, so
-    bulk runs use exactly the same evaluation path as a single
-    `chaos.py track <stem>` call. Returns (returncode, elapsed_s).
-    """
-    cmd = [sys.executable, TRACK_ONE_SCRIPT,
-           "--stem", plan.config_description,
-           "--yes-to-warn"]   # bulk mode: don't pause on borderline HSV
+    """Delegate to track_one.py per clip. track_one wraps bgr_tracker +
+    verify_tracking + verdict-card emission, so bulk runs use exactly
+    the same evaluation path as a single `chaos.py track <stem>` call.
+    Returns (returncode, elapsed_s)."""
+    cmd = [sys.executable, TRACK_ONE_SCRIPT, "--stem", plan.config_description]
     if no_debug:
         cmd.append("--no-debug")
-    # `force` from the old bulk_track signature was always True; track_one
-    # passes --force to ring_tracker internally for non-tracked entries.
 
     print()
     print("=" * 70)
     print(f"TRACKING {plan.video_path}")
     print(f"  config_description = {plan.config_description}")
-    print(f"  init_frame         = {plan.init_frame}  ({plan.source})")
-    print(f"  release_frame      = {plan.release_frame}")
     print(f"  cmd                = {' '.join(cmd)}")
     print("=" * 70)
 
@@ -374,9 +294,7 @@ def main():
     print()
     print("RUNNABLE:")
     for p in runnable:
-        print(f"  [+] {p.config_description:<26}  "
-              f"init={p.init_frame:>3}  release={p.release_frame:>3}  "
-              f"({p.source})")
+        print(f"  [+] {p.config_description}")
     if skipped:
         print()
         print("SKIPPED:")
@@ -394,14 +312,10 @@ def main():
         print("Nothing to do.")
         return 0
 
-    # ── Back up registry then pre-populate init/release frames. ─────────
+    # ── Back up registry before the tracking pass writes to it. ───────
     bak = backup_registry_once()
     print()
     print(f"Registry backed up: {os.path.relpath(bak, REPO_ROOT)}")
-    for p in runnable:
-        prepopulate_frames(reg, p)
-    save_registry(reg)
-    print(f"Pre-populated init/release for {len(runnable)} entries.")
 
     # ── Run tracker per video. ──────────────────────────────────────────
     bulk_log = load_bulk_log()

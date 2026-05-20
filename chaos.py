@@ -9,30 +9,25 @@ Subcommands
   status            list tracked vs pending; one-line summary
   report            regenerate data/status_report.xlsx
   roadmap           regenerate docs/tracking_roadmap.md (per-clip dropout/quality table)
-  hsv-probe         probe every existing HSV file vs every HSV-ABORT clip
   audit             re-validate verified clips against current verdict logic
-  tune <stem>       launch hsv_tuner.py on a clip's video
   track <stem>      standard track + verify + interpolate + verdict
-  fix <stem>        interactive manual-seed correction + re-track
   verify <stem>     standalone QA on an existing tracking.csv
+  override <stem>   surgical single-row CSV edit (no re-track)
   bulk              sequential bulk pass over plannable pending clips
-  next              interactive god-mode — drive pending queue end-to-end
+  next              interactive driver — drive pending queue end-to-end
   help              print this cheat sheet
 
 Examples
 ~~~~~~~~
   chaos status
-  chaos track th1_p047_th2_m002
-  chaos fix th1_p047_th2_m002
+  chaos track 4V_1.9Hz
   chaos next                   # processes one pending clip after another
 
 Underlying scripts (still callable directly for power-users):
-  scripts/processing/hsv_tuner.py
-  scripts/processing/ring_tracker.py
+  scripts/processing/bgr_tracker.py
   scripts/processing/verify_tracking.py
   scripts/processing/interpolate_suspects.py
   scripts/utils/track_one.py
-  scripts/utils/manual_correction.py
   scripts/utils/bulk_track.py
   scripts/utils/video_status.py
   scripts/utils/generate_status_report.py
@@ -55,27 +50,17 @@ ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(ROOT, "scripts", "utils"))
 from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS  # noqa: E402
 
-SCRIPT_HSV_TUNER  = os.path.join(ROOT, "scripts", "processing", "hsv_tuner.py")
-SCRIPT_RING       = os.path.join(ROOT, "scripts", "processing", "ring_tracker.py")
 SCRIPT_VERIFY     = os.path.join(ROOT, "scripts", "processing", "verify_tracking.py")
-SCRIPT_INTERP     = os.path.join(ROOT, "scripts", "processing", "interpolate_suspects.py")
 SCRIPT_TRACK_ONE  = os.path.join(ROOT, "scripts", "utils", "track_one.py")
-SCRIPT_MANUAL     = os.path.join(ROOT, "scripts", "utils", "manual_correction.py")
 SCRIPT_OVERRIDE   = os.path.join(ROOT, "scripts", "utils", "override_frame.py")
 SCRIPT_BULK       = os.path.join(ROOT, "scripts", "utils", "bulk_track.py")
 SCRIPT_STATUS     = os.path.join(ROOT, "scripts", "utils", "video_status.py")
 SCRIPT_REPORT     = os.path.join(ROOT, "scripts", "utils", "generate_status_report.py")
 SCRIPT_ROADMAP    = os.path.join(ROOT, "scripts", "utils", "generate_roadmap.py")
-SCRIPT_HSV_PROBE  = os.path.join(ROOT, "scripts", "utils", "hsv_probe_matrix.py")
 SCRIPT_AUDIT      = os.path.join(ROOT, "scripts", "utils", "audit.py")
-SCRIPT_TRIAGE     = os.path.join(ROOT, "scripts", "utils", "triage.py")
-SCRIPT_SUSPECTS   = os.path.join(ROOT, "scripts", "utils", "suspects_summary.py")
-SCRIPT_AUTO_SEED  = os.path.join(ROOT, "scripts", "utils", "auto_seed.py")
 SCRIPT_BATCH_FIGS = os.path.join(ROOT, "scripts", "utils", "batch_figures.py")
 SCRIPT_COMBINED   = os.path.join(ROOT, "scripts", "analysis", "combined_video.py")
 SCRIPT_ANALYZE    = os.path.join(ROOT, "scripts", "analysis", "chaos_analyze.py")
-SCRIPT_FRICTION   = os.path.join(ROOT, "scripts", "analysis", "friction_fit.py")
-SCRIPT_FRIC_CMP   = os.path.join(ROOT, "scripts", "analysis", "friction_compare.py")
 SCRIPT_POINCARE   = os.path.join(ROOT, "scripts", "analysis", "poincare.py")
 SCRIPT_LYAPUNOV   = os.path.join(ROOT, "scripts", "analysis", "lyapunov.py")
 SCRIPT_DRIVEN_POIN = os.path.join(ROOT, "scripts", "analysis", "driven_poincare.py")
@@ -152,13 +137,6 @@ def stem_for_video(video_filename):
     return Path(video_filename).stem
 
 
-def hsv_kind_for_stem(stem):
-    """Return 'per-video' if data/hsv_<stem>.json exists, else 'global'."""
-    if os.path.exists(os.path.join(DATA_DIR, f"hsv_{stem}.json")):
-        return "per-video"
-    return "global"
-
-
 # ─────────────────────────────────────────────
 # SUBCOMMAND DISPATCH
 # ─────────────────────────────────────────────
@@ -180,33 +158,13 @@ def cmd_report(args):
     return run_script(SCRIPT_REPORT, *extra)
 
 
-def cmd_tune(args):
-    video = resolve_video_path_for_stem(args.stem)
-    if not video:
-        return 1
-    return run_script(SCRIPT_HSV_TUNER, video)
-
-
 def cmd_track(args):
     extra = ["--stem", args.stem]
-    if args.skip_probe:
-        extra.append("--skip-probe")
-    if args.yes_to_warn:
-        extra.append("--yes-to-warn")
     if args.debug:
         extra.append("--debug")
     if args.omega_cap is not None:
         extra += ["--omega-cap", str(args.omega_cap)]
     return run_script(SCRIPT_TRACK_ONE, *extra)
-
-
-def cmd_fix(args):
-    extra = ["--stem", args.stem]
-    if args.save_only:
-        extra.append("--save-only")
-    if args.omega_cap is not None:
-        extra += ["--omega-cap", str(args.omega_cap)]
-    return run_script(SCRIPT_MANUAL, *extra)
 
 
 def cmd_override(args):
@@ -256,14 +214,6 @@ def cmd_roadmap(args):
     return run_script(SCRIPT_ROADMAP, *extra)
 
 
-def cmd_hsv_probe(args):
-    extra = []
-    if args.filter:    extra += ["--filter", args.filter]
-    if args.apply:     extra.append("--apply")
-    if args.warn_also: extra.append("--warn-also")
-    return run_script(SCRIPT_HSV_PROBE, *extra)
-
-
 def cmd_audit(args):
     extra = []
     if args.apply:         extra.append("--apply")
@@ -273,34 +223,6 @@ def cmd_audit(args):
     if args.omega_cap is not None:
         extra += ["--omega-cap", str(args.omega_cap)]
     return run_script(SCRIPT_AUDIT, *extra)
-
-
-def cmd_triage(args):
-    extra = []
-    if args.auto:   extra.append("--auto")
-    if args.once:   extra.append("--once")
-    if args.filter: extra += ["--filter", args.filter]
-    return run_script(SCRIPT_TRIAGE, *extra)
-
-
-def cmd_suspects(args):
-    extra = [args.stem]
-    if args.gap is not None:
-        extra += ["--gap", str(args.gap)]
-    return run_script(SCRIPT_SUSPECTS, *extra)
-
-
-def cmd_auto_seed(args):
-    extra = [args.stem]
-    if args.dry_run:  extra.append("--dry-run")
-    if args.no_track: extra.append("--no-track")
-    if args.gap is not None:
-        extra += ["--gap", str(args.gap)]
-    if args.max_clean_distance is not None:
-        extra += ["--max-clean-distance", str(args.max_clean_distance)]
-    if args.omega_cap is not None:
-        extra += ["--omega-cap", str(args.omega_cap)]
-    return run_script(SCRIPT_AUTO_SEED, *extra)
 
 
 def cmd_render(args):
@@ -321,29 +243,6 @@ def cmd_analyze(args):
     if args.n_c is not None:
         extra += ["--n-c", str(args.n_c)]
     return run_script(SCRIPT_ANALYZE, *extra)
-
-
-def cmd_friction_fit(args):
-    """Fit a friction model to the clip's mechanical-energy decay.
-    Compares exponential (Stokes drag) and power-law fits; writes
-    measurements/<stem>/friction_fit.png."""
-    extra = ["--stem", args.stem]
-    if args.smooth_window is not None:
-        extra += ["--smooth-window", str(args.smooth_window)]
-    if args.no_plot:
-        extra.append("--no-plot")
-    return run_script(SCRIPT_FRICTION, *extra)
-
-
-def cmd_friction_compare(args):
-    """Run friction_fit on every clip and compare τ vs initial
-    amplitude. Outputs data/friction_comparison.{csv,png}."""
-    extra = []
-    if args.filter:    extra += ["--filter", args.filter]
-    if args.pass_only: extra.append("--pass-only")
-    if args.smooth_window is not None:
-        extra += ["--smooth-window", str(args.smooth_window)]
-    return run_script(SCRIPT_FRIC_CMP, *extra)
 
 
 def cmd_poincare(args):
@@ -423,10 +322,7 @@ USAGE
   chaos <command> [args]                      # PowerShell: .\chaos <command>
 
 PIPELINE COMMANDS  (per clip, in typical order)
-  chaos tune <stem>          calibrate per-video HSV (interactive eyedropper)
-  chaos track <stem>         track + verify + interpolate + verdict
-  chaos fix <stem>           interactive manual-seed fix-up + re-track
-                             (forward-propagating; for cascading errors)
+  chaos track <stem>         track (bgr_tracker) + verify + interpolate + verdict
   chaos override <stem>      surgical single-row CSV edit (no re-track)
         --frame N            (frame-local; for one isolated bad frame)
   chaos verify <stem>        standalone QA on an existing tracking.csv
@@ -436,24 +332,10 @@ PIPELINE COMMANDS  (per clip, in typical order)
                                     --arm-trend-dev
 
 BATCH / DRIVER COMMANDS
-  chaos next                 god-mode loop — drive pending queue end-to-end
+  chaos next                 interactive loop — drive pending queue end-to-end
   chaos next --stem <stem>   same loop but only one clip
   chaos bulk                 sequential bulk pass over plannable pendings
   chaos bulk --dry-run       show the plan without tracking anything
-  chaos triage               walk non-PASS clips, dispatch the right
-                             repair tool per clip (override / fix / tune)
-                             --auto      auto-apply override-bucket fixes
-                             --once      dispatch a single clip and exit
-                             --filter S  only consider clips matching S
-  chaos suspects <stem>      decompose a clip's suspect count into per-check
-                             buckets + cluster sizes; tells you whether to
-                             seed every frame (rare) or just hit the
-                             clusters (typical)
-  chaos auto-seed <stem>     interpolate seeds from violation clusters and
-                             re-track — bypasses manual clicking when the
-                             tracker is only slightly off
-                             --dry-run    show plan without writing
-                             --no-track   write seeds.json, skip re-track
   chaos render <stem>        render the original video with marker rings +
                              phase plots overlaid (uses existing tracking;
                              no re-track). Output: measurements/<stem>/
@@ -462,24 +344,21 @@ BATCH / DRIVER COMMANDS
                              Melbourne 2004), spectral entropy, inversion
                              stats. Verdict: CHAOTIC / BORDERLINE / REGULAR.
                              Flags: --no-plot  --n-c N
-  chaos friction-fit <stem>  fit exponential / power-law friction models to
-                             the clip's energy decay. Reports best model +
-                             writes friction_fit.png
-  chaos poincare <stem>      Phase 2 — true 2D Poincaré section at
+  chaos poincare <stem>      true 2D Poincaré section at
                              theta1+theta2=0 (upward). Writes poincare.png
                              and poincare.csv
   chaos driven-poincare <stem>
-                             Phase 2 (motor-driven) — stroboscopic Poincare
+                             motor-driven — stroboscopic Poincare
                              section sampling (theta1, omega1) once per drive
                              period T = 1/f_drive. Writes
                              measurements/<stem>/driven_poincare.csv
                              and figures/driven_poincare/<stem>_driven_poincare.png
   chaos driven-bifurcation [--sweep vd|fd]
-                             Phase 2 (motor-driven) — bifurcation diagram across
+                             motor-driven — bifurcation diagram across
                              a 1D parameter sweep (--sweep vd at --fixed-fd, or
                              --sweep fd at --fixed-vd). Writes
                              figures/aggregate/driven_bifurcation_<tag>.png
-  chaos lyapunov <stem>      Phase 2 — largest Lyapunov exponent via
+  chaos lyapunov <stem>      largest Lyapunov exponent via
                              Rosenstein 1993 algorithm (delay-embedding +
                              nearest-neighbor divergence). Writes lyapunov.png
 
@@ -487,8 +366,6 @@ INFO / REPORT COMMANDS
   chaos status               who's tracked, who's pending (one-screen)
   chaos report               regenerate data/status_report.xlsx (Excel)
   chaos roadmap              regenerate docs/tracking_roadmap.md (per-clip Markdown table)
-  chaos hsv-probe            probe every existing HSV file vs every HSV-ABORT clip
-                             (--apply: copy the best OK match per clip)
   chaos audit                re-validate verified clips against current thresholds
                              --apply  downgrade clips that no longer pass
   chaos help                 this cheat sheet
@@ -496,16 +373,14 @@ INFO / REPORT COMMANDS
 
 EXAMPLES
   chaos status
-  chaos tune th1_p047_th2_m002
-  chaos track th1_p047_th2_m002
-  chaos fix th1_p047_th2_m002
+  chaos track 4V_1.9Hz
   chaos next                            # the typical session: drive everything
 
 WHERE TO LEARN MORE
   README.md                  quickstart, setup, architecture
   docs/PIPELINE.md           keystroke-level reference for every stage
   scripts/processing/*.py    low-level building blocks (callable directly)
-  scripts/utils/*.py         orchestrators (track_one, manual_correction, bulk_track)
+  scripts/utils/*.py         orchestrators (track_one, bulk_track)
 """
 
 
@@ -515,27 +390,8 @@ def cmd_help(args):
 
 
 # ─────────────────────────────────────────────
-# `next` — interactive god-mode
+# `next` — interactive driver
 # ─────────────────────────────────────────────
-
-def hsv_probe_for_clip(video_path):
-    """Run the HSV adequacy probe headlessly. Returns (verdict, both_pct)."""
-    sys.path.insert(0, os.path.join(ROOT, "scripts", "processing"))
-    import ring_tracker as rt
-    import cv2
-    hsv = rt.load_hsv_values(video_path)
-    ring_tol = int(hsv.get("ring_tolerance", rt.DEFAULT_RING_TOL))
-    cap = cv2.VideoCapture(video_path)
-    if not cap.isOpened():
-        return "ABORT", 0.0
-    total = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    verdict, both, _, _ = rt.hsv_adequacy_probe(
-        cap, total, hsv, ring_tol,
-        use_filename_prior=True, video_path=video_path,
-    )
-    cap.release()
-    return verdict, both
-
 
 def prompt(text, allowed):
     """Read a single-letter answer; loops until one of `allowed` is given."""
@@ -561,11 +417,10 @@ def get_tracking_quality(stem):
 
 def cmd_next(args):
     """
-    Interactive god-mode loop. For each pending clip:
-      1. HSV adequacy probe → optionally launch hsv_tuner.
-      2. track_one → verdict.
-      3. WARN/FAIL → optionally launch manual_correction.
-      4. Prompt for next clip / report / quit.
+    Interactive driver loop. For each pending clip:
+      1. track_one → verdict.
+      2. Read verdict from registry; prompt accept/skip/quit on non-PASS.
+      3. Prompt for next clip / report / quit on PASS.
     """
     pending = list_pending_videos()
     print()
@@ -594,7 +449,6 @@ def cmd_next(args):
 
     for i, video_filename in enumerate(pending):
         stem = stem_for_video(video_filename)
-        video_path = os.path.join(VIDEOS_DIR, video_filename)
         bar = "=" * 72
         print()
         print(bar)
@@ -602,84 +456,20 @@ def cmd_next(args):
         print(bar)
         print(f"Source video       : Videos\\{video_filename}")
 
-        # ── Step 1: HSV adequacy probe ─────────────────────────────────
-        hsv_kind = hsv_kind_for_stem(stem)
-        hsv_label = ("per-video hsv_<stem>.json" if hsv_kind == "per-video"
-                     else "global hsv_values.json (no per-video file yet)")
-        print(f"HSV calibration    : {hsv_label}")
-        try:
-            verdict, both_pct = hsv_probe_for_clip(video_path)
-        except Exception as e:
-            print(f"HSV adequacy probe : ERROR  ({e})")
-            verdict, both_pct = "WARN", 0.0
-        else:
-            verdict_arrow = {
-                "OK":    f"{both_pct:.0f}%  ->  OK (≥70%, ready to track)",
-                "WARN":  f"{both_pct:.0f}%  ->  WARN (40-70%, can proceed)",
-                "ABORT": f"{both_pct:.0f}%  ->  ABORT (<40%, need to tune)",
-            }
-            print(f"HSV adequacy probe : "
-                  f"{verdict_arrow.get(verdict, verdict)}")
-
-        if verdict == "ABORT":
-            print()
-            print("Action required")
-            print("  This clip needs HSV calibration before tracking can")
-            print("  engage. Next step opens hsv_tuner so you can sample")
-            print("  green and red marker pixels in this clip's lighting.")
-            print()
-            ans = prompt(
-                "  [t]une HSV / [s]kip / [q]uit  (default tune): ",
-                ["t", "s", "q"],
-            )
-            if ans == "q": break
-            if ans == "s": continue
-            run_script(SCRIPT_HSV_TUNER, video_path)
-            # Re-probe after tuning.
-            try:
-                verdict, both_pct = hsv_probe_for_clip(video_path)
-            except Exception:
-                verdict = "WARN"
-            print(f"HSV probe (post-tune): {verdict}  ({both_pct:.0f}%)")
-        elif verdict == "WARN":
-            print()
-            print("Action required")
-            print("  HSV is borderline — tracking will probably work but")
-            print("  may produce more dropouts than usual. You can continue")
-            print("  or re-tune for a cleaner pass.")
-            print()
-            ans = prompt(
-                "  [c]ontinue / [t]une / [s]kip / [q]uit  (default continue): ",
-                ["c", "t", "s", "q"],
-            )
-            if ans == "q": break
-            if ans == "s": continue
-            if ans == "t":
-                run_script(SCRIPT_HSV_TUNER, video_path)
-
-        # ── Step 2: track_one ─────────────────────────────────────────
-        track_args = ["--stem", stem]
-        if verdict in ("WARN", "OK"):
-            # WARN already prompted; if user continued, suppress the
-            # adequacy prompt inside ring_tracker.
-            track_args.append("--yes-to-warn")
-        rc = run_script(SCRIPT_TRACK_ONE, *track_args)
+        # ── Step 1: track_one ─────────────────────────────────────────
+        rc = run_script(SCRIPT_TRACK_ONE, "--stem", stem)
 
         if rc != 0:
             print()
-            print("Action required")
-            print("  track_one returned a non-zero exit code (FAIL or")
-            print("  picker cancelled). Manual seed clicks are the next step.")
-            print()
+            print(f"  track_one returned exit {rc} on {stem}.")
             ans = prompt(
-                "  [f]ix manually / [s]kip / [q]uit  (default fix): ",
-                ["f", "s", "q"],
+                "  [s]kip / [q]uit  (default skip): ",
+                ["s", "q"],
             )
             if ans == "q": break
-            if ans == "s": continue
-            run_script(SCRIPT_MANUAL, "--stem", stem)
+            continue
 
-        # ── Step 3: read verdict from registry ─────────────────────────
+        # ── Step 2: read verdict from registry ─────────────────────────
         quality = get_tracking_quality(stem)
         if quality == "verified":
             print(f"\n  [PASS] {stem} verified.")
@@ -698,13 +488,12 @@ def cmd_next(args):
             print()
             print("Action required")
             print("  Inspect measurements/<stem>/verification.png. If the")
-            print("  trace looks like real chaos, [a]ccept. If the tracker")
-            print("  latched onto something wrong, [f]ix with seeded retrack.")
+            print("  trace looks correct, [a]ccept. Otherwise [s]kip and")
+            print("  investigate (override / re-verify with tuned thresholds).")
             print()
             ans = prompt(
-                "  [f]ix manually / [a]ccept anyway / [s]kip / [q]uit  "
-                "(default fix): ",
-                ["f", "a", "s", "q"],
+                "  [a]ccept anyway / [s]kip / [q]uit  (default accept): ",
+                ["a", "s", "q"],
             )
             if ans == "q": break
             if ans == "s": continue
@@ -712,8 +501,6 @@ def cmd_next(args):
                 # Mark verified despite WARN/FAIL — user took responsibility.
                 _mark_verified(stem,
                                note="manually accepted via chaos next")
-            elif ans == "f":
-                run_script(SCRIPT_MANUAL, "--stem", stem)
 
     print()
     print("=" * 70)
@@ -754,32 +541,13 @@ def build_parser():
     p_report.add_argument("--output", metavar="PATH",
         help="alternate output path for the .xlsx file")
 
-    p_tune = sub.add_parser("tune",
-        help="launch hsv_tuner.py on a clip's video")
-    p_tune.add_argument("stem", metavar="<stem>",
-        help="config_description, e.g. th1_p047_th2_m002")
-
     p_track = sub.add_parser("track",
         help="standard track + verify + interpolate + verdict card")
     p_track.add_argument("stem", metavar="<stem>",
-        help="config_description, e.g. th1_p047_th2_m002")
-    p_track.add_argument("--skip-probe", action="store_true",
-        help="skip the HSV-adequacy probe (forces tracking even if HSV is poor)")
-    p_track.add_argument("--yes-to-warn", action="store_true",
-        help="auto-confirm a WARN verdict from the HSV probe (for bulk mode)")
+        help="config_description, e.g. 4V_1.9Hz")
     p_track.add_argument("--debug", action="store_true",
         help="generate debug.mp4 (default: skipped to save 50–400 MB)")
     p_track.add_argument("--omega-cap", type=float, default=None,
-        metavar="DEG_PER_S",
-        help="ω threshold for the verify step (default 2500 °/s)")
-
-    p_fix = sub.add_parser("fix",
-        help="interactive manual-seed correction + re-track + verdict")
-    p_fix.add_argument("stem", metavar="<stem>",
-        help="config_description, e.g. th1_p047_th2_m002")
-    p_fix.add_argument("--save-only", action="store_true",
-        help="save seeds.json and quit; skip the re-track step")
-    p_fix.add_argument("--omega-cap", type=float, default=None,
         metavar="DEG_PER_S",
         help="ω threshold for the verify step (default 2500 °/s)")
 
@@ -848,15 +616,6 @@ def build_parser():
     p_roadmap.add_argument("--dry-run", action="store_true",
         help="print the markdown to stdout instead of writing")
 
-    p_hsv_probe = sub.add_parser("hsv-probe",
-        help="probe every existing HSV file against every HSV-ABORT clip")
-    p_hsv_probe.add_argument("--filter", metavar="SUBSTR",
-        help="only probe clips whose stem contains SUBSTR")
-    p_hsv_probe.add_argument("--apply", action="store_true",
-        help="copy the best-scoring OK match into hsv_<stem>.json per clip")
-    p_hsv_probe.add_argument("--warn-also", action="store_true",
-        help="also recommend WARN-band matches (default: OK only)")
-
     p_audit = sub.add_parser("audit",
         help="re-validate verified clips against current verdict logic")
     p_audit.add_argument("--apply", action="store_true",
@@ -877,41 +636,6 @@ def build_parser():
     p_next.add_argument("--stem", default=None, metavar="<stem>",
         help="optional: process only this stem instead of the full queue")
 
-    p_triage = sub.add_parser("triage",
-        help="walk through non-PASS clips, dispatch the right repair tool per clip")
-    p_triage.add_argument("--auto", action="store_true",
-        help="auto-apply override-bucket fixes; still prompts for "
-             "fix/tune/review buckets")
-    p_triage.add_argument("--once", action="store_true",
-        help="dispatch a single clip and exit (default: loop)")
-    p_triage.add_argument("--filter", metavar="SUBSTR",
-        help="only consider clips whose stem matches SUBSTR")
-
-    p_susp = sub.add_parser("suspects",
-        help="decompose a clip's suspect count into per-check buckets and clusters")
-    p_susp.add_argument("stem", metavar="<stem>",
-        help="config_description, e.g. th1_p180_th2_m179")
-    p_susp.add_argument("--gap", type=int, default=None, metavar="FRAMES",
-        help="cluster gap in frames (default 10)")
-
-    p_auto = sub.add_parser("auto-seed",
-        help="auto-derive chaos fix seeds from violation clusters via "
-             "interpolation; re-track with strict-physics")
-    p_auto.add_argument("stem", metavar="<stem>",
-        help="config_description, e.g. th1_p138_th2_m002")
-    p_auto.add_argument("--dry-run", action="store_true",
-        help="print the seed plan; don't write seeds.json or re-track")
-    p_auto.add_argument("--no-track", action="store_true",
-        help="write seeds.json but skip the re-track + verify")
-    p_auto.add_argument("--gap", type=int, default=None, metavar="FRAMES",
-        help="cluster gap in frames (default 10)")
-    p_auto.add_argument("--max-clean-distance", type=int, default=None,
-        metavar="FRAMES",
-        help="max distance to search for clean anchor (default 20)")
-    p_auto.add_argument("--omega-cap", type=float, default=None,
-        metavar="DEG_PER_S",
-        help="ω cap for verify step (default 2500)")
-
     p_render = sub.add_parser("render",
         help="render the source video with existing tracking overlaid; "
              "no re-tracking, just visualization")
@@ -927,26 +651,6 @@ def build_parser():
         help="skip writing measurements/<stem>/chaos_analyze.png")
     p_analyze.add_argument("--n-c", type=int, default=None, metavar="N",
         help="random c values for the 0-1 test (default 50)")
-
-    p_fric = sub.add_parser("friction-fit",
-        help="fit a friction model (exponential / power-law) to the "
-             "clip's mechanical-energy decay")
-    p_fric.add_argument("stem", metavar="<stem>",
-        help="config_description, e.g. th1_p044_th2_m001")
-    p_fric.add_argument("--smooth-window", type=float, default=None,
-        metavar="SECONDS",
-        help="moving-mean window for the energy envelope (default 0.5s)")
-    p_fric.add_argument("--no-plot", action="store_true",
-        help="skip writing friction_fit.png")
-
-    p_fcmp = sub.add_parser("friction-compare",
-        help="run friction_fit across every clip; compare τ vs initial amplitude")
-    p_fcmp.add_argument("--filter", metavar="SUBSTR",
-        help="only clips whose stem contains SUBSTR")
-    p_fcmp.add_argument("--pass-only", action="store_true",
-        help="only include currently-PASS clips")
-    p_fcmp.add_argument("--smooth-window", type=float, default=None,
-        metavar="SECONDS")
 
     p_poin = sub.add_parser("poincare",
         help="Phase 2 — true 2D Poincaré section at theta2_abs=0, upward")
@@ -1018,22 +722,14 @@ HANDLERS = {
     "status":     cmd_status,
     "report":     cmd_report,
     "roadmap":    cmd_roadmap,
-    "hsv-probe":  cmd_hsv_probe,
     "audit":      cmd_audit,
-    "tune":       cmd_tune,
     "track":    cmd_track,
-    "fix":      cmd_fix,
     "override": cmd_override,
     "verify":   cmd_verify,
     "bulk":     cmd_bulk,
     "next":     cmd_next,
-    "triage":   cmd_triage,
-    "suspects":  cmd_suspects,
-    "auto-seed":    cmd_auto_seed,
     "render":       cmd_render,
     "analyze":          cmd_analyze,
-    "friction-fit":     cmd_friction_fit,
-    "friction-compare": cmd_friction_compare,
     "poincare":         cmd_poincare,
     "lyapunov":         cmd_lyapunov,
     "driven-poincare":    cmd_driven_poincare,
