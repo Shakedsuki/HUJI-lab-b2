@@ -25,7 +25,7 @@ except (AttributeError, OSError):
 
 _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, _THIS_DIR)
-from paths import MEAS_DIR, EXPERIMENTS, FIGURES_DIR  # noqa: E402
+from paths import MEAS_DIR, EXPERIMENTS, FIGURES_DIR, clip_dir  # noqa: E402
 from figures_paths import figure_path                  # noqa: E402
 
 ROOT     = os.path.normpath(os.path.join(_THIS_DIR, "..", ".."))
@@ -72,7 +72,7 @@ def load_tracked_stems():
 
 
 def has_verification(stem):
-    return os.path.exists(os.path.join(MEAS_DIR, stem, "verification.csv"))
+    return os.path.exists(os.path.join(clip_dir(stem), "verification.csv"))
 
 
 def run_suite(stems, suite, force, label):

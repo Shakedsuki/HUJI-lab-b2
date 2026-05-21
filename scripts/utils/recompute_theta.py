@@ -33,7 +33,7 @@ except (AttributeError, OSError):
 
 _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, _THIS_DIR)
-from paths import MEAS_DIR, REPO_ROOT  # noqa: E402
+from paths import MEAS_DIR, REPO_ROOT, clip_dir, iter_clip_dirs  # noqa: E402
 from thresholds import PIVOT  # noqa: E402
 
 
@@ -95,15 +95,12 @@ def main():
 
     print(f"Using PIVOT = {PIVOT}")
 
-    meas_root = MEAS_DIR
     if args.stem:
-        targets = [args.stem]
+        targets = [(args.stem, clip_dir(args.stem))]
     else:
-        targets = sorted(d for d in os.listdir(meas_root)
-                         if os.path.isdir(os.path.join(meas_root, d)))
+        targets = list(iter_clip_dirs())
 
-    for stem in targets:
-        meas_dir = os.path.join(meas_root, stem)
+    for stem, meas_dir in targets:
         n_upd, n_tot = recompute_one(meas_dir)
         if n_tot == 0:
             print(f"  {stem}: skipped (no tracking.csv)")

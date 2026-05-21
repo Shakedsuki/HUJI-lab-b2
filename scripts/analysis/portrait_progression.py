@@ -47,7 +47,7 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import Normalize
 
 sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "utils")))
-from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT, clip_dir  # noqa: E402
 EXPERIMENTS_FILE = EXPERIMENTS
 from figures_paths import aggregate_path, mirror_to_ready  # noqa: E402
 
@@ -95,7 +95,7 @@ def is_passing(e):
     return e.get("audit_new_status") == "PASS" or bool(e.get("manual_accept"))
 
 def load_traj(stem, arm):
-    csv_path = os.path.join(MEAS_DIR, stem, "verification.csv")
+    csv_path = os.path.join(clip_dir(stem), "verification.csv")
     if not os.path.exists(csv_path):
         return None, None, None
     th_col = f"theta{arm}_deg"

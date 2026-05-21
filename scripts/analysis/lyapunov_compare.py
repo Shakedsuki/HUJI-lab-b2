@@ -37,7 +37,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "utils")))
-from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT, clip_dir  # noqa: E402
 
 LYAP_SCRIPT      = os.path.join(REPO_ROOT, "scripts", "analysis", "lyapunov.py")
 
@@ -105,7 +105,7 @@ def collect(args):
         if args.pass_only and not is_passing(e):
             continue
 
-        meas_csv = os.path.join(MEAS_DIR, stem, "verification.csv")
+        meas_csv = os.path.join(clip_dir(stem), "verification.csv")
         if not os.path.exists(meas_csv):
             continue
 

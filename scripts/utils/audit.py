@@ -48,7 +48,7 @@ except (AttributeError, OSError):
     pass
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT, clip_dir  # noqa: E402
 
 VERIFY_SCRIPT    = os.path.join(REPO_ROOT, "scripts", "processing",
                                 "verify_tracking.py")
@@ -142,7 +142,7 @@ def audit_one(stem, *, skip_reverify=False, omega_cap=2500.0,
       "WARN" or "FAIL" when audited via --upgrade (so the table can
       show the would-be promotion arrow).
     """
-    meas_dir = os.path.join(MEAS_DIR, stem)
+    meas_dir = clip_dir(stem)
     if not os.path.exists(os.path.join(meas_dir, "tracking.csv")):
         return {"stem": stem, "error": "no tracking.csv"}
 

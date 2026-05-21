@@ -47,7 +47,7 @@ except (AttributeError, OSError):
     pass
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from paths import VIDEOS_DIR, MEAS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
+from paths import VIDEOS_DIR, MEAS_DIR, EXPERIMENTS, REPO_ROOT, clip_dir  # noqa: E402
 from thresholds import (  # noqa: E402
     CROP_X_START, CROP_X_END,
     PIVOT, ARM_LENGTH_PX,
@@ -161,7 +161,7 @@ def main():
     args = ap.parse_args()
 
     entry    = resolve_entry(args.stem)
-    meas_dir = os.path.join(MEAS_DIR, args.stem)
+    meas_dir = clip_dir(args.stem)
     tracking = load_tracking(meas_dir)
     rows_by_frame = {int(r["frame"]): r for r in tracking}
     n_total  = len(tracking)

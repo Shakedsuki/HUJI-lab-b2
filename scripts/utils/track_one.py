@@ -46,7 +46,7 @@ except (AttributeError, OSError):
     pass
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT, clip_dir  # noqa: E402
 
 LOG_FILE         = os.path.join(DATA_DIR, "track_one_log.txt")
 
@@ -331,7 +331,7 @@ def parse_args():
 def main():
     args = parse_args()
     video_path, stem, key, entry = resolve_inputs(args)
-    meas_dir = os.path.join(MEAS_DIR, stem)
+    meas_dir = clip_dir(stem)
 
     print(f"track_one: {stem}")
     print(f"  video       : {video_path}")

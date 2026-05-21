@@ -51,7 +51,7 @@ import matplotlib.pyplot as plt
 
 sys.path.insert(0, os.path.normpath(os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "..", "utils")))
-from paths import DATA_DIR, MEAS_DIR, EXPERIMENTS  # noqa: E402
+from paths import DATA_DIR, MEAS_DIR, EXPERIMENTS, clip_dir  # noqa: E402
 from figures_paths import aggregate_path  # noqa: E402
 from driven_helpers import (load_driven_csv, strobe_sample,  # noqa: E402
                             list_tracked_clips)
@@ -108,7 +108,7 @@ def collect_strobe_points(matched, transient_s):
     per_clip = []
     flat_rows = []  # (stem, x, th1, om1)
     for stem, entry, x_val in matched:
-        csv_path = os.path.join(MEAS_DIR, stem, "verification.csv")
+        csv_path = os.path.join(clip_dir(stem), "verification.csv")
         try:
             t, th1, _, om1, _ = load_driven_csv(csv_path)
         except SystemExit as e:
