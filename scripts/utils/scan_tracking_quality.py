@@ -19,19 +19,19 @@ FAIL clips sort to the top.
 
 Usage
 ~~~~~
-    CHAOS_PHASE=week4-pendulum-motor-driven \\
+    CHAOS_PHASE=week5-6-pendulum-motor-driven \\
         python scripts/utils/scan_tracking_quality.py
 
     # Subset to one sweep
-    CHAOS_PHASE=week4-pendulum-motor-driven \\
+    CHAOS_PHASE=week5-6-pendulum-motor-driven \\
         python scripts/utils/scan_tracking_quality.py --filter 3.2V
 
     # Show only FAILs
-    CHAOS_PHASE=week4-pendulum-motor-driven \\
+    CHAOS_PHASE=week5-6-pendulum-motor-driven \\
         python scripts/utils/scan_tracking_quality.py --flagged-only
 
     # Also export CSV
-    CHAOS_PHASE=week4-pendulum-motor-driven \\
+    CHAOS_PHASE=week5-6-pendulum-motor-driven \\
         python scripts/utils/scan_tracking_quality.py --csv data/tracking_quality.csv
 """
 

@@ -10,9 +10,9 @@ clips, fits a circle to the collected pixel positions, and reports:
 Also writes a diagnostic PNG showing detected positions + fitted circle.
 
 Usage:
-    python week4-pendulum-motor-driven/calibrate_pivot.py
-    python week4-pendulum-motor-driven/calibrate_pivot.py --videos 3V_1Hz.mov 4V_2Hz.mov
-    python week4-pendulum-motor-driven/calibrate_pivot.py --hsv-h 40 100 --hsv-s 80 255 --hsv-v 40 255
+    python experiments/week5-6-pendulum-motor-driven/calibration/calibrate_pivot.py
+    python experiments/week5-6-pendulum-motor-driven/calibration/calibrate_pivot.py --videos 3V_1Hz.mov 4V_2Hz.mov
+    python experiments/week5-6-pendulum-motor-driven/calibration/calibrate_pivot.py --hsv-h 40 100 --hsv-s 80 255 --hsv-v 40 255
 """
 
 import argparse
@@ -27,8 +27,11 @@ import matplotlib.pyplot as plt
 from scipy.optimize import least_squares
 
 
-VIDEOS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "videos")
-OUT_DIR    = os.path.dirname(os.path.abspath(__file__))
+# Script lives at <phase_root>/calibration/calibrate_pivot.py — go up one
+# level to reach <phase_root>/videos/.
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+VIDEOS_DIR  = os.path.join(os.path.dirname(_SCRIPT_DIR), "videos")
+OUT_DIR     = _SCRIPT_DIR
 
 # ── Broad starting HSV for the green marker ──────────────────────────────────
 # OpenCV uses H in [0,179], S and V in [0,255].
@@ -158,7 +161,7 @@ def save_diagnostic(all_pts, pivot, arm_px, per_video, out_path):
 def parse_args():
     p = argparse.ArgumentParser(description="Phase 2 PIVOT + ARM_LENGTH_PX calibration.")
     p.add_argument("--videos", nargs="+", default=None,
-                   help="Video filenames in week4-pendulum-motor-driven/videos/ "
+                   help="Video filenames in experiments/week5-6-pendulum-motor-driven/videos/ "
                         "(default: all .mov files)")
     p.add_argument("--hsv-h", nargs=2, type=int,
                    default=[DEFAULT_H_MIN, DEFAULT_H_MAX],

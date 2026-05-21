@@ -205,7 +205,7 @@ See `scripts/analysis/` for the shared pendulum analysis scripts.
 
 ## 7. Circuit Diagram
 
-File: `week4-pendulum-motor-driven/docs/driven_pendulum_circuit.html`  
+File: `experiments/week5-6-pendulum-motor-driven/docs/driven_pendulum_circuit.html`  
 HTML/CSS annotated diagram with:
 - Three input blocks (function generator, Ch1 relay power, Ch2 drill power)
 - DPDT relay switching logic
