@@ -1,133 +1,210 @@
-# Handoff — 3.2V family video-by-video visual triage
+# Handoff — 3.2V tracker rebuild + video-by-video verification
 
-Session ended **2026-05-21** (second session of the day). The first session of the day fixed the wall-fabric wrong-blob problem (see `git log` PR #43); this session added per-batch rig calibration (PR #45) and shipped most of the 3.2V data refresh (PRs #46, #47). The session was halted after the user spotted a **visible problem in 3.2V_0.9Hz's overlay video that the numerical stats did not reveal**. Next session must triage video-by-video with visual verification as the primary acceptance bar.
+Session ended **2026-05-21** (third session of the day). This session
+rebuilt the BGR tracker on top of the previous session's bbox/porthole
+crop with three more layers of fixes, then began walking the 3.2V
+family one clip at a time under the new pipeline. **9 of 34 3.2V clips
+visually verified end-to-end** before handoff to the user, who is
+running the remaining bulk re-track + render themselves in PowerShell.
 
 ---
 
 ## TL;DR — current state
 
-- **Code is solid and shipped.** ROI replaces the wall-fabric gate (PR #43). Per-batch pivot/arm resolver (PR #45) is correct on 3.2V_1.34Hz visually. `overlay_video.py` exists for fast sanity-check renders (PR #44).
-- **21 of 33 3.2V clips re-tracked with new pivot, all 0.00% dropout numerically.** Shipped in PRs #46 (0.9–1.15 Hz, 13 clips) and #47 (1.16–1.23 Hz, 8 clips, UNVERIFIED).
-- **12 clips still un-tracked with the new pivot**: 1.24, 1.25, 1.26, 1.27, 1.28, 1.29, 1.30, 1.31, 1.32, 1.33_1, 1.33_2, 1.34.
-- **3.2V_1Hz is in the failed pile** — 1.36% dropout, predates the 3.2V rig (matches the 3V/4V calibration). Needs dedicated triage.
-- **Master tip:** `ab45570` (PR #47 merge). Worktree branch: `claude/gifted-yalow-74debc` (now merged + presumably already in main via `git pull origin master`).
+- **Tracker pipeline is final for this phase.** Detection: tight
+  4·arm bbox + inscribed disc mask + green-proximity disk for red.
+  Centroids: sub-pixel floats (no int truncation). Rigid-arm
+  constraint projection onto pivot-circle and green-circle. Light
+  5-frame median smoother on positions, then re-project. Phase
+  string in CSV is `"driven"` (was `"free_swing"`).
+- **Overlay rendering is final.** Hard crop to 6·arm bbox around the
+  pivot with `BORDER_REPLICATE` padding, circular porthole crop with
+  corners filled by the median frame colour. Three constraint
+  circles (yellow / green / red, each radius = arm length) drawn
+  every frame. Clip-id header `<voltage>V  <freq>Hz` at the top-left.
+  Filename: `<stem>_overlay.mp4` (not the old ambiguous `overlay.mp4`).
+- **Verification tally was reset this session.** Old
+  `tracking_quality=verified` flags were auto-derived from dropout%
+  under the buggy tracker — not credible. Wiped clean; only clips
+  watched end-to-end under the new tracker count as verified.
+- **Tooling:** `scripts/utils/bulk_retrack_render.py` (sequential) and
+  `scripts/utils/parallel_retrack_render.py` (worker pool) wrap the
+  per-clip pipeline: copy video → re-track → render. Both honour
+  `--filter`, `--skip-rendered`, `--skip <stems>`, `--workers N`.
+- **Master tip:** `04b778f` (PR #55 — gitignore tweak). Worktree
+  branch: `claude/jolly-torvalds-e44a90`, also fully merged.
 
-## The open problem (next session's main task)
+## 3.2V family tally (34 clips total)
 
-The user identified a **visual problem in 3.2V_0.9Hz's overlay** that the numerical checks all passed:
-- 0% dropout
-- Green circle fit matches the canonical 3.2V pivot (583, 331) within sub-pixel
-- Arm-length distribution healthy (median 154, max 164)
-- Detection residual std 0.58 px
+```
+verified  (9):  0.9Hz, 1.28Hz, 1.29Hz, 1.30Hz, 1.31Hz, 1.32Hz,
+                1.33Hz_1, 1.33Hz_2, 1.34Hz
+                — visually approved end-to-end under the new tracker
 
-**The user didn't describe what they saw yet — ask them first.** Possible failure modes the stats can't catch:
-- Red marker visibly landing on the wrong physical object on some frames despite passing geometry checks
-- Yellow pivot dot off the joint (rendering issue, not tracking)
-- Theta1/theta2 jumps not reflected in dropout
-- Time-localized issue (specific frames have markers in wrong places)
+untracked (25): 0.91-0.99Hz (9), 1.00Hz, 1.09Hz, 1.15-1.27Hz (13),
+                1Hz (failed pile; original-rig calibration)
+```
 
-**The methodology this session got wrong** was "stats look good → ship". Next session's bar: **visual verification of the overlay video is the primary acceptance criterion**, not dropout %.
+22 of those 25 untracked already have overlay.mp4s rendered (pool ran
+through them) — they just haven't been visually reviewed yet. 12 are
+truly missing (overlay not yet rendered).
 
-### Process for each clip (video-by-video, no bulk)
+## Next session's main task
+
+**Walk through the remaining 25 clips in the 3.2V family, in your
+preferred order, and approve each via the overlay video.** Methodology:
 
 ```powershell
-$stem = "<clip>"
-cd C:\dev\chaos
+# In C:\dev\chaos (main repo, not the worktree — videos live here)
 $env:CHAOS_PHASE = "week4-pendulum-motor-driven"
-python scripts/processing/bgr_tracker.py week4-pendulum-motor-driven/videos/$stem.mov --force
-python scripts/analysis/overlay_video.py --stem $stem
-start week4-pendulum-motor-driven/measurements/$stem/overlay.mp4
-# ── user watches the full overlay ──
-# If visual problem: stop, triage with diagnose_frames.py / direct frame inspection.
-# If clean: move to next clip.
+
+# 1. Re-track + render anything that needs it (skips already-verified
+#    and already-rendered):
+python scripts/utils/parallel_retrack_render.py --filter 3.2V_ `
+    --order desc --skip-rendered --workers 2
+
+# 2. Open an overlay
+start week4-pendulum-motor-driven\measurements\3.2V_<stem>\3.2V_<stem>_overlay.mp4
+
+# 3. Watch end-to-end. If clean, mark verified:
+python -c "import json; p='week4-pendulum-motor-driven/data/experiments.json'; \
+  r=json.load(open(p)); \
+  [e.update(tracking_quality='verified', verification_date='2026-05-22', \
+            verification_notes='Visually verified.') \
+   for e in r.values() if e.get('config_description')=='3.2V_<stem>']; \
+  json.dump(r, open(p,'w'), indent=2)"
 ```
 
-**Do not run more than one clip at a time.** Do not batch. Do not ship until each clip is individually approved by the user.
+Recommended order: highest frequency first (continuing the
+descending-frequency walk from this session). The 1.20–1.27 range is
+the most chaotic and the most likely to expose any remaining tracker
+edge cases.
 
-### Recommended starting order
+### Known race in parallel_retrack_render
 
-1. **3.2V_0.9Hz** (re-render and inspect; figure out what the user saw)
-2. Then walk the previously-shipped clips that have NOT been visually verified yet:
-   - PR #46's 13 clips (0.91–1.15 Hz) — only 1.34Hz was visually verified before shipping
-   - PR #47's 8 clips (1.16–1.23 Hz) — none visually verified
-3. Then the 12 still-un-tracked clips (1.24–1.34Hz including 1.33×2)
-4. Then 3.2V_1Hz from the failed pile
+If the user marks a clip verified WHILE the bulk pool is still running
+and the pool's worker for that clip races, the pool's write will
+clobber the verified flag back to `untracked`. **Workaround:** mark
+clips verified only after the pool finishes (or kill the pool, mark,
+restart with `--skip-rendered`). Happened once this session on
+3.2V_1.29Hz — re-marked at end of session.
 
-## What landed this session
+The fix is a real lock on `experiments.json` or a "re-tracking
+verified clips downgrades them" rule — leave for next session.
+
+## What landed this session (PRs #49 → #55)
 
 ```
-ab45570 Merge PR #47 — data: 3.2V part 2 (1.16-1.23 Hz, UNVERIFIED)
-57c448c Merge PR #46 — data: 3.2V part 1 (0.9-1.15 Hz, 13 clips, all 0% dropout)
-cb81296 Merge PR #45 — per-batch rig calibration + left-column overlay strip
-97ab436 Merge PR #44 — overlay_video: standalone tracking-overlay renderer
-4ad3eeb Merge PR #43 — bgr_tracker: replace geometry gate with green-proximity ROI
+04b778f Merge PR #55 — gitignore: exclude *_overlay_compressed.mp4
+412e429 Merge PR #54 — bulk + parallel retrack-render helpers; 14 tracks
+5bee46b Merge PR #53 — clip-id header + <stem>_overlay.mp4 naming; 5 verified
+b25f71e Merge PR #52 — reset tracking_quality tally for new pipeline
+f9e0a54 Merge PR #51 — 5-frame median smoothing on positions
+df811c5 Merge PR #50 — sub-pixel float centroids + rigid-arm projection
+37d45d2 Merge PR #49 — porthole crop, three constraint circles, driven phase
 ```
 
-Key insights from this session:
-- **Calibration mismatch on 3.2V**: rig was repositioned between 3V/4V calibration and 3.2V sweep recording. Pivot moved ~80 px left, arm length ~5% longer. Now handled by `thresholds.get_pivot_arm(stem)`.
-- **3.2V_1Hz is from the OLD rig** — its arm-length signature (median 152, max 159) matches the 3V/4V calibration, not the 3.2V rig (median 156, max 165). It's excluded from the new branch in `get_pivot_arm`.
-- **The wall-fabric ROI works on every clip we tested numerically** — the issue surfaced this session is something different (visual, possibly off-marker detection passing the ROI gate).
+Key insight progression this session:
+
+1. **Punchlist from the user's 3.2V_0.9Hz watch:** jitter at rest,
+   FREE_SWING label wrong, three constraint circles missing, wrong-blob
+   red at t≈12.796s, crop to physically-reachable disc, red short of
+   sticker. Six items.
+2. **Cosmetic block first** (PR #49 → PR #53 cosmetic parts): DRIVEN
+   label, three circles, real bbox crop, then upgraded to circular
+   porthole at user's request when the rectangle crop felt incomplete.
+3. **Then physics block:** Jitter at rest had three layers —
+   int-truncation noise (killed by sub-pixel float), arm-length noise
+   (killed by rigid-arm projection), broadband detector noise
+   (suppressed by 5-frame median). Each layer measured; ω std at rest
+   went 3 → 1.7 → 1.33 °/s. Display rounds to 0 °/s at rest now.
+4. **The projection layer also fixes the red-short-of-sticker bug**
+   geometrically: radial projection onto the green circle pulls
+   on-rod red detections out to the actual marker tip.
+5. **The wrong-blob bug at t≈12.796s was NOT explicitly triaged.**
+   The new bbox + green-proximity disc may already have killed it
+   (the offending t=12.796s frame on the new 3.2V_0.9Hz overlay
+   looked clean). Verify when you re-visit the punchlist.
 
 ## Active code paths
 
-- **Tracker:** `scripts/processing/bgr_tracker.py` — BGR detection + green-proximity ROI + per-batch pivot
-- **Sanity-check render:** `scripts/analysis/overlay_video.py` — fast overlay-only render (~10–20 s/clip)
-- **Full render:** `scripts/analysis/combined_video.py` — overlay + 3 phase-space panels (slow, ~1–2 min/clip)
-- **Frame-level diagnostic:** `scripts/utils/diagnose_frames.py` — grid of N frames with crosshairs
-- **Regression:** `scripts/utils/verify_bgr_baseline.py` — 3/3 MATCH on 3V_1Hz / 4V_0.6Hz / 4V_1.9Hz reference clips
-- **Per-batch resolver:** `scripts/utils/thresholds.py::get_pivot_arm(stem)` — pivot/arm constants per batch
-- **Cohen's original (never modify):** `week4-pendulum-motor-driven/legacy/get_video_coords.py`
+- **Tracker:** `scripts/processing/bgr_tracker.py`
+  - `reachable_bbox(pivot, arm, frame_shape)` — tight 4·arm bbox.
+  - `_project_to_circle(px, py, qx, qy, r)` — radial rigid-arm projection.
+  - `detect_markers_bgr(frame, pivot, arm, red_search_r_sq)` — bbox
+    crop + disc mask + green-proximity disc + projection + float centroids.
+  - Post-loop: 5-frame median on (x_green, y_green, x_red, y_red),
+    re-projection, theta recompute.
+  - Writes phase="driven" to CSV.
+
+- **Sanity-check render:** `scripts/analysis/overlay_video.py`
+  → writes `<stem>_overlay.mp4` (was `overlay.mp4`).
+
+- **Full render:** `scripts/analysis/combined_video.py`
+  - `make_left_panel(frame, ..., stem=None)` — clip-id header parsed
+    from stem, three constraint circles, circular porthole.
+  - Worth a re-run on a Week-4 clip if you want a phase-portrait
+    render after verification.
+
+- **Helpers:**
+  - `scripts/utils/bulk_retrack_render.py` — sequential
+  - `scripts/utils/parallel_retrack_render.py` — worker pool
+
+- **Cohen's original (never modify):**
+  `week4-pendulum-motor-driven/legacy/get_video_coords.py`
 
 ## What's queued / pending
 
 | | | |
 |---|---|---|
-| **3.2V_0.9Hz visual problem** | User saw something. Ask, reproduce, classify, fix. | open |
-| **Re-verify PR #46 + #47 data** | 21 clips shipped without visual check. Walk each via overlay. | open |
-| **Track remaining 12 3.2V clips** | 1.24-1.34Hz + 1.33×2 still on the old (pre-pivot-fix) data | open |
-| **Failed pile** | 3.2V_1Hz (1.36% dropout, original rig). Dedicated triage. | open |
-| **3V/4V clips** | Use canonical pivot, never re-tracked this session. Should still be correct but unverified for visual issues. | open |
+| **3.2V remaining 25** | Re-track + render (if not done) + visual verify each | open, user driving |
+| **Wrong-blob @ t≈12.796s (punchlist #4)** | Re-watch on the new 3.2V_0.9Hz overlay to confirm it's gone | likely already fixed, unverified |
+| **Race in parallel_retrack_render** | Real file lock OR "re-track downgrades verified" rule | open |
+| **Stale tools needing CROP_X_START rewrite** | `verify_bgr_baseline.py`, `diagnose_frames.py`, `capture_bgr_baseline.py` | open — also baseline check is no longer credible because new tracker diverges from Cohen by design |
+| **3V / 4V clips** | Never re-tracked under new tracker; old `tracking_quality` cleared in PR #52. Will need same video-by-video pass before any cross-voltage analysis. | open |
+| **Physics analysis** | Poincaré, bifurcation, Lyapunov on the verified clips. Use `driven_helpers.load_driven_csv` (accepts both "driven" and "free_swing" phase labels). | open, blocked on verification |
 
 ## How to resume
 
 ```powershell
 cd C:\dev\chaos
-git log --oneline -8                              # confirm at master tip ab45570 or later
+git log --oneline -5                              # should top with 04b778f
 $env:CHAOS_PHASE = "week4-pendulum-motor-driven"
 
-# Verify the pipeline is intact
-python scripts/utils/verify_bgr_baseline.py --all  # expect 3/3 MATCH
+# Render any remaining overlays:
+python scripts/utils/parallel_retrack_render.py --filter 3.2V_ `
+    --order desc --skip-rendered --workers 2
 
-# Re-render the overlay the user reported a problem with
-python scripts/analysis/overlay_video.py --stem 3.2V_0.9Hz
-start week4-pendulum-motor-driven/measurements/3.2V_0.9Hz/overlay.mp4
+# Open one and watch:
+start week4-pendulum-motor-driven\measurements\3.2V_1.27Hz\3.2V_1.27Hz_overlay.mp4
 
-# Then ask the user: "What did you see in 3.2V_0.9Hz's overlay?"
+# When clean, mark verified (see snippet above in "Next session's main task")
 ```
 
 ## User preferences observed this session
 
-- **Visual sanity check IS the test.** Numerical 0% dropout means nothing if the overlay shows wrong-blob frames or off-marker detections. This is the lesson of this session — don't ship without visually verifying.
-- **No bulk.** Per the user's explicit cadence: track one clip → triage if <99% → fix → re-track → next clip. The user broke their own rule for efficiency once we'd seen many clean clips, and that's what bit us.
-- **Failed pile is OK.** Clips below 99% get parked in a documented "failed pile" rather than blocking progress. They're triaged separately at the end.
-- **Per-batch calibration is hardcoded constants, not auto-fit per-clip.** `get_pivot_arm(stem)` uses stem prefix. New batches → add new constants + update the resolver.
-- **Cohen's `get_video_coords.py` is untouchable.** New behavior goes into wrapper scripts (`bgr_tracker.py`).
-- **"Ship it" = push + PR + merge + pull-to-main.** Standard cycle. PRs are auto-merged once user gives the word.
-- **Aggressive minimalism.** Don't add new gates/thresholds/safeguards unless absolutely needed. ROI removed the old gate — strictly better single mechanism.
-- **Conversation cadence:** user wants short, focused updates per action. Long-form planning OK when proposing a strategy change.
-
-## Quick reference: per-batch constants in thresholds.py
-
-```python
-# Canonical 3V/4V batch (and 3.2V_1Hz which predates the 3.2V sweep)
-PIVOT         = (663, 332)
-ARM_LENGTH_PX = 153
-
-# 3.2V sweep batch (rig was repositioned ~80 px left)
-PIVOT_3_2V         = (583, 331)
-ARM_LENGTH_PX_3_2V = 161
-
-# Resolver: get_pivot_arm(stem) -> (pivot, arm_length_px)
-# - if stem.startswith("3.2V_") and stem != "3.2V_1Hz": returns PIVOT_3_2V, ARM_LENGTH_PX_3_2V
-# - else: returns PIVOT, ARM_LENGTH_PX
-```
+- **Visual is the test.** Numerical 0% dropout means nothing if the
+  overlay shows wrong-blob or wandering markers. Walk every clip
+  end-to-end before approving.
+- **No bulk verification.** The 21 clips PRs #46/#47 shipped UNVERIFIED
+  are NOT trustworthy until each is watched. Tally reset enforces this.
+- **"Render the next two ahead"** — pre-pipeline overlays so the user
+  doesn't have to wait between approvals. Worker pool for the bulk.
+- **Architectural fixes preferred over band-aids** — the int→float
+  precision leak was fixed at the source (CSV stores floats), not
+  patched in display rounding. The "filter at source for consistency"
+  argument carried.
+- **Push back on fixes that change physics.** The user explicitly
+  challenged whether the constraint-circle projection was the right
+  fix for jitter; turned out projection preserves angle so it
+  doesn't actually move θ — but the challenge was right. Math out
+  what each layer does to the data before shipping.
+- **Self-identifying renders.** Filename includes the stem; header
+  inside the video includes voltage + frequency. The user runs many
+  clips in different players.
+- **"Ship it" = push + PR + merge + pull-to-main.** Each coherent
+  unit shipped as its own PR. 7 PRs (#49–#55) this session.
+- **The user takes over when the work is mechanical.** Parallel pool
+  was running on the user's machine and slowing it down; user opted
+  to run it themselves in PowerShell with their own throttling. The
+  agent stops, hands off the command line, gets out of the way.

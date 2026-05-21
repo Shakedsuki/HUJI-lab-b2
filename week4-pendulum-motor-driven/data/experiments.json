@@ -1461,7 +1461,7 @@
     "scale_cm_per_px": 0.2056,
     "measurements_dir": "measurements/3.2V_1.29Hz",
     "csv_file": "tracking.csv",
-    "tracking_quality": "untracked",
+    "tracking_quality": "verified",
     "notes": "",
     "tracker": "bgr",
     "theta1_initial": -0.441,
@@ -1470,7 +1470,9 @@
     "omega2_initial": -6.1151,
     "duration_s": 127.327,
     "n_frames": 7632,
-    "dropout_rate_pct": 0.0
+    "dropout_rate_pct": 0.0,
+    "verification_date": "2026-05-21",
+    "verification_notes": "Visually verified end-to-end under new tracker. Perfect tracking."
   },
   "3.2V_1.30Hz": {
     "video_file": "3.2V_1.30Hz.mov",
