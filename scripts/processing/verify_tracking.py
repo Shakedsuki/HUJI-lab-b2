@@ -43,7 +43,7 @@ except (AttributeError, OSError):
 
 sys.path.insert(0, os.path.normpath(
     os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "utils")))
-from paths import MEAS_DIR  # noqa: E402
+from paths import MEAS_DIR, clip_dir  # noqa: E402
 
 
 SG_WINDOW = 7
@@ -71,7 +71,7 @@ def parse_args():
 
 def resolve_paths(args):
     if args.stem:
-        meas_dir = os.path.join(MEAS_DIR, args.stem)
+        meas_dir = clip_dir(args.stem)
         csv_path = os.path.join(meas_dir, "tracking.csv")
         if not os.path.exists(csv_path):
             print(f"ERROR: tracking.csv not found for stem '{args.stem}'")

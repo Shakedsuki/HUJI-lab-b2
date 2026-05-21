@@ -40,7 +40,7 @@ from matplotlib.cm import ScalarMappable
 from matplotlib.colors import Normalize
 
 sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "utils")))
-from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT, clip_dir  # noqa: E402
 
 POINCARE_SCRIPT  = os.path.join(REPO_ROOT, "scripts", "analysis", "poincare.py")
 
@@ -85,7 +85,7 @@ def theta1_release(reg, stem):
     return abs(e.get("theta1_release", 0)) if e else 0.0
 
 def ensure_poincare_csv(stem):
-    csv_path = os.path.join(MEAS_DIR, stem, "poincare.csv")
+    csv_path = os.path.join(clip_dir(stem), "poincare.csv")
     if os.path.exists(csv_path):
         return csv_path
     print(f"  generating poincare.csv for {stem} ...")

@@ -31,7 +31,7 @@ from matplotlib import cm
 import matplotlib.colors as mcolors
 
 sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "utils")))
-from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT, clip_dir  # noqa: E402
 
 LYAP_CSV = os.path.join(REPO_ROOT, "data", "lyapunov_summary.csv")
 
@@ -61,7 +61,7 @@ def load_lyap_index():
     return out
 
 def load_poincare(stem):
-    p = os.path.join(MEAS_DIR, stem, "poincare.csv")
+    p = os.path.join(clip_dir(stem), "poincare.csv")
     if not os.path.exists(p):
         return None
     df = pd.read_csv(p)

@@ -41,7 +41,7 @@ from scipy.signal import savgol_filter
 
 _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(_THIS_DIR, "..", "utils"))
-from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT, clip_dir  # noqa: E402
 from figures_paths import figure_path, mirror_to_ready  # noqa: E402
 
 # ─────────────────────────────────────────────
@@ -65,7 +65,7 @@ def parse_args():
 def resolve_paths(args):
     """Returns (csv_path, output_dir, stem_label, force_save)."""
     if args.stem:
-        meas_dir = os.path.join(MEAS_DIR, args.stem)
+        meas_dir = clip_dir(args.stem)
         csv_path = os.path.join(meas_dir, "tracking.csv")
         if not os.path.exists(csv_path):
             print(f"ERROR: tracking.csv not found for stem '{args.stem}'")

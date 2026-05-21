@@ -55,7 +55,7 @@ import matplotlib.pyplot as plt
 from scipy.spatial import cKDTree
 
 sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "utils")))
-from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT, clip_dir  # noqa: E402
 from figures_paths import figure_path, mirror_to_ready  # noqa: E402
 
 def parse_args():
@@ -82,7 +82,7 @@ def parse_args():
 
 def resolve_io(args):
     if args.stem:
-        meas = os.path.join(MEAS_DIR, args.stem)
+        meas = clip_dir(args.stem)
         return os.path.join(meas, "verification.csv"), meas, args.stem
     if args.csv:
         out_dir = os.path.dirname(os.path.abspath(args.csv))

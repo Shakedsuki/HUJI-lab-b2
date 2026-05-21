@@ -4,7 +4,7 @@ verify_bgr_baseline.py
 Regression check: assert that the integrated bgr_tracker.py produces
 output identical to the frozen baselines from
 scripts/utils/capture_bgr_baseline.py — which themselves are
-provably what reference/cohen_get_video_coords.py (cohen) produces, because the
+provably what legacy/cohen_get_video_coords.py (cohen) produces, because the
 detection body is copy-pasted verbatim.
 
 This is the acceptance gate for the BGR-tracker integration: if all
@@ -48,7 +48,7 @@ import sys
 
 os.environ.setdefault("CHAOS_PHASE", "week5-6-pendulum-motor-driven")
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from paths import PHASE_ROOT, MEAS_DIR, REPO_ROOT  # noqa: E402
+from paths import PHASE_ROOT, MEAS_DIR, REPO_ROOT, clip_dir  # noqa: E402
 from thresholds import PIVOT, CROP_X_START  # noqa: E402
 
 BASELINES_DIR = os.path.join(PHASE_ROOT, "baselines")
@@ -91,7 +91,7 @@ def load_baseline(stem):
 
 
 def load_tracking(stem):
-    path = os.path.join(MEAS_DIR, stem, "tracking.csv")
+    path = os.path.join(clip_dir(stem), "tracking.csv")
     if not os.path.exists(path):
         raise SystemExit(f"ERROR: tracking.csv not found: {path}")
     rows = []

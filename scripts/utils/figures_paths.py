@@ -26,13 +26,11 @@ combined_video.py, ring_tracker.py (debug.mp4), friction_compare.py.
 """
 
 import os
-import shutil
 
-from paths import PHASE_ROOT, MEAS_DIR  # noqa: E402
+from paths import PHASE_ROOT  # noqa: E402
 
 FIGURES_DIR = os.path.join(PHASE_ROOT, "figures")
 AGGREGATE   = os.path.join(FIGURES_DIR, "aggregate")
-READY       = os.path.join(MEAS_DIR, "ready")
 
 
 # Canonical figure type names.  Keep the set deliberately small — adding
@@ -89,21 +87,12 @@ def aggregate_path(filename):
     return os.path.join(AGGREGATE, filename)
 
 
-def mirror_to_ready(saved_path):
-    """If a curated copy of this figure exists in measurements/ready/,
-    overwrite it with the freshly-saved file.
+def mirror_to_ready(saved_path):  # noqa: ARG001 — preserved as no-op
+    """Compatibility shim — the measurements/ready/ curated mirror was
+    removed during the experiments/ restructure (the 23 files there
+    were all duplicates of canonical figures under figures/).
 
-    Curation workflow: move any figure into measurements/ready/ to mark
-    it as publication-bound. From then on, every regeneration mirrors
-    there automatically — keeping the ready copy in sync with the
-    latest data without forcing the user to remember which paths to
-    update.
-
-    No-op if no same-named file exists in measurements/ready/, so this
-    is safe to call after every savefig.
+    Calls are kept across the analysis scripts so we don't have to touch
+    them all, but this is now a no-op. Safe to call after savefig.
     """
-    if not os.path.isdir(READY):
-        return
-    target = os.path.join(READY, os.path.basename(saved_path))
-    if os.path.exists(target):
-        shutil.copyfile(saved_path, target)
+    return

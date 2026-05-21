@@ -49,7 +49,7 @@ except ImportError:
     sys.exit(1)
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT, clip_dir  # noqa: E402
 
 EXPERIMENTS_FILE = EXPERIMENTS
 
@@ -276,7 +276,7 @@ def build_row(key, entry, cd):
     keys are used by both sheets; the long_recording sheet appends
     extras from the caller.
     """
-    meas_dir = os.path.join(MEAS_DIR, cd)
+    meas_dir = clip_dir(cd)
     csv_path = os.path.join(meas_dir, "tracking.csv")
     metrics  = compute_dropout_metrics(csv_path)
 
@@ -361,7 +361,7 @@ def build_row(key, entry, cd):
 
 def add_long_recording_extras(row, entry, cd):
     """Tack on the four extra columns for the long_recording sheet."""
-    meas_dir   = os.path.join(MEAS_DIR, cd)
+    meas_dir   = clip_dir(cd)
     verif_csv  = os.path.join(meas_dir, "verification.csv")
     suspects   = count_verification_suspects(verif_csv)
 

@@ -2,7 +2,7 @@
 bgr_tracker.py
 --------------
 Phase 2 marker tracker: BGR colour thresholding + image moments,
-wrapping Cohen's detection logic (reference/cohen_get_video_coords.py — preserved
+wrapping Cohen's detection logic (legacy/cohen_get_video_coords.py — preserved
 verbatim as the regression reference inside
 scripts/utils/capture_bgr_baseline.py) inside canonical pipeline I/O.
 
@@ -76,7 +76,7 @@ except (AttributeError, OSError):
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 _UTILS_DIR  = os.path.abspath(os.path.join(_SCRIPT_DIR, os.pardir, "utils"))
 sys.path.insert(0, _UTILS_DIR)
-from paths import VIDEOS_DIR, MEAS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
+from paths import VIDEOS_DIR, MEAS_DIR, EXPERIMENTS, REPO_ROOT, clip_dir  # noqa: E402
 from thresholds import (  # noqa: E402
     PIVOT,
     ARM_LENGTH_PX,
@@ -398,7 +398,7 @@ def main():
     pivot, arm_length_px = get_pivot_arm(stem)
     red_search_r_sq = (arm_length_px + _RED_SEARCH_SLACK_PX) ** 2
 
-    out_dir = os.path.join(MEAS_DIR, stem)
+    out_dir = clip_dir(stem)
     os.makedirs(out_dir, exist_ok=True)
     out_csv = os.path.join(out_dir, "tracking.csv")
 

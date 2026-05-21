@@ -41,7 +41,7 @@ except (AttributeError, OSError):
 
 _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, _THIS_DIR)
-from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT, clip_dir  # noqa: E402
 EXPERIMENTS_FILE = EXPERIMENTS
 
 VERIFY_SCRIPT = os.path.join(REPO_ROOT, "scripts", "processing", "verify_tracking.py")
@@ -291,7 +291,7 @@ def main():
         print(f"ERROR: video missing on disk: {video_path}")
         return 1
 
-    meas_dir = os.path.join(MEAS_DIR, args.stem)
+    meas_dir = clip_dir(args.stem)
     csv_path = os.path.join(meas_dir, "tracking.csv")
     if not os.path.exists(csv_path):
         print(f"ERROR: tracking.csv missing: {csv_path}")

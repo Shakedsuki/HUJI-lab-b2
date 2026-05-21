@@ -41,7 +41,7 @@ import matplotlib
 
 _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(_THIS_DIR, "..", "utils"))
-from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT, clip_dir  # noqa: E402
 EXPERIMENTS_FILE = EXPERIMENTS
 from figures_paths import figure_path  # noqa: E402
 matplotlib.use('Agg')          # non-interactive backend — much faster offscreen
@@ -98,7 +98,7 @@ def resolve_paths(args):
     the measurement folder.
     """
     if args.stem:
-        meas_dir = os.path.join(MEAS_DIR, args.stem)
+        meas_dir = clip_dir(args.stem)
         csv_path = os.path.join(meas_dir, "tracking.csv")
         if not os.path.exists(csv_path):
             print(f"ERROR: tracking.csv not found for stem '{args.stem}'")

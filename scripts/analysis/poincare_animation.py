@@ -52,7 +52,7 @@ from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 from matplotlib import cm
 import matplotlib.colors as mcolors
 
-from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT, clip_dir, iter_clip_dirs  # noqa: E402
 
 ANIM_INTERVAL_MS = 16       # animation tick (~62 fps display target)
 SOURCE_FPS       = 59.94    # data acquisition rate
@@ -64,20 +64,18 @@ FLASH_DURATION_S = 0.5      # how long the bright flash lingers
 # ─────────────────────────────────────────────
 
 def list_clips():
-    if not os.path.isdir(MEAS_DIR):
-        return []
     out = []
-    for d in sorted(os.listdir(MEAS_DIR)):
-        if os.path.exists(os.path.join(MEAS_DIR, d, "verification.csv")):
-            out.append(d)
+    for stem, d in iter_clip_dirs():
+        if os.path.exists(os.path.join(d, "verification.csv")):
+            out.append(stem)
     return out
 
 def load_clip(stem):
     """Return (t, th1, th2, w1, w2) for the free_swing phase. Skips NaN rows."""
-    csv = os.path.join(MEAS_DIR, stem, "verification.csv")
+    csv = os.path.join(clip_dir(stem), "verification.csv")
     if not os.path.exists(csv):
         # Fallback: tracking.csv + finite diff
-        csv = os.path.join(MEAS_DIR, stem, "tracking.csv")
+        csv = os.path.join(clip_dir(stem), "tracking.csv")
         if not os.path.exists(csv):
             raise FileNotFoundError(f"No data for {stem}")
         df = pd.read_csv(csv)

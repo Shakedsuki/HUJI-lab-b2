@@ -40,7 +40,7 @@ except (AttributeError, OSError):
     pass
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT, clip_dir  # noqa: E402
 
 TRACK_ONE_SCRIPT = os.path.join(REPO_ROOT, "scripts", "utils", "track_one.py")
 BULK_LOG_FILE    = os.path.join(REPO_ROOT, "data", "bulk_tracking_log.json")
@@ -223,7 +223,7 @@ def emit_report(rows):
                 "elapsed_s":   r["elapsed_s"],
             })
             continue
-        meas_dir = os.path.join(MEAS_DIR, cd)
+        meas_dir = clip_dir(cd)
         metrics  = read_verification_metrics(meas_dir)
         if metrics is None:
             results.append({

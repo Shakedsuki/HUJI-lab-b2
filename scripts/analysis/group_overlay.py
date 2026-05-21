@@ -54,7 +54,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "utils")))
-from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT, clip_dir  # noqa: E402
 from figures_paths import aggregate_path, mirror_to_ready  # noqa: E402
 
 # Mirror curate_set.py groups so callers can use either name.
@@ -103,7 +103,7 @@ def resolve_stems(args):
 def load_traj(stem):
     """Load free_swing (t, th1, th2) for a clip. NaN-pad gap rows so
     overlapping clips can be array-aligned by frame index."""
-    path = os.path.join(MEAS_DIR, stem, "verification.csv")
+    path = os.path.join(clip_dir(stem), "verification.csv")
     if not os.path.exists(path):
         return None
     t, th1, th2 = [], [], []

@@ -5,7 +5,7 @@ Capture a per-frame BGR-centroid baseline for one Week 4 clip.
 
 The BGR detection body (colour ranges + fallback chain + moment
 centroids) is COPY-PASTED from
-reference/cohen_get_video_coords.py lines 42-69
+legacy/cohen_get_video_coords.py lines 42-69
 verbatim — Cohen's detection logic is the authoritative reference.
 
 Crop window: `frame[:, CROP_X_START:CROP_X_END, :]` — Cohen's
@@ -79,7 +79,7 @@ def main():
 
     # ============================================================
     # BEGIN VERBATIM BLOCK
-    # Copy-pasted from reference/cohen_get_video_coords.py lines 16-93.
+    # Copy-pasted from legacy/cohen_get_video_coords.py lines 16-93.
     # Only difference: video path is `video_path` (arg) instead of the
     # hardcoded literal, and `frame_idx` is tracked for the CSV.
     # DO NOT REFACTOR THIS BLOCK — it is the regression reference.

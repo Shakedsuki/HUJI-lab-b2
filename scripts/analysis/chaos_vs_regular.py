@@ -29,7 +29,7 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import Normalize
 
 sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "utils")))
-from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT, clip_dir  # noqa: E402
 from figures_paths import aggregate_path, mirror_to_ready  # noqa: E402
 
 sys.path.insert(0, os.path.join(REPO_ROOT, "scripts", "analysis"))
@@ -41,7 +41,7 @@ CHAOTIC_STEM = "th1_p180_th2_m179"
 REGULAR_STEM = "th1_p044_th2_m001"
 
 def load_one(stem):
-    csv = os.path.join(MEAS_DIR, stem, "verification.csv")
+    csv = os.path.join(clip_dir(stem), "verification.csv")
     data = load_free_swing(csv)
     topo = compute_topological(data)
     # K-test on θ₂_abs (the same target chaos_analyze uses for the headline K)

@@ -47,7 +47,7 @@ except (AttributeError, OSError):
     pass
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from paths import MEAS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
+from paths import MEAS_DIR, EXPERIMENTS, REPO_ROOT, clip_dir  # noqa: E402
 from thresholds import DROPOUT_FAIL_PCT  # noqa: E402
 from track_one import compute_verdict, read_verification_metrics  # noqa: E402
 
@@ -61,7 +61,7 @@ def load_registry():
 
 def per_clip_stats(stem):
     """Return {stem, n_frames, n_dropout, dropout_pct, verdict} or None."""
-    meas_dir = os.path.join(MEAS_DIR, stem)
+    meas_dir = clip_dir(stem)
     metrics = read_verification_metrics(meas_dir)
     if metrics is None:
         return None

@@ -203,20 +203,27 @@ def winding_number(t, th1, f_drive, max_denom=6, transient_s=5.0):
     return raw, rational
 
 
-def list_tracked_clips(experiments_dict, measurements_dir):
+def list_tracked_clips(experiments_dict, measurements_dir=None):
     """Return [(stem, exp_entry)] for every clip whose verification.csv
     exists on disk.  Sorted by (f_drive_hz, v_drill_v) for stable output.
 
+    The ``measurements_dir`` parameter is now ignored — clip locations
+    are resolved via ``paths.clip_dir(stem)``, which handles the
+    driven-phase week5/week6 split. Argument kept for backward compat
+    with old callers.
+
     Args:
         experiments_dict: parsed experiments.json contents.
-        measurements_dir: absolute path to experiments/week5-6-pendulum-motor-driven/measurements.
+        measurements_dir: ignored; kept for backward compat.
 
     Returns:
         list of (stem, entry_dict) tuples.
     """
+    # Local import to avoid a circular dependency at module load time.
+    from paths import clip_dir
     out = []
     for stem, entry in experiments_dict.items():
-        vc = os.path.join(measurements_dir, stem, "verification.csv")
+        vc = os.path.join(clip_dir(stem), "verification.csv")
         if not os.path.exists(vc):
             continue
         out.append((stem, entry))

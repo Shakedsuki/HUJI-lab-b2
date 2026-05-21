@@ -50,7 +50,7 @@ import matplotlib.pyplot as plt
 
 sys.path.insert(0, os.path.normpath(os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "..", "utils")))
-from paths import MEAS_DIR, EXPERIMENTS  # noqa: E402
+from paths import MEAS_DIR, EXPERIMENTS, clip_dir  # noqa: E402
 from figures_paths import FIGURES_DIR, mirror_to_ready  # noqa: E402
 from driven_helpers import (parse_stem, load_driven_csv,  # noqa: E402
                             strobe_sample)
@@ -145,7 +145,7 @@ def make_figure(t, th1, om1, t_s, th1_s, om1_s,
 def main():
     args = parse_args()
     stem = args.stem
-    csv_path = os.path.join(MEAS_DIR, stem, "verification.csv")
+    csv_path = os.path.join(clip_dir(stem), "verification.csv")
     if not os.path.exists(csv_path):
         raise SystemExit(f"verification.csv not found at {csv_path}")
 
@@ -163,7 +163,7 @@ def main():
           f"(skipping first {args.transient:.1f} s)")
 
     if not args.no_csv:
-        out_csv = os.path.join(MEAS_DIR, stem, "driven_poincare.csv")
+        out_csv = os.path.join(clip_dir(stem), "driven_poincare.csv")
         with open(out_csv, "w", newline="", encoding="utf-8") as f:
             w = csv.writer(f)
             w.writerow(["t_s", "theta1_deg", "omega1_deg_s"])
