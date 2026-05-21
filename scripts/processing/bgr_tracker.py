@@ -65,6 +65,7 @@ import sys
 
 import cv2
 import numpy as np
+from scipy.ndimage import median_filter
 from tqdm import tqdm
 
 try:
@@ -426,54 +427,101 @@ def main():
     print(f"  fps={fps:.3f}  frames={total_frames}  dt={dt:.5f}s")
     print()
 
-    rows = []
-    n_drop = 0
+    times     = []
+    xg_raw    = []
+    yg_raw    = []
+    xr_raw    = []
+    yr_raw    = []
 
     with tqdm(total=total_frames, desc="bgr_tracker") as pbar:
-        frame_idx = 0
         while True:
             ret, frame = cap.read()
             if not ret:
                 break
             pbar.update(1)
 
-            time_sec = cap.get(cv2.CAP_PROP_POS_MSEC) / 1000.0
+            times.append(cap.get(cv2.CAP_PROP_POS_MSEC) / 1000.0)
             gx, gy, rx, ry = detect_markers_bgr(
                 frame, pivot, arm_length_px, red_search_r_sq)
-
-            green_ok = gx is not None and gy is not None
-            red_ok   = rx is not None and ry is not None
-
-            # Record each marker independently. Theta1 requires green;
-            # theta2 requires both. dropout=1 fires whenever either
-            # marker is missing, per the canonical CSV convention.
-            theta1 = compute_angle(pivot, (gx, gy)) if green_ok else None
-            theta2 = compute_angle((gx, gy), (rx, ry)) if (green_ok and red_ok) else None
-
-            dropout = 0 if (green_ok and red_ok) else 1
-            if dropout:
-                n_drop += 1
-
-            rows.append({
-                "frame":      frame_idx,
-                "time_s":     round(time_sec, 5),
-                "phase":      "driven",
-                "x_green":    "" if gx is None else f"{gx:.3f}",
-                "y_green":    "" if gy is None else f"{gy:.3f}",
-                "x_red":      "" if rx is None else f"{rx:.3f}",
-                "y_red":      "" if ry is None else f"{ry:.3f}",
-                "theta1_deg": "" if theta1 is None else f"{theta1:.3f}",
-                "theta2_deg": "" if theta2 is None else f"{theta2:.3f}",
-                "dropout":    dropout,
-            })
-            frame_idx += 1
+            xg_raw.append(gx if gx is not None else np.nan)
+            yg_raw.append(gy if gy is not None else np.nan)
+            xr_raw.append(rx if rx is not None else np.nan)
+            yr_raw.append(ry if ry is not None else np.nan)
 
     cap.release()
 
-    n_total = len(rows)
+    n_total = len(times)
     if n_total == 0:
         print("ERROR: no frames read from video.")
         return 2
+
+    # ── Post-loop position smoothing ──────────────────────────────────
+    # Light 5-frame median filter on each (x, y) position series. The
+    # filter bandwidth (~12 Hz at 60 fps) is well above the pendulum's
+    # response frequencies (drive 0.9 Hz, harmonics ≤ ~5 Hz) so real
+    # motion is essentially unattenuated, while broadband
+    # moment-centroid noise above ~5 Hz is suppressed. NaN-aware:
+    # dropouts are interpolated for filter input then masked back at
+    # the end.
+    xg_arr = np.array(xg_raw, dtype=float)
+    yg_arr = np.array(yg_raw, dtype=float)
+    xr_arr = np.array(xr_raw, dtype=float)
+    yr_arr = np.array(yr_raw, dtype=float)
+
+    def _smooth(arr, win=5):
+        nans = np.isnan(arr)
+        if nans.any():
+            idx = np.arange(len(arr))
+            arr_filled = arr.copy()
+            arr_filled[nans] = np.interp(idx[nans], idx[~nans], arr[~nans])
+        else:
+            arr_filled = arr
+        out = median_filter(arr_filled, size=win, mode='nearest')
+        out[nans] = np.nan
+        return out
+
+    xg_s = _smooth(xg_arr)
+    yg_s = _smooth(yg_arr)
+    xr_s = _smooth(xr_arr)
+    yr_s = _smooth(yr_arr)
+
+    # Re-project the smoothed positions onto the rigid-arm constraint
+    # circles. The median filter knocks the smoothed point slightly off
+    # the circle (median of points on a circle isn't on the circle);
+    # this restores the rigid-arm constraint. Direction is preserved,
+    # so smoothing is effectively applied to the angular coordinate.
+    for i in range(n_total):
+        if not np.isnan(xg_s[i]):
+            xg_s[i], yg_s[i] = _project_to_circle(
+                pivot[0], pivot[1], xg_s[i], yg_s[i], arm_length_px)
+        if not np.isnan(xr_s[i]) and not np.isnan(xg_s[i]):
+            xr_s[i], yr_s[i] = _project_to_circle(
+                xg_s[i], yg_s[i], xr_s[i], yr_s[i], arm_length_px)
+
+    # Build the row records from smoothed/re-projected positions.
+    rows = []
+    n_drop = 0
+    for i in range(n_total):
+        green_ok = not np.isnan(xg_s[i])
+        red_ok   = not np.isnan(xr_s[i])
+        th1 = compute_angle(pivot, (xg_s[i], yg_s[i])) if green_ok else None
+        th2 = (compute_angle((xg_s[i], yg_s[i]), (xr_s[i], yr_s[i]))
+               if (green_ok and red_ok) else None)
+        dropout = 0 if (green_ok and red_ok) else 1
+        if dropout:
+            n_drop += 1
+        rows.append({
+            "frame":      i,
+            "time_s":     round(times[i], 5),
+            "phase":      "driven",
+            "x_green":    "" if not green_ok else f"{xg_s[i]:.3f}",
+            "y_green":    "" if not green_ok else f"{yg_s[i]:.3f}",
+            "x_red":      "" if not red_ok   else f"{xr_s[i]:.3f}",
+            "y_red":      "" if not red_ok   else f"{yr_s[i]:.3f}",
+            "theta1_deg": "" if th1 is None  else f"{th1:.3f}",
+            "theta2_deg": "" if th2 is None  else f"{th2:.3f}",
+            "dropout":    dropout,
+        })
 
     # Write tracking.csv (canonical schema).
     fieldnames = ["frame", "time_s", "phase",

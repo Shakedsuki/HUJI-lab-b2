@@ -1029,8 +1029,8 @@
     "tracker": "bgr",
     "theta1_initial": -0.418,
     "theta2_initial": -1.824,
-    "omega1_initial": 3.777,
-    "omega2_initial": -5.2758,
+    "omega1_initial": 2.458,
+    "omega2_initial": -2.518,
     "duration_s": 91.091,
     "n_frames": 5460,
     "dropout_rate_pct": 0.0
