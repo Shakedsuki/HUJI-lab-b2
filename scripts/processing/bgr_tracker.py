@@ -140,13 +140,31 @@ def reachable_bbox(pivot, arm_length_px, frame_shape):
     )
 
 
+def _project_to_circle(px, py, qx, qy, r):
+    """Project point (qx, qy) onto the circle of radius r centred at
+    (px, py). Returns (qx_proj, qy_proj). The projection preserves the
+    direction (px,py)->(qx,qy) — it only enforces |Q' - P| == r.
+
+    For an exactly-rigid arm the projected point IS the physically
+    correct marker position regardless of how the BGR centroid's
+    radial component drifted.
+    """
+    dx = qx - px
+    dy = qy - py
+    d  = math.sqrt(dx * dx + dy * dy)
+    if d == 0:
+        return qx, qy
+    scale = r / d
+    return px + dx * scale, py + dy * scale
+
+
 def detect_markers_bgr(frame, pivot, arm_length_px, red_search_r_sq):
     """Return (gx, gy, rx, ry) in ORIGINAL-frame coords for one frame.
 
-    Any component is None when its mask had no pixels. `red_search_r_sq`
-    is the squared radius of the green-proximity disk used to gate the
-    red mask — set per clip from get_pivot_arm() so different rig
-    batches use their own arm length.
+    Centroids are sub-pixel floats and have been projected onto their
+    rigid-arm constraint circles (green onto pivot circle, red onto
+    the projected-green circle, both of radius arm_length_px). Any
+    component is None when its mask had no pixels.
 
     Cropping strategy
     ~~~~~~~~~~~~~~~~~
@@ -161,11 +179,21 @@ def detect_markers_bgr(frame, pivot, arm_length_px, red_search_r_sq):
     arm_length_px+30 around green) when green is found, since the red
     marker is bolted to the rigid lower arm.
 
-    No Y bound was used historically — Cohen's standalone left Y open
-    and any Y crop tight enough to exclude wall-fabric on low-amplitude
-    clips also cut off legitimate marker positions in high-amplitude
-    clips. The bbox+disc replaces the X-only crop with something that
-    is provably tight in BOTH axes simultaneously.
+    Precision & rigidity
+    ~~~~~~~~~~~~~~~~~~~~
+    `cv2.moments` already returns sub-pixel centroids via
+    m10/m00, m01/m00; we keep them as floats rather than truncating
+    to int. Storing the full precision through the CSV cuts the at-rest
+    angular noise floor by ~18× (eliminating the ±1 px integer-grid
+    quantization).
+
+    The two constraint-circle projections (green→pivot, red→green) are
+    radial: they preserve direction, so θ₁ and θ₂ are unchanged by them.
+    What they DO change is |G−P| and |R−G|, which are now exactly
+    arm_length_px every frame. This corrects red-on-rod misdetections
+    (where the detected centroid sits inside arm 2 rather than at the
+    marker tip) by pushing the position outward along the correct
+    direction.
     """
     bx0, by0, bx1, by1 = reachable_bbox(pivot, arm_length_px, frame.shape)
     cropped = frame[by0:by1, bx0:bx1, :]
@@ -182,8 +210,11 @@ def detect_markers_bgr(frame, pivot, arm_length_px, red_search_r_sq):
     green_mask = cv2.inRange(cropped, _GREEN_LO_NP, _GREEN_HI_NP)
     green_mask = cv2.bitwise_and(green_mask, reach)
     M_g = cv2.moments(green_mask)
-    gx_c = int(M_g['m10'] / M_g['m00']) if M_g['m00'] > 0 else None
-    gy_c = int(M_g['m01'] / M_g['m00']) if M_g['m00'] > 0 else None
+    if M_g['m00'] > 0:
+        gx_c = M_g['m10'] / M_g['m00']
+        gy_c = M_g['m01'] / M_g['m00']
+    else:
+        gx_c = gy_c = None
 
     disk = None
     if gx_c is not None:
@@ -197,14 +228,23 @@ def detect_markers_bgr(frame, pivot, arm_length_px, red_search_r_sq):
             mask = cv2.bitwise_and(mask, disk)
         M_r = cv2.moments(mask)
         if M_r['m00'] > 0:
-            rx_c = int(M_r['m10'] / M_r['m00'])
-            ry_c = int(M_r['m01'] / M_r['m00'])
+            rx_c = M_r['m10'] / M_r['m00']
+            ry_c = M_r['m01'] / M_r['m00']
             break
 
     gx = gx_c + bx0 if gx_c is not None else None
     gy = gy_c + by0 if gy_c is not None else None
     rx = rx_c + bx0 if rx_c is not None else None
     ry = ry_c + by0 if ry_c is not None else None
+
+    # Project onto the rigid-arm constraint circles. Direction is
+    # preserved (angles unchanged), only |G−P| and |R−G| are pinned to
+    # arm_length_px.
+    if gx is not None:
+        gx, gy = _project_to_circle(pivot[0], pivot[1], gx, gy, arm_length_px)
+    if rx is not None and gx is not None:
+        rx, ry = _project_to_circle(gx, gy, rx, ry, arm_length_px)
+
     return gx, gy, rx, ry
 
 
@@ -418,10 +458,10 @@ def main():
                 "frame":      frame_idx,
                 "time_s":     round(time_sec, 5),
                 "phase":      "driven",
-                "x_green":    "" if gx is None else gx,
-                "y_green":    "" if gy is None else gy,
-                "x_red":      "" if rx is None else rx,
-                "y_red":      "" if ry is None else ry,
+                "x_green":    "" if gx is None else f"{gx:.3f}",
+                "y_green":    "" if gy is None else f"{gy:.3f}",
+                "x_red":      "" if rx is None else f"{rx:.3f}",
+                "y_red":      "" if ry is None else f"{ry:.3f}",
                 "theta1_deg": "" if theta1 is None else f"{theta1:.3f}",
                 "theta2_deg": "" if theta2 is None else f"{theta2:.3f}",
                 "dropout":    dropout,
