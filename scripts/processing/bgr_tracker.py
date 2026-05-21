@@ -2,7 +2,7 @@
 bgr_tracker.py
 --------------
 Phase 2 marker tracker: BGR colour thresholding + image moments,
-wrapping Cohen's detection logic (legacy/cohen_get_video_coords.py — preserved
+wrapping Cohen's detection logic (archive/cohen_get_video_coords.py — preserved
 verbatim as the regression reference inside
 scripts/utils/capture_bgr_baseline.py) inside canonical pipeline I/O.
 
