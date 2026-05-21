@@ -107,7 +107,7 @@ def load_csv(path):
 
     free = [
         r for r in rows
-        if r['phase'] == 'free_swing'
+        if r['phase'] in ('free_swing', 'driven')
         and r['dropout'] == '0'
         and r['theta1_deg'] != ''
         and r['theta2_deg'] != ''

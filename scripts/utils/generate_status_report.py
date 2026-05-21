@@ -145,11 +145,11 @@ def compute_dropout_metrics(csv_path):
         return metrics
 
     df = pd.read_csv(csv_path)
-    free = df[df["phase"] == "free_swing"].copy().reset_index(drop=True)
+    free = df[df["phase"].isin(["free_swing", "driven"])].copy().reset_index(drop=True)
     n = len(free)
     metrics["free_frames"] = int(n)
     if n == 0:
-        metrics["dropout_pattern"] = "no free_swing frames"
+        metrics["dropout_pattern"] = "no running-phase frames"
         return metrics
 
     drops = free["dropout"].astype(int)

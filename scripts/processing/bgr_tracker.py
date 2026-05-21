@@ -9,18 +9,17 @@ scripts/utils/capture_bgr_baseline.py) inside canonical pipeline I/O.
 What it does
 ~~~~~~~~~~~~
 For each frame of the input video:
-  cropped = frame[:, CROP_X_START:CROP_X_END, :]
+  bbox    = 4·arm × 4·arm square centred on the pivot (reachable region)
+  cropped = frame[bbox] AND inscribed disc mask
   green   = centroid of moments(inRange(BGR, GREEN_BGR_LO, GREEN_BGR_HI))
-  red     = centroid from the first non-empty mask in RED_BGR_RANGES
+  red     = centroid from the first non-empty mask in RED_BGR_RANGES,
+            additionally ANDed with a green-proximity disk
 
-Centroids are un-cropped (gx_orig = gx_crop + CROP_X_START) before
-being written, so the canonical PIVOT (663, 332) and ARM_LENGTH_PX
-(153) from thresholds.py apply unchanged to downstream analysis.
-Angles are computed with the convention 0° = straight down, +90 =
-right.
-
-Detection logic (X crop + BGR colour ranges + fallback chain + moment
-math) mirrors chaos/get_video_coords.py lines 42-69 verbatim.
+Centroids returned by detect_markers_bgr() are already in ORIGINAL
+frame coords (the bbox offset is added internally), so the canonical
+per-batch PIVOT / ARM_LENGTH_PX from thresholds.get_pivot_arm() apply
+unchanged to downstream analysis. Angles are computed with the
+convention 0° = straight down, +90 = right.
 
 What it does NOT do (by design)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -81,8 +80,6 @@ from thresholds import (  # noqa: E402
     PIVOT,
     ARM_LENGTH_PX,
     ARM_LENGTH_CM,
-    CROP_X_START,
-    CROP_X_END,
     GREEN_BGR_LO,
     GREEN_BGR_HI,
     RED_BGR_RANGES,
@@ -127,59 +124,87 @@ def angular_diff(a, b):
 # DETECTION CORE (mirrors get_video_coords.py per-frame body)
 # ─────────────────────────────────────────────
 
-def detect_markers_bgr(frame, red_search_r_sq):
-    """Return (gx_crop, gy_crop, rx_crop, ry_crop) for one frame.
-
-    Centroids are returned in CROPPED-frame coords (zero at column
-    CROP_X_START of the original frame). Any component is None when
-    its mask had no pixels. `red_search_r_sq` is the squared radius
-    of the green-proximity disk used to gate the red mask — set per
-    clip from get_pivot_arm() so different rig batches use their own
-    arm length.
-
-    BGR detection (colour ranges + fallback chain + moment-centroid
-    math + X crop) mirrors chaos/get_video_coords.py lines 42-69
-    verbatim. No Y crop — Cohen left Y open and any Y crop tight
-    enough to exclude wall-fabric on low-amplitude clips also cut off
-    legitimate marker positions in high-amplitude clips (98%→75% drop
-    on 4V_0.6Hz, reverted in PR #43).
-
-    Adds one step Cohen's standalone doesn't: when green is found,
-    the red mask is ANDed with a disk of radius arm_length+30 px
-    around green before moments are computed. The red marker is
-    bolted to the rigid lower arm so it can't legitimately appear
-    outside that disk; wall-fabric pixels matching the BGR red range
-    are excluded, letting the actual marker's small contribution
-    dominate the centroid. When green is missing the disk can't be
-    built and red detection falls back to the full crop window
-    (same as Cohen's behaviour). Reference baselines have their
-    real red marker inside the disk every frame, so verify_bgr_baseline
-    still passes 3/3 MATCH.
+def reachable_bbox(pivot, arm_length_px, frame_shape):
+    """Return (x0, y0, x1, y1) tight bbox around the reachable disc,
+    clipped to the frame extents. Used by tracker and overlay so the
+    same cropped region drives both detection and visualization.
     """
-    cropped = frame[:, CROP_X_START:CROP_X_END, :]
+    px, py = pivot
+    reach = 2 * arm_length_px
+    h, w = frame_shape[:2]
+    return (
+        max(0, px - reach),
+        max(0, py - reach),
+        min(w, px + reach),
+        min(h, py + reach),
+    )
 
-    M_g = cv2.moments(cv2.inRange(cropped, _GREEN_LO_NP, _GREEN_HI_NP))
-    gx = int(M_g['m10'] / M_g['m00']) if M_g['m00'] > 0 else None
-    gy = int(M_g['m01'] / M_g['m00']) if M_g['m00'] > 0 else None
 
-    # Build green-proximity disk for red search.
+def detect_markers_bgr(frame, pivot, arm_length_px, red_search_r_sq):
+    """Return (gx, gy, rx, ry) in ORIGINAL-frame coords for one frame.
+
+    Any component is None when its mask had no pixels. `red_search_r_sq`
+    is the squared radius of the green-proximity disk used to gate the
+    red mask — set per clip from get_pivot_arm() so different rig
+    batches use their own arm length.
+
+    Cropping strategy
+    ~~~~~~~~~~~~~~~~~
+    The frame is hard-cropped to a tight square bbox of size 4·arm×4·arm
+    centred on the pivot — the reachable region for any pendulum marker.
+    A disc mask inscribed in that bbox knocks out the four corner
+    triangles. Together these reduce mask area by ~22 % vs the old
+    X-only crop and physically guarantee that no off-rig pixel
+    (curtain, whiteboard, red prop) can contribute to a centroid.
+
+    Red detection then ANDs in the green-proximity disk (radius
+    arm_length_px+30 around green) when green is found, since the red
+    marker is bolted to the rigid lower arm.
+
+    No Y bound was used historically — Cohen's standalone left Y open
+    and any Y crop tight enough to exclude wall-fabric on low-amplitude
+    clips also cut off legitimate marker positions in high-amplitude
+    clips. The bbox+disc replaces the X-only crop with something that
+    is provably tight in BOTH axes simultaneously.
+    """
+    bx0, by0, bx1, by1 = reachable_bbox(pivot, arm_length_px, frame.shape)
+    cropped = frame[by0:by1, bx0:bx1, :]
+    h, w = cropped.shape[:2]
+    yy, xx = np.ogrid[:h, :w]
+
+    # Disc mask inscribed in the bbox (pivot is at (px-bx0, py-by0)
+    # in cropped coords).
+    pcx = pivot[0] - bx0
+    pcy = pivot[1] - by0
+    reach_r_sq = (2 * arm_length_px) ** 2
+    reach = ((xx - pcx)**2 + (yy - pcy)**2 <= reach_r_sq).astype(np.uint8) * 255
+
+    green_mask = cv2.inRange(cropped, _GREEN_LO_NP, _GREEN_HI_NP)
+    green_mask = cv2.bitwise_and(green_mask, reach)
+    M_g = cv2.moments(green_mask)
+    gx_c = int(M_g['m10'] / M_g['m00']) if M_g['m00'] > 0 else None
+    gy_c = int(M_g['m01'] / M_g['m00']) if M_g['m00'] > 0 else None
+
     disk = None
-    if gx is not None:
-        h, w = cropped.shape[:2]
-        yy, xx = np.ogrid[:h, :w]
-        disk = ((xx - gx)**2 + (yy - gy)**2 <= red_search_r_sq).astype(np.uint8) * 255
+    if gx_c is not None:
+        disk = ((xx - gx_c)**2 + (yy - gy_c)**2 <= red_search_r_sq).astype(np.uint8) * 255
 
-    rx = ry = None
+    rx_c = ry_c = None
     for lo_np, hi_np in _RED_RANGES_NP:
         mask = cv2.inRange(cropped, lo_np, hi_np)
+        mask = cv2.bitwise_and(mask, reach)
         if disk is not None:
             mask = cv2.bitwise_and(mask, disk)
         M_r = cv2.moments(mask)
         if M_r['m00'] > 0:
-            rx = int(M_r['m10'] / M_r['m00'])
-            ry = int(M_r['m01'] / M_r['m00'])
+            rx_c = int(M_r['m10'] / M_r['m00'])
+            ry_c = int(M_r['m01'] / M_r['m00'])
             break
 
+    gx = gx_c + bx0 if gx_c is not None else None
+    gy = gy_c + by0 if gy_c is not None else None
+    rx = rx_c + bx0 if rx_c is not None else None
+    ry = ry_c + by0 if ry_c is not None else None
     return gx, gy, rx, ry
 
 
@@ -345,9 +370,9 @@ def main():
     print(f"bgr_tracker  stem={stem}")
     print(f"  video : {os.path.relpath(video_path, REPO_ROOT)}")
     print(f"  out   : {os.path.relpath(out_csv, REPO_ROOT)}")
-    print(f"  pivot : {pivot}  (orig coords)  → cropped: "
-          f"({pivot[0] - CROP_X_START}, {pivot[1]})")
+    print(f"  pivot : {pivot}  (orig coords)")
     print(f"  arm_L : {arm_length_px}px / {ARM_LENGTH_CM}cm")
+    print(f"  bbox  : 4·arm = {4*arm_length_px}px square around pivot")
     print("=" * 70)
 
     cap = cv2.VideoCapture(video_path)
@@ -373,35 +398,17 @@ def main():
             pbar.update(1)
 
             time_sec = cap.get(cv2.CAP_PROP_POS_MSEC) / 1000.0
-            gx_c, gy_c, rx_c, ry_c = detect_markers_bgr(frame, red_search_r_sq)
+            gx, gy, rx, ry = detect_markers_bgr(
+                frame, pivot, arm_length_px, red_search_r_sq)
 
-            green_ok = gx_c is not None and gy_c is not None
-            red_ok   = rx_c is not None and ry_c is not None
+            green_ok = gx is not None and gy is not None
+            red_ok   = rx is not None and ry is not None
 
-            # Record each marker independently — matches Cohen's
-            # standalone behaviour, which preserves a red detection
-            # even when green is missing (and vice versa). Theta1
-            # requires green; theta2 requires both. dropout=1 fires
-            # whenever either marker is missing, per the ring_tracker
-            # CSV convention that downstream code expects.
-            if green_ok:
-                gx = gx_c + CROP_X_START
-                gy = gy_c
-                theta1 = compute_angle(pivot, (gx, gy))
-            else:
-                gx = gy = None
-                theta1 = None
-
-            if red_ok:
-                rx = rx_c + CROP_X_START
-                ry = ry_c
-            else:
-                rx = ry = None
-
-            if green_ok and red_ok:
-                theta2 = compute_angle((gx, gy), (rx, ry))
-            else:
-                theta2 = None
+            # Record each marker independently. Theta1 requires green;
+            # theta2 requires both. dropout=1 fires whenever either
+            # marker is missing, per the canonical CSV convention.
+            theta1 = compute_angle(pivot, (gx, gy)) if green_ok else None
+            theta2 = compute_angle((gx, gy), (rx, ry)) if (green_ok and red_ok) else None
 
             dropout = 0 if (green_ok and red_ok) else 1
             if dropout:
@@ -410,7 +417,7 @@ def main():
             rows.append({
                 "frame":      frame_idx,
                 "time_s":     round(time_sec, 5),
-                "phase":      "free_swing",
+                "phase":      "driven",
                 "x_green":    "" if gx is None else gx,
                 "y_green":    "" if gy is None else gy,
                 "x_red":      "" if rx is None else rx,

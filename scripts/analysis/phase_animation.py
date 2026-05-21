@@ -101,7 +101,7 @@ COLOR_ARM2   = 'tab:red'     # arm 2 / red physical marker
 
 def load(path):
     rows = [r for r in csv.DictReader(open(path))
-            if r['phase'] == 'free_swing'
+            if r['phase'] in ('free_swing', 'driven')
             and r['dropout'] == '0'
             and r['theta1_deg']]
 

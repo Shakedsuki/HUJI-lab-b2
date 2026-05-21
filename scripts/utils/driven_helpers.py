@@ -19,8 +19,9 @@ Conventions
 ~~~~~~~~~~~
 - Stem format: "<V>V_<f>Hz" (or with repeat suffix "_N").  Examples:
   "3V_0.5Hz", "3.6V_1Hz", "2.4V_1Hz_1", "2.45V_1Hz", "3V_0.25Hz".
-- Phase 2 verification.csv writes `phase == "free_swing"` for the driven
-  portion (after a brief "holding" pre-roll). Loaders filter on this.
+- Phase 2 verification.csv writes `phase == "driven"` for the driven
+  portion (legacy CSVs use "free_swing"). load_driven_csv accepts both
+  labels by default.
 - Angles in degrees, omegas in deg/s, time in seconds (zero-based).
 """
 
@@ -62,16 +63,22 @@ def parse_stem(stem):
     }
 
 
-def load_driven_csv(csv_path, phase_label="free_swing"):
+_DRIVEN_PHASE_LABELS = ("driven", "free_swing")
+
+
+def load_driven_csv(csv_path, phase_label=None):
     """Load a Phase 2 verification.csv.
 
-    Filters rows where the `phase` column equals `phase_label` (default:
-    "free_swing", which is what the tracker writes for the driven
-    portion of a clip). Drops rows with malformed numeric fields.
+    Filters rows where the `phase` column is one of the running-phase
+    labels. The tracker writes "driven" since 2026-05-21 but older
+    CSVs still tag those rows as "free_swing"; both are accepted by
+    default. Drops rows with malformed numeric fields.
 
     Args:
         csv_path:    path to measurements/<stem>/verification.csv.
-        phase_label: row filter on the `phase` column.
+        phase_label: row filter on the `phase` column. None (default)
+                     accepts both "driven" and legacy "free_swing".
+                     Pass an explicit string to restrict to one label.
 
     Returns:
         (t, th1, th2, om1, om2) numpy arrays, time zero-based.
@@ -79,10 +86,14 @@ def load_driven_csv(csv_path, phase_label="free_swing"):
     Raises:
         SystemExit if too few rows are loaded (< 50).
     """
+    if phase_label is None:
+        accepted = set(_DRIVEN_PHASE_LABELS)
+    else:
+        accepted = {phase_label}
     rows = []
     with open(csv_path, newline="", encoding="utf-8") as f:
         for r in csv.DictReader(f):
-            if r.get("phase") != phase_label:
+            if r.get("phase") not in accepted:
                 continue
             try:
                 rows.append((
@@ -96,7 +107,8 @@ def load_driven_csv(csv_path, phase_label="free_swing"):
                 continue
     if len(rows) < 50:
         raise SystemExit(
-            f"Too few '{phase_label}' rows ({len(rows)}) in {csv_path}.")
+            f"Too few rows matching {sorted(accepted)} "
+            f"({len(rows)}) in {csv_path}.")
     arr = np.array(rows, dtype=float)
     t = arr[:, 0] - arr[0, 0]
     return t, arr[:, 1], arr[:, 2], arr[:, 3], arr[:, 4]

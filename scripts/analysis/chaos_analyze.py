@@ -95,7 +95,7 @@ def load_free_swing(csv_path):
     Raises ValueError when fewer than 30 valid frames remain.
     """
     df   = pd.read_csv(csv_path)
-    free = df[df["phase"] == "free_swing"].copy().reset_index(drop=True)
+    free = df[df["phase"].isin(["free_swing", "driven"])].copy().reset_index(drop=True)
 
     om1 = pd.to_numeric(free["omega1_deg_s"], errors="coerce")
     om2 = pd.to_numeric(free["omega2_deg_s"], errors="coerce")

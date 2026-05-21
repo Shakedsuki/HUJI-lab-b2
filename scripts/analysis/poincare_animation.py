@@ -81,7 +81,7 @@ def load_clip(stem):
         if not os.path.exists(csv):
             raise FileNotFoundError(f"No data for {stem}")
         df = pd.read_csv(csv)
-        free = df[df["phase"] == "free_swing"].copy()
+        free = df[df["phase"].isin(["free_swing", "driven"])].copy()
         free = free.dropna(subset=["theta1_deg", "theta2_deg"]).reset_index(drop=True)
         t   = free["time_s"].to_numpy()
         th1 = free["theta1_deg"].to_numpy()
@@ -92,7 +92,7 @@ def load_clip(stem):
         return t, th1, th2, w1, w2
 
     df = pd.read_csv(csv)
-    free = df[df["phase"] == "free_swing"].copy()
+    free = df[df["phase"].isin(["free_swing", "driven"])].copy()
     cols = ["theta1_deg", "theta2_deg", "omega1_deg_s", "omega2_deg_s"]
     free = free.dropna(subset=cols).reset_index(drop=True)
     return (free["time_s"].to_numpy(),
