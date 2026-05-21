@@ -99,6 +99,7 @@ def main():
         th1[i], th2[i], om1[i], om2[i],
         xg[i], yg[i], xr[i], yr[i],
         pivot_orig=pivot_orig, arm_length_px=arm_length_px,
+        stem=stem,
     )
     cv2.imwrite(out_png, panel)
     print(f"  saved: {out_png}")

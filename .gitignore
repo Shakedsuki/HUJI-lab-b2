@@ -24,6 +24,7 @@ week4-pendulum-motor-driven/measurements/*/phase_3d_rotation.mp4
 week4-pendulum-motor-driven/measurements/*/phase_animation.mp4
 week4-pendulum-motor-driven/measurements/*/combined.mp4
 week4-pendulum-motor-driven/measurements/*/overlay.mp4
+week4-pendulum-motor-driven/measurements/*/*_overlay.mp4
 
 # ── Figures layout ───────────────────────────────
 # Per-clip MP4s (rendered animations) regenerable from CSV — too big
