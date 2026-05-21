@@ -48,7 +48,7 @@ Proposal: `"driven"` — and all driven-aware loaders accept a `--phase-filter d
 
 ### 0.3 `experiments.json` for Phase 2
 
-Located at `week4-pendulum-motor-driven/data/experiments.json`. Each entry:
+Located at `experiments/week5-6-pendulum-motor-driven/data/experiments.json`. Each entry:
 
 ```json
 {
@@ -262,7 +262,7 @@ def winding_number(t, th1, f_drive: float, max_denom: int = 6) -> float:
 | `verify_tracking.py` | No change | |
 | `poincare.py` | No change | Phase 1 only; driven clips use `driven_poincare.py` |
 | `lyapunov.py` | Minor: accept `--phase-filter driven` | Reuse unchanged for λ₁ computation; arnold_tongue.py reads its CSV output |
-| `paths.py` | No change | `CHAOS_PHASE=week4-pendulum-motor-driven` already works (legacy `phase2-motor-driven` aliased) |
+| `paths.py` | No change | `CHAOS_PHASE=week5-6-pendulum-motor-driven` already works (legacy `phase2-motor-driven` and `week4-pendulum-motor-driven` aliased) |
 | `chaos.py` | Register new subcommands | `chaos driven-poincare`, `chaos bifurcation`, `chaos arnold-tongue` |
 
 ---

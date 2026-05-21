@@ -8,7 +8,7 @@ state and no need for inter-worker coordination beyond the worker
 limit.
 
 Usage:
-    CHAOS_PHASE=week4-pendulum-motor-driven \\
+    CHAOS_PHASE=week5-6-pendulum-motor-driven \\
         python scripts/utils/parallel_retrack_render.py \\
             --filter 3.2V_ --workers 4
 
@@ -29,9 +29,12 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, _THIS_DIR)
-from paths import EXPERIMENTS, VIDEOS_DIR, REPO_ROOT  # noqa: E402
+from paths import EXPERIMENTS, VIDEOS_DIR, REPO_ROOT, PHASE_DRIVEN  # noqa: E402
 
-_MAIN_REPO_VIDEOS = "C:/dev/chaos/week4-pendulum-motor-driven/videos"
+# When this script runs inside a git worktree, gitignored .mov files
+# live in the main checkout, not the worktree's videos dir. This is
+# the canonical fallback location.
+_MAIN_REPO_VIDEOS = f"C:/dev/chaos/experiments/{PHASE_DRIVEN}/videos"
 
 
 def parse_args():
@@ -78,7 +81,7 @@ def collect_clips(reg, filter_substr, include_verified, order, skip,
             continue
         if skip_rendered:
             overlay = os.path.join(
-                REPO_ROOT, "week4-pendulum-motor-driven", "measurements",
+                REPO_ROOT, "experiments", PHASE_DRIVEN, "measurements",
                 stem, f"{stem}_overlay.mp4")
             if os.path.exists(overlay):
                 continue

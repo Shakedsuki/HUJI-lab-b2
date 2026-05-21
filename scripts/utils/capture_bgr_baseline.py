@@ -5,13 +5,13 @@ Capture a per-frame BGR-centroid baseline for one Week 4 clip.
 
 The BGR detection body (colour ranges + fallback chain + moment
 centroids) is COPY-PASTED from
-week4-pendulum-motor-driven/legacy/get_video_coords.py lines 42-69
+reference/cohen_get_video_coords.py lines 42-69
 verbatim — Cohen's detection logic is the authoritative reference.
 
 Crop window: `frame[:, CROP_X_START:CROP_X_END, :]` — Cohen's
 original X-only crop. Y is unconstrained.
 
-Output: week4-pendulum-motor-driven/baselines/<stem>/centroids.csv
+Output: experiments/week5-6-pendulum-motor-driven/baselines/<stem>/centroids.csv
         columns: frame, time_s, gx_crop, gy_crop, rx_crop, ry_crop
         - Pixel coords are in the CROPPED frame (relative to the
           top-left of the [:, CROP_X_START..CROP_X_END] sub-rectangle).
@@ -36,7 +36,7 @@ import cv2
 import numpy as np
 from tqdm import tqdm
 
-os.environ.setdefault("CHAOS_PHASE", "week4-pendulum-motor-driven")
+os.environ.setdefault("CHAOS_PHASE", "week5-6-pendulum-motor-driven")
 # Import path setup first.
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from paths import VIDEOS_DIR, PHASE_ROOT, EXPERIMENTS, REPO_ROOT  # noqa: E402
@@ -79,7 +79,7 @@ def main():
 
     # ============================================================
     # BEGIN VERBATIM BLOCK
-    # Copy-pasted from week4-pendulum-motor-driven/legacy/get_video_coords.py lines 16-93.
+    # Copy-pasted from reference/cohen_get_video_coords.py lines 16-93.
     # Only difference: video path is `video_path` (arg) instead of the
     # hardcoded literal, and `frame_idx` is tracked for the CSV.
     # DO NOT REFACTOR THIS BLOCK — it is the regression reference.

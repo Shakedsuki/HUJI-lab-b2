@@ -18,12 +18,18 @@ Conventions
 
 import os as _os
 
+# Canonical phase names — mirror scripts/utils/paths.py exactly.
+_PHASE_FREE   = "week3-4-pendulum-free-swing"
+_PHASE_DRIVEN = "week5-6-pendulum-motor-driven"
+
 # Legacy-name aliases mirror scripts/utils/paths.py — keep in sync.
 _LEGACY_ALIASES = {
-    "phase1-free-swing":  "week3-pendulum-free-swing",
-    "phase2-motor-driven": "week4-pendulum-motor-driven",
+    "phase1-free-swing":           _PHASE_FREE,
+    "phase2-motor-driven":         _PHASE_DRIVEN,
+    "week3-pendulum-free-swing":   _PHASE_FREE,
+    "week4-pendulum-motor-driven": _PHASE_DRIVEN,
 }
-_raw_phase = _os.environ.get("CHAOS_PHASE", "week3-pendulum-free-swing")
+_raw_phase = _os.environ.get("CHAOS_PHASE", _PHASE_FREE)
 _PHASE     = _LEGACY_ALIASES.get(_raw_phase, _raw_phase)
 
 # Verdict threshold — single criterion.
@@ -38,7 +44,7 @@ DROPOUT_BAR_MAX      = 7.5      # 1.5× the FAIL line
 # Week 3 rig used a 35 cm arm and the Week 4 rig was repositioned with
 # a 33.1 cm effective length (see PIVOT/ARM_LENGTH_PX block below for
 # the derivation).
-if _PHASE == "week4-pendulum-motor-driven":
+if _PHASE == _PHASE_DRIVEN:
     # Cross-phase digital calibration (2026-05-13):
     # Phase 1 scale = 35.0 cm / 162 px = 0.2160 cm/px.
     # Phase 2 ARM_LENGTH_PX = 153 px (circle fit, p95 residual 2.0 px).
@@ -62,7 +68,7 @@ else:
 #   3V_1Hz.mov + 4V_1Hz.mov + 4V_2Hz.mov
 #   center (663.7, 329.7)  r = 153.0 px
 #   fit residuals: std=0.58px  median=0.81px  p95=2.01px  (3308 inliers)
-if _PHASE == "week4-pendulum-motor-driven":
+if _PHASE == _PHASE_DRIVEN:
     PIVOT         = (663, 332)   # refined by hsv_tuner P-key (2026-05-13)
     ARM_LENGTH_PX = 153
 else:

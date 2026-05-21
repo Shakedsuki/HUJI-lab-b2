@@ -209,7 +209,7 @@ def list_tracked_clips(experiments_dict, measurements_dir):
 
     Args:
         experiments_dict: parsed experiments.json contents.
-        measurements_dir: absolute path to week4-pendulum-motor-driven/measurements.
+        measurements_dir: absolute path to experiments/week5-6-pendulum-motor-driven/measurements.
 
     Returns:
         list of (stem, entry_dict) tuples.

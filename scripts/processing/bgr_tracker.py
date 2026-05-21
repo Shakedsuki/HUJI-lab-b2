@@ -2,7 +2,7 @@
 bgr_tracker.py
 --------------
 Phase 2 marker tracker: BGR colour thresholding + image moments,
-wrapping Cohen's detection logic (week4-pendulum-motor-driven/legacy/get_video_coords.py — preserved
+wrapping Cohen's detection logic (reference/cohen_get_video_coords.py — preserved
 verbatim as the regression reference inside
 scripts/utils/capture_bgr_baseline.py) inside canonical pipeline I/O.
 
@@ -33,21 +33,21 @@ What it does NOT do (by design)
 
 I/O
 ~~~
-Reads:  week4-pendulum-motor-driven/videos/<video_file>
-        week4-pendulum-motor-driven/data/experiments.json
-Writes: week4-pendulum-motor-driven/measurements/<stem>/tracking.csv
+Reads:  experiments/week5-6-pendulum-motor-driven/videos/<video_file>
+        experiments/week5-6-pendulum-motor-driven/data/experiments.json
+Writes: experiments/week5-6-pendulum-motor-driven/measurements/<stem>/tracking.csv
             schema: frame, time_s, phase, x_green, y_green, x_red, y_red,
                     theta1_deg, theta2_deg, dropout
                     (matches ring_tracker.py — verify_tracking and the
                      rest of the pipeline consume this unchanged)
-        week4-pendulum-motor-driven/data/experiments.json
+        experiments/week5-6-pendulum-motor-driven/data/experiments.json
             entry updated: tracker='bgr', dropout_rate_pct, n_free_frames,
             theta/omega_release, energy_proxy, duration_s, ...
 
 Usage
 ~~~~~
     # Phase 2 default invocation (track_one passes the positional path):
-    python scripts/processing/bgr_tracker.py week4-pendulum-motor-driven/videos/4V_1.9Hz.mov --force
+    python scripts/processing/bgr_tracker.py experiments/week5-6-pendulum-motor-driven/videos/4V_1.9Hz.mov --force
 
     # Or by stem, when called directly:
     python scripts/processing/bgr_tracker.py --stem 4V_1.9Hz --force
