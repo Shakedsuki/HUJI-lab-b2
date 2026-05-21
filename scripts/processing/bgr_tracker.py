@@ -86,19 +86,19 @@ from thresholds import (  # noqa: E402
     GREEN_BGR_LO,
     GREEN_BGR_HI,
     RED_BGR_RANGES,
+    get_pivot_arm,
 )
 
 SCALE_CM_PER_PX  = ARM_LENGTH_CM / ARM_LENGTH_PX
 FPS_DEFAULT      = 59.94
 
-# Red-search disk radius squared. The red marker is bolted to the
-# rigid lower arm, so it must lie within ARM_LENGTH_PX of green (plus
-# 30 px slack for centroid noise and per-batch arm-length variation).
-# We AND the red mask with a disk of this radius around green before
-# computing moments, so the wall-fabric pixels that match the BGR red
-# range (large patches of warm-tan curtain in the upper frame) can't
-# outweigh the actual marker's small contribution to the centroid.
-_RED_SEARCH_R_SQ = (ARM_LENGTH_PX + 30) ** 2
+# Red-search disk slack (px). The red marker is bolted to the rigid
+# lower arm, so it must lie within arm_length_px of green plus this
+# slack for centroid noise and per-batch arm-length variation. The
+# actual disk radius squared is computed per-clip in main() using the
+# resolved arm length, since different rig batches have different
+# arm lengths in pixels.
+_RED_SEARCH_SLACK_PX = 30
 
 # Pre-build numpy arrays once at module load (cv2.inRange wants ndarray).
 _GREEN_LO_NP = np.array(GREEN_BGR_LO, dtype=np.uint8)
@@ -127,12 +127,15 @@ def angular_diff(a, b):
 # DETECTION CORE (mirrors get_video_coords.py per-frame body)
 # ─────────────────────────────────────────────
 
-def detect_markers_bgr(frame):
+def detect_markers_bgr(frame, red_search_r_sq):
     """Return (gx_crop, gy_crop, rx_crop, ry_crop) for one frame.
 
     Centroids are returned in CROPPED-frame coords (zero at column
     CROP_X_START of the original frame). Any component is None when
-    its mask had no pixels.
+    its mask had no pixels. `red_search_r_sq` is the squared radius
+    of the green-proximity disk used to gate the red mask — set per
+    clip from get_pivot_arm() so different rig batches use their own
+    arm length.
 
     BGR detection (colour ranges + fallback chain + moment-centroid
     math + X crop) mirrors chaos/get_video_coords.py lines 42-69
@@ -142,7 +145,7 @@ def detect_markers_bgr(frame):
     on 4V_0.6Hz, reverted in PR #43).
 
     Adds one step Cohen's standalone doesn't: when green is found,
-    the red mask is ANDed with a disk of radius ARM_LENGTH_PX+30 px
+    the red mask is ANDed with a disk of radius arm_length+30 px
     around green before moments are computed. The red marker is
     bolted to the rigid lower arm so it can't legitimately appear
     outside that disk; wall-fabric pixels matching the BGR red range
@@ -164,7 +167,7 @@ def detect_markers_bgr(frame):
     if gx is not None:
         h, w = cropped.shape[:2]
         yy, xx = np.ogrid[:h, :w]
-        disk = ((xx - gx)**2 + (yy - gy)**2 <= _RED_SEARCH_R_SQ).astype(np.uint8) * 255
+        disk = ((xx - gx)**2 + (yy - gy)**2 <= red_search_r_sq).astype(np.uint8) * 255
 
     rx = ry = None
     for lo_np, hi_np in _RED_RANGES_NP:
@@ -256,21 +259,23 @@ def resolve_inputs(args):
 
 def update_registry_entry(reg, key, entry, *, video_file, stem,
                           n_total, n_drop, dropout_pct, duration_s,
-                          th1_rel, th2_rel, om1_rel, om2_rel):
+                          th1_rel, th2_rel, om1_rel, om2_rel,
+                          pivot, arm_length_px):
     # Driven-mode registry schema: no init/release/tag frames (always 0),
     # no ROIs (HSV-only concept), no energy_proxy (release-based and
     # vacuous when the motor pumps energy in continuously). The
     # theta*_initial / omega*_initial fields capture frame-0 markers
     # state — meaningful as initial conditions even though no "release"
-    # event exists.
+    # event exists. pivot/arm_length_px are passed in so each clip
+    # records the actual per-batch calibration used during tracking.
     base = dict(entry) if entry else {}
     base.update({
         "video_file":         video_file,
         "tracker":            "bgr",
-        "arm_length_px":      ARM_LENGTH_PX,
+        "arm_length_px":      arm_length_px,
         "arm_length_cm":      ARM_LENGTH_CM,
-        "pivot_px":           list(PIVOT),
-        "scale_cm_per_px":    round(SCALE_CM_PER_PX, 4),
+        "pivot_px":           list(pivot),
+        "scale_cm_per_px":    round(ARM_LENGTH_CM / arm_length_px, 4),
         "theta1_initial":     round(th1_rel, 4),
         "theta2_initial":     round(th2_rel, 4),
         "omega1_initial":     round(om1_rel, 4),
@@ -322,6 +327,11 @@ def main():
     args = parse_args()
     video_path, stem, key, entry, reg = resolve_inputs(args)
 
+    # Per-batch rig calibration (3.2V sweep was recorded after the rig
+    # was repositioned; see thresholds.get_pivot_arm).
+    pivot, arm_length_px = get_pivot_arm(stem)
+    red_search_r_sq = (arm_length_px + _RED_SEARCH_SLACK_PX) ** 2
+
     out_dir = os.path.join(MEAS_DIR, stem)
     os.makedirs(out_dir, exist_ok=True)
     out_csv = os.path.join(out_dir, "tracking.csv")
@@ -335,9 +345,9 @@ def main():
     print(f"bgr_tracker  stem={stem}")
     print(f"  video : {os.path.relpath(video_path, REPO_ROOT)}")
     print(f"  out   : {os.path.relpath(out_csv, REPO_ROOT)}")
-    print(f"  pivot : {PIVOT}  (orig coords)  → cropped: "
-          f"({PIVOT[0] - CROP_X_START}, {PIVOT[1]})")
-    print(f"  arm_L : {ARM_LENGTH_PX}px / {ARM_LENGTH_CM}cm")
+    print(f"  pivot : {pivot}  (orig coords)  → cropped: "
+          f"({pivot[0] - CROP_X_START}, {pivot[1]})")
+    print(f"  arm_L : {arm_length_px}px / {ARM_LENGTH_CM}cm")
     print("=" * 70)
 
     cap = cv2.VideoCapture(video_path)
@@ -363,7 +373,7 @@ def main():
             pbar.update(1)
 
             time_sec = cap.get(cv2.CAP_PROP_POS_MSEC) / 1000.0
-            gx_c, gy_c, rx_c, ry_c = detect_markers_bgr(frame)
+            gx_c, gy_c, rx_c, ry_c = detect_markers_bgr(frame, red_search_r_sq)
 
             green_ok = gx_c is not None and gy_c is not None
             red_ok   = rx_c is not None and ry_c is not None
@@ -377,7 +387,7 @@ def main():
             if green_ok:
                 gx = gx_c + CROP_X_START
                 gy = gy_c
-                theta1 = compute_angle(PIVOT, (gx, gy))
+                theta1 = compute_angle(pivot, (gx, gy))
             else:
                 gx = gy = None
                 theta1 = None
@@ -458,6 +468,7 @@ def main():
         duration_s=duration_s,
         th1_rel=th1_rel, th2_rel=th2_rel,
         om1_rel=om1_rel, om2_rel=om2_rel,
+        pivot=pivot, arm_length_px=arm_length_px,
     )
     save_registry(reg)
 

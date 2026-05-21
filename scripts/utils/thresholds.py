@@ -69,6 +69,27 @@ else:
     PIVOT         = (608, 355)
     ARM_LENGTH_PX = 162
 
+# 3.2V sweep was recorded after the rig was repositioned (~80 px left,
+# ~5 % scale change). Green-trace circle fit on 3.2V_0.91Hz and
+# 3.2V_1.34Hz gives center (583, 331) with radius 161 px, residual
+# std 0.58–0.68 px. 3.2V_1Hz predates the sweep and uses the original
+# rig — exclude it explicitly in get_pivot_arm() below.
+PIVOT_3_2V         = (583, 331)
+ARM_LENGTH_PX_3_2V = 161
+
+
+def get_pivot_arm(stem):
+    """Return (pivot, arm_length_px) for a clip stem.
+
+    Per-batch rig calibration. Most consumers (bgr_tracker,
+    combined_video.make_left_panel, overlay_video) call this with the
+    clip's stem; defaults to the canonical PIVOT/ARM_LENGTH_PX above
+    when stem is None or doesn't match a known batch prefix.
+    """
+    if stem and stem.startswith("3.2V_") and stem != "3.2V_1Hz":
+        return PIVOT_3_2V, ARM_LENGTH_PX_3_2V
+    return PIVOT, ARM_LENGTH_PX
+
 # BGR tracker crop window — Cohen's original X-only crop from
 # chaos/get_video_coords.py. No Y bound: any Y crop tight enough to
 # exclude the upper wall fabric on low-amplitude 3.2V clips also cut
