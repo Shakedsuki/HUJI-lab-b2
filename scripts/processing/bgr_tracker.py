@@ -91,6 +91,15 @@ from thresholds import (  # noqa: E402
 SCALE_CM_PER_PX  = ARM_LENGTH_CM / ARM_LENGTH_PX
 FPS_DEFAULT      = 59.94
 
+# Red-search disk radius squared. The red marker is bolted to the
+# rigid lower arm, so it must lie within ARM_LENGTH_PX of green (plus
+# 30 px slack for centroid noise and per-batch arm-length variation).
+# We AND the red mask with a disk of this radius around green before
+# computing moments, so the wall-fabric pixels that match the BGR red
+# range (large patches of warm-tan curtain in the upper frame) can't
+# outweigh the actual marker's small contribution to the centroid.
+_RED_SEARCH_R_SQ = (ARM_LENGTH_PX + 30) ** 2
+
 # Pre-build numpy arrays once at module load (cv2.inRange wants ndarray).
 _GREEN_LO_NP = np.array(GREEN_BGR_LO, dtype=np.uint8)
 _GREEN_HI_NP = np.array(GREEN_BGR_HI, dtype=np.uint8)
@@ -131,6 +140,18 @@ def detect_markers_bgr(frame):
     enough to exclude wall-fabric on low-amplitude clips also cut off
     legitimate marker positions in high-amplitude clips (98%→75% drop
     on 4V_0.6Hz, reverted in PR #43).
+
+    Adds one step Cohen's standalone doesn't: when green is found,
+    the red mask is ANDed with a disk of radius ARM_LENGTH_PX+30 px
+    around green before moments are computed. The red marker is
+    bolted to the rigid lower arm so it can't legitimately appear
+    outside that disk; wall-fabric pixels matching the BGR red range
+    are excluded, letting the actual marker's small contribution
+    dominate the centroid. When green is missing the disk can't be
+    built and red detection falls back to the full crop window
+    (same as Cohen's behaviour). Reference baselines have their
+    real red marker inside the disk every frame, so verify_bgr_baseline
+    still passes 3/3 MATCH.
     """
     cropped = frame[:, CROP_X_START:CROP_X_END, :]
 
@@ -138,9 +159,19 @@ def detect_markers_bgr(frame):
     gx = int(M_g['m10'] / M_g['m00']) if M_g['m00'] > 0 else None
     gy = int(M_g['m01'] / M_g['m00']) if M_g['m00'] > 0 else None
 
+    # Build green-proximity disk for red search.
+    disk = None
+    if gx is not None:
+        h, w = cropped.shape[:2]
+        yy, xx = np.ogrid[:h, :w]
+        disk = ((xx - gx)**2 + (yy - gy)**2 <= _RED_SEARCH_R_SQ).astype(np.uint8) * 255
+
     rx = ry = None
     for lo_np, hi_np in _RED_RANGES_NP:
-        M_r = cv2.moments(cv2.inRange(cropped, lo_np, hi_np))
+        mask = cv2.inRange(cropped, lo_np, hi_np)
+        if disk is not None:
+            mask = cv2.bitwise_and(mask, disk)
+        M_r = cv2.moments(mask)
         if M_r['m00'] > 0:
             rx = int(M_r['m10'] / M_r['m00'])
             ry = int(M_r['m01'] / M_r['m00'])
