@@ -70,7 +70,7 @@ from Cohen's verbatim detection logic; `verify_*` asserts that the
 production `bgr_tracker.py` produces matching output. Baselines live in
 `experiments/week5-6-…/baselines/`. Re-run only if `bgr_tracker.py` is
 materially edited and you want to confirm no behavioural drift from
-[`legacy/cohen_get_video_coords.py`](../../../legacy/cohen_get_video_coords.py).
+[`archive/cohen_get_video_coords.py`](../../cohen_get_video_coords.py).
 
 ### `scan_tracking_quality.py`
 One-shot quality scan that walks every clip with `verification.csv`

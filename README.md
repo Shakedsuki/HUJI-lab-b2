@@ -35,11 +35,9 @@ chaos/
 │
 ├── chaos.py + chaos.{bat,ps1,sh} unified CLI entry point — `chaos <command>`
 │
-├── legacy/                       collaborator reference (untouched — DO NOT EDIT)
-│   └── cohen_get_video_coords.py
-│
-├── archive/                      one-shot, setup, and regression scripts (out of the way)
-│   └── scripts/utils/            see archive/scripts/utils/README.md
+├── archive/                      out-of-the-way bucket
+│   ├── cohen_get_video_coords.py    N. Cohen's BGR detection reference — DO NOT EDIT
+│   └── scripts/utils/               one-shot, setup, regression scripts (see README)
 │
 ├── reports/                      writeups for the course
 │   ├── lab-assignment.pdf
@@ -310,7 +308,7 @@ The same software stack handles both weeks 3–4 and 5–6. Set
 
 ### What it does (per clip)
 
-1. **Detect markers** — Cohen's BGR-thresholding logic (preserved verbatim in [`legacy/cohen_get_video_coords.py`](legacy/cohen_get_video_coords.py); the production wrapper is [`scripts/processing/bgr_tracker.py`](scripts/processing/bgr_tracker.py))
+1. **Detect markers** — Cohen's BGR-thresholding logic (preserved verbatim in [`archive/cohen_get_video_coords.py`](archive/cohen_get_video_coords.py); the production wrapper is [`scripts/processing/bgr_tracker.py`](scripts/processing/bgr_tracker.py))
 2. **Crop** — a tight bbox around the pivot reduces background noise; an inscribed disc mask removes everything outside the reachable region
 3. **Project onto the rigid-arm constraint** — green/red marker positions are re-projected onto the pivot-circle and green-circle, killing sub-pixel jitter without smoothing the dynamics
 4. **Compute angles** — θ₁, θ₂ in degrees (0° = straight down, +90° = right)
@@ -434,5 +432,5 @@ GPU is required — the BGR tracker is fast enough on CPU.
 ## Acknowledgements
 
 The BGR detection logic is N. Cohen's — preserved verbatim in
-[`legacy/cohen_get_video_coords.py`](legacy/cohen_get_video_coords.py) as
+[`archive/cohen_get_video_coords.py`](archive/cohen_get_video_coords.py) as
 the regression reference for `scripts/processing/bgr_tracker.py`.

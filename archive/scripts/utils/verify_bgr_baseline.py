@@ -4,7 +4,7 @@ verify_bgr_baseline.py
 Regression check: assert that the integrated bgr_tracker.py produces
 output identical to the frozen baselines from
 scripts/utils/capture_bgr_baseline.py — which themselves are
-provably what legacy/cohen_get_video_coords.py (cohen) produces, because the
+provably what archive/cohen_get_video_coords.py (cohen) produces, because the
 detection body is copy-pasted verbatim.
 
 This is the acceptance gate for the BGR-tracker integration: if all
