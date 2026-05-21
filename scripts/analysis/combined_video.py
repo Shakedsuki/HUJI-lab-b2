@@ -148,6 +148,7 @@ from thresholds import (  # noqa: E402
     ARM_LENGTH_PX,
     get_pivot_arm,
 )
+from driven_helpers import _STEM_RE  # noqa: E402
 
 # ── Canonical color scheme ──────────────────────────────────────────────
 # Matches physical markers and is consistent across all analysis scripts.
@@ -302,7 +303,8 @@ def render_figure(fig):
 
 def make_left_panel(frame, phase, t, th1, th2, om1, om2,
                     x_green, y_green, x_red, y_red,
-                    pivot_orig=None, arm_length_px=None):
+                    pivot_orig=None, arm_length_px=None,
+                    stem=None):
     """
     Crop the source frame to a square that contains every constraint
     circle at every frame (6·arm × 6·arm centred on the pivot, since
@@ -433,23 +435,38 @@ def make_left_panel(frame, phase, t, th1, th2, om1, om2,
     x_text  = 10
     x_label = x_text + swatch_size + 5
 
+    # Clip header — voltage / drive-frequency parsed from the stem so the
+    # video is self-identifying in any player. Falls back to the raw stem
+    # when the standard "<V>V_<f>Hz[_N]" pattern doesn't match.
+    if stem:
+        m = _STEM_RE.match(stem)
+        if m:
+            v_str  = m.group("v")
+            f_str  = m.group("f")
+            rep    = m.group("rep")
+            header = f"{v_str}V  {f_str}Hz" + (f"  #{rep}" if rep else "")
+        else:
+            header = stem
+        cv2.putText(panel, header, (x_text, 28),
+                    font, 0.62, (255, 255, 255), 1, lineType=cv2.LINE_AA)
+
     # Phase label (color-coded). 'driven' and 'free_swing' are the two
     # "normal" running phases; any other string (e.g. legacy 'holding')
     # gets the off-color to flag it.
     phase_col = (80, 255, 80) if phase in ('driven', 'free_swing') else (100, 100, 255)
-    cv2.putText(panel, phase.upper(), (x_text, 28),
+    cv2.putText(panel, phase.upper(), (x_text, 60),
                 font, 0.55, phase_col, 1, lineType=cv2.LINE_AA)
 
     # Time
-    cv2.putText(panel, f"t = {t:.3f} s", (x_text, 58),
+    cv2.putText(panel, f"t = {t:.3f} s", (x_text, 90),
                 font, fs, (200, 200, 200), 1, lineType=cv2.LINE_AA)
 
     # Parameters, grouped by arm: green θ₁/ω₁ block, then red θ₂/ω₂ block.
     params = [
-        (f"th1 = {fv(th1)} deg",       BGR_ARM1, 100),
-        (f"om1 = {fv(om1, 0)} deg/s",  BGR_ARM1, 130),
-        (f"th2 = {fv(th2)} deg",       BGR_ARM2, 175),
-        (f"om2 = {fv(om2, 0)} deg/s",  BGR_ARM2, 205),
+        (f"th1 = {fv(th1)} deg",       BGR_ARM1, 132),
+        (f"om1 = {fv(om1, 0)} deg/s",  BGR_ARM1, 162),
+        (f"th2 = {fv(th2)} deg",       BGR_ARM2, 207),
+        (f"om2 = {fv(om2, 0)} deg/s",  BGR_ARM2, 237),
     ]
     for text, color, y in params:
         cv2.rectangle(panel, (x_text, y - swatch_size),
@@ -585,6 +602,7 @@ def main():
             th1[i], th2[i], om1[i], om2[i],
             xg[i], yg[i], xr[i], yr[i],
             pivot_orig=pivot_orig, arm_length_px=arm_length_px,
+            stem=stem,
         )
 
         # ── Stack and write ──

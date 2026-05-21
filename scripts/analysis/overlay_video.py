@@ -65,10 +65,9 @@ def main():
     # resolve_paths returns the combined.mp4 path in [2]; we ignore it
     # and write overlay.mp4 alongside the measurement folder instead.
     csv_path, video_path, _combined_mp4, output_dir = resolve_paths(args)
-    output_mp4 = os.path.join(output_dir, "overlay.mp4")
-
     # Per-batch rig calibration — 3.2V clips use a shifted pivot.
     stem = args.stem or os.path.basename(output_dir.rstrip(os.sep))
+    output_mp4 = os.path.join(output_dir, f"{stem}_overlay.mp4")
     pivot_orig, arm_length_px = get_pivot_arm(stem)
 
     print(f"CSV    : {csv_path}")
@@ -109,6 +108,7 @@ def main():
             th1[i], th2[i], om1[i], om2[i],
             xg[i], yg[i], xr[i], yr[i],
             pivot_orig=pivot_orig, arm_length_px=arm_length_px,
+            stem=stem,
         )
         writer.write(panel)
         if i % step == 0 or i == N - 1:
