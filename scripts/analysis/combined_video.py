@@ -304,61 +304,125 @@ def make_left_panel(frame, phase, t, th1, th2, om1, om2,
                     x_green, y_green, x_red, y_red,
                     pivot_orig=None, arm_length_px=None):
     """
-    Scale original 1280x720 frame to 960x720, draw tracking overlay,
-    and add parameter strip at the bottom. pivot_orig/arm_length_px
-    default to the canonical thresholds.PIVOT/ARM_LENGTH_PX when not
-    supplied; callers that know the clip's stem should pass the result
-    of thresholds.get_pivot_arm(stem) so per-batch calibration is
-    respected (the 3.2V sweep was recorded after the rig was moved).
+    Crop the source frame to a square that contains every constraint
+    circle at every frame (6·arm × 6·arm centred on the pivot, since
+    the red constraint circle reaches 3·arm from pivot at maximum
+    extension), scale to PANEL_H × PANEL_H, and composite a parameter
+    strip on the left so the output stays at PANEL_W × PANEL_H.
+
+    When the bbox extends past the original frame edges (typical: the
+    camera frame isn't tall enough to contain 3·arm above and below the
+    pivot), the source frame is padded with BORDER_REPLICATE so the
+    out-of-camera region continues the background style instead of
+    showing a black void. The visible circles always sit on what looks
+    like continuous curtain/wall, not on a hard cutoff.
+
+    No dimming. cv2 auto-clips drawing at panel edges; since the bbox
+    is large enough to contain every circle every frame, that clipping
+    never actually fires for the three constraint circles.
     """
     if pivot_orig is None:
         pivot_orig = PIVOT_ORIG
     if arm_length_px is None:
         arm_length_px = ARM_LENGTH_PX
 
-    # Scale frame: 1280x720 -> 960x720
-    panel = cv2.resize(frame, (PANEL_W, PANEL_H))
+    # ── Visualization bbox (6·arm × 6·arm) ────────────────────────────
+    # Worst-case red constraint circle reaches 3·arm from pivot (red
+    # marker at 2·arm + its own radius arm). Size the bbox so every
+    # circle fits regardless of the pendulum's configuration.
+    px, py    = pivot_orig
+    half_side = 3 * arm_length_px
+    side      = 2 * half_side
+    fh, fw    = frame.shape[:2]
 
-    # Scale pivot and marker coords from 1280->960
-    sx = PANEL_W / 1280.0
-    sy = PANEL_H / 720.0
-    pivot = (int(pivot_orig[0] * sx), int(pivot_orig[1] * sy))
+    # Pad the source frame on each side by however much the bbox
+    # overhangs. BORDER_REPLICATE extends the boundary pixels outward,
+    # so curtain/wall background continues naturally into the padding.
+    pad_top    = max(0, half_side - py)
+    pad_bot    = max(0, py + half_side - fh)
+    pad_left   = max(0, half_side - px)
+    pad_right  = max(0, px + half_side - fw)
+    if pad_top or pad_bot or pad_left or pad_right:
+        padded = cv2.copyMakeBorder(
+            frame, pad_top, pad_bot, pad_left, pad_right,
+            cv2.BORDER_REPLICATE)
+    else:
+        padded = frame
 
-    def sp(x, y):
-        return (int(x * sx), int(y * sy))
+    # Bbox in the padded-frame coords. Pivot in padded coords is
+    # shifted by (pad_left, pad_top).
+    pp_x = px + pad_left
+    pp_y = py + pad_top
+    bbox = padded[pp_y - half_side:pp_y + half_side,
+                  pp_x - half_side:pp_x + half_side, :]
 
-    # Dashed circle search zone (red-marker outer reach = 2·arm_length_px)
-    cv2.circle(panel, pivot, int(2 * arm_length_px * sx), (80, 80, 80), 1,
+    # Scale the bbox to the right square of the panel (PANEL_H × PANEL_H).
+    vid_size = PANEL_H
+    video    = cv2.resize(bbox, (vid_size, vid_size))
+    s        = vid_size / side                # original px → display px
+
+    # ── Circular porthole crop ─────────────────────────────────────────
+    # Show ONLY the inscribed disc of the bbox (radius = vid_size/2,
+    # which corresponds to 3·arm in original coords). The four corner
+    # triangles outside the disc are filled with a single background
+    # colour sampled from the source frame so the panel looks like a
+    # round porthole onto the action, not a rectangular crop.
+    bg_color = np.median(frame.reshape(-1, 3), axis=0).astype(frame.dtype)
+    yy, xx   = np.ogrid[:vid_size, :vid_size]
+    cr       = vid_size // 2
+    porthole = (xx - cr)**2 + (yy - cr)**2 <= cr * cr
+    video    = np.where(porthole[..., None], video, bg_color)
+
+    # Output panel: param strip on the left + vid_size square on the right.
+    col_w = PANEL_W - vid_size                 # 240 for 960×720
+    panel = np.zeros((PANEL_H, PANEL_W, 3), dtype=frame.dtype)
+    panel[:, col_w:, :] = video
+
+    def disp(x, y):
+        """Map original-frame coords to display coords inside the panel."""
+        return (int((x - (px - half_side)) * s) + col_w,
+                int((y - (py - half_side)) * s))
+
+    pivot     = disp(px, py)
+    arm_disp  = int(arm_length_px * s)         # constraint-circle radius
+
+    # ── Three constraint circles, always drawn ────────────────────────
+    # All at radius = arm_length_px so the geometric structure of the
+    # double pendulum is visible at every frame:
+    #   yellow: locus the green marker MUST sit on  (arm 1 length)
+    #   green:  locus the red marker MUST sit on    (arm 2 length)
+    #   red:    visual symmetry around the bottom marker
+    # cv2.circle auto-clips at the panel edges when a circle extends
+    # outside; nothing in the visible region is dimmed.
+    CIRCLE_THICK = 1
+    cv2.circle(panel, pivot, arm_disp, (0, 215, 255), CIRCLE_THICK,
                lineType=cv2.LINE_AA)
 
-    # Yellow pivot
+    # Yellow pivot dot
     cv2.circle(panel, pivot, 7, (0, 215, 255), -1, lineType=cv2.LINE_AA)
 
     # Arms and markers
     gp = None
     if not np.isnan(x_green):
-        gp = sp(x_green, y_green)
+        gp = disp(x_green, y_green)
+        cv2.circle(panel, gp, arm_disp, (0, 200, 0), CIRCLE_THICK,
+                   lineType=cv2.LINE_AA)
         cv2.line(panel, pivot, gp, (0, 200, 0), 2, lineType=cv2.LINE_AA)
         cv2.circle(panel, gp, 7, (0, 255, 0), -1, lineType=cv2.LINE_AA)
 
     if not np.isnan(x_red):
-        rp = sp(x_red, y_red)
+        rp = disp(x_red, y_red)
+        cv2.circle(panel, rp, arm_disp, (0, 0, 200), CIRCLE_THICK,
+                   lineType=cv2.LINE_AA)
         cv2.circle(panel, rp, 7, (0, 0, 255), -1, lineType=cv2.LINE_AA)
         if gp is not None:
             cv2.line(panel, gp, rp, (0, 0, 200), 2, lineType=cv2.LINE_AA)
 
     # ── Parameter column on the LEFT ──────────────────────────────────
-    # Stacked vertically (ASCII only — cv2.putText doesn't support
-    # Unicode) so the bottom of the pendulum stays visible at full
-    # lower-arm extension. The pivot is at scaled x≈437-497 across all
-    # rig batches and the lower arm reach is ≤240 px scaled, so the
-    # 150-px column never overlaps either marker even at extreme
-    # leftward swings.
-    col_w = 150
-
-    overlay = panel.copy()
-    cv2.rectangle(overlay, (0, 0), (col_w, PANEL_H), (0, 0, 0), -1)
-    cv2.addWeighted(overlay, 0.72, panel, 0.28, 0, panel)
+    # The video region starts at x=col_w, so the column never overlaps
+    # any moving marker or constraint circle in the visible cropped
+    # disc. No alpha blend needed — the column lives on the black
+    # background to the left of the video.
 
     def fv(v, decimals=1):
         return f"{v:+.{decimals}f}" if not np.isnan(v) else "  ---  "
@@ -369,8 +433,10 @@ def make_left_panel(frame, phase, t, th1, th2, om1, om2,
     x_text  = 10
     x_label = x_text + swatch_size + 5
 
-    # Phase label (color-coded)
-    phase_col = (80, 255, 80) if phase == 'free_swing' else (100, 100, 255)
+    # Phase label (color-coded). 'driven' and 'free_swing' are the two
+    # "normal" running phases; any other string (e.g. legacy 'holding')
+    # gets the off-color to flag it.
+    phase_col = (80, 255, 80) if phase in ('driven', 'free_swing') else (100, 100, 255)
     cv2.putText(panel, phase.upper(), (x_text, 28),
                 font, 0.55, phase_col, 1, lineType=cv2.LINE_AA)
 
@@ -498,10 +564,16 @@ def main():
             else:
                 head_dots[panel_idx].set_data([], [])
 
+        if phases[i] == 'free_swing':
+            phase_word = 'FREE SWING'
+        elif phases[i] == 'driven':
+            phase_word = 'DRIVEN'
+        else:
+            phase_word = phases[i].upper()
         time_txt.set_text(
             f"frame {frames[i]:4d} / {N}   "
             f"t = {times[i]:.3f} s   "
-            f"{'FREE SWING' if phases[i] == 'free_swing' else 'HOLDING'}"
+            f"{phase_word}"
         )
 
         # ── Render matplotlib → numpy ──

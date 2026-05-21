@@ -65,7 +65,7 @@ def load_traj(stem, arm):
         return None
     df = pd.read_csv(p)
     th_col, om_col = f"theta{arm}_deg", f"omega{arm}_deg_s"
-    free = df[df["phase"] == "free_swing"].dropna(
+    free = df[df["phase"].isin(["free_swing", "driven"])].dropna(
         subset=[th_col, om_col]).reset_index(drop=True)
     if len(free) < 30:
         return None
