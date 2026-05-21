@@ -12,20 +12,23 @@ experiments/week5-6-pendulum-motor-driven/videos/*.avi
 frames/
 
 # ── Per-measurement outputs ──────────────────────
-# Large/regenerable artefacts produced inside measurements/<config>/.
+# Large/regenerable artefacts produced inside measurements/<clip>/.
 # Small human-readable artefacts (tracking.csv, etc.) stay tracked
 # so the repo always shows what's been measured at a glance.
-experiments/week3-4-pendulum-free-swing/measurements/*/debug.mp4
-experiments/week3-4-pendulum-free-swing/measurements/*/phase_3d_rotation.mp4
-experiments/week3-4-pendulum-free-swing/measurements/*/phase_animation.mp4
-experiments/week3-4-pendulum-free-swing/measurements/*/combined.mp4
-experiments/week5-6-pendulum-motor-driven/measurements/*/debug.mp4
-experiments/week5-6-pendulum-motor-driven/measurements/*/phase_3d_rotation.mp4
-experiments/week5-6-pendulum-motor-driven/measurements/*/phase_animation.mp4
-experiments/week5-6-pendulum-motor-driven/measurements/*/combined.mp4
-experiments/week5-6-pendulum-motor-driven/measurements/*/overlay.mp4
-experiments/week5-6-pendulum-motor-driven/measurements/*/*_overlay.mp4
-experiments/week5-6-pendulum-motor-driven/measurements/*/*_overlay_compressed.mp4
+# `**` matches both the flat free-swing layout (measurements/<stem>/X)
+# and the bucketed driven layout (measurements/week5/<stem>/X,
+# measurements/week6/<stem>/X).
+experiments/week3-4-pendulum-free-swing/measurements/**/debug.mp4
+experiments/week3-4-pendulum-free-swing/measurements/**/phase_3d_rotation.mp4
+experiments/week3-4-pendulum-free-swing/measurements/**/phase_animation.mp4
+experiments/week3-4-pendulum-free-swing/measurements/**/combined.mp4
+experiments/week5-6-pendulum-motor-driven/measurements/**/debug.mp4
+experiments/week5-6-pendulum-motor-driven/measurements/**/phase_3d_rotation.mp4
+experiments/week5-6-pendulum-motor-driven/measurements/**/phase_animation.mp4
+experiments/week5-6-pendulum-motor-driven/measurements/**/combined.mp4
+experiments/week5-6-pendulum-motor-driven/measurements/**/overlay.mp4
+experiments/week5-6-pendulum-motor-driven/measurements/**/*_overlay.mp4
+experiments/week5-6-pendulum-motor-driven/measurements/**/*_overlay_compressed.mp4
 
 # ── Figures layout ───────────────────────────────
 # Per-clip MP4s (rendered animations) regenerable from CSV — too big
@@ -60,8 +63,8 @@ experiments/week3-4-pendulum-free-swing/data/*batch_log.txt
 experiments/week5-6-pendulum-motor-driven/data/*batch_log.txt
 
 # Tracking-CSV backups (interpolate_suspects, fix_green_swaps, etc.)
-experiments/week3-4-pendulum-free-swing/measurements/*/tracking.csv.bak*
-experiments/week5-6-pendulum-motor-driven/measurements/*/tracking.csv.bak*
+experiments/week3-4-pendulum-free-swing/measurements/**/tracking.csv.bak*
+experiments/week5-6-pendulum-motor-driven/measurements/**/tracking.csv.bak*
 
 # Registry backups created by bulk_track.py / register_phase2_videos.py
 experiments/week3-4-pendulum-free-swing/data/experiments.json.bulk_track_*.bak
