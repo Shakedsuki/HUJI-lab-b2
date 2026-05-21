@@ -1,139 +1,133 @@
-# Handoff — driven-pipeline cleanup & 3.2V tracking triage
+# Handoff — 3.2V family video-by-video visual triage
 
-Session ended **2026-05-21**. The next session should be able to pick up exactly where this one left off without re-reading the chat.
+Session ended **2026-05-21** (second session of the day). The first session of the day fixed the wall-fabric wrong-blob problem (see `git log` PR #43); this session added per-batch rig calibration (PR #45) and shipped most of the 3.2V data refresh (PRs #46, #47). The session was halted after the user spotted a **visible problem in 3.2V_0.9Hz's overlay video that the numerical stats did not reveal**. Next session must triage video-by-video with visual verification as the primary acceptance bar.
 
 ---
 
 ## TL;DR — current state
 
-- **Pipeline is fully cleaned and consistent** (binary PASS/FAIL verdict, dropout-only criterion, Cohen's BGR detection wrapped in pipeline I/O with X-only crop).
-- **Baselines pass MATCH × 3** — `verify_bgr_baseline.py --all` confirms the wrapped tracker reproduces Cohen's standalone bit-for-bit on the 3 reference clips (4V_1.9Hz, 4V_0.6Hz, 3V_1Hz).
-- **62 clips registered** in `week4-pendulum-motor-driven/data/experiments.json` (29 from earlier batches + 33 newly registered 3.2V sweep clips from 0.9–1.34 Hz).
-- **Bulk re-track NOT done** under the final code state. Earlier bulks completed but with different code; the data on master from PR #40 was the last clean bulk-tracked snapshot before the Y-crop experiment.
+- **Code is solid and shipped.** ROI replaces the wall-fabric gate (PR #43). Per-batch pivot/arm resolver (PR #45) is correct on 3.2V_1.34Hz visually. `overlay_video.py` exists for fast sanity-check renders (PR #44).
+- **21 of 33 3.2V clips re-tracked with new pivot, all 0.00% dropout numerically.** Shipped in PRs #46 (0.9–1.15 Hz, 13 clips) and #47 (1.16–1.23 Hz, 8 clips, UNVERIFIED).
+- **12 clips still un-tracked with the new pivot**: 1.24, 1.25, 1.26, 1.27, 1.28, 1.29, 1.30, 1.31, 1.32, 1.33_1, 1.33_2, 1.34.
+- **3.2V_1Hz is in the failed pile** — 1.36% dropout, predates the 3.2V rig (matches the 3V/4V calibration). Needs dedicated triage.
+- **Master tip:** `ab45570` (PR #47 merge). Worktree branch: `claude/gifted-yalow-74debc` (now merged + presumably already in main via `git pull origin master`).
 
 ## The open problem (next session's main task)
 
-The **3.2V × 0.9-1.34 Hz sweep clips have a systemic wrong-blob tracking problem.** BGR finds two blobs every frame (0% dropout) but the red detection wanders into wall-fabric / curtain in the upper part of the frame whenever the actual red marker briefly blurs or dims.
-
-Visual evidence:
-- `week4-pendulum-motor-driven/measurements/3.2V_0.91Hz/diagnostic.png` — frame 995, peak \|ω₂\| = 5275 °/s
-- `week4-pendulum-motor-driven/measurements/3.2V_0.93Hz/diagnostic.png` — frame 729, peak \|ω₂\| = 5608 °/s
-- `week4-pendulum-motor-driven/measurements/3.2V_1.20Hz/diagnostic.png` — frame 3173, peak \|ω₂\| = 5902 °/s
-
-Numerical signature on a failing clip:
+The user identified a **visual problem in 3.2V_0.9Hz's overlay** that the numerical checks all passed:
 - 0% dropout
-- arm-length (green↔red pixel distance) varies 8–500 px instead of the constant ~153 px (rigid rod)
-- peak \|ω₂\| 4000–8500 °/s (physically impossible; absurd cap is 4000)
+- Green circle fit matches the canonical 3.2V pivot (583, 331) within sub-pixel
+- Arm-length distribution healthy (median 154, max 164)
+- Detection residual std 0.58 px
 
-This is **not** a problem with Cohen's BGR ranges per se — it's that BGR's "find brightest red blob in crop window" doesn't know a marker from a curtain when both happen to be in range. Cohen's standalone script has the same behaviour; he just never visualized it.
+**The user didn't describe what they saw yet — ask them first.** Possible failure modes the stats can't catch:
+- Red marker visibly landing on the wrong physical object on some frames despite passing geometry checks
+- Yellow pivot dot off the joint (rendering issue, not tracking)
+- Theta1/theta2 jumps not reflected in dropout
+- Time-localized issue (specific frames have markers in wrong places)
 
-### Approaches considered, none committed
+**The methodology this session got wrong** was "stats look good → ship". Next session's bar: **visual verification of the overlay video is the primary acceptance criterion**, not dropout %.
 
-| Approach | Result |
-|---|---|
-| **Y crop [180, 780]** (tried in-session, reverted) | Cleaned wrong-blob on 3.2V but cut off legitimate inverted-marker positions on 4V_0.6Hz — dropped from 98% → 75% both-found. The Y bounds tight enough to exclude wall fabric also exclude full inversions. |
-| **Wider Y crop e.g. [50, 850]** | Not tried. Likely a compromise — keeps some inversion but lets some wall fabric in. |
-| **Geometry gate (post-detection sanity)** | Not tried. `\|distance(green,red) - 153\| > tolerance` → reject red, mark dropout. Mechanically clean. User was wary of "harnesses" but this is a *detection* filter not a *verdict* check. |
-| **Tighter X crop** | Not tried. Wall fabric is in the upper-Y region, not on the right side, so X crop probably won't help. |
-| **Tighter red BGR ranges** | Not tried. Would need per-clip color sampling. Cohen's ranges are intentionally loose for fallback. |
-| **Drop 3.2V sweep from analysis** | Last-resort option. Loses the new high-resolution dataset. |
+### Process for each clip (video-by-video, no bulk)
 
-**My recommendation for next session:** start with the **geometry gate** (option C). It's the only one that mechanically *guarantees* a tracking error gets flagged, and it leaves Cohen's detection logic untouched at the BGR layer. About 4 lines added to `bgr_tracker.detect_markers_bgr`:
-
-```python
-# After computing gx, gy, rx, ry:
-if gx is not None and rx is not None:
-    arm_dist = ((gx - rx)**2 + (gy - ry)**2) ** 0.5
-    if abs(arm_dist - ARM_LENGTH_PX) > ARM_LENGTH_PX * 0.30:
-        rx = ry = None  # treat as dropout
+```powershell
+$stem = "<clip>"
+cd C:\dev\chaos
+$env:CHAOS_PHASE = "week4-pendulum-motor-driven"
+python scripts/processing/bgr_tracker.py week4-pendulum-motor-driven/videos/$stem.mov --force
+python scripts/analysis/overlay_video.py --stem $stem
+start week4-pendulum-motor-driven/measurements/$stem/overlay.mp4
+# ── user watches the full overlay ──
+# If visual problem: stop, triage with diagnose_frames.py / direct frame inspection.
+# If clean: move to next clip.
 ```
 
-Tolerance 30% (~46 px) is generous — allows for genuine marker position variation while rejecting blobs that are way off. Tune empirically.
+**Do not run more than one clip at a time.** Do not batch. Do not ship until each clip is individually approved by the user.
 
-After applying the gate:
-1. Re-capture baselines (`capture_bgr_baseline.py` does NOT include the gate — would need to mirror, or the regression baselines become "before-gate" reference)
-2. Bulk-track just the 33 new 3.2V clips
-3. Run `scan_tracking_quality.py` to confirm dropout is now reasonable
-4. If wrong-blob frames now become genuine dropouts and dropout-% stays under 5% → PASS, move on to analysis
-5. If dropout-% blows past 5% → the BGR detector genuinely loses the marker on these clips; option E (skip) becomes the realistic call
+### Recommended starting order
 
-## What landed on master in this session
+1. **3.2V_0.9Hz** (re-render and inspect; figure out what the user saw)
+2. Then walk the previously-shipped clips that have NOT been visually verified yet:
+   - PR #46's 13 clips (0.91–1.15 Hz) — only 1.34Hz was visually verified before shipping
+   - PR #47's 8 clips (1.16–1.23 Hz) — none visually verified
+3. Then the 12 still-un-tracked clips (1.24–1.34Hz including 1.33×2)
+4. Then 3.2V_1Hz from the failed pile
 
-Master tip: **`96ef146` Merge pull request #41 from Shakedsuki/claude/phase2-diagnose-frames**
+## What landed this session
 
-Recent history (latest first):
 ```
-96ef146 Merge PR #41 — diagnose_frames.py visual tracker sanity check
-4c9b587 Merge PR #40 — bulk re-track 62 clips (revealed wrong-blob signal)
-6038f11 Merge PR #39 — scan_tracking_quality.py
-aa8ab45 Merge PR #38 — schema slim + stale-doc touch-ups
-6478b6d Merge PR #37 — remove dead tools (triage, suspects, friction-*)
-96cb2a5 Merge PR #36 — trim verify + drop interpolate
-65d88c9 Merge PR #35 — remove HSV tracker stack
-921f167 Merge PR #34 — repo restructure (week-based folders, parallel agent)
-2f9243e Merge PR #33 — register 33 clips of 3.2V sweep
-fb7da12 Merge PR #32 — integrate Cohen's BGR detection
+ab45570 Merge PR #47 — data: 3.2V part 2 (1.16-1.23 Hz, UNVERIFIED)
+57c448c Merge PR #46 — data: 3.2V part 1 (0.9-1.15 Hz, 13 clips, all 0% dropout)
+cb81296 Merge PR #45 — per-batch rig calibration + left-column overlay strip
+97ab436 Merge PR #44 — overlay_video: standalone tracking-overlay renderer
+4ad3eeb Merge PR #43 — bgr_tracker: replace geometry gate with green-proximity ROI
 ```
 
-Plus this session's wrap-up commit (PR-D-style verdict simplification + Y-crop revert + 2 new diagnostic PNGs as evidence) — see the next merge for the SHA.
+Key insights from this session:
+- **Calibration mismatch on 3.2V**: rig was repositioned between 3V/4V calibration and 3.2V sweep recording. Pivot moved ~80 px left, arm length ~5% longer. Now handled by `thresholds.get_pivot_arm(stem)`.
+- **3.2V_1Hz is from the OLD rig** — its arm-length signature (median 152, max 159) matches the 3V/4V calibration, not the 3.2V rig (median 156, max 165). It's excluded from the new branch in `get_pivot_arm`.
+- **The wall-fabric ROI works on every clip we tested numerically** — the issue surfaced this session is something different (visual, possibly off-marker detection passing the ROI gate).
 
 ## Active code paths
 
-- **Tracker:** `scripts/processing/bgr_tracker.py` — Cohen's BGR detection (X-only crop, no Y crop, no geometry gate)
-- **Verify:** `scripts/processing/verify_tracking.py` — ω via SG smoothing + dropout count only. No suspect detection.
-- **Verdict:** `scripts/utils/track_one.py` `compute_verdict()` — binary PASS / FAIL on `dropout_pct > 5%`. One criterion, one threshold.
-- **Bulk:** `scripts/utils/bulk_track.py` — loops track_one over registry entries
-- **Scanner:** `scripts/utils/scan_tracking_quality.py` — per-clip PASS/FAIL table with dropout %
-- **Diagnostics:** `scripts/utils/diagnose_frames.py` — renders sample frames with green/red crosshairs overlaid, the "visual sanity check" tool
-- **Regression:** `scripts/utils/capture_bgr_baseline.py` + `verify_bgr_baseline.py` — bit-equality check against Cohen's standalone
-- **Cohen's original:** `week4-pendulum-motor-driven/legacy/get_video_coords.py` — **never modify**
-
-Registry schema for new entries (`bgr_tracker.update_registry_entry` and `register_phase2_videos.make_entry`):
-- Frame-0 ICs use `theta1_initial` / `omega1_initial` (renamed from `*_release`)
-- `n_frames` (not `n_free_frames`)
-- Dropped: `init_frame`, `release_frame`, `tag_frame`, `t0_offset_s`, `energy_proxy`, `green_roi`, `red_roi`, `ring_tolerance`, `suspect_frames_interpolated`, `interpolation_date`
+- **Tracker:** `scripts/processing/bgr_tracker.py` — BGR detection + green-proximity ROI + per-batch pivot
+- **Sanity-check render:** `scripts/analysis/overlay_video.py` — fast overlay-only render (~10–20 s/clip)
+- **Full render:** `scripts/analysis/combined_video.py` — overlay + 3 phase-space panels (slow, ~1–2 min/clip)
+- **Frame-level diagnostic:** `scripts/utils/diagnose_frames.py` — grid of N frames with crosshairs
+- **Regression:** `scripts/utils/verify_bgr_baseline.py` — 3/3 MATCH on 3V_1Hz / 4V_0.6Hz / 4V_1.9Hz reference clips
+- **Per-batch resolver:** `scripts/utils/thresholds.py::get_pivot_arm(stem)` — pivot/arm constants per batch
+- **Cohen's original (never modify):** `week4-pendulum-motor-driven/legacy/get_video_coords.py`
 
 ## What's queued / pending
 
 | | | |
 |---|---|---|
-| **PR H** | Week-folder rename: `week3` → `week3-4`, `week4` → `week5-6` (to reflect actual 2-weeks-each lab schedule) | not started |
-| **Wrong-blob fix** | See triage options above. Next session's main task. | open |
-| **Bulk re-track all 62 clips** under final pipeline | Last done with old (multi-criterion) verdict; need to re-do once wrong-blob is fixed | open |
-| **Analysis phase** | `chaos figures` + bifurcation diagrams + per-clip Poincaré / Lyapunov. The actual goal. Blocked on wrong-blob fix. | open |
+| **3.2V_0.9Hz visual problem** | User saw something. Ask, reproduce, classify, fix. | open |
+| **Re-verify PR #46 + #47 data** | 21 clips shipped without visual check. Walk each via overlay. | open |
+| **Track remaining 12 3.2V clips** | 1.24-1.34Hz + 1.33×2 still on the old (pre-pivot-fix) data | open |
+| **Failed pile** | 3.2V_1Hz (1.36% dropout, original rig). Dedicated triage. | open |
+| **3V/4V clips** | Use canonical pivot, never re-tracked this session. Should still be correct but unverified for visual issues. | open |
 
 ## How to resume
 
-```bash
-cd C:/dev/chaos
-git log --oneline -5                              # confirm at master tip
-CHAOS_PHASE=week4-pendulum-motor-driven \
-    python scripts/utils/verify_bgr_baseline.py --all
-# Expect: 3/3 MATCH. If so, the pipeline state is clean.
+```powershell
+cd C:\dev\chaos
+git log --oneline -8                              # confirm at master tip ab45570 or later
+$env:CHAOS_PHASE = "week4-pendulum-motor-driven"
 
-# View the wrong-blob evidence:
-# week4-pendulum-motor-driven/measurements/3.2V_0.91Hz/diagnostic.png
-# week4-pendulum-motor-driven/measurements/3.2V_0.93Hz/diagnostic.png
-# week4-pendulum-motor-driven/measurements/3.2V_1.20Hz/diagnostic.png
+# Verify the pipeline is intact
+python scripts/utils/verify_bgr_baseline.py --all  # expect 3/3 MATCH
 
-# When ready to apply the geometry gate fix:
-# Edit scripts/processing/bgr_tracker.py detect_markers_bgr
-# Re-capture baselines: for stem in 4V_1.9Hz 4V_0.6Hz 3V_1Hz; do
-#     CHAOS_PHASE=week4-pendulum-motor-driven \
-#         python scripts/utils/capture_bgr_baseline.py --stem $stem
-# done
-# Then bulk only new 3.2V clips:
-#     CHAOS_PHASE=week4-pendulum-motor-driven \
-#         python chaos.py bulk --redo --filter 3.2V_
-# Then scan:
-#     CHAOS_PHASE=week4-pendulum-motor-driven \
-#         python scripts/utils/scan_tracking_quality.py --filter 3.2V_
+# Re-render the overlay the user reported a problem with
+python scripts/analysis/overlay_video.py --stem 3.2V_0.9Hz
+start week4-pendulum-motor-driven/measurements/3.2V_0.9Hz/overlay.mp4
+
+# Then ask the user: "What did you see in 3.2V_0.9Hz's overlay?"
 ```
 
 ## User preferences observed this session
 
-- **Aggressive minimalism on the verdict layer.** "Only keep the dropout rate" was an explicit instruction. Don't reintroduce arm-length / peak-ω / swap checks as verdict criteria. The geometry gate I'm proposing is detection-layer, not verdict-layer — but be ready to defend the distinction.
-- **Cohen's `get_video_coords.py` is untouchable.** It's at `week4-pendulum-motor-driven/legacy/`. New behavior goes into wrapper scripts that extend Cohen's logic.
-- **Visual sanity-check over numerical safeguards.** Prefer `diagnose_frames.py` output as the trust signal rather than chains of automated checks.
-- **PR-per-coherent-unit.** Each cleanup arc shipped as a small focused PR (#35–41 in this session). Same pattern going forward.
-- **Lights-out autonomy when the plan is clear.** When the user says "execute uninterrupted," it means make the reasonable call and ship.
+- **Visual sanity check IS the test.** Numerical 0% dropout means nothing if the overlay shows wrong-blob frames or off-marker detections. This is the lesson of this session — don't ship without visually verifying.
+- **No bulk.** Per the user's explicit cadence: track one clip → triage if <99% → fix → re-track → next clip. The user broke their own rule for efficiency once we'd seen many clean clips, and that's what bit us.
+- **Failed pile is OK.** Clips below 99% get parked in a documented "failed pile" rather than blocking progress. They're triaged separately at the end.
+- **Per-batch calibration is hardcoded constants, not auto-fit per-clip.** `get_pivot_arm(stem)` uses stem prefix. New batches → add new constants + update the resolver.
+- **Cohen's `get_video_coords.py` is untouchable.** New behavior goes into wrapper scripts (`bgr_tracker.py`).
+- **"Ship it" = push + PR + merge + pull-to-main.** Standard cycle. PRs are auto-merged once user gives the word.
+- **Aggressive minimalism.** Don't add new gates/thresholds/safeguards unless absolutely needed. ROI removed the old gate — strictly better single mechanism.
+- **Conversation cadence:** user wants short, focused updates per action. Long-form planning OK when proposing a strategy change.
+
+## Quick reference: per-batch constants in thresholds.py
+
+```python
+# Canonical 3V/4V batch (and 3.2V_1Hz which predates the 3.2V sweep)
+PIVOT         = (663, 332)
+ARM_LENGTH_PX = 153
+
+# 3.2V sweep batch (rig was repositioned ~80 px left)
+PIVOT_3_2V         = (583, 331)
+ARM_LENGTH_PX_3_2V = 161
+
+# Resolver: get_pivot_arm(stem) -> (pivot, arm_length_px)
+# - if stem.startswith("3.2V_") and stem != "3.2V_1Hz": returns PIVOT_3_2V, ARM_LENGTH_PX_3_2V
+# - else: returns PIVOT, ARM_LENGTH_PX
+```
