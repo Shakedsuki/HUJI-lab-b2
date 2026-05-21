@@ -143,7 +143,11 @@ SG_POLY   = 3
 _COMBINED_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.abspath(
     os.path.join(_COMBINED_DIR, os.pardir, "utils")))
-from thresholds import PIVOT as PIVOT_ORIG, ARM_LENGTH_PX  # noqa: E402
+from thresholds import (  # noqa: E402
+    PIVOT as PIVOT_ORIG,
+    ARM_LENGTH_PX,
+    get_pivot_arm,
+)
 
 # ── Canonical color scheme ──────────────────────────────────────────────
 # Matches physical markers and is consistent across all analysis scripts.
@@ -297,24 +301,34 @@ def render_figure(fig):
 # ─────────────────────────────────────────────
 
 def make_left_panel(frame, phase, t, th1, th2, om1, om2,
-                    x_green, y_green, x_red, y_red):
+                    x_green, y_green, x_red, y_red,
+                    pivot_orig=None, arm_length_px=None):
     """
     Scale original 1280x720 frame to 960x720, draw tracking overlay,
-    and add parameter strip at the bottom.
+    and add parameter strip at the bottom. pivot_orig/arm_length_px
+    default to the canonical thresholds.PIVOT/ARM_LENGTH_PX when not
+    supplied; callers that know the clip's stem should pass the result
+    of thresholds.get_pivot_arm(stem) so per-batch calibration is
+    respected (the 3.2V sweep was recorded after the rig was moved).
     """
+    if pivot_orig is None:
+        pivot_orig = PIVOT_ORIG
+    if arm_length_px is None:
+        arm_length_px = ARM_LENGTH_PX
+
     # Scale frame: 1280x720 -> 960x720
     panel = cv2.resize(frame, (PANEL_W, PANEL_H))
 
     # Scale pivot and marker coords from 1280->960
     sx = PANEL_W / 1280.0
     sy = PANEL_H / 720.0
-    pivot = (int(PIVOT_ORIG[0] * sx), int(PIVOT_ORIG[1] * sy))
+    pivot = (int(pivot_orig[0] * sx), int(pivot_orig[1] * sy))
 
     def sp(x, y):
         return (int(x * sx), int(y * sy))
 
-    # Dashed circle search zone (red-marker outer reach = 2·ARM_LENGTH_PX)
-    cv2.circle(panel, pivot, int(2 * ARM_LENGTH_PX * sx), (80, 80, 80), 1,
+    # Dashed circle search zone (red-marker outer reach = 2·arm_length_px)
+    cv2.circle(panel, pivot, int(2 * arm_length_px * sx), (80, 80, 80), 1,
                lineType=cv2.LINE_AA)
 
     # Yellow pivot
@@ -333,51 +347,48 @@ def make_left_panel(frame, phase, t, th1, th2, om1, om2,
         if gp is not None:
             cv2.line(panel, gp, rp, (0, 0, 200), 2, lineType=cv2.LINE_AA)
 
-    # ── Parameter strip at bottom ──────────────────────────────────────
-    # Two-row grid, ASCII only (cv2.putText does not support Unicode)
-    strip_h = 80
-    y_top   = PANEL_H - strip_h
+    # ── Parameter column on the LEFT ──────────────────────────────────
+    # Stacked vertically (ASCII only — cv2.putText doesn't support
+    # Unicode) so the bottom of the pendulum stays visible at full
+    # lower-arm extension. The pivot is at scaled x≈437-497 across all
+    # rig batches and the lower arm reach is ≤240 px scaled, so the
+    # 150-px column never overlaps either marker even at extreme
+    # leftward swings.
+    col_w = 150
 
-    # Dark background
     overlay = panel.copy()
-    cv2.rectangle(overlay, (0, y_top), (PANEL_W, PANEL_H), (0, 0, 0), -1)
+    cv2.rectangle(overlay, (0, 0), (col_w, PANEL_H), (0, 0, 0), -1)
     cv2.addWeighted(overlay, 0.72, panel, 0.28, 0, panel)
 
-    # Helper: format a value or show --- if NaN
     def fv(v, decimals=1):
         return f"{v:+.{decimals}f}" if not np.isnan(v) else "  ---  "
 
-    # Row 1: phase label + time
+    font = cv2.FONT_HERSHEY_SIMPLEX
+    fs   = 0.50
+    swatch_size = 10
+    x_text  = 10
+    x_label = x_text + swatch_size + 5
+
+    # Phase label (color-coded)
     phase_col = (80, 255, 80) if phase == 'free_swing' else (100, 100, 255)
-    cv2.putText(panel, phase.upper(),
-                (10, y_top + 22),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.55, phase_col, 1,
-                lineType=cv2.LINE_AA)
-    cv2.putText(panel, f"t = {t:.3f} s",
-                (220, y_top + 22),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.55, (200, 200, 200), 1,
-                lineType=cv2.LINE_AA)
+    cv2.putText(panel, phase.upper(), (x_text, 28),
+                font, 0.55, phase_col, 1, lineType=cv2.LINE_AA)
 
-    # Row 2: four parameters in a 4-column grid, colour-coded by arm
-    # Each column is PANEL_W/4 = 240px wide
-    col_w = PANEL_W // 4
-    y2    = y_top + 58
-    font  = cv2.FONT_HERSHEY_SIMPLEX
-    fs    = 0.50
-    swatch_size = 10   # colored square side length
+    # Time
+    cv2.putText(panel, f"t = {t:.3f} s", (x_text, 58),
+                font, fs, (200, 200, 200), 1, lineType=cv2.LINE_AA)
 
+    # Parameters, grouped by arm: green θ₁/ω₁ block, then red θ₂/ω₂ block.
     params = [
-        (f"th1 = {fv(th1)} deg",      10,              BGR_ARM1),
-        (f"th2 = {fv(th2)} deg",      10 + col_w,      BGR_ARM2),
-        (f"om1 = {fv(om1, 0)} deg/s", 10 + 2 * col_w, BGR_ARM1),
-        (f"om2 = {fv(om2, 0)} deg/s", 10 + 3 * col_w, BGR_ARM2),
+        (f"th1 = {fv(th1)} deg",       BGR_ARM1, 100),
+        (f"om1 = {fv(om1, 0)} deg/s",  BGR_ARM1, 130),
+        (f"th2 = {fv(th2)} deg",       BGR_ARM2, 175),
+        (f"om2 = {fv(om2, 0)} deg/s",  BGR_ARM2, 205),
     ]
-    for text, x, color in params:
-        # Small color swatch before the label
-        sy1 = y2 - swatch_size
-        sy2 = y2
-        cv2.rectangle(panel, (x, sy1), (x + swatch_size, sy2), color, -1)
-        cv2.putText(panel, text, (x + swatch_size + 5, y2),
+    for text, color, y in params:
+        cv2.rectangle(panel, (x_text, y - swatch_size),
+                      (x_text + swatch_size, y), color, -1)
+        cv2.putText(panel, text, (x_label, y),
                     font, fs, color, 1, lineType=cv2.LINE_AA)
 
     return panel
@@ -389,6 +400,11 @@ def make_left_panel(frame, phase, t, th1, th2, om1, om2,
 def main():
     args = parse_args()
     csv_path, video_path, output_mp4, output_dir = resolve_paths(args)
+
+    # Per-batch rig calibration — stem is the measurement folder name
+    # (or args.stem when supplied). 3.2V clips use a shifted pivot.
+    stem = args.stem or os.path.basename(output_dir.rstrip(os.sep))
+    pivot_orig, arm_length_px = get_pivot_arm(stem)
 
     csv_ext = os.path.splitext(csv_path)[1].lower()
     if csv_ext != ".csv":
@@ -495,7 +511,8 @@ def main():
         left_panel = make_left_panel(
             vframe, phases[i], times[i],
             th1[i], th2[i], om1[i], om2[i],
-            xg[i], yg[i], xr[i], yr[i]
+            xg[i], yg[i], xr[i], yr[i],
+            pivot_orig=pivot_orig, arm_length_px=arm_length_px,
         )
 
         # ── Stack and write ──

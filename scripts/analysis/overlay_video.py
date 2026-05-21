@@ -35,6 +35,7 @@ except (AttributeError, OSError):
 
 _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, _THIS_DIR)
+sys.path.insert(0, os.path.abspath(os.path.join(_THIS_DIR, os.pardir, "utils")))
 from combined_video import (  # noqa: E402
     FPS_OUT,
     PANEL_H,
@@ -43,6 +44,7 @@ from combined_video import (  # noqa: E402
     make_left_panel,
     resolve_paths,
 )
+from thresholds import get_pivot_arm  # noqa: E402
 
 
 def parse_args():
@@ -65,9 +67,14 @@ def main():
     csv_path, video_path, _combined_mp4, output_dir = resolve_paths(args)
     output_mp4 = os.path.join(output_dir, "overlay.mp4")
 
+    # Per-batch rig calibration — 3.2V clips use a shifted pivot.
+    stem = args.stem or os.path.basename(output_dir.rstrip(os.sep))
+    pivot_orig, arm_length_px = get_pivot_arm(stem)
+
     print(f"CSV    : {csv_path}")
     print(f"Video  : {video_path}")
     print(f"Output : {output_mp4}")
+    print(f"Pivot  : {pivot_orig}  Arm: {arm_length_px} px")
 
     print("Loading CSV ...")
     frames, times, phases, th1, th2, om1, om2, dropouts = load_csv(csv_path)
@@ -101,6 +108,7 @@ def main():
             vframe, phases[i], times[i],
             th1[i], th2[i], om1[i], om2[i],
             xg[i], yg[i], xr[i], yr[i],
+            pivot_orig=pivot_orig, arm_length_px=arm_length_px,
         )
         writer.write(panel)
         if i % step == 0 or i == N - 1:
