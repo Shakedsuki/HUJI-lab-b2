@@ -38,6 +38,9 @@ chaos/
 ├── legacy/                       collaborator reference (untouched — DO NOT EDIT)
 │   └── cohen_get_video_coords.py
 │
+├── archive/                      one-shot, setup, and regression scripts (out of the way)
+│   └── scripts/utils/            see archive/scripts/utils/README.md
+│
 ├── reports/                      writeups for the course
 │   ├── lab-assignment.pdf
 │   ├── weekly/                   short catch-up reports
@@ -66,7 +69,7 @@ For the pendulum weeks you also need the raw videos — they're **not in
 git** because each .mov is ~50 MB. Pull them from Drive:
 
 ```bash
-python scripts/utils/download_videos.py        # → experiments/week3-4-pendulum-free-swing/data/videos/
+python archive/scripts/utils/download_videos.py    # → experiments/week3-4-pendulum-free-swing/data/videos/
 ```
 
 Drive folder: [כאוס on Google Drive](https://drive.google.com/drive/folders/1nB9rrpZ1UTdLrKEJudptLbawavkvXWj-).
@@ -320,7 +323,6 @@ The same software stack handles both weeks 3–4 and 5–6. Set
 PIPELINE  (per-clip flow)
   chaos track <stem>             track + verify + verdict
   chaos verify <stem>            standalone QA on existing tracking.csv
-  chaos override <stem> --frame N  patch one row of tracking.csv
   chaos render <stem>            render combined.mp4 (video + overlay + phase plots)
 
 BATCH / DRIVER
@@ -353,7 +355,7 @@ ANALYSIS
 ### Verdict bands
 
 - **PASS** — tracking_quality auto-set to `verified` after visual review; ready for downstream analysis
-- **FAIL** — dropout > 5 %; needs a `chaos override` or a re-track with adjusted thresholds
+- **FAIL** — dropout > 5 %; needs a re-track with adjusted thresholds (or a manual fix via `archive/scripts/utils/override_frame.py` for one-off frame issues)
 
 > **Note:** in this lab the *visual overlay video is the test*, not just
 > the numerical dropout. 0 % dropout is necessary but not sufficient —
