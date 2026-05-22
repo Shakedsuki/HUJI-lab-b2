@@ -20,18 +20,6 @@
       "suspect": false
     },
     "lower_abs": {
-      "net_turns": 0.36117499999999997,
-      "net_angle_deg": 130.023,
-      "total_turns": 0.0,
-      "turns_pos": 0.0,
-      "turns_neg": 0.0,
-      "peak_abs_angle_deg": 206.133,
-      "path_turns": 129.8013361111111,
-      "omega_net_turns": 0.3607412490277717,
-      "cross_check_diff_turns": 0.0004337509722282529,
-      "suspect": false
-    },
-    "lower_rel": {
       "net_turns": 0.24846388888888885,
       "net_angle_deg": 89.44699999999999,
       "total_turns": 0.0,
@@ -41,6 +29,18 @@
       "path_turns": 89.72686944444445,
       "omega_net_turns": 0.24806478097221557,
       "cross_check_diff_turns": 0.0003991079166732747,
+      "suspect": false
+    },
+    "lower_rel": {
+      "net_turns": 0.13575277777777778,
+      "net_angle_deg": 48.870999999999995,
+      "total_turns": 0.0,
+      "turns_pos": 0.0,
+      "turns_neg": 0.0,
+      "peak_abs_angle_deg": 101.972,
+      "path_turns": 77.57676944444445,
+      "omega_net_turns": 0.13538831291665984,
+      "cross_check_diff_turns": 0.00036446486111793575,
       "suspect": false
     }
   },

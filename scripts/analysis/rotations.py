@@ -11,9 +11,9 @@ The angles in tracking.csv / verification.csv are wrapped to (-180, 180]
 (atan2 output), so every signal is re-unwrapped first. Three signals:
 
     upper      theta1               upper arm, lab frame
-    lower_abs  theta1 + theta2      lower arm, lab frame  <- where driven
+    lower_abs  theta2               lower arm, lab frame  <- where driven
                                     clips actually loop the pivot
-    lower_rel  theta2               lower arm relative to the upper arm
+    lower_rel  theta2 - theta1      lower arm relative to the upper arm
                                     (joint / elbow winding)
 
 Per signal:
@@ -93,13 +93,13 @@ RUN_PHASES = ("driven", "free_swing")
 # Labels for rich tables (unicode) and matplotlib (mathtext).
 ARM_LABELS = {
     "upper":     "upper  θ₁",
-    "lower_abs": "lower  θ₁+θ₂",
-    "lower_rel": "lower  θ₂ (rel)",
+    "lower_abs": "lower  θ₂",
+    "lower_rel": "lower  θ₂−θ₁ (rel)",
 }
 ARM_MATH = {
     "upper":     r"upper $\theta_1$",
-    "lower_abs": r"lower $\theta_1+\theta_2$",
-    "lower_rel": r"lower $\theta_2$ (rel)",
+    "lower_abs": r"lower $\theta_2$",
+    "lower_rel": r"lower $\theta_2-\theta_1$ (rel)",
 }
 ARM_COLOR = {"upper": "tab:blue", "lower_abs": "tab:red", "lower_rel": "tab:green"}
 
@@ -237,8 +237,8 @@ def load_clip(csv_path):
 
 def arm_signal(d, arm):
     if arm == "upper":     return d["th1"]
-    if arm == "lower_abs": return d["th1"] + d["th2"]
-    if arm == "lower_rel": return d["th2"]
+    if arm == "lower_abs": return d["th2"]                 # θ₂ is already lab-frame absolute
+    if arm == "lower_rel": return d["th2"] - d["th1"]      # lower arm relative to upper
     raise ValueError(arm)
 
 
@@ -246,8 +246,8 @@ def arm_omega(d, arm):
     if not d.get("has_omega"):
         return None
     if arm == "upper":     return d["om1"]
-    if arm == "lower_abs": return d["om1"] + d["om2"]
-    if arm == "lower_rel": return d["om2"]
+    if arm == "lower_abs": return d["om2"]                 # ω of absolute lower angle θ₂
+    if arm == "lower_rel": return d["om2"] - d["om1"]      # d(θ₂ − θ₁)/dt
     raise ValueError(arm)
 
 
