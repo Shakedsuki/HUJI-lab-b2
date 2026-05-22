@@ -119,13 +119,27 @@ def print_status(videos_dir=VIDEOS_DIR, registry_path=EXPERIMENTS_FILE):
     total = len(tracked) + len(pending)
     registry = load_registry(registry_path)
 
-    # Summary line
-    pct = len(tracked) / total * 100 if total else 0
-    filled = int(round(pct / 100 * 30))
-    bar = f"[green]{'█' * filled}[/][dim]{'░' * (30 - filled)}[/]"
-    console.print(f"  {bar}  [bold]{len(tracked)}[/][dim]/{total}[/]  "
-                  f"[green]{pct:.0f}%[/] tracked   "
-                  f"[yellow]{len(pending)} pending[/]")
+    # Summary bar
+    n_verified = sum(1 for v in tracked
+                     if (_resolve_entry(Path(v).stem, registry) or {})
+                     .get("tracking_quality") == "verified")
+    n_tracked = len(tracked)
+    n_unverified = n_tracked - n_verified
+    n_pending = len(pending)
+    width = 30
+    if total > 0:
+        w_ver = int(round(n_verified / total * width))
+        w_trk = int(round(n_unverified / total * width))
+        w_pen = width - w_ver - w_trk
+        bar = (f"[green]{'█' * w_ver}[/]"
+               f"[yellow]{'█' * w_trk}[/]"
+               f"[dim]{'░' * w_pen}[/]")
+        console.print(f"  {bar}  [bold]{n_tracked}[/][dim]/{total}[/]")
+        console.print(
+            f"  [green]{n_verified} verified[/] [dim]·[/] "
+            f"[yellow]{n_unverified} tracked[/] [dim]· {n_pending} pending[/]")
+    else:
+        console.print("  [dim]no clips found[/]")
     console.print()
 
     # Table

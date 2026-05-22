@@ -4,13 +4,6 @@ shell.py — interactive hub for the chaos pipeline.
 Launched by bare ``chaos`` (no subcommand). Presents a compact
 dashboard with single-key dispatch to all major pipeline actions.
 Uses questionary for arrow-key clip pickers and Rich for formatting.
-
-Usage:
-    chaos              # launches the interactive shell
-    python scripts/utils/shell.py   # same thing, standalone
-
-The shell is additive — every ``chaos <subcommand>`` still works
-for scripting, piping, and power-user invocations.
 """
 
 import json
@@ -25,9 +18,9 @@ except (AttributeError, OSError):
     pass
 
 import questionary
-from questionary import Choice
+from questionary import Choice, Separator
 
-from rich.console import Console
+from rich.console import Console, Group
 from rich.table import Table
 from rich.text import Text
 from rich.panel import Panel
@@ -37,20 +30,37 @@ from rich import box
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from paths import (
     DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS,
-    REPO_ROOT, PHASE, clip_dir,
+    REPO_ROOT, PHASE, PHASE_DRIVEN, clip_dir,
 )
 
 console = Console()
 
 VIDEO_EXTS = {".mov", ".mp4", ".avi", ".mkv", ".m4v"}
 
-SCRIPT_TRACK_ONE  = os.path.join(REPO_ROOT, "scripts", "utils", "track_one.py")
-SCRIPT_VERIFY     = os.path.join(REPO_ROOT, "scripts", "processing", "verify_tracking.py")
-SCRIPT_BATCH_FIGS = os.path.join(REPO_ROOT, "scripts", "utils", "batch_figures.py")
-SCRIPT_ANALYZE    = os.path.join(REPO_ROOT, "scripts", "analysis", "chaos_analyze.py")
-SCRIPT_COMBINED   = os.path.join(REPO_ROOT, "scripts", "analysis", "combined_video.py")
-SCRIPT_POINCARE   = os.path.join(REPO_ROOT, "scripts", "analysis", "poincare.py")
-SCRIPT_LYAPUNOV   = os.path.join(REPO_ROOT, "scripts", "analysis", "lyapunov.py")
+SCRIPT_TRACK_ONE   = os.path.join(REPO_ROOT, "scripts", "utils", "track_one.py")
+SCRIPT_BULK        = os.path.join(REPO_ROOT, "scripts", "utils", "bulk_track.py")
+SCRIPT_VERIFY      = os.path.join(REPO_ROOT, "scripts", "processing", "verify_tracking.py")
+SCRIPT_BATCH_FIGS  = os.path.join(REPO_ROOT, "scripts", "utils", "batch_figures.py")
+SCRIPT_ANALYZE     = os.path.join(REPO_ROOT, "scripts", "analysis", "chaos_analyze.py")
+SCRIPT_COMBINED    = os.path.join(REPO_ROOT, "scripts", "analysis", "combined_video.py")
+SCRIPT_POINCARE    = os.path.join(REPO_ROOT, "scripts", "analysis", "poincare.py")
+SCRIPT_LYAPUNOV    = os.path.join(REPO_ROOT, "scripts", "analysis", "lyapunov.py")
+SCRIPT_DRIVEN_POIN = os.path.join(REPO_ROOT, "scripts", "analysis", "driven_poincare.py")
+SCRIPT_DRIVEN_BIF  = os.path.join(REPO_ROOT, "scripts", "analysis", "driven_bifurcation.py")
+SCRIPT_REPORT      = os.path.join(REPO_ROOT, "scripts", "utils", "generate_status_report.py")
+SCRIPT_ROADMAP     = os.path.join(REPO_ROOT, "scripts", "utils", "generate_roadmap.py")
+SCRIPT_STATUS      = os.path.join(REPO_ROOT, "scripts", "utils", "video_status.py")
+
+WEEK_GROUPS = {
+    "week5": {"label": "week 5", "desc": "broad V/f survey",     "color": "cyan"},
+    "week6": {"label": "week 6", "desc": "3.2V resonance sweep", "color": "yellow"},
+}
+
+LOGO = (
+    "[bold magenta]\u250c\u2500\u2510 \u252c \u252c \u250c\u2500\u2510 \u250c\u2500\u2510 \u250c\u2500\u2510[/]\n"
+    "[bold magenta]\u2502   \u251c\u2500\u2524 \u251c\u2500\u2524 \u2502 \u2502 \u2514\u2500\u2510[/]\n"
+    "[bold magenta]\u2514\u2500\u2518 \u2534 \u2534 \u2534 \u2534 \u2514\u2500\u2518 \u2514\u2500\u2518[/]"
+)
 
 
 # ─────────────────────────────────────────────
@@ -66,9 +76,7 @@ def load_registry():
     except (json.JSONDecodeError, OSError):
         return {}
 
-
 def _resolve_entry(stem, registry):
-    """Find registry entry by config_description or video stem."""
     if stem in registry:
         return registry[stem]
     for entry in registry.values():
@@ -79,9 +87,7 @@ def _resolve_entry(stem, registry):
             return entry
     return None
 
-
 def _is_tracked(entry):
-    """True if the entry has a tracking.csv on disk."""
     if not entry:
         return False
     md = entry.get("measurements_dir")
@@ -91,218 +97,354 @@ def _is_tracked(entry):
     phase_root = os.path.dirname(MEAS_DIR)
     return os.path.exists(os.path.join(phase_root, md, csv_name))
 
+def _week_bucket(stem):
+    if PHASE != PHASE_DRIVEN:
+        return None
+    if stem.startswith("3.2V_") and stem != "3.2V_1Hz":
+        return "week6"
+    return "week5"
 
 def get_clips():
-    """Return (tracked_list, pending_list).
-
-    Each item is a dict with keys:
-        stem, video, status, dropout_pct, duration_s,
-        drive_voltage_v, drive_freq_hz
-    Stable sort order: alphabetical by stem.
-    """
     reg = load_registry()
-
-    # Build lookup from video filename → registry entry
     by_video = {}
     for entry in reg.values():
         vf = entry.get("video_file")
         if vf:
             by_video[vf] = entry
-
     tracked, pending = [], []
-
-    # Walk all videos on disk
     if os.path.isdir(VIDEOS_DIR):
         for name in sorted(os.listdir(VIDEOS_DIR), key=str.lower):
             full = os.path.join(VIDEOS_DIR, name)
-            if not os.path.isfile(full):
-                continue
-            if Path(name).suffix.lower() not in VIDEO_EXTS:
+            if not os.path.isfile(full) or Path(name).suffix.lower() not in VIDEO_EXTS:
                 continue
             stem = Path(name).stem
             entry = by_video.get(name) or _resolve_entry(stem, reg)
-
+            cfg_stem = entry.get("config_description", stem) if entry else stem
             info = {
-                "stem":           entry.get("config_description", stem) if entry else stem,
-                "video":          name,
+                "stem": cfg_stem, "video": name,
                 "drive_voltage_v": entry.get("drive_voltage_v") if entry else None,
-                "drive_freq_hz":  entry.get("drive_freq_hz") if entry else None,
-                "dropout_pct":    entry.get("dropout_rate_pct") if entry else None,
-                "duration_s":     entry.get("duration_s") if entry else None,
-                "quality":        entry.get("tracking_quality") if entry else None,
+                "drive_freq_hz": entry.get("drive_freq_hz") if entry else None,
+                "dropout_pct": entry.get("dropout_rate_pct") if entry else None,
+                "duration_s": entry.get("duration_s") if entry else None,
+                "quality": entry.get("tracking_quality") if entry else None,
+                "week": _week_bucket(cfg_stem),
             }
-
             if entry and _is_tracked(entry):
                 info["status"] = entry.get("tracking_quality", "tracked")
                 tracked.append(info)
             else:
                 info["status"] = "pending"
                 pending.append(info)
-
     return tracked, pending
 
-
-def get_numbered_map(tracked, pending):
-    """Return a dict mapping 1-based number → stem for all clips.
-    Tracked come first (sorted), then pending (sorted)."""
-    mapping = {}
-    for i, clip in enumerate(tracked + pending, start=1):
-        mapping[i] = clip["stem"]
-    return mapping
-
-
-def resolve_stem_or_number(arg, tracked, pending):
-    """If arg is a digit string, resolve to stem via numbered map.
-    Otherwise return arg as-is (it's already a stem)."""
-    if arg and arg.isdigit():
-        n = int(arg)
-        nmap = get_numbered_map(tracked, pending)
-        return nmap.get(n)
-    return arg
+def _group_by_week(clips):
+    groups = {}
+    order = []
+    for clip in clips:
+        wk = clip.get("week")
+        if wk not in groups:
+            groups[wk] = []
+            order.append(wk)
+        groups[wk].append(clip)
+    return [(k, groups[k]) for k in order]
 
 
 # ─────────────────────────────────────────────
 # RENDERING
 # ─────────────────────────────────────────────
 
-def _progress_bar(done, total, width=40):
-    """Return a Rich-markup progress bar string."""
+def _stacked_bar(n_verified, n_tracked, total, width=30):
     if total == 0:
         return "[dim]no clips[/]"
-    filled = int(round(done / total * width))
-    empty = width - filled
-    pct = done / total * 100
-    return (f"[green]{'█' * filled}[/][dim]{'░' * empty}[/]"
-            f"  [bold]{done}[/][dim]/{total}[/]  [green]{pct:.0f}%[/]")
+    n_unverified = n_tracked - n_verified
+    w_ver = int(round(n_verified / total * width))
+    w_trk = int(round(n_unverified / total * width))
+    w_pen = width - w_ver - w_trk
+    return (f"[green]{'\u2588' * w_ver}[/]"
+            f"[yellow]{'\u2588' * w_trk}[/]"
+            f"[dim]{'\u2591' * w_pen}[/]")
 
 
-def render_hub(tracked, pending):
-    """Print the compact hub dashboard."""
+def _action_card(title, color, items):
+    """Build a Rich Panel card with a list of key-label pairs."""
+    lines = []
+    for key, label in items:
+        lines.append(f"  [{color} bold]{key:<3}[/] {label}")
+    content = "\n".join(lines)
+    return Panel(
+        Text.from_markup(content),
+        title=f"[bold]{title}[/]",
+        border_style=color,
+        padding=(0, 0),
+        expand=True,
+    )
+
+
+def render_hub(tracked, pending, expanded=True):
     total = len(tracked) + len(pending)
     n_verified = sum(1 for c in tracked if c.get("quality") == "verified")
+    n_tracked = len(tracked)
+    n_unverified = n_tracked - n_verified
+    n_pending = len(pending)
 
-    # Header line
     phase_short = PHASE.replace("pendulum-", "").replace("week", "w")
-    console.print()
-    console.print(
-        f"  [bold magenta]chaos[/]  [dim]{phase_short}[/]"
-        f"    {_progress_bar(len(tracked), total)}"
+    bar = _stacked_bar(n_verified, n_tracked, total)
+    legend = (f"[green]{n_verified} verified[/] [dim]\u00b7[/] "
+              f"[yellow]{n_unverified} tracked[/] [dim]\u00b7 {n_pending} pending[/]")
+
+    # Header: logo left, stats right
+    header = Text.from_markup(
+        f"  {LOGO}\n"
+        f"  [dim]double pendulum[/]"
+        f"         {bar}  [bold]{n_tracked}[/][dim]/{total}[/]\n"
+        f"  [dim]{phase_short}[/]"
+        f"       {legend}"
     )
-    if n_verified and n_verified != len(tracked):
-        console.print(
-            f"         [dim]{n_verified} verified · "
-            f"{len(tracked) - n_verified} tracked · "
-            f"{len(pending)} pending[/]"
+
+    if expanded:
+        # 2x2 action card grid
+        card_track = _action_card("track", "green", [
+            ("n", "next"),
+            ("p", "pick & track"),
+            ("b", "bulk"),
+            ("v", "verify"),
+            ("r", "render"),
+        ])
+        card_analyze = _action_card("analyze", "yellow", [
+            ("c", "chaos card"),
+            ("o", "poincar\u00e9"),
+            ("l", "lyapunov"),
+            ("d", "driven poincar\u00e9"),
+            ("i", "bifurcation"),
+        ])
+        card_figures = _action_card("figures", "magenta", [
+            ("fa", "all missing"),
+            ("fs", "single clip"),
+            ("fv", "+ video"),
+            ("ff", "force all"),
+            ("fp", "preview frame"),
+        ])
+        card_info = _action_card("info", "cyan", [
+            ("s", "full status table"),
+            ("e", "export report"),
+            ("m", "roadmap"),
+            ("w", "switch phase"),
+            ("h", "help"),
+        ])
+
+        row1 = Table(box=None, show_header=False, expand=True, padding=(0, 1))
+        row1.add_column(ratio=1)
+        row1.add_column(ratio=1)
+        row1.add_row(card_track, card_analyze)
+
+        row2 = Table(box=None, show_header=False, expand=True, padding=(0, 1))
+        row2.add_column(ratio=1)
+        row2.add_column(ratio=1)
+        row2.add_row(card_figures, card_info)
+
+        footer = Text.from_markup(
+            "  [dim]q quit[/]                          [dim]\u2212 collapse[/]"
         )
-    console.print()
 
-    # Action menu
-    console.print(Rule(style="dim"))
-    actions = [
-        ("t", "track next",    "auto-picks first pending clip",    "green"),
-        ("p", "pick & track",  "arrow-key picker from pending",    "blue"),
-        ("a", "analyze",       "pick a tracked clip → chaos card", "yellow"),
-        ("f", "figures",       "batch-render all missing plots",   "magenta"),
-        ("s", "status",        "full tracked / pending table",     "white"),
-        ("v", "verify",        "re-verify a tracked clip",         "white"),
-        ("r", "render",        "render overlay video",             "white"),
-        ("l", "lyapunov",      "compute λ₁ for a clip",           "white"),
-        ("q", "quit",          "",                                 "dim"),
-    ]
-    for key, label, desc, color in actions:
-        desc_part = f"  [dim]→ {desc}[/]" if desc else ""
-        console.print(f"  [{color} bold]{key}[/]  {label:<18}{desc_part}")
-    console.print(Rule(style="dim"))
+        body = Group(header, Text(""), row1, row2, Text(""), footer)
+    else:
+        # Collapsed: compact list with submenu hints
+        actions = Text.from_markup(
+            "    [green bold]t[/]  track          [dim]\u2192 track, verify, render clips[/]\n"
+            "    [yellow bold]a[/]  analyze        [dim]\u2192 chaos card, Poincar\u00e9, \u03bb\u2081[/]\n"
+            "    [magenta bold]f[/]  figures        [dim]\u2192 batch-render plots[/]\n"
+            "    [cyan bold]s[/]  info           [dim]\u2192 status, report, roadmap[/]"
+        )
+        footer = Text.from_markup(
+            "  [dim]q quit[/]                            [dim]+ expand[/]"
+        )
+        body = Group(header, Text(""), actions, Text(""), footer)
+
+    console.print(Panel(
+        body,
+        border_style="magenta",
+        padding=(1, 2),
+        width=min(console.width, 76),
+    ))
 
 
-def render_status_table(tracked, pending):
-    """Print the full status table with stable numbering."""
-    t = Table(box=box.SIMPLE_HEAD, show_edge=False, pad_edge=False)
-    t.add_column("#", justify="right", style="dim", width=4)
-    t.add_column("Stem", style="white", min_width=20)
-    t.add_column("Status", min_width=10)
-    t.add_column("Drop%", justify="right", width=7)
-    t.add_column("Duration", justify="right", width=9)
-    t.add_column("Vd", justify="right", width=6)
-    t.add_column("fd", justify="right", width=8)
-
+def render_status_panels(tracked, pending):
+    all_clips = tracked + pending
+    groups = _group_by_week(all_clips)
     num = 1
-    for clip in tracked:
-        quality = clip.get("quality", "tracked")
-        if quality == "verified":
-            status_cell = "[green]verified[/]"
-        elif quality == "manual_accept":
-            status_cell = "[yellow]accepted[/]"
-        else:
-            status_cell = f"[cyan]{quality or 'tracked'}[/]"
-
-        drop = clip.get("dropout_pct")
-        drop_cell = f"{drop:.1f}%" if drop is not None else "[dim]—[/]"
-        dur = clip.get("duration_s")
-        dur_cell = f"{dur:.1f}s" if dur is not None else "[dim]—[/]"
-        vd = clip.get("drive_voltage_v")
-        vd_cell = f"{vd}V" if vd is not None else "[dim]—[/]"
-        fd = clip.get("drive_freq_hz")
-        fd_cell = f"{fd}Hz" if fd is not None else "[dim]—[/]"
-
-        t.add_row(str(num), clip["stem"], status_cell,
-                  drop_cell, dur_cell, vd_cell, fd_cell)
-        num += 1
-
-    if pending:
-        t.add_row("", "", "", "", "", "", "", style="dim")
-        for clip in pending:
-            vd = clip.get("drive_voltage_v")
-            vd_cell = f"{vd}V" if vd is not None else "[dim]—[/]"
-            fd = clip.get("drive_freq_hz")
-            fd_cell = f"{fd}Hz" if fd is not None else "[dim]—[/]"
-            t.add_row(str(num), clip["stem"], "[yellow]pending[/]",
-                      "[dim]—[/]", "[dim]—[/]", vd_cell, fd_cell)
+    for week_key, clips in groups:
+        meta = WEEK_GROUPS.get(week_key, {"label": "clips", "desc": "", "color": "white"})
+        color = meta["color"]
+        grp_tracked = [c for c in clips if c["status"] != "pending"]
+        grp_verified = [c for c in grp_tracked if c.get("quality") == "verified"]
+        grp_pending = [c for c in clips if c["status"] == "pending"]
+        bar = _stacked_bar(len(grp_verified), len(grp_tracked), len(clips), width=24)
+        legend = (f"[green]{len(grp_verified)} verified[/] [dim]\u00b7[/] "
+                  f"[yellow]{len(grp_tracked) - len(grp_verified)} tracked[/] [dim]\u00b7 "
+                  f"{len(grp_pending)} pending[/]")
+        t = Table(box=None, show_header=False, padding=(0, 1), expand=True)
+        t.add_column(justify="right", style="dim", width=4)
+        t.add_column(style="white", min_width=18, ratio=1)
+        t.add_column(min_width=10)
+        t.add_column(justify="right", width=7)
+        t.add_column(justify="right", width=9)
+        for clip in clips:
+            quality = clip.get("quality")
+            status = clip.get("status", "pending")
+            if status == "pending":
+                s_cell = "[yellow]pending[/]"
+            elif quality == "verified":
+                s_cell = "[green]verified[/]"
+            elif quality == "manual_accept":
+                s_cell = "[yellow]accepted[/]"
+            else:
+                s_cell = f"[cyan]{quality or 'tracked'}[/]"
+            drop = clip.get("dropout_pct")
+            d_cell = f"{drop:.1f}%" if drop is not None else "[dim]\u2014[/]"
+            dur = clip.get("duration_s")
+            dur_cell = f"{dur:.1f}s" if dur is not None else "[dim]\u2014[/]"
+            t.add_row(str(num), clip["stem"], s_cell, d_cell, dur_cell)
             num += 1
-
-    console.print(t)
+        title_str = f"[bold]{meta['label']}[/]"
+        if meta["desc"]:
+            title_str += f" [dim]\u00b7 {meta['desc']}[/]"
+        title_str += f" [dim]\u00b7[/] {len(grp_tracked)}[dim]/{len(clips)}[/]"
+        body = Group(Text.from_markup(f"  {bar}  {legend}"), Text(""), t)
+        console.print(Panel(body, title=title_str, border_style=color, padding=(0, 1)))
+        console.print()
 
 
 # ─────────────────────────────────────────────
 # PICKERS
 # ─────────────────────────────────────────────
 
+_PICKER_STYLE = None
+
+def _get_picker_style():
+    global _PICKER_STYLE
+    if _PICKER_STYLE is None:
+        from prompt_toolkit.styles import Style as PtStyle
+        _PICKER_STYLE = PtStyle([
+            ("qmark", "fg:#fbbf24 bold"),
+            ("question", "bold"),
+            ("pointer", "fg:#22d3ee bold"),
+            ("highlighted", "fg:#5eead4 bold"),
+            ("selected", "fg:#5eead4"),
+        ])
+    return _PICKER_STYLE
+
 def pick_clip(clips, label="Pick a clip"):
-    """Arrow-key picker. Returns stem or None on Esc/Ctrl-C."""
     if not clips:
         console.print("  [dim]No clips available.[/]")
         return None
-
-    choices = []
-    for clip in clips:
-        vd = clip.get("drive_voltage_v")
-        fd = clip.get("drive_freq_hz")
-        extra = ""
-        if vd is not None and fd is not None:
-            extra = f"  {vd}V  {fd}Hz"
-        elif vd is not None:
-            extra = f"  {vd}V"
-        display = f"{clip['stem']:<22}{extra}"
-        choices.append(Choice(display, value=clip["stem"]))
-
+    choices = [Choice("\u2190 back", value=None)]
+    groups = _group_by_week(clips)
+    for week_key, group_clips in groups:
+        meta = WEEK_GROUPS.get(week_key)
+        if meta:
+            choices.append(Separator(
+                f"\u2500\u2500\u2500\u2500 {meta['label']} \u00b7 "
+                f"{meta['desc']} ({len(group_clips)} clips) "
+                f"\u2500\u2500\u2500\u2500"
+            ))
+        for i, clip in enumerate(group_clips):
+            is_last = (i == len(group_clips) - 1)
+            branch = "\u2570\u2500" if is_last else "\u251c\u2500"
+            vd = clip.get("drive_voltage_v")
+            fd = clip.get("drive_freq_hz")
+            extra = ""
+            if vd is not None and fd is not None:
+                extra = f"  {vd}V  {fd}Hz"
+            display = f" {branch} {clip['stem']:<20}{extra}"
+            choices.append(Choice(display, value=clip["stem"]))
     try:
         result = questionary.select(
-            label,
-            choices=choices,
-            use_arrow_keys=True,
-            use_jk_keys=True,
+            label, choices=choices, style=_get_picker_style(),
+            use_arrow_keys=True, use_jk_keys=True,
         ).ask()
     except KeyboardInterrupt:
         return None
     return result
 
-
 def pick_tracked(tracked, label="Pick a clip"):
     return pick_clip(tracked, label)
 
-
 def pick_pending(pending, label="Pick a clip to track"):
     return pick_clip(pending, label)
+
+
+# ─────────────────────────────────────────────
+# SUBMENUS (collapsed mode fallback)
+# ─────────────────────────────────────────────
+
+def _submenu(title, actions):
+    console.print()
+    console.print(f"  [bold]{title}[/]")
+    console.print(Rule(style="dim"))
+    for key, label, desc, color in actions:
+        desc_part = f"  [dim]\u2192 {desc}[/]" if desc else ""
+        console.print(f"  [{color} bold]{key}[/]  {label:<20}{desc_part}")
+    console.print(f"  [dim bold]\u2190[/]  [dim]back[/]")
+    console.print(Rule(style="dim"))
+    try:
+        k = input("  \u25b8 ").strip().lower()
+    except (EOFError, KeyboardInterrupt):
+        return None
+    return k[0] if k else None
+
+def submenu_track(tracked, pending):
+    k = _submenu("track", [
+        ("n", "next",         "auto-pick first pending",   "green"),
+        ("p", "pick & track", "arrow-key picker",          "blue"),
+        ("b", "bulk",         "sequential batch",          "magenta"),
+        ("v", "verify",       "re-verify a tracked clip",  "yellow"),
+        ("r", "render",       "overlay video for a clip",  "white"),
+    ])
+    if k == "n": do_track_next(pending)
+    elif k == "p": do_pick_and_track(pending)
+    elif k == "b": do_bulk()
+    elif k == "v": do_verify(tracked)
+    elif k == "r": do_render(tracked)
+
+def submenu_analyze(tracked):
+    k = _submenu("analyze", [
+        ("c", "chaos card",      "0-1 test, verdict",             "yellow"),
+        ("p", "poincar\u00e9",        "section at \u03b8\u2081+\u03b8\u2082=0",           "blue"),
+        ("l", "lyapunov",        "largest \u03bb\u2081 (Rosenstein)",  "magenta"),
+        ("d", "driven poincar\u00e9", "stroboscopic",                 "white"),
+        ("b", "bifurcation",     "cross-clip Vd or fd sweep",     "white"),
+    ])
+    if k == "c": do_analyze(tracked)
+    elif k == "p": do_poincare(tracked)
+    elif k == "l": do_lyapunov(tracked)
+    elif k == "d": do_driven_poincare(tracked)
+    elif k == "b": do_driven_bifurcation()
+
+def submenu_figures(tracked):
+    k = _submenu("figures", [
+        ("a", "all missing",  "batch-render every tracked clip", "magenta"),
+        ("s", "single clip",  "pick one \u2192 render its figures",  "blue"),
+        ("v", "+ video",      "include mp4s (slow)",              "white"),
+        ("f", "force all",    "re-render even existing",          "white"),
+    ])
+    if k == "a": do_figures()
+    elif k == "s": do_figures_single(tracked)
+    elif k == "v": do_figures_with_video()
+    elif k == "f": do_figures_force()
+
+def submenu_info(tracked, pending):
+    k = _submenu("info", [
+        ("s", "full status",  "stacked panel view",           "cyan"),
+        ("e", "export",       "generate status_report.xlsx",  "white"),
+        ("m", "roadmap",      "generate tracking_roadmap.md", "white"),
+        ("w", "switch phase", "toggle free-swing / driven",   "white"),
+        ("h", "help",         "cheat sheet",                  "white"),
+    ])
+    if k == "s": do_status(tracked, pending)
+    elif k == "e": do_export()
+    elif k == "m": do_roadmap()
+    elif k == "w": do_switch_phase()
+    elif k == "h": do_help()
 
 
 # ─────────────────────────────────────────────
@@ -310,135 +452,191 @@ def pick_pending(pending, label="Pick a clip to track"):
 # ─────────────────────────────────────────────
 
 def _run(script, *args):
-    """Run a script as subprocess, streaming output live."""
     cmd = [sys.executable, script, *map(str, args)]
     return subprocess.run(cmd, cwd=REPO_ROOT).returncode
 
-
 def _pause():
-    """Wait for any keypress before returning to hub."""
     console.print()
     try:
-        questionary.press_any_key_to_continue(
-            "press any key to return to hub..."
-        ).ask()
+        questionary.press_any_key_to_continue("press any key to return...").ask()
     except KeyboardInterrupt:
         pass
 
-
+# ── Track ──
 def do_track_next(pending):
     if not pending:
-        console.print("  [green]Nothing pending — all clips tracked.[/]")
-        _pause()
-        return
+        console.print("  [green]Nothing pending \u2014 all clips tracked.[/]")
+        _pause(); return
     stem = pending[0]["stem"]
-    console.print(f"  [bold]Tracking:[/] {stem}")
-    console.print()
-    _run(SCRIPT_TRACK_ONE, "--stem", stem)
-    _pause()
-
+    console.print(f"  [bold]Tracking:[/] {stem}\n")
+    _run(SCRIPT_TRACK_ONE, "--stem", stem); _pause()
 
 def do_pick_and_track(pending):
     stem = pick_pending(pending)
-    if not stem:
-        return
-    console.print(f"  [bold]Tracking:[/] {stem}")
-    console.print()
-    _run(SCRIPT_TRACK_ONE, "--stem", stem)
-    _pause()
+    if not stem: return
+    console.print(f"  [bold]Tracking:[/] {stem}\n")
+    _run(SCRIPT_TRACK_ONE, "--stem", stem); _pause()
 
-
-def do_analyze(tracked):
-    stem = pick_tracked(tracked, "Pick a clip to analyze")
-    if not stem:
-        return
-    _run(SCRIPT_ANALYZE, stem)
-    _pause()
-
-
-def do_figures():
-    _run(SCRIPT_BATCH_FIGS)
-    _pause()
-
-
-def do_status(tracked, pending):
-    console.print()
-    render_status_table(tracked, pending)
-    _pause()
-
+def do_bulk():
+    _run(SCRIPT_BULK); _pause()
 
 def do_verify(tracked):
     stem = pick_tracked(tracked, "Pick a clip to re-verify")
-    if not stem:
-        return
-    _run(SCRIPT_VERIFY, "--stem", stem)
-    _pause()
-
+    if not stem: return
+    _run(SCRIPT_VERIFY, "--stem", stem); _pause()
 
 def do_render(tracked):
     stem = pick_tracked(tracked, "Pick a clip to render")
-    if not stem:
-        return
-    _run(SCRIPT_COMBINED, "--stem", stem)
-    _pause()
+    if not stem: return
+    _run(SCRIPT_COMBINED, "--stem", stem); _pause()
 
+# ── Analyze ──
+def do_analyze(tracked):
+    stem = pick_tracked(tracked, "Pick a clip to analyze")
+    if not stem: return
+    _run(SCRIPT_ANALYZE, stem); _pause()
+
+def do_poincare(tracked):
+    stem = pick_tracked(tracked, "Pick a clip for Poincar\u00e9")
+    if not stem: return
+    _run(SCRIPT_POINCARE, "--stem", stem); _pause()
 
 def do_lyapunov(tracked):
-    stem = pick_tracked(tracked, "Pick a clip for λ₁")
-    if not stem:
-        return
-    _run(SCRIPT_LYAPUNOV, "--stem", stem)
+    stem = pick_tracked(tracked, "Pick a clip for \u03bb\u2081")
+    if not stem: return
+    _run(SCRIPT_LYAPUNOV, "--stem", stem); _pause()
+
+def do_driven_poincare(tracked):
+    stem = pick_tracked(tracked, "Pick a clip for driven Poincar\u00e9")
+    if not stem: return
+    _run(SCRIPT_DRIVEN_POIN, "--stem", stem); _pause()
+
+def do_driven_bifurcation():
+    _run(SCRIPT_DRIVEN_BIF, "--sweep", "vd"); _pause()
+
+# ── Figures ──
+def do_figures():
+    _run(SCRIPT_BATCH_FIGS); _pause()
+
+def do_figures_single(tracked):
+    stem = pick_tracked(tracked, "Pick a clip for figures")
+    if not stem: return
+    _run(SCRIPT_BATCH_FIGS, "--stem", stem); _pause()
+
+def do_figures_with_video():
+    _run(SCRIPT_BATCH_FIGS, "--video"); _pause()
+
+def do_figures_force():
+    _run(SCRIPT_BATCH_FIGS, "--force"); _pause()
+
+def do_figures_preview(tracked):
+    stem = pick_tracked(tracked, "Pick a clip to preview")
+    if not stem: return
+    _run(os.path.join(REPO_ROOT, "scripts", "analysis", "preview_frame.py"),
+         "--stem", stem); _pause()
+
+# ── Info ──
+def do_status(tracked, pending):
+    console.print()
+    render_status_panels(tracked, pending)
     _pause()
+
+def do_export():
+    _run(SCRIPT_REPORT); _pause()
+
+def do_roadmap():
+    _run(SCRIPT_ROADMAP); _pause()
+
+def do_switch_phase():
+    console.print()
+    console.print("  [bold]Switch phase[/]")
+    console.print()
+    current = PHASE.replace("pendulum-", "").replace("week", "w")
+    console.print(f"  Current: [cyan]{current}[/]")
+    console.print()
+    console.print("  Set in your shell before launching chaos:")
+    console.print('  [dim]$env:CHAOS_PHASE = "week3-4-pendulum-free-swing"[/]')
+    console.print('  [dim]$env:CHAOS_PHASE = "week5-6-pendulum-motor-driven"[/]')
+    _pause()
+
+def do_help():
+    _run(sys.executable, os.path.join(REPO_ROOT, "chaos.py"), "help"); _pause()
 
 
 # ─────────────────────────────────────────────
 # HUB LOOP
 # ─────────────────────────────────────────────
 
-DISPATCH = {
-    "t": lambda tr, pe: do_track_next(pe),
+EXPANDED_DISPATCH = {
+    # track
+    "n": lambda tr, pe: do_track_next(pe),
     "p": lambda tr, pe: do_pick_and_track(pe),
-    "a": lambda tr, pe: do_analyze(tr),
-    "f": lambda tr, pe: do_figures(),
-    "s": lambda tr, pe: do_status(tr, pe),
+    "b": lambda tr, pe: do_bulk(),
     "v": lambda tr, pe: do_verify(tr),
     "r": lambda tr, pe: do_render(tr),
+    # analyze
+    "c": lambda tr, pe: do_analyze(tr),
+    "o": lambda tr, pe: do_poincare(tr),
     "l": lambda tr, pe: do_lyapunov(tr),
+    "d": lambda tr, pe: do_driven_poincare(tr),
+    "i": lambda tr, pe: do_driven_bifurcation(),
+    # info
+    "s": lambda tr, pe: do_status(tr, pe),
+    "e": lambda tr, pe: do_export(),
+    "m": lambda tr, pe: do_roadmap(),
+    "w": lambda tr, pe: do_switch_phase(),
+    "h": lambda tr, pe: do_help(),
 }
 
 
 def hub():
-    """Main interactive shell loop."""
+    expanded = True
     try:
         while True:
             console.clear()
             tracked, pending = get_clips()
-            render_hub(tracked, pending)
+            render_hub(tracked, pending, expanded=expanded)
 
             try:
-                key = input("  ▸ ").strip().lower()
+                raw = input("  \u25b8 ").strip().lower()
             except (EOFError, KeyboardInterrupt):
                 break
 
-            if not key:
+            if not raw:
                 continue
-            key = key[0]
+
+            # Toggle expand/collapse
+            if raw in ("+", "-", "="):
+                expanded = not expanded
+                continue
+
+            key = raw[:2] if raw[:2] in ("fa", "fs", "fv", "ff", "fp") else raw[0]
 
             if key == "q":
                 break
-
-            handler = DISPATCH.get(key)
-            if handler:
-                handler(tracked, pending)
+            elif expanded:
+                handler = EXPANDED_DISPATCH.get(key)
+                if handler:
+                    handler(tracked, pending)
+                elif key == "fa": do_figures()
+                elif key == "fs": do_figures_single(tracked)
+                elif key == "fv": do_figures_with_video()
+                elif key == "ff": do_figures_force()
+                elif key == "fp": do_figures_preview(tracked)
+                else:
+                    console.print(f"  [dim]Unknown key: {key}[/]")
+                    import time; time.sleep(0.5)
             else:
-                console.print(f"  [dim]Unknown key: {key}[/]")
-                import time
-                time.sleep(0.5)
+                if key == "t": submenu_track(tracked, pending)
+                elif key == "a": submenu_analyze(tracked)
+                elif key == "f": submenu_figures(tracked)
+                elif key == "s": submenu_info(tracked, pending)
+                else:
+                    console.print(f"  [dim]Unknown key: {key}[/]")
+                    import time; time.sleep(0.5)
     except KeyboardInterrupt:
         pass
-
-    console.print()
-    console.print("  [dim]bye.[/]")
+    console.print("\n  [dim]bye.[/]")
 
 
 if __name__ == "__main__":
