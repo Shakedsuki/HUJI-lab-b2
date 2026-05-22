@@ -1,6 +1,6 @@
 # Tracking Roadmap
 
-_Generated 2026-05-22 17:39._ Re-run with `chaos roadmap`.
+_Generated 2026-05-22 20:20._ Re-run with `chaos roadmap`.
 
 Lives at [`docs/tracking_roadmap.md`](tracking_roadmap.md). Every row reflects the current state of `data/experiments.json` plus the latest `data/bulk_tracking_log.json` and per-clip `measurements/<stem>/verification.csv`.
 
@@ -8,16 +8,21 @@ Lives at [`docs/tracking_roadmap.md`](tracking_roadmap.md). Every row reflects t
 
 | Status | Count | Meaning |
 |---|---|---|
-| **PASS** | 34 | passed verification, in registry as verified |
+| **PASS** | 39 | passed verification, in registry as verified |
 | **WARN** | 0 | tracking.csv exists, dropout/peak ω in WARN band |
 | **FAIL** | 0 | tracking.csv exists but dropout > 10% or peak ω absurd |
-| **PENDING** | 28 | registry entry exists but no track_one run on record |
+| **PENDING** | 23 | registry entry exists but no track_one run on record |
 | _total_ | 62 | every entry in `experiments.json` |
 
 ## Per-clip status
 
 | Stem | Status | Drop% | Peak ω₂ | Susp | Trend (susp/win) | θ-resid | E-ceil/total | Pivot drift | Free | Last | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|---|
+| `2.45V_1Hz` | PASS | 0.00% | — | — | 0/0 | 0 | 0/0 | — | — | 2026-05-22 | dropout 0.00% ≤ 5% |
+| `2.4V_1Hz_1` | PASS | 0.00% | — | — | 0/0 | 0 | 0/0 | — | — | 2026-05-22 | dropout 0.00% ≤ 5% |
+| `2.4V_1Hz_2` | PASS | 0.00% | — | — | 0/0 | 0 | 0/0 | — | — | 2026-05-22 | dropout 0.00% ≤ 5% |
+| `2.5V_1Hz` | PASS | 0.00% | — | — | 0/0 | 0 | 0/0 | — | — | 2026-05-22 | dropout 0.00% ≤ 5% |
+| `2.6V_1Hz` | PASS | 0.00% | — | — | 0/0 | 0 | 0/0 | — | — | 2026-05-22 | dropout 0.00% ≤ 5% |
 | `3.2V_0.91Hz` | PASS | 0.00% | — | — | 0/0 | 0 | 0/0 | — | — | 2026-05-22 | dropout 0.00% ≤ 5% |
 | `3.2V_0.92Hz` | PASS | 0.00% | — | — | 0/0 | 0 | 0/0 | — | — | 2026-05-22 | dropout 0.00% ≤ 5% |
 | `3.2V_0.93Hz` | PASS | 0.00% | — | — | 0/0 | 0 | 0/0 | — | — | 2026-05-22 | dropout 0.00% ≤ 5% |
@@ -52,11 +57,6 @@ Lives at [`docs/tracking_roadmap.md`](tracking_roadmap.md). Every row reflects t
 | `3.2V_1.33Hz_2` | ⚠ PASS _(pre-Brief-5)_ | 0.00% | — | — | 0/0 | 0 | 0/0 | — | — | 2026-05-21 | Visually verified end-to-end under new tracker. Perfect tracking. |
 | `3.2V_1.34Hz` | ⚠ PASS _(pre-Brief-5)_ | 0.00% | — | — | 0/0 | 0 | 0/0 | — | — | 2026-05-21 | Visually verified end-to-end under new tracker. Flawless. |
 | `3.2V_1Hz` | PASS | 0.00% | — | — | 0/0 | 0 | 0/0 | — | — | 2026-05-22 | dropout 0.00% ≤ 5% |
-| `2.45V_1Hz` | PENDING | 0.00% | — | — | 0/0 | 0 | 0/0 | — | — | 2026-05-21 | no record in bulk_tracking_log yet |
-| `2.4V_1Hz_1` | PENDING | 0.00% | — | — | 0/0 | 0 | 0/0 | — | — | 2026-05-21 | no record in bulk_tracking_log yet |
-| `2.4V_1Hz_2` | PENDING | 0.00% | — | — | 0/0 | 0 | 0/0 | — | — | 2026-05-21 | no record in bulk_tracking_log yet |
-| `2.5V_1Hz` | PENDING | 0.00% | — | — | 0/0 | 0 | 0/0 | — | — | 2026-05-21 | no record in bulk_tracking_log yet |
-| `2.6V_1Hz` | PENDING | 0.00% | — | — | 0/0 | 0 | 0/0 | — | — | 2026-05-21 | no record in bulk_tracking_log yet |
 | `2.8V_1Hz` | PENDING | 0.00% | — | — | 0/0 | 0 | 0/0 | — | — | 2026-05-21 | no record in bulk_tracking_log yet |
 | `3.4V_1Hz` | PENDING | 1.07% | — | — | 0/0 | 0 | 0/0 | — | — | 2026-05-21 | no record in bulk_tracking_log yet |
 | `3.6V_1Hz` | PENDING | 0.49% | — | — | 0/0 | 0 | 0/0 | — | — | 2026-05-21 | no record in bulk_tracking_log yet |
@@ -85,4 +85,4 @@ Lives at [`docs/tracking_roadmap.md`](tracking_roadmap.md). Every row reflects t
 
 ## What to do next
 
-- **28 clips never tracked.** Run `chaos bulk` to attempt them all in one shot.
+- **23 clips never tracked.** Run `chaos bulk` to attempt them all in one shot.

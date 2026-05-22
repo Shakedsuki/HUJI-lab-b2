@@ -40,6 +40,7 @@ SCRIPT_POINCARE    = os.path.join(REPO_ROOT, "scripts", "analysis", "poincare.py
 SCRIPT_LYAPUNOV    = os.path.join(REPO_ROOT, "scripts", "analysis", "lyapunov.py")
 SCRIPT_DRIVEN_POIN = os.path.join(REPO_ROOT, "scripts", "analysis", "driven_poincare.py")
 SCRIPT_DRIVEN_BIF  = os.path.join(REPO_ROOT, "scripts", "analysis", "driven_bifurcation.py")
+SCRIPT_OVERLAY     = os.path.join(REPO_ROOT, "scripts", "analysis", "overlay_video.py")
 SCRIPT_REPORT      = os.path.join(REPO_ROOT, "scripts", "utils", "generate_status_report.py")
 SCRIPT_ROADMAP     = os.path.join(REPO_ROOT, "scripts", "utils", "generate_roadmap.py")
 
@@ -118,6 +119,46 @@ def get_clips():
                 info["status"] = "pending"; pending.append(info)
     return tracked, pending
 
+# ── Overlay helpers ──
+
+def _overlay_path(stem):
+    return os.path.join(clip_dir(stem), f"{stem}_overlay.mp4")
+
+def _has_overlay(stem):
+    target = _overlay_path(stem)
+    if os.path.isfile(target):
+        return True
+    legacy = os.path.join(clip_dir(stem), "overlay.mp4")
+    if os.path.isfile(legacy):
+        os.rename(legacy, target)
+        return True
+    return False
+
+def _open_file(path):
+    import platform
+    s = platform.system()
+    if s == "Windows":  os.startfile(path)
+    elif s == "Darwin": subprocess.Popen(["open", path])
+    else:               subprocess.Popen(["xdg-open", path])
+
+def _get_verdict(stem, reg=None):
+    if reg is None: reg = load_registry()
+    for e in reg.values():
+        if e.get("config_description") == stem:
+            return e.get("overlay_verdict")
+    return None
+
+def _set_verdict(stem, verdict, note=None):
+    reg = load_registry()
+    for k, e in reg.items():
+        if e.get("config_description") == stem:
+            e["overlay_verdict"] = verdict
+            if note: e["overlay_verdict_note"] = note
+            elif "overlay_verdict_note" in e: del e["overlay_verdict_note"]
+            break
+    with open(EXPERIMENTS, "w", encoding="utf-8") as f:
+        json.dump(reg, f, indent=2, ensure_ascii=False)
+
 def _group_by_week(clips):
     groups, order = {}, []
     for c in clips:
@@ -143,10 +184,16 @@ def render_hub(tracked, pending, expanded=True):
     nv = sum(1 for c in tracked if c.get("quality") == "verified")
     nt = len(tracked); nu = nt - nv; np_ = len(pending)
     bar = _bar(nv, nt, total)
-    legend = f"[green]{nv} verified[/] [dim]\u00b7[/] [yellow]{nu} tracked[/] [dim]\u00b7 {np_} pending[/]"
-    header = Text.from_markup(
-        f"  {LOGO}\n  [dim]double pendulum[/]    {bar}  [bold]{nt}[/][dim]/{total}[/]\n"
-        f"  [dim]HUJI-LAB-B2[/]        {legend}")
+    legend = f"[green]{nv}v[/] [dim]\u00b7[/] [yellow]{nu}t[/] [dim]\u00b7 {np_}p[/]"
+    phase_label = PHASE.replace("pendulum-","").replace("week","w")
+    info_right = Text.from_markup(
+        f"[dim]double pendulum[/]\n"
+        f"[dim italic]{phase_label}[/]\n"
+        f"{bar}  [bold]{nt}[/][dim]/{total}[/]  {legend}")
+    hdr_tbl = Table(box=None, show_header=False, padding=(0,1), expand=True)
+    hdr_tbl.add_column(width=20); hdr_tbl.add_column(ratio=1)
+    hdr_tbl.add_row(Text.from_markup(LOGO), info_right)
+    header = hdr_tbl
 
     if expanded:
         ct = _card("track", CLR_TRACK, [
@@ -159,7 +206,7 @@ def render_hub(tracked, pending, expanded=True):
         r1.add_column(ratio=1); r1.add_column(ratio=1); r1.add_row(ct, ca)
 
         cf = _card("figures", CLR_FIGURES, [("fa","all missing"),("fs","single clip"),("ff","force all"),("fp","preview")])
-        cv = _card("videos", CLR_VIDEOS, [("va","all overlays"),("vs","single clip"),("vf","force re-render"),("vp","preview")])
+        cv = _card("videos", CLR_VIDEOS, [("vw","render overlays"),("vr","review overlays"),("vc","1-by-1 pipeline"),("va","all combined")])
         ir = Table(box=None, show_header=False, expand=True, padding=(0,1))
         ir.add_column(ratio=1); ir.add_column(ratio=1); ir.add_row(cf, cv)
         co = Panel(ir, title="[bold]output[/]", border_style=CLR_OUTPUT, padding=(0,0), expand=True)
@@ -168,7 +215,7 @@ def render_hub(tracked, pending, expanded=True):
         ic = Text.from_markup(
             f" [{CLR_INFO} bold]s[/] status  [{CLR_INFO} bold]e[/] export\n"
             f" [{CLR_INFO} bold]m[/] roadmap [{CLR_INFO} bold]w[/] switch\n"
-            f" [{CLR_INFO} bold]p[/] paths")
+            f" [{CLR_INFO} bold]p[/] paths   [{CLR_INFO} bold]c[/] calibrate")
         sc = Text.from_markup(
             f" [{CLR_SYSTEM} bold]q[/] quit\n [{CLR_SYSTEM} bold]h[/] help\n [{CLR_SYSTEM} bold]-[/] fold")
         cc = Text.from_markup(
@@ -182,17 +229,17 @@ def render_hub(tracked, pending, expanded=True):
         r3.add_column(ratio=3); r3.add_column(ratio=2); r3.add_column(ratio=3)
         r3.add_row(pi, ps, pc)
 
-        body = Group(header, Text(""), r1, co, Text(""), r3)
+        body = Group(header, Text(""), r1, co, r3)
     else:
         actions = Text.from_markup(
             f"    [{CLR_TRACK} bold]t[/]  track          [dim]\u2192 tn tp tb ts tv tr[/]\n"
             f"    [{CLR_ANALYZE} bold]a[/]  analyze        [dim]\u2192 ac ap al ad ai aq[/]\n"
-            f"    [{CLR_OUTPUT}]o[/]  output         [dim]\u2192 fa fs ff fp va vs vf vp[/]\n"
+            f"    [{CLR_OUTPUT}]o[/]  output         [dim]\u2192 fa fs ff fp vw vr vc va[/]\n"
             f"    [{CLR_INFO} bold]s[/]  info           [dim]\u2192 s e m w p[/]")
         footer = Text.from_markup("  [dim]q quit    h help    + expand[/]")
         body = Group(header, Text(""), actions, Text(""), footer)
 
-    console.print(Panel(body, border_style="magenta", padding=(1,2), width=min(console.width, 76)))
+    console.print(Panel(body, border_style="magenta", padding=(0,2), width=min(console.width, 76)))
 
 def render_status_panels(tracked, pending):
     for wk, clips in _group_by_week(tracked + pending):
@@ -250,6 +297,55 @@ def pick_clip(clips, label="Pick a clip"):
     except KeyboardInterrupt: return None
     return None if r is None or r == BACK else r
 
+def pick_group(clips, label="Select scope"):
+    """Pick a week group or individual clip. Returns list of stems or None."""
+    ch = [Choice("\u2190 back", value=BACK)]
+    for wk, gc in _group_by_week(clips):
+        m = WEEK_GROUPS.get(wk, {"label": wk or "clips", "desc": ""})
+        ch.append(Choice(f" \u2261 all {m['label']} \u00b7 {m['desc']} ({len(gc)})", value=f"__group_{wk}__"))
+    if len([wk for wk, _ in _group_by_week(clips)]) > 1:
+        ch.append(Choice(f" \u2261 everything ({len(clips)})", value="__all__"))
+    ch.append(Separator("\u2500" * 40))
+    for wk, gc in _group_by_week(clips):
+        m = WEEK_GROUPS.get(wk)
+        if m: ch.append(Separator(f"\u2500\u2500 {m['label']} \u00b7 {m['desc']} ({len(gc)}) \u2500\u2500"))
+        for i, c in enumerate(gc):
+            br = "\u2570\u2500" if i == len(gc) - 1 else "\u251c\u2500"
+            ch.append(Choice(f" {br} {c['stem']}", value=c["stem"]))
+    try:
+        r = questionary.select(label, choices=ch, style=_sty(),
+                               use_arrow_keys=True, use_jk_keys=True).ask()
+    except KeyboardInterrupt: return None
+    if r is None or r == BACK: return None
+    if r == "__all__": return [c["stem"] for c in clips]
+    if r.startswith("__group_") and r.endswith("__"):
+        wk = r[8:-2]
+        wk = None if wk == "None" else wk
+        return [c["stem"] for c in clips if c.get("week") == wk]
+    return [r]
+
+def _pick_render_count(total, has_existing=False):
+    choices = [
+        Choice(" 1  smoke test", value=1),
+        Choice(" n  custom batch", value=-1),
+        Choice(f" a  all {total} unrendered", value=total),
+    ]
+    if has_existing:
+        choices.append(Choice(" f  force re-render all", value=-2))
+    choices.append(Choice(" \u2190 back", value=0))
+    try:
+        r = questionary.select("How many to render?", choices=choices, style=_sty(),
+                               use_arrow_keys=True, use_jk_keys=True).ask()
+    except KeyboardInterrupt: return 0, False
+    if r is None: return 0, False
+    if r == -2: return -2, True  # force flag
+    if r == -1:
+        try:
+            n = int(input(f"  How many? (1-{total}): ").strip())
+            return max(1, min(n, total)), False
+        except (ValueError, EOFError, KeyboardInterrupt): return 0, False
+    return r, False
+
 def pick_or_sweep(clips, label="Sanity check"):
     if not clips: console.print("  [dim]No clips available.[/]"); return None
     try: r = questionary.select(label, choices=_choices(clips, [Choice("\u2261 sweep all", value=SWEEP)]),
@@ -290,17 +386,19 @@ def sub_analyze(tr):
 def sub_output(tr, pe):
     k = _sub("output", [("fa","all figures","batch",CLR_FIGURES),("fs","single fig","pick",CLR_FIGURES),
         ("ff","force fig","redo",CLR_FIGURES),("fp","preview","frame",CLR_FIGURES),
-        ("va","all videos","batch",CLR_VIDEOS),("vs","single vid","pick",CLR_VIDEOS),
-        ("vf","force vid","redo",CLR_VIDEOS),("vp","preview vid","frame",CLR_VIDEOS)])
+        ("vw","render overlays","group picker",CLR_VIDEOS),("vr","review overlays","verdict sweep",CLR_VIDEOS),
+        ("vc","1-by-1 pipeline","render + review",CLR_VIDEOS),("va","all combined","batch",CLR_VIDEOS)])
     if not k: return
     {"fa":do_fa,"fs":lambda:do_fs(tr),"ff":do_ff,"fp":lambda:do_fp(tr),
+     "vw":lambda:do_vw(tr),"vr":lambda:do_vr(tr),"vc":lambda:do_vc(tr),
      "va":do_va,"vs":lambda:do_vs(tr),"vf":do_vf,"vp":lambda:do_vp(tr)}.get(k[:2],lambda:None)()
 
 def sub_info(tr, pe):
     k = _sub("info", [("s","status","panels",CLR_INFO),("e","export","xlsx",CLR_INFO),
-        ("m","roadmap","md",CLR_INFO),("w","switch","phase",CLR_INFO),("p","paths","config",CLR_INFO)])
+        ("m","roadmap","md",CLR_INFO),("w","switch","phase",CLR_INFO),("p","paths","config",CLR_INFO),
+        ("c","calibration","pivot & arm",CLR_INFO)])
     if not k: return
-    {"s":lambda:do_s(tr,pe),"e":do_e,"m":do_m,"w":do_w,"p":do_p}.get(k[0],lambda:None)()
+    {"s":lambda:do_s(tr,pe),"e":do_e,"m":do_m,"w":do_w,"p":do_p,"c":do_c}.get(k[0],lambda:None)()
 
 # ── Actions ──
 
@@ -329,10 +427,23 @@ def do_ts(tr):
     if r==SWEEP:
         from sanity_check import check_sweep
         def on_p(stem,v,reasons):
-            console.print("  [dim][a]ccept [f]lag [n]ext [q]uit[/]")
-            try: k=input("  \u25b8 ").strip().lower()
-            except: return "q"
-            return k[0] if k else "n"
+            has_vid = _has_overlay(stem)
+            console.print()
+            if has_vid:
+                console.print(f"  [yellow bold]\u2192 overlay video available for inspection[/]")
+                console.print("  [bold]v[/] open overlay   [bold]a[/] accept   [bold]n[/] next   [bold]q[/] quit")
+            else:
+                console.print("  [bold]a[/] accept   [bold]n[/] next   [bold]q[/] quit   [dim](no overlay \u2014 run vw to render)[/]")
+            while True:
+                try: k=input("  \u25b8 ").strip().lower()
+                except: return "q"
+                if not k: return "n"
+                if k[0]=="v" and has_vid:
+                    try: _open_file(_overlay_path(stem))
+                    except: console.print("  [red]Could not open video[/]")
+                    console.print("  [bold]a[/] accept   [bold]n[/] next   [bold]q[/] quit")
+                    continue
+                return k[0]
         console.print(); res=check_sweep(tr,on_pause=on_p)
         nc=sum(1 for _,v in res if v=="CLEAN"); nw=sum(1 for _,v in res if v in("WARN","REVIEW"))
         console.print(); console.print(f"  [green]{nc} clean[/]  [yellow]{nw} flagged[/]  [dim]{len(res)} total[/]")
@@ -399,16 +510,297 @@ def do_vp(tr):
     if not s: return
     _run(os.path.join(REPO_ROOT,"scripts","analysis","preview_frame.py"),"--stem",s,"--video"); _pause()
 
+# Overlay render + review
+def _render_overlay(stem, label=""):
+    """Render one overlay with Rich output. Returns True on success."""
+    from thresholds import get_pivot_arm
+    pv, al = get_pivot_arm(stem)
+    info_t = Table(box=None, show_header=False, padding=(0,2), expand=False)
+    info_t.add_column(style="dim"); info_t.add_column(style="white")
+    info_t.add_row("stem", f"[bold]{stem}[/]")
+    info_t.add_row("pivot", f"({pv[0]}, {pv[1]})")
+    info_t.add_row("arm", f"{al} px")
+    info_t.add_row("output", f"{stem}_overlay.mp4")
+    console.print(Panel(info_t, title=f"[bold {CLR_VIDEOS}]rendering{' ' + label if label else ''}[/]",
+                        border_style=CLR_VIDEOS, padding=(0,1), expand=False))
+    rc = subprocess.run([sys.executable, SCRIPT_OVERLAY, "--stem", stem],
+                        cwd=REPO_ROOT).returncode
+    return rc == 0
+
+def _verdict_prompt(stem):
+    """Open video and ask for pass/fail. Returns 'p','f','s','q' or None."""
+    mp4 = _overlay_path(stem)
+    if os.path.isfile(mp4):
+        try: _open_file(mp4)
+        except: pass
+    console.print(f"  [bold {CLR_VIDEOS}]{stem}[/] \u2014 video opened")
+    console.print("  [green bold]p[/]ass   [red bold]f[/]ail   [dim bold]s[/]kip   [dim bold]q[/]uit")
+    try: v = input("  \u25b8 ").strip().lower()
+    except (EOFError, KeyboardInterrupt): return "q"
+    if not v: return "p"
+    return v[0]
+
+def do_vw(tr):
+    """Render overlay videos for a selected group."""
+    stems = pick_group(tr, "Render overlays \u2014 select scope")
+    if not stems: return
+    unrendered = [s for s in stems if not _has_overlay(s)]
+    existing = len(stems) - len(unrendered)
+    if not unrendered and not existing:
+        console.print("  [dim]No clips in scope.[/]")
+        _pause(); return
+    if not unrendered:
+        console.print(f"  [green]\u2713[/] All {len(stems)} clips already have overlay videos.")
+        console.print(f"  [dim]Use force re-render to overwrite.[/]")
+    else:
+        console.print(f"\n  [dim]{len(unrendered)} unrendered, {existing} existing[/]")
+    count, force = _pick_render_count(len(unrendered) if unrendered else len(stems), has_existing=existing > 0)
+    if count == 0: return
+    if force:
+        batch = stems  # re-render everything
+        # Delete existing overlays so they get re-rendered
+        for s in batch:
+            p = _overlay_path(s)
+            if os.path.isfile(p): os.remove(p)
+    else:
+        batch = unrendered[:count]
+    console.print(Panel(f"Rendering {len(batch)} overlay video{'s' if len(batch)>1 else ''}",
+                        title="[bold]batch render[/]", border_style=CLR_VIDEOS, expand=False))
+    rendered, failed = 0, 0
+    for i, stem in enumerate(batch, 1):
+        console.print(Rule(f"[{CLR_VIDEOS}]({i}/{len(batch)})[/]", style="dim"))
+        ok = _render_overlay(stem, f"({i}/{len(batch)})")
+        if not ok:
+            console.print(f"  [red]\u2717 render failed[/]")
+            failed += 1
+            if i < len(batch):
+                console.print("  [bold]c[/]ontinue   [bold]q[/]uit")
+                try: k = input("  \u25b8 ").strip().lower()
+                except (EOFError, KeyboardInterrupt): break
+                if k.startswith("q"): break
+            continue
+        rendered += 1
+        mp4 = _overlay_path(stem)
+        if os.path.isfile(mp4):
+            try: _open_file(mp4)
+            except: pass
+        console.print(f"  [green]\u2713[/] {stem} \u2014 opened for preview")
+        console.print()
+    summary = Table(box=None, show_header=False, padding=(0,2), expand=False)
+    summary.add_column(style="dim"); summary.add_column()
+    summary.add_row("rendered", f"[green]{rendered}[/]")
+    if failed: summary.add_row("failed", f"[red]{failed}[/]")
+    summary.add_row("remaining", f"[dim]{len(unrendered)-rendered-failed}[/]")
+    console.print(Panel(summary, title="[bold]done[/]", border_style="dim", expand=False))
+    _log_activity(f"overlays: {rendered} rendered" + (f", {failed} failed" if failed else ""))
+    _pause()
+
+def do_vr(tr):
+    """Overlay review manager \u2014 view verdicts, re-review, change status."""
+    stems = pick_group(tr, "Review overlays \u2014 select scope")
+    if not stems: return
+    while True:
+        reg = load_registry()
+        # Build status table
+        rows = []
+        for s in stems:
+            has_ov = _has_overlay(s)
+            verdict = _get_verdict(s, reg)
+            note = None
+            for e in reg.values():
+                if e.get("config_description") == s:
+                    note = e.get("overlay_verdict_note"); break
+            rows.append({"stem": s, "has_ov": has_ov, "verdict": verdict, "note": note})
+        n_pass = sum(1 for r in rows if r["verdict"]=="pass")
+        n_fail = sum(1 for r in rows if r["verdict"]=="fail")
+        n_pend = sum(1 for r in rows if r["has_ov"] and r["verdict"] is None)
+        n_norend = sum(1 for r in rows if not r["has_ov"])
+        # Display
+        t = Table(box=box.SIMPLE, show_header=True, padding=(0,1), expand=False)
+        t.add_column("#", style="dim", width=3); t.add_column("stem", min_width=18)
+        t.add_column("overlay"); t.add_column("verdict"); t.add_column("note", style="dim")
+        for i, r in enumerate(rows, 1):
+            ov = "[green]\u2713[/]" if r["has_ov"] else "[dim]\u2014[/]"
+            if r["verdict"] == "pass":   vs = "[green]pass[/]"
+            elif r["verdict"] == "fail": vs = "[red]fail[/]"
+            elif r["has_ov"]:            vs = "[yellow]pending[/]"
+            else:                        vs = "[dim]\u2014[/]"
+            t.add_row(str(i), r["stem"], ov, vs, r["note"] or "")
+        legend = f"[green]{n_pass} pass[/]  [red]{n_fail} fail[/]  [yellow]{n_pend} pending[/]  [dim]{n_norend} no overlay[/]"
+        console.print(Panel(Group(t, Text.from_markup(f"  {legend}")),
+                            title="[bold]overlay review[/]", border_style=CLR_VIDEOS, padding=(0,1)))
+        console.print("  [bold]p[/] review all pending   [bold]#[/] pick by number   [bold]q[/] done")
+        try: cmd = input("  \u25b8 ").strip().lower()
+        except (EOFError, KeyboardInterrupt): break
+        if not cmd or cmd.startswith("q"): break
+        if cmd.startswith("p"):
+            pending = [r["stem"] for r in rows if r["has_ov"] and r["verdict"] is None]
+            if not pending:
+                console.print("  [dim]Nothing pending.[/]")
+                import time; time.sleep(0.8); continue
+            for j, stem in enumerate(pending, 1):
+                console.print(Rule(f"[{CLR_VIDEOS}]({j}/{len(pending)}) {stem}[/]", style="dim"))
+                v = _verdict_prompt(stem)
+                if v == "q": break
+                elif v == "s": continue
+                elif v == "f":
+                    note = None
+                    try: note = input("  reason (optional): ").strip() or None
+                    except: pass
+                    _set_verdict(stem, "fail", note)
+                    console.print(f"  [red]\u2717[/] {stem} \u2192 fail")
+                else:
+                    _set_verdict(stem, "pass")
+                    console.print(f"  [green]\u2713[/] {stem} \u2192 pass")
+                console.print()
+            continue
+        # Pick by number
+        try:
+            idx = int(cmd) - 1
+            if 0 <= idx < len(rows):
+                r = rows[idx]
+                if not r["has_ov"]:
+                    console.print(f"  [dim]No overlay for {r['stem']}. Run vw first.[/]")
+                    import time; time.sleep(0.8); continue
+                console.print(Rule(f"[{CLR_VIDEOS}]{r['stem']}[/]", style="dim"))
+                v = _verdict_prompt(r["stem"])
+                if v == "f":
+                    note = None
+                    try: note = input("  reason (optional): ").strip() or None
+                    except: pass
+                    _set_verdict(r["stem"], "fail", note)
+                    console.print(f"  [red]\u2717[/] {r['stem']} \u2192 fail")
+                elif v != "s" and v != "q":
+                    _set_verdict(r["stem"], "pass")
+                    console.print(f"  [green]\u2713[/] {r['stem']} \u2192 pass")
+                import time; time.sleep(0.5)
+        except ValueError:
+            console.print(f"  [dim]Unknown: {cmd}[/]")
+            import time; time.sleep(0.5)
+    _log_activity("overlay review")
+    _pause()
+
+def do_vc(tr):
+    """Combined 1-by-1 pipeline: render if needed, then review."""
+    stems = pick_group(tr, "Render & review \u2014 select scope")
+    if not stems: return
+    reg = load_registry()
+    # Build ordered work queue: pending-review first, then unrendered
+    needs_review = [s for s in stems if _has_overlay(s) and _get_verdict(s, reg) is None]
+    needs_render = [s for s in stems if not _has_overlay(s) and _get_verdict(s, reg) is None]
+    done_count = len(stems) - len(needs_review) - len(needs_render)
+    total_todo = len(needs_review) + len(needs_render)
+    if total_todo == 0:
+        console.print(f"  [green]\u2713[/] All {len(stems)} clips verified.")
+        _pause(); return
+    info = Table(box=None, show_header=False, padding=(0,2), expand=False)
+    info.add_column(style="dim"); info.add_column()
+    info.add_row("ready to review", f"[green]{len(needs_review)}[/]")
+    info.add_row("need rendering", f"[yellow]{len(needs_render)}[/]")
+    info.add_row("already done", f"[dim]{done_count}[/]")
+    console.print(Panel(info, title="[bold]1-by-1 pipeline[/]", border_style=CLR_VIDEOS, expand=False))
+    passed, failed_c, seq = 0, 0, 0
+    # Phase 1: review existing overlays
+    for i, stem in enumerate(needs_review):
+        seq += 1
+        console.print(Rule(f"[{CLR_VIDEOS}]({seq}/{total_todo}) review[/]", style="dim"))
+        v = _verdict_prompt(stem)
+        if v == "q": break
+        elif v == "s": continue
+        elif v == "f":
+            note = None
+            try: note = input("  reason (optional): ").strip() or None
+            except: pass
+            _set_verdict(stem, "fail", note)
+            console.print(f"  [red]\u2717[/] {stem} \u2192 fail"); failed_c += 1
+        else:
+            _set_verdict(stem, "pass")
+            console.print(f"  [green]\u2713[/] {stem} \u2192 pass"); passed += 1
+        console.print()
+    else:
+        # Phase 2: render + review unrendered
+        for i, stem in enumerate(needs_render):
+            seq += 1
+            console.print(Rule(f"[{CLR_VIDEOS}]({seq}/{total_todo}) render + review[/]", style="dim"))
+            ok = _render_overlay(stem, f"({seq}/{total_todo})")
+            if not ok:
+                console.print(f"  [red]\u2717 render failed[/]")
+                console.print("  [bold]s[/]kip   [bold]q[/]uit")
+                try: k = input("  \u25b8 ").strip().lower()
+                except: break
+                if k.startswith("q"): break
+                continue
+            console.print(f"  [green]\u2713[/] rendered \u2014 opening for review")
+            v = _verdict_prompt(stem)
+            if v == "q": break
+            elif v == "s": continue
+            elif v == "f":
+                note = None
+                try: note = input("  reason (optional): ").strip() or None
+                except: pass
+                _set_verdict(stem, "fail", note)
+                console.print(f"  [red]\u2717[/] {stem} \u2192 fail"); failed_c += 1
+            else:
+                _set_verdict(stem, "pass")
+                console.print(f"  [green]\u2713[/] {stem} \u2192 pass"); passed += 1
+            console.print()
+    # Summary
+    reg = load_registry()
+    total_pass = sum(1 for s in stems if _get_verdict(s, reg) == "pass")
+    total_fail = sum(1 for s in stems if _get_verdict(s, reg) == "fail")
+    total_pend = sum(1 for s in stems if _get_verdict(s, reg) is None)
+    summary = Table(box=None, show_header=False, padding=(0,2), expand=False)
+    summary.add_column(style="dim"); summary.add_column()
+    summary.add_row("pass", f"[green]{total_pass}[/]")
+    summary.add_row("fail", f"[red]{total_fail}[/]")
+    summary.add_row("pending", f"[dim]{total_pend}[/]")
+    console.print(Panel(summary, title="[bold]pipeline summary[/]", border_style="dim", expand=False))
+    _log_activity(f"pipeline: {passed}\u2713 {failed_c}\u2717")
+    _pause()
+
 # Info
 def do_s(tr,pe): console.print(); render_status_panels(tr,pe); _pause()
 def do_e(): _run(SCRIPT_REPORT); _pause()
 def do_m(): _run(SCRIPT_ROADMAP); _pause()
 def do_w():
-    cur=PHASE.replace("pendulum-","").replace("week","w")
-    console.print(f"\n  [bold]Switch phase[/]  [dim]current: [cyan]{cur}[/][/]\n")
-    console.print('  [dim]$env:CHAOS_PHASE = "week3-4-pendulum-free-swing"[/]')
-    console.print('  [dim]$env:CHAOS_PHASE = "week5-6-pendulum-motor-driven"[/]'); _pause()
-def do_h(): _run(sys.executable, os.path.join(REPO_ROOT,"chaos.py"),"help"); _pause()
+    import importlib
+    global DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, PHASE, clip_dir
+    from paths import PHASE_FREE, PHASE_DRIVEN as _PD
+    phases = [
+        (PHASE_FREE, "week 3-4", "free swing"),
+        (_PD,        "week 5-6", "motor-driven"),
+    ]
+    choices = []
+    for val, short, desc in phases:
+        mark = "  [dim]← current[/]" if val == PHASE else ""
+        choices.append(Choice(f" {short} · {desc}{mark}", value=val))
+    choices.append(Choice(" ← back", value=None))
+    console.print()
+    try:
+        r = questionary.select("Switch phase", choices=choices, style=_sty(),
+                               use_arrow_keys=True, use_jk_keys=True).ask()
+    except KeyboardInterrupt:
+        return
+    if r is None or r == PHASE:
+        console.print("  [dim]No change.[/]")
+        _pause()
+        return
+    os.environ["CHAOS_PHASE"] = r
+    # Reload paths so all module-level path vars pick up the new phase
+    import paths as _paths_mod
+    importlib.reload(_paths_mod)
+    # Re-bind the globals this module uses
+    DATA_DIR    = _paths_mod.DATA_DIR
+    MEAS_DIR    = _paths_mod.MEAS_DIR
+    VIDEOS_DIR  = _paths_mod.VIDEOS_DIR
+    EXPERIMENTS = _paths_mod.EXPERIMENTS
+    PHASE       = _paths_mod.PHASE
+    clip_dir    = _paths_mod.clip_dir
+    short = r.replace("pendulum-", "").replace("week", "w")
+    console.print(f"  [green]✓[/] Switched to [bold cyan]{short}[/]")
+    _log_activity(f"phase → {short}")
+    _pause()
+def do_h(): _run(os.path.join(REPO_ROOT,"chaos.py"),"help"); _pause()
 def do_p():
     from thresholds import PIVOT, ARM_LENGTH_PX, get_pivot_arm
     pv5,al5=PIVOT,ARM_LENGTH_PX; pv6,al6=get_pivot_arm("3.2V_0.9Hz")
@@ -420,10 +812,29 @@ def do_p():
     t.add_row("",""); t.add_row("week5 pivot",f"({pv5[0]},{pv5[1]}) arm {al5}px")
     t.add_row("week6 pivot",f"({pv6[0]},{pv6[1]}) arm {al6}px")
     console.print(Panel(t,title="[bold]paths[/]",border_style=CLR_INFO,padding=(0,1))); _pause()
+def do_c():
+    from thresholds import PIVOT, ARM_LENGTH_PX, PIVOT_3_2V, ARM_LENGTH_PX_3_2V, ARM_LENGTH_CM, get_pivot_arm
+    console.print()
+    t=Table(box=box.ROUNDED,show_header=True,padding=(0,2),expand=False,
+            title="[bold]Calibration[/]",border_style=CLR_INFO)
+    t.add_column("Group",style="bold"); t.add_column("Pivot (x,y)"); t.add_column("Arm (px)")
+    t.add_column("Arm (cm)"); t.add_column("Clips")
+    # Count clips per calibration group
+    from paths import iter_clip_dirs
+    n_w5 = sum(1 for s,_ in iter_clip_dirs() if not (s.startswith("3.2V_") and s != "3.2V_1Hz"))
+    n_w6 = sum(1 for s,_ in iter_clip_dirs() if s.startswith("3.2V_") and s != "3.2V_1Hz")
+    t.add_row("week 5 (broad survey)",f"({PIVOT[0]}, {PIVOT[1]})",str(ARM_LENGTH_PX),
+              f"{ARM_LENGTH_CM:.1f}",str(n_w5))
+    t.add_row("week 6 (3.2V sweep)",f"({PIVOT_3_2V[0]}, {PIVOT_3_2V[1]})",str(ARM_LENGTH_PX_3_2V),
+              f"{ARM_LENGTH_CM:.1f}",str(n_w6))
+    console.print(t)
+    console.print("\n  [dim]Calibration is set in scripts/utils/thresholds.py[/]")
+    console.print("  [dim]Routing logic: get_pivot_arm(stem) — stems starting with 3.2V_ use week 6 calibration[/]")
+    _pause()
 
 # ── Hub loop ──
 
-TWO_CHAR_KEYS = ("tn","tp","tb","ts","tv","tr","ac","ap","al","ad","ai","aq","fa","fs","ff","fp","va","vs","vf","vp")
+TWO_CHAR_KEYS = ("tn","tp","tb","ts","tv","tr","ac","ap","al","ad","ai","aq","fa","fs","ff","fp","vw","vr","vc","va","vs","vf","vp")
 
 DISPATCH = {
     "tn":lambda t,p:do_tn(p), "tp":lambda t,p:do_tp(p), "tb":lambda t,p:do_tb(),
@@ -431,7 +842,9 @@ DISPATCH = {
     "ac":lambda t,p:do_ac(t), "ap":lambda t,p:do_ap(t), "al":lambda t,p:do_al(t),
     "ad":lambda t,p:do_ad(t), "ai":lambda t,p:do_ai(),  "aq":lambda t,p:do_aq(t),
     "fa":lambda t,p:do_fa(),  "fs":lambda t,p:do_fs(t), "ff":lambda t,p:do_ff(),
-    "fp":lambda t,p:do_fp(t), "va":lambda t,p:do_va(),  "vs":lambda t,p:do_vs(t),
+    "fp":lambda t,p:do_fp(t), "vw":lambda t,p:do_vw(t), "vr":lambda t,p:do_vr(t),
+    "vc":lambda t,p:do_vc(t),
+    "va":lambda t,p:do_va(),  "vs":lambda t,p:do_vs(t),
     "vf":lambda t,p:do_vf(),  "vp":lambda t,p:do_vp(t),
     "s":lambda t,p:do_s(t,p), "e":lambda t,p:do_e(),    "m":lambda t,p:do_m(),
     "w":lambda t,p:do_w(),    "p":lambda t,p:do_p(),     "h":lambda t,p:do_h(),
