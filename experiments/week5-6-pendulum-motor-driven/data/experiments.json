@@ -175,17 +175,20 @@
     ],
     "scale_cm_per_px": 0.2163,
     "tracker": "bgr",
-    "measurements_dir": "measurements/week5/3.2V_1Hz",
+    "measurements_dir": "measurements/3.2V_1Hz",
     "csv_file": "tracking.csv",
-    "tracking_quality": "untracked",
+    "tracking_quality": "verified",
     "notes": "",
     "duration_s": 42.793,
-    "dropout_rate_pct": 1.36,
-    "theta1_initial": 0.779,
-    "theta2_initial": -0.759,
+    "dropout_rate_pct": 0.0,
+    "theta1_initial": 0.801,
+    "theta2_initial": -0.643,
     "omega1_initial": 0.0,
     "omega2_initial": 0.0,
-    "n_frames": 2565
+    "n_frames": 2565,
+    "verification_date": "2026-05-22",
+    "verification_notes": "dropout 0.00% \u2264 5%",
+    "verified_under_brief_version": 14
   },
   "3.4V_1Hz": {
     "video_file": "3.4V_1Hz.mov",
@@ -779,18 +782,21 @@
       331
     ],
     "scale_cm_per_px": 0.2056,
-    "measurements_dir": "measurements/week6/3.2V_0.91Hz",
+    "measurements_dir": "measurements/3.2V_0.91Hz",
     "csv_file": "tracking.csv",
-    "tracking_quality": "untracked",
+    "tracking_quality": "verified",
     "notes": "",
     "tracker": "bgr",
-    "theta1_initial": 0.356,
-    "theta2_initial": -1.813,
-    "omega1_initial": 0.1199,
-    "omega2_initial": 0.7194,
+    "theta1_initial": 0.509,
+    "theta2_initial": -1.993,
+    "omega1_initial": 0.0,
+    "omega2_initial": 0.0,
     "duration_s": 69.469,
     "n_frames": 4164,
-    "dropout_rate_pct": 0.0
+    "dropout_rate_pct": 0.0,
+    "verification_date": "2026-05-22",
+    "verification_notes": "dropout 0.00% \u2264 5%",
+    "verified_under_brief_version": 14
   },
   "3.2V_0.92Hz": {
     "video_file": "3.2V_0.92Hz.mov",
@@ -805,18 +811,21 @@
       331
     ],
     "scale_cm_per_px": 0.2056,
-    "measurements_dir": "measurements/week6/3.2V_0.92Hz",
+    "measurements_dir": "measurements/3.2V_0.92Hz",
     "csv_file": "tracking.csv",
-    "tracking_quality": "untracked",
+    "tracking_quality": "verified",
     "notes": "",
     "tracker": "bgr",
-    "theta1_initial": -1.423,
-    "theta2_initial": -2.231,
-    "omega1_initial": 21.3429,
-    "omega2_initial": -40.048,
+    "theta1_initial": -1.177,
+    "theta2_initial": -2.405,
+    "omega1_initial": 7.7938,
+    "omega2_initial": -15.4077,
     "duration_s": 67.417,
     "n_frames": 4041,
-    "dropout_rate_pct": 0.0
+    "dropout_rate_pct": 0.0,
+    "verification_date": "2026-05-22",
+    "verification_notes": "dropout 0.00% \u2264 5%",
+    "verified_under_brief_version": 14
   },
   "3.2V_0.93Hz": {
     "video_file": "3.2V_0.93Hz.mov",
@@ -831,18 +840,21 @@
       331
     ],
     "scale_cm_per_px": 0.2056,
-    "measurements_dir": "measurements/week6/3.2V_0.93Hz",
+    "measurements_dir": "measurements/3.2V_0.93Hz",
     "csv_file": "tracking.csv",
-    "tracking_quality": "untracked",
+    "tracking_quality": "verified",
     "notes": "",
     "tracker": "bgr",
-    "theta1_initial": -0.356,
-    "theta2_initial": -1.088,
-    "omega1_initial": 21.3429,
-    "omega2_initial": -22.2422,
+    "theta1_initial": -0.022,
+    "theta2_initial": -1.518,
+    "omega1_initial": 0.0,
+    "omega2_initial": 0.0,
     "duration_s": 63.113,
     "n_frames": 3783,
-    "dropout_rate_pct": 0.0
+    "dropout_rate_pct": 0.0,
+    "verification_date": "2026-05-22",
+    "verification_notes": "dropout 0.00% \u2264 5%",
+    "verified_under_brief_version": 14
   },
   "3.2V_0.94Hz": {
     "video_file": "3.2V_0.94Hz.mov",
@@ -857,18 +869,21 @@
       331
     ],
     "scale_cm_per_px": 0.2056,
-    "measurements_dir": "measurements/week6/3.2V_0.94Hz",
+    "measurements_dir": "measurements/3.2V_0.94Hz",
     "csv_file": "tracking.csv",
-    "tracking_quality": "untracked",
+    "tracking_quality": "verified",
     "notes": "",
     "tracker": "bgr",
-    "theta1_initial": -2.134,
-    "theta2_initial": -1.45,
-    "omega1_initial": 0.0,
-    "omega2_initial": -0.5396,
+    "theta1_initial": -1.871,
+    "theta2_initial": -1.775,
+    "omega1_initial": -5.4556,
+    "omega2_initial": 7.0144,
     "duration_s": 72.372,
     "n_frames": 4338,
-    "dropout_rate_pct": 0.0
+    "dropout_rate_pct": 0.0,
+    "verification_date": "2026-05-22",
+    "verification_notes": "dropout 0.00% \u2264 5%",
+    "verified_under_brief_version": 14
   },
   "3.2V_0.95Hz": {
     "video_file": "3.2V_0.95Hz.mov",
@@ -883,18 +898,21 @@
       331
     ],
     "scale_cm_per_px": 0.2056,
-    "measurements_dir": "measurements/week6/3.2V_0.95Hz",
+    "measurements_dir": "measurements/3.2V_0.95Hz",
     "csv_file": "tracking.csv",
-    "tracking_quality": "untracked",
+    "tracking_quality": "verified",
     "notes": "",
     "tracker": "bgr",
-    "theta1_initial": 1.067,
-    "theta2_initial": -1.824,
-    "omega1_initial": 0.0,
-    "omega2_initial": 0.6595,
+    "theta1_initial": 1.133,
+    "theta2_initial": -1.91,
+    "omega1_initial": 7.8537,
+    "omega2_initial": -7.8537,
     "duration_s": 73.323,
     "n_frames": 4395,
-    "dropout_rate_pct": 0.0
+    "dropout_rate_pct": 0.0,
+    "verification_date": "2026-05-22",
+    "verification_notes": "dropout 0.00% \u2264 5%",
+    "verified_under_brief_version": 14
   },
   "3.2V_0.96Hz": {
     "video_file": "3.2V_0.96Hz.mov",
@@ -909,18 +927,21 @@
       331
     ],
     "scale_cm_per_px": 0.2056,
-    "measurements_dir": "measurements/week6/3.2V_0.96Hz",
+    "measurements_dir": "measurements/3.2V_0.96Hz",
     "csv_file": "tracking.csv",
-    "tracking_quality": "untracked",
+    "tracking_quality": "verified",
     "notes": "",
     "tracker": "bgr",
-    "theta1_initial": 1.423,
-    "theta2_initial": -1.813,
-    "omega1_initial": 22.0024,
-    "omega2_initial": -42.446,
+    "theta1_initial": 1.746,
+    "theta2_initial": -2.164,
+    "omega1_initial": 0.0,
+    "omega2_initial": -1.0791,
     "duration_s": 65.666,
     "n_frames": 3936,
-    "dropout_rate_pct": 0.0
+    "dropout_rate_pct": 0.0,
+    "verification_date": "2026-05-22",
+    "verification_notes": "dropout 0.00% \u2264 5%",
+    "verified_under_brief_version": 14
   },
   "3.2V_0.97Hz": {
     "video_file": "3.2V_0.97Hz.mov",
@@ -935,18 +956,21 @@
       331
     ],
     "scale_cm_per_px": 0.2056,
-    "measurements_dir": "measurements/week6/3.2V_0.97Hz",
+    "measurements_dir": "measurements/3.2V_0.97Hz",
     "csv_file": "tracking.csv",
-    "tracking_quality": "untracked",
+    "tracking_quality": "verified",
     "notes": "",
     "tracker": "bgr",
-    "theta1_initial": -2.121,
-    "theta2_initial": -1.848,
-    "omega1_initial": 21.1631,
-    "omega2_initial": -21.283,
+    "theta1_initial": -1.784,
+    "theta2_initial": -2.112,
+    "omega1_initial": 2.2182,
+    "omega2_initial": -2.6379,
     "duration_s": 89.89,
     "n_frames": 5388,
-    "dropout_rate_pct": 0.0
+    "dropout_rate_pct": 0.0,
+    "verification_date": "2026-05-22",
+    "verification_notes": "dropout 0.00% \u2264 5%",
+    "verified_under_brief_version": 14
   },
   "3.2V_0.98Hz": {
     "video_file": "3.2V_0.98Hz.mov",
@@ -961,18 +985,21 @@
       331
     ],
     "scale_cm_per_px": 0.2056,
-    "measurements_dir": "measurements/week6/3.2V_0.98Hz",
+    "measurements_dir": "measurements/3.2V_0.98Hz",
     "csv_file": "tracking.csv",
-    "tracking_quality": "untracked",
+    "tracking_quality": "verified",
     "notes": "",
     "tracker": "bgr",
-    "theta1_initial": -0.354,
-    "theta2_initial": -1.459,
-    "omega1_initial": 21.223,
-    "omega2_initial": -21.223,
+    "theta1_initial": -0.027,
+    "theta2_initial": -1.737,
+    "omega1_initial": 0.0,
+    "omega2_initial": 0.0,
     "duration_s": 66.166,
     "n_frames": 3966,
-    "dropout_rate_pct": 0.0
+    "dropout_rate_pct": 0.0,
+    "verification_date": "2026-05-22",
+    "verification_notes": "dropout 0.00% \u2264 5%",
+    "verified_under_brief_version": 14
   },
   "3.2V_0.99Hz": {
     "video_file": "3.2V_0.99Hz.mov",
@@ -987,18 +1014,21 @@
       331
     ],
     "scale_cm_per_px": 0.2056,
-    "measurements_dir": "measurements/week6/3.2V_0.99Hz",
+    "measurements_dir": "measurements/3.2V_0.99Hz",
     "csv_file": "tracking.csv",
-    "tracking_quality": "untracked",
+    "tracking_quality": "verified",
     "notes": "",
     "tracker": "bgr",
-    "theta1_initial": -1.768,
-    "theta2_initial": -1.116,
-    "omega1_initial": 0.0,
-    "omega2_initial": -0.4197,
+    "theta1_initial": -1.463,
+    "theta2_initial": -1.533,
+    "omega1_initial": -2.8177,
+    "omega2_initial": 2.8777,
     "duration_s": 64.164,
     "n_frames": 3846,
-    "dropout_rate_pct": 0.0
+    "dropout_rate_pct": 0.0,
+    "verification_date": "2026-05-22",
+    "verification_notes": "dropout 0.00% \u2264 5%",
+    "verified_under_brief_version": 14
   },
   "3.2V_0.9Hz": {
     "video_file": "3.2V_0.9Hz.mov",
@@ -1026,7 +1056,7 @@
     "n_frames": 5460,
     "dropout_rate_pct": 0.0,
     "verification_date": "2026-05-21",
-    "verification_notes": "Visually verified end-to-end under the new tracker (bbox/porthole crop, sub-pixel float centroids, rigid-arm constraint projection, 5-frame median smoothing). Baseline for the video-by-video re-verification — tally restarted in this session."
+    "verification_notes": "Visually verified end-to-end under the new tracker (bbox/porthole crop, sub-pixel float centroids, rigid-arm constraint projection, 5-frame median smoothing). Baseline for the video-by-video re-verification \u2014 tally restarted in this session."
   },
   "3.2V_1.00Hz": {
     "video_file": "3.2V_1.00Hz.mov",
@@ -1041,18 +1071,21 @@
       331
     ],
     "scale_cm_per_px": 0.2056,
-    "measurements_dir": "measurements/week6/3.2V_1.00Hz",
+    "measurements_dir": "measurements/3.2V_1.00Hz",
     "csv_file": "tracking.csv",
-    "tracking_quality": "untracked",
+    "tracking_quality": "verified",
     "notes": "",
     "tracker": "bgr",
-    "theta1_initial": -1.414,
-    "theta2_initial": -2.553,
-    "omega1_initial": 21.1631,
-    "omega2_initial": -0.9592,
+    "theta1_initial": -1.07,
+    "theta2_initial": -2.659,
+    "omega1_initial": 0.0,
+    "omega2_initial": 4.0767,
     "duration_s": 72.823,
     "n_frames": 4365,
-    "dropout_rate_pct": 0.0
+    "dropout_rate_pct": 0.0,
+    "verification_date": "2026-05-22",
+    "verification_notes": "dropout 0.00% \u2264 5%",
+    "verified_under_brief_version": 14
   },
   "3.2V_1.09Hz": {
     "video_file": "3.2V_1.09Hz.mov",
@@ -1067,18 +1100,21 @@
       331
     ],
     "scale_cm_per_px": 0.2056,
-    "measurements_dir": "measurements/week6/3.2V_1.09Hz",
+    "measurements_dir": "measurements/3.2V_1.09Hz",
     "csv_file": "tracking.csv",
-    "tracking_quality": "untracked",
+    "tracking_quality": "verified",
     "notes": "",
     "tracker": "bgr",
-    "theta1_initial": 49.827,
-    "theta2_initial": -172.235,
-    "omega1_initial": -153.2974,
-    "omega2_initial": 449.0408,
+    "theta1_initial": 49.74,
+    "theta2_initial": -172.188,
+    "omega1_initial": -148.9209,
+    "omega2_initial": 444.1847,
     "duration_s": 46.647,
     "n_frames": 2796,
-    "dropout_rate_pct": 0.0
+    "dropout_rate_pct": 0.0,
+    "verification_date": "2026-05-22",
+    "verification_notes": "dropout 0.00% \u2264 5%",
+    "verified_under_brief_version": 14
   },
   "3.2V_1.15Hz": {
     "video_file": "3.2V_1.15Hz.mov",
@@ -1093,9 +1129,9 @@
       331
     ],
     "scale_cm_per_px": 0.2056,
-    "measurements_dir": "measurements/week6/3.2V_1.15Hz",
+    "measurements_dir": "measurements/3.2V_1.15Hz",
     "csv_file": "tracking.csv",
-    "tracking_quality": "untracked",
+    "tracking_quality": "verified",
     "notes": "",
     "tracker": "bgr",
     "theta1_initial": -2.386,
@@ -1104,7 +1140,10 @@
     "omega2_initial": -0.8393,
     "duration_s": 91.191,
     "n_frames": 5466,
-    "dropout_rate_pct": 0.0
+    "dropout_rate_pct": 0.0,
+    "verification_date": "2026-05-22",
+    "verification_notes": "dropout 0.00% \u2264 5%",
+    "verified_under_brief_version": 14
   },
   "3.2V_1.16Hz": {
     "video_file": "3.2V_1.16Hz.mov",
@@ -1119,18 +1158,21 @@
       331
     ],
     "scale_cm_per_px": 0.2056,
-    "measurements_dir": "measurements/week6/3.2V_1.16Hz",
+    "measurements_dir": "measurements/3.2V_1.16Hz",
     "csv_file": "tracking.csv",
-    "tracking_quality": "untracked",
+    "tracking_quality": "verified",
     "notes": "",
     "tracker": "bgr",
-    "theta1_initial": -0.356,
-    "theta2_initial": -1.813,
-    "omega1_initial": 0.1199,
-    "omega2_initial": -0.6595,
+    "theta1_initial": -0.281,
+    "theta2_initial": -1.997,
+    "omega1_initial": 3.6571,
+    "omega2_initial": -3.717,
     "duration_s": 99.65,
     "n_frames": 5973,
-    "dropout_rate_pct": 0.0
+    "dropout_rate_pct": 0.0,
+    "verification_date": "2026-05-22",
+    "verification_notes": "dropout 0.00% \u2264 5%",
+    "verified_under_brief_version": 14
   },
   "3.2V_1.17Hz": {
     "video_file": "3.2V_1.17Hz.mov",
@@ -1145,9 +1187,9 @@
       331
     ],
     "scale_cm_per_px": 0.2056,
-    "measurements_dir": "measurements/week6/3.2V_1.17Hz",
+    "measurements_dir": "measurements/3.2V_1.17Hz",
     "csv_file": "tracking.csv",
-    "tracking_quality": "untracked",
+    "tracking_quality": "verified",
     "notes": "",
     "tracker": "bgr",
     "theta1_initial": 1.048,
@@ -1156,7 +1198,10 @@
     "omega2_initial": 0.0,
     "duration_s": 102.102,
     "n_frames": 6120,
-    "dropout_rate_pct": 0.0
+    "dropout_rate_pct": 0.0,
+    "verification_date": "2026-05-22",
+    "verification_notes": "dropout 0.00% \u2264 5%",
+    "verified_under_brief_version": 14
   },
   "3.2V_1.18Hz": {
     "video_file": "3.2V_1.18Hz.mov",
@@ -1171,18 +1216,21 @@
       331
     ],
     "scale_cm_per_px": 0.2056,
-    "measurements_dir": "measurements/week6/3.2V_1.18Hz",
+    "measurements_dir": "measurements/3.2V_1.18Hz",
     "csv_file": "tracking.csv",
-    "tracking_quality": "untracked",
+    "tracking_quality": "verified",
     "notes": "",
     "tracker": "bgr",
-    "theta1_initial": 0.707,
-    "theta2_initial": -3.668,
+    "theta1_initial": 0.809,
+    "theta2_initial": -3.833,
     "omega1_initial": 0.0,
-    "omega2_initial": 0.0,
+    "omega2_initial": -1.4388,
     "duration_s": 126.526,
     "n_frames": 7584,
-    "dropout_rate_pct": 0.0
+    "dropout_rate_pct": 0.0,
+    "verification_date": "2026-05-22",
+    "verification_notes": "dropout 0.00% \u2264 5%",
+    "verified_under_brief_version": 14
   },
   "3.2V_1.19Hz": {
     "video_file": "3.2V_1.19Hz.mov",
@@ -1197,9 +1245,9 @@
       331
     ],
     "scale_cm_per_px": 0.2056,
-    "measurements_dir": "measurements/week6/3.2V_1.19Hz",
+    "measurements_dir": "measurements/3.2V_1.19Hz",
     "csv_file": "tracking.csv",
-    "tracking_quality": "untracked",
+    "tracking_quality": "verified",
     "notes": "",
     "tracker": "bgr",
     "theta1_initial": -2.175,
@@ -1208,7 +1256,10 @@
     "omega2_initial": 0.06,
     "duration_s": 130.681,
     "n_frames": 7833,
-    "dropout_rate_pct": 0.0
+    "dropout_rate_pct": 0.0,
+    "verification_date": "2026-05-22",
+    "verification_notes": "dropout 0.00% \u2264 5%",
+    "verified_under_brief_version": 14
   },
   "3.2V_1.20Hz": {
     "video_file": "3.2V_1.20Hz.mov",
@@ -1223,18 +1274,21 @@
       331
     ],
     "scale_cm_per_px": 0.2056,
-    "measurements_dir": "measurements/week6/3.2V_1.20Hz",
+    "measurements_dir": "measurements/3.2V_1.20Hz",
     "csv_file": "tracking.csv",
-    "tracking_quality": "untracked",
+    "tracking_quality": "verified",
     "notes": "",
     "tracker": "bgr",
-    "theta1_initial": -3.2,
-    "theta2_initial": -1.45,
+    "theta1_initial": -2.989,
+    "theta2_initial": -1.582,
     "omega1_initial": 0.0,
-    "omega2_initial": 21.7026,
+    "omega2_initial": 11.3309,
     "duration_s": 92.292,
     "n_frames": 5532,
-    "dropout_rate_pct": 0.0
+    "dropout_rate_pct": 0.0,
+    "verification_date": "2026-05-22",
+    "verification_notes": "dropout 0.00% \u2264 5%",
+    "verified_under_brief_version": 14
   },
   "3.2V_1.21Hz": {
     "video_file": "3.2V_1.21Hz.mov",
@@ -1249,18 +1303,21 @@
       331
     ],
     "scale_cm_per_px": 0.2056,
-    "measurements_dir": "measurements/week6/3.2V_1.21Hz",
+    "measurements_dir": "measurements/3.2V_1.21Hz",
     "csv_file": "tracking.csv",
-    "tracking_quality": "untracked",
+    "tracking_quality": "verified",
     "notes": "",
     "tracker": "bgr",
-    "theta1_initial": 0.354,
-    "theta2_initial": -1.836,
-    "omega1_initial": -21.223,
-    "omega2_initial": 22.0024,
+    "theta1_initial": 0.66,
+    "theta2_initial": -2.042,
+    "omega1_initial": 0.0,
+    "omega2_initial": -3.717,
     "duration_s": 101.301,
     "n_frames": 6072,
-    "dropout_rate_pct": 0.0
+    "dropout_rate_pct": 0.0,
+    "verification_date": "2026-05-22",
+    "verification_notes": "dropout 0.00% \u2264 5%",
+    "verified_under_brief_version": 14
   },
   "3.2V_1.22Hz": {
     "video_file": "3.2V_1.22Hz.mov",
@@ -1275,9 +1332,9 @@
       331
     ],
     "scale_cm_per_px": 0.2056,
-    "measurements_dir": "measurements/week6/3.2V_1.22Hz",
+    "measurements_dir": "measurements/3.2V_1.22Hz",
     "csv_file": "tracking.csv",
-    "tracking_quality": "untracked",
+    "tracking_quality": "verified",
     "notes": "",
     "tracker": "bgr",
     "theta1_initial": -1.306,
@@ -1286,7 +1343,10 @@
     "omega2_initial": -8.753,
     "duration_s": 117.167,
     "n_frames": 7023,
-    "dropout_rate_pct": 0.0
+    "dropout_rate_pct": 0.0,
+    "verification_date": "2026-05-22",
+    "verification_notes": "dropout 0.00% \u2264 5%",
+    "verified_under_brief_version": 14
   },
   "3.2V_1.23Hz": {
     "video_file": "3.2V_1.23Hz.mov",
@@ -1301,9 +1361,9 @@
       331
     ],
     "scale_cm_per_px": 0.2056,
-    "measurements_dir": "measurements/week6/3.2V_1.23Hz",
+    "measurements_dir": "measurements/3.2V_1.23Hz",
     "csv_file": "tracking.csv",
-    "tracking_quality": "untracked",
+    "tracking_quality": "verified",
     "notes": "",
     "tracker": "bgr",
     "theta1_initial": 0.735,
@@ -1312,7 +1372,10 @@
     "omega2_initial": 17.8657,
     "duration_s": 120.621,
     "n_frames": 7230,
-    "dropout_rate_pct": 0.0
+    "dropout_rate_pct": 0.0,
+    "verification_date": "2026-05-22",
+    "verification_notes": "dropout 0.00% \u2264 5%",
+    "verified_under_brief_version": 14
   },
   "3.2V_1.24Hz": {
     "video_file": "3.2V_1.24Hz.mov",
@@ -1327,9 +1390,9 @@
       331
     ],
     "scale_cm_per_px": 0.2056,
-    "measurements_dir": "measurements/week6/3.2V_1.24Hz",
+    "measurements_dir": "measurements/3.2V_1.24Hz",
     "csv_file": "tracking.csv",
-    "tracking_quality": "untracked",
+    "tracking_quality": "verified",
     "notes": "",
     "tracker": "bgr",
     "theta1_initial": -0.143,
@@ -1338,7 +1401,10 @@
     "omega2_initial": -8.1535,
     "duration_s": 86.436,
     "n_frames": 5181,
-    "dropout_rate_pct": 0.0
+    "dropout_rate_pct": 0.0,
+    "verification_date": "2026-05-22",
+    "verification_notes": "dropout 0.00% \u2264 5%",
+    "verified_under_brief_version": 14
   },
   "3.2V_1.25Hz": {
     "video_file": "3.2V_1.25Hz.mov",
@@ -1353,9 +1419,9 @@
       331
     ],
     "scale_cm_per_px": 0.2056,
-    "measurements_dir": "measurements/week6/3.2V_1.25Hz",
+    "measurements_dir": "measurements/3.2V_1.25Hz",
     "csv_file": "tracking.csv",
-    "tracking_quality": "untracked",
+    "tracking_quality": "verified",
     "notes": "",
     "tracker": "bgr",
     "theta1_initial": 0.022,
@@ -1364,7 +1430,10 @@
     "omega2_initial": -7.2542,
     "duration_s": 123.674,
     "n_frames": 7413,
-    "dropout_rate_pct": 0.0
+    "dropout_rate_pct": 0.0,
+    "verification_date": "2026-05-22",
+    "verification_notes": "dropout 0.00% \u2264 5%",
+    "verified_under_brief_version": 14
   },
   "3.2V_1.26Hz": {
     "video_file": "3.2V_1.26Hz.mov",
@@ -1379,9 +1448,9 @@
       331
     ],
     "scale_cm_per_px": 0.2056,
-    "measurements_dir": "measurements/week6/3.2V_1.26Hz",
+    "measurements_dir": "measurements/3.2V_1.26Hz",
     "csv_file": "tracking.csv",
-    "tracking_quality": "untracked",
+    "tracking_quality": "verified",
     "notes": "",
     "tracker": "bgr",
     "theta1_initial": 0.435,
@@ -1390,7 +1459,10 @@
     "omega2_initial": 0.8993,
     "duration_s": 130.18,
     "n_frames": 7803,
-    "dropout_rate_pct": 0.0
+    "dropout_rate_pct": 0.0,
+    "verification_date": "2026-05-22",
+    "verification_notes": "dropout 0.00% \u2264 5%",
+    "verified_under_brief_version": 14
   },
   "3.2V_1.27Hz": {
     "video_file": "3.2V_1.27Hz.mov",
@@ -1405,9 +1477,9 @@
       331
     ],
     "scale_cm_per_px": 0.2056,
-    "measurements_dir": "measurements/week6/3.2V_1.27Hz",
+    "measurements_dir": "measurements/3.2V_1.27Hz",
     "csv_file": "tracking.csv",
-    "tracking_quality": "untracked",
+    "tracking_quality": "verified",
     "notes": "",
     "tracker": "bgr",
     "theta1_initial": 0.609,
@@ -1416,7 +1488,10 @@
     "omega2_initial": 0.1199,
     "duration_s": 150.851,
     "n_frames": 9042,
-    "dropout_rate_pct": 0.0
+    "dropout_rate_pct": 0.0,
+    "verification_date": "2026-05-22",
+    "verification_notes": "dropout 0.00% \u2264 5%",
+    "verified_under_brief_version": 14
   },
   "3.2V_1.28Hz": {
     "video_file": "3.2V_1.28Hz.mov",

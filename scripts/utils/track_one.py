@@ -241,15 +241,19 @@ def build_actionable_steps(stem, metrics_post, reasons, status,
 # ─────────────────────────────────────────────
 
 def run(cmd, *, label):
-    """Wrap subprocess.run with a label banner. Returns rc, elapsed_s."""
-    print()
-    print("─" * 70)
-    print(f"[{label}]  {' '.join(str(c) for c in cmd)}")
-    print("─" * 70)
+    """Wrap subprocess.run with a Rich label. Returns rc, elapsed_s."""
+    from rich.console import Console
+    from rich.rule import Rule
+    _con = Console()
+    _con.print()
+    _con.print(Rule(f"[bold]{label}[/]", style="dim"))
     import time
     t0 = time.time()
     rc = subprocess.run(cmd, cwd=REPO_ROOT).returncode
-    return rc, time.time() - t0
+    elapsed = time.time() - t0
+    status = "[green]done[/]" if rc == 0 else f"[red]exit {rc}[/]"
+    _con.print(f"  {status} [dim]{elapsed:.0f}s[/]")
+    return rc, elapsed
 
 def hsv_kind_for_video(video_filename):
     """Return 'per-video' or 'global' depending on which HSV file applies."""

@@ -365,31 +365,51 @@ def _fmt(v, fmt=".3f"):
     return format(v, fmt) if not (isinstance(v, float) and np.isnan(v)) else "n/a"
 
 def print_card(stem, topo, stat, verdict, reasons):
-    sep = "=" * 72
-    print()
-    print(sep)
-    print(f"  Chaos analysis — {stem}")
-    print(sep)
-    print()
-    print(f"  Topological:")
-    print(f"    max |θ₂_abs|              {topo['max_theta2_abs']:>7.1f}°")
-    print(f"    arm-2 full rotations      {topo['n_arm2_rotations']:>7d}")
-    print(f"    fraction inverted         {topo['frac_inverted']*100:>7.1f}%")
-    print(f"    E_release / E_inversion   {_fmt(topo['E_ratio_release'],'.2f'):>7}")
-    print(f"    E_peak   / E_inversion    {_fmt(topo['E_ratio_peak'],  '.2f'):>7}")
-    print()
-    print(f"  Statistical:")
-    print(f"    K (0-1 test, θ₁)          {_fmt(stat['K_theta1']):>7}")
-    print(f"    K (0-1 test, θ₂)          {_fmt(stat['K_theta2']):>7}")
-    print(f"    K (0-1 test, θ₂_abs)      {_fmt(stat['K_theta2_abs']):>7}")
-    print(f"    K_chaos (median)          {_fmt(stat['K_chaos']):>7}")
-    print(f"    spectral entropy θ₁ (norm) {_fmt(stat['spectral_entropy_th1_norm']):>6}")
-    print(f"    spectral entropy θ₂ (norm) {_fmt(stat['spectral_entropy_th2_norm']):>6}")
-    print()
-    print(f"  VERDICT: {verdict}")
-    for r in reasons:
-        print(f"    • {r}")
-    print()
+    from rich.console import Console, Group
+    from rich.table import Table
+    from rich.panel import Panel
+    from rich.text import Text
+    from rich.rule import Rule
+
+    con = Console()
+    v_style = {"CHAOTIC": "red", "BORDERLINE": "yellow", "REGULAR": "green"}
+    v_color = v_style.get(verdict, "white")
+
+    topo_t = Table(box=None, show_header=False, padding=(0, 1), expand=False)
+    topo_t.add_column(style="dim", min_width=28)
+    topo_t.add_column(style="white", justify="right")
+    topo_t.add_row("max |θ₂_abs|",          f"{topo['max_theta2_abs']:.1f}°")
+    topo_t.add_row("arm-2 full rotations", f"{topo['n_arm2_rotations']}")
+    topo_t.add_row("fraction inverted",    f"{topo['frac_inverted']*100:.1f}%")
+    topo_t.add_row("E_release / E_inv",    _fmt(topo['E_ratio_release'], '.2f'))
+    topo_t.add_row("E_peak / E_inv",       _fmt(topo['E_ratio_peak'], '.2f'))
+
+    stat_t = Table(box=None, show_header=False, padding=(0, 1), expand=False)
+    stat_t.add_column(style="dim", min_width=28)
+    stat_t.add_column(style="white", justify="right")
+    stat_t.add_row("K (0-1 test, θ₁)",      _fmt(stat['K_theta1']))
+    stat_t.add_row("K (0-1 test, θ₂)",      _fmt(stat['K_theta2']))
+    stat_t.add_row("K (0-1 test, θ₂_abs)",  _fmt(stat['K_theta2_abs']))
+    stat_t.add_row("K_chaos (median)",    _fmt(stat['K_chaos']))
+    stat_t.add_row("spectral entropy θ₁",    _fmt(stat['spectral_entropy_th1_norm']))
+    stat_t.add_row("spectral entropy θ₂",    _fmt(stat['spectral_entropy_th2_norm']))
+
+    reason_text = Text()
+    for i, r in enumerate(reasons):
+        if i: reason_text.append("\n")
+        reason_text.append(f"  • {r}", style=v_color)
+
+    panel = Panel(
+        Group(
+            Rule("topological", style="dim"), topo_t,
+            Rule("statistical", style="dim"), stat_t,
+            Rule("verdict", style="dim"), reason_text,
+        ),
+        title=f"[bold {v_color}]{verdict}[/]  [bold white]{stem}[/]",
+        border_style=v_color,
+        padding=(1, 2),
+    )
+    con.print(panel)
 
 # ─────────────────────────────────────────────
 # OUTPUT — PLOT

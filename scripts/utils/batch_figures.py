@@ -118,9 +118,11 @@ def run_suite(stems, suite, force, label):
                     print(f"       {line}")
                 failed += 1
 
-    print(f"\n{'═'*60}")
-    print(f"  {label}: {done} rendered, {skipped} skipped, {failed} failed")
-    print(f"{'═'*60}")
+    from rich.console import Console as _Con
+    _c = _Con()
+    _c.print()
+    style = "green" if failed == 0 else "red"
+    _c.print(f"  [{style} bold]{done}[/] rendered  [dim]{skipped} skipped  {failed} failed[/]")
     return failed
 
 

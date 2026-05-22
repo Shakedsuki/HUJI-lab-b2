@@ -110,36 +110,58 @@ def status_summary(videos_dir=VIDEOS_DIR, registry_path=EXPERIMENTS_FILE):
 # ─────────────────────────────────────────────
 
 def print_status(videos_dir=VIDEOS_DIR, registry_path=EXPERIMENTS_FILE):
+    from rich.console import Console
+    from rich.table import Table
+    from rich import box
+
+    console = Console()
     tracked, pending = status_breakdown(videos_dir, registry_path)
     total = len(tracked) + len(pending)
-    print(f"Videos directory: {videos_dir}")
-    print(f"Total: {total}   Tracked: {len(tracked)}   Pending: {len(pending)}")
-    print()
+    registry = load_registry(registry_path)
 
-    print(f"  TRACKED  ({len(tracked)})")
-    if tracked:
-        registry = load_registry(registry_path)
-        for v in tracked:
-            stem  = Path(v).stem
-            entry = _resolve_entry(stem, registry) or {}
-            th1   = entry.get("theta1_release", 0)
-            th2   = entry.get("theta2_release", 0)
-            drop  = entry.get("dropout_rate_pct", "?")
-            drop_str = f"{drop}%" if isinstance(drop, (int, float)) else str(drop)
-            meas_dir = entry.get("measurements_dir", "?")
-            print(f"    [+] {os.path.basename(v):<42}  "
-                  f"th1={th1:>7.2f}  th2={th2:>7.2f}  drop={drop_str}  "
-                  f"({meas_dir})")
-    else:
-        print("    (none)")
+    # Summary line
+    pct = len(tracked) / total * 100 if total else 0
+    filled = int(round(pct / 100 * 30))
+    bar = f"[green]{'█' * filled}[/][dim]{'░' * (30 - filled)}[/]"
+    console.print(f"  {bar}  [bold]{len(tracked)}[/][dim]/{total}[/]  "
+                  f"[green]{pct:.0f}%[/] tracked   "
+                  f"[yellow]{len(pending)} pending[/]")
+    console.print()
 
-    print()
-    print(f"  PENDING  ({len(pending)})")
+    # Table
+    t = Table(box=box.SIMPLE_HEAD, show_edge=False, pad_edge=False)
+    t.add_column("#", justify="right", style="dim", width=4)
+    t.add_column("Stem", style="white", min_width=20)
+    t.add_column("Status", min_width=10)
+    t.add_column("Drop%", justify="right", width=7)
+    t.add_column("Duration", justify="right", width=9)
+
+    num = 1
+    for v in tracked:
+        stem  = Path(v).stem
+        entry = _resolve_entry(stem, registry) or {}
+        quality = entry.get("tracking_quality", "tracked")
+        if quality == "verified":
+            status_cell = "[green]verified[/]"
+        elif quality == "manual_accept":
+            status_cell = "[yellow]accepted[/]"
+        else:
+            status_cell = f"[cyan]{quality or 'tracked'}[/]"
+        drop = entry.get("dropout_rate_pct")
+        drop_cell = f"{drop:.1f}%" if isinstance(drop, (int, float)) else "[dim]—[/]"
+        dur = entry.get("duration_s")
+        dur_cell = f"{dur:.1f}s" if isinstance(dur, (int, float)) else "[dim]—[/]"
+        t.add_row(str(num), stem, status_cell, drop_cell, dur_cell)
+        num += 1
+
     if pending:
+        t.add_row("", "", "", "", "", style="dim")
         for v in pending:
-            print(f"    [ ] {os.path.basename(v)}")
-    else:
-        print("    (none — all videos tracked)")
+            t.add_row(str(num), Path(v).stem, "[yellow]pending[/]",
+                      "[dim]—[/]", "[dim]—[/]")
+            num += 1
+
+    console.print(t)
 
 if __name__ == "__main__":
     print_status()

@@ -717,7 +717,13 @@ def main():
     parser = build_parser()
     args = parser.parse_args()
     if not args.command:
-        parser.print_help()
+        # Bare `chaos` → launch interactive shell
+        try:
+            from scripts.utils.shell import hub
+        except ImportError:
+            sys.path.insert(0, os.path.join(ROOT, "scripts", "utils"))
+            from shell import hub
+        hub()
         return 0
     handler = HANDLERS.get(args.command)
     if not handler:
