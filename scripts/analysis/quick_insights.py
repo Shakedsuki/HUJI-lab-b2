@@ -276,6 +276,29 @@ def plot_return(d):
     plt.show()
 
 
+def plot_seismograph(d):
+    """Terminal preview of the v1 seismograph spiral. theta_tip = theta2
+    (absolute lower-arm angle from the green pivot); radius grows with
+    time. Full colored figure: `chaos figures --types seismograph`."""
+    import plotext as plt
+    s = _sub(d, n=1500)
+    t = d["t"]
+    th_tip = np.radians(d["th2"])        # theta2 is already lab-frame absolute
+    r = 1.0 + 1.5 * (t - t[0])           # v1 spiral: radius grows with time
+    x = (r * np.sin(th_tip))[::s]
+    y = (-r * np.cos(th_tip))[::s]
+    n = len(x)
+    a, b = n // 3, 2 * n // 3
+    _setup(plt, "seismograph v1 spiral  (θ_tip = θ₂,  r = time)",
+           w=58, h=26)
+    plt.scatter(x[:a],  y[:a],  color="blue",   marker="dot")   # early
+    plt.scatter(x[a:b], y[a:b], color="orange", marker="dot")   # mid
+    plt.scatter(x[b:],  y[b:],  color="red",    marker="dot")   # late
+    plt.xlabel("x")
+    plt.ylabel("y")
+    plt.show()
+
+
 PLOTS = {
     "both":     ("green",   "\u03b8\u2081(t) + \u03b8\u2082(t) overlay",         plot_both),
     "omega":    ("green",   "\u03c9\u2081(t) + \u03c9\u2082(t)",                  plot_omega),
@@ -289,6 +312,7 @@ PLOTS = {
     "trace":    ("blue",    "tip trajectory in pixel space",                        plot_trace),
     "spectrum": ("red",     "power spectrum of \u03b8\u2082",                      plot_spectrum),
     "return":   ("red",     "\u03b8\u2082(n) vs \u03b8\u2082(n+1) return map",    plot_return),
+    "seis":     ("yellow",  "seismograph v1 spiral (θ_tip=θ₂)",  plot_seismograph),
 }
 
 
@@ -304,7 +328,7 @@ def _print_menu(con):
 
     cats = [
         ("green",   "time series", ["both", "omega", "tip", "energy"]),
-        ("yellow",  "phase space", ["phase1", "phase2", "config", "full"]),
+        ("yellow",  "phase space", ["phase1", "phase2", "config", "full", "seis"]),
         ("blue",    "physical",    ["xy", "trace"]),
         ("red",     "chaos",       ["spectrum", "return"]),
     ]
