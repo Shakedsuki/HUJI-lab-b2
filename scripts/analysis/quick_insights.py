@@ -276,27 +276,36 @@ def plot_return(d):
     plt.show()
 
 
-def plot_seismograph(d):
-    """Terminal preview of the v1 seismograph spiral. theta_tip = theta2
-    (absolute lower-arm angle from the green pivot); radius grows with
-    time. Full colored figure: `chaos figures --types seismograph`."""
+def plot_seismograph(d, mode="v1"):
+    """Terminal preview of the seismograph. theta_tip = theta2 (absolute
+    lower-arm angle from the green pivot). v1 spiral: r grows with time;
+    v2 ripple: r grows with (t_end − t). Colour = time third (legend:
+    blue early → orange mid → red late). Full colour figure:
+    `chaos figures --types seismograph_v1` (or _v2)."""
     import plotext as plt
     s = _sub(d, n=1500)
     t = d["t"]
     th_tip = np.radians(d["th2"])        # theta2 is already lab-frame absolute
-    r = 1.0 + 1.5 * (t - t[0])           # v1 spiral: radius grows with time
+    if mode == "v2":
+        r = 1.0 + 1.5 * (t[-1] - t)      # ripple: oldest farthest
+        title = "seismograph v2 ripple  (θ_tip = θ₂,  r = t_end−t)"
+    else:
+        r = 1.0 + 1.5 * (t - t[0])       # spiral: newest farthest
+        title = "seismograph v1 spiral  (θ_tip = θ₂,  r = time)"
     x = (r * np.sin(th_tip))[::s]
     y = (-r * np.cos(th_tip))[::s]
     n = len(x)
     a, b = n // 3, 2 * n // 3
-    _setup(plt, "seismograph v1 spiral  (θ_tip = θ₂,  r = time)",
-           w=58, h=26)
-    plt.scatter(x[:a],  y[:a],  color="blue",   marker="dot")   # early
-    plt.scatter(x[a:b], y[a:b], color="orange", marker="dot")   # mid
-    plt.scatter(x[b:],  y[b:],  color="red",    marker="dot")   # late
+    _setup(plt, title, w=58, h=26)
+    plt.scatter(x[:a],  y[:a],  color="blue",   marker="dot", label="early (t₀)")
+    plt.scatter(x[a:b], y[a:b], color="orange", marker="dot", label="mid")
+    plt.scatter(x[b:],  y[b:],  color="red",    marker="dot", label="late (t_end)")
     plt.xlabel("x")
     plt.ylabel("y")
     plt.show()
+    # Plain-text colour key in case the plotext legend is clipped.
+    print("    ● early (t₀)   ● mid   ● late (t_end)   "
+          "[blue → orange → red by time]")
 
 
 PLOTS = {
@@ -312,7 +321,8 @@ PLOTS = {
     "trace":    ("blue",    "tip trajectory in pixel space",                        plot_trace),
     "spectrum": ("red",     "power spectrum of \u03b8\u2082",                      plot_spectrum),
     "return":   ("red",     "\u03b8\u2082(n) vs \u03b8\u2082(n+1) return map",    plot_return),
-    "seis":     ("yellow",  "seismograph v1 spiral (θ_tip=θ₂)",  plot_seismograph),
+    "seis1":    ("yellow",  "seismograph v1 spiral (θ_tip=θ₂)",  lambda d: plot_seismograph(d, "v1")),
+    "seis2":    ("yellow",  "seismograph v2 ripple (θ_tip=θ₂)",  lambda d: plot_seismograph(d, "v2")),
 }
 
 
@@ -328,7 +338,7 @@ def _print_menu(con):
 
     cats = [
         ("green",   "time series", ["both", "omega", "tip", "energy"]),
-        ("yellow",  "phase space", ["phase1", "phase2", "config", "full", "seis"]),
+        ("yellow",  "phase space", ["phase1", "phase2", "config", "full", "seis1", "seis2"]),
         ("blue",    "physical",    ["xy", "trace"]),
         ("red",     "chaos",       ["spectrum", "return"]),
     ]

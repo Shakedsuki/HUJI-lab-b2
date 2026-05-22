@@ -226,6 +226,8 @@ def parse_args():
     p.add_argument("--stem", default=None,
                    help="clip stem; reads verification.csv (or tracking.csv) "
                         "from its measurements dir")
+    p.add_argument("--mode", choices=["v1", "v2", "both"], default="both",
+                   help="radial mapping: v1 spiral, v2 ripple, or both (default)")
     p.add_argument("--t-start", type=float, default=None, dest="t_start",
                    help="window start (s)")
     p.add_argument("--t-end", type=float, default=None, dest="t_end",
@@ -236,6 +238,7 @@ def parse_args():
 
 
 def resolve_csv_and_out(args):
+    ftype = "seismograph" if args.mode == "both" else f"seismograph_{args.mode}"
     if args.stem:
         cdir = clip_dir(args.stem)
         csv_path = next((os.path.join(cdir, n) for n in
@@ -243,9 +246,9 @@ def resolve_csv_and_out(args):
                          if os.path.exists(os.path.join(cdir, n))), None)
         if csv_path is None:
             raise SystemExit(f"no verification.csv / tracking.csv in {cdir}")
-        return csv_path, (args.out or figure_path("seismograph", args.stem))
+        return csv_path, (args.out or figure_path(ftype, args.stem))
     if args.csv:
-        return args.csv, (args.out or "seismograph.png")
+        return args.csv, (args.out or f"{ftype}.png")
     raise SystemExit("provide --stem <stem> or a positional CSV path")
 
 
@@ -268,22 +271,26 @@ def main():
                   f"[{np.degrees(tip_angle.min()):.1f}, "
                   f"{np.degrees(tip_angle.max()):.1f}]°[/]")
 
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 8), facecolor=BG_COLOR)
-    draw_panel(ax1, tip_angle, time, "v1",
-               f"v1 — Spiral Trail\nspread = {SPREAD}  ·  R = {SOURCE_RADIUS}")
-    draw_panel(ax2, tip_angle, time, "v2",
-               f"v2 — Ripple Propagation\n"
-               f"wave_speed = {WAVE_SPEED}  ·  R = {SOURCE_RADIUS}")
+    modes = ["v1", "v2"] if args.mode == "both" else [args.mode]
+    panel_titles = {
+        "v1": f"v1 — Spiral Trail\nspread = {SPREAD}  ·  R = {SOURCE_RADIUS}",
+        "v2": f"v2 — Ripple Propagation\nwave_speed = {WAVE_SPEED}  ·  R = {SOURCE_RADIUS}",
+    }
+    fig, axes = plt.subplots(1, len(modes), figsize=(8 * len(modes), 8),
+                             facecolor=BG_COLOR, squeeze=False)
+    for ax, mode in zip(axes[0], modes):
+        draw_panel(ax, tip_angle, time, mode, panel_titles[mode])
 
     sm = plt.cm.ScalarMappable(cmap=CMAP_NAME, norm=Normalize(vmin=t0, vmax=t1))
     sm.set_array([])
-    cbar = fig.colorbar(sm, ax=[ax1, ax2], location="bottom",
+    cbar = fig.colorbar(sm, ax=list(axes[0]), location="bottom",
                         fraction=0.03, pad=0.06, aspect=50)
     cbar.set_label("time (s)", color="#888", fontsize=10, fontfamily="monospace")
     cbar.ax.tick_params(colors="#666", labelsize=8)
     cbar.outline.set_edgecolor("#222")
 
-    fig.suptitle(f"Seismograph — {label}  ·  {len(df)} pts  ·  subsample {SUBSAMPLE}×",
+    fig.suptitle(f"Seismograph ({args.mode}) — {label}  ·  {len(df)} pts  ·  "
+                 f"subsample {SUBSAMPLE}×",
                  color="#555", fontsize=10, fontfamily="monospace", y=0.97)
 
     plt.tight_layout(rect=[0, 0.07, 1, 0.95])

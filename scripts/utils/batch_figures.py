@@ -48,7 +48,8 @@ STATIC_SUITE = [
     ("phase_3d_trajectory","png",False, "phase_3d.py",       ["--static"]),
     ("chaos_analyze",     "png", True,  "chaos_analyze.py",  []),
     ("lyapunov",          "png", True,  "lyapunov.py",       []),
-    ("seismograph",       "png", False, "seismograph.py",    []),
+    ("seismograph_v1",    "png", False, "seismograph.py",    ["--mode", "v1"]),
+    ("seismograph_v2",    "png", False, "seismograph.py",    ["--mode", "v2"]),
 ]
 
 VIDEO_SUITE = [
