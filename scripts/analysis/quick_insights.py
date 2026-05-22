@@ -362,6 +362,43 @@ def plot_drive_phase(d):
     print("    ● θ₁ upper   ● θ₂ lower   [flat = locked, sloped = slipping]")
 
 
+def plot_resonance(d):
+    """Resonance curve for this clip's voltage family: upper-arm amplitude
+    (θ₁ RMS) vs f_drive, with the current clip marked. Sweeps every clip at
+    the same voltage (reuses resonance.py) — the first call loads them all,
+    so it takes a moment; cached for the session afterward."""
+    import plotext as plt
+    from driven_helpers import parse_stem
+    from resonance import collect, estimate_f0_q
+    try:
+        meta = parse_stem(d["stem"])
+    except ValueError:
+        print("  resonance needs a driven clip (V/f stem)")
+        return
+    voltage, fd = meta["v_drill_v"], meta["f_drive_hz"]
+    rows = d.get("_res_cache")
+    if rows is None or d.get("_res_cache_v") != voltage:
+        print(f"  sweeping {voltage:g}V family…")
+        rows = collect(voltage, 5.0)
+        d["_res_cache"], d["_res_cache_v"] = rows, voltage
+    if len(rows) < 3:
+        print(f"  too few clips at {voltage:g}V for a resonance curve")
+        return
+    f = [r[0] for r in rows]
+    amp = [r[2]["theta1_rms_deg"] for r in rows]
+    f0, q, _ = estimate_f0_q(f, amp)
+    cur = min(range(len(f)), key=lambda i: abs(f[i] - fd))
+    _setup(plt, f"resonance {voltage:g}V — θ₁ RMS vs f_drive  (f₀≈{f0:.2f} Hz)")
+    plt.plot(f, amp, color="blue", marker="dot")
+    plt.scatter([f[cur]], [amp[cur]], color="red", marker="dot")
+    plt.xlabel("f_drive (Hz)")
+    plt.ylabel("θ₁ RMS (deg)")
+    plt.show()
+    qtxt = f"{q:.1f}" if np.isfinite(q) else "—"
+    print(f"    sweep (blue) · this clip = {fd:g}Hz (red)   "
+          f"[f₀≈{f0:.3f}Hz, Q≈{qtxt}]")
+
+
 PLOTS = {
     "both":     ("green",   "\u03b8\u2081(t) + \u03b8\u2082(t) overlay",         plot_both),
     "omega":    ("green",   "\u03c9\u2081(t) + \u03c9\u2082(t)",                  plot_omega),
@@ -379,6 +416,7 @@ PLOTS = {
     "seis2":    ("yellow",  "seismograph v2 ripple (θ_tip=θ₂)",  lambda d: plot_seismograph(d, "v2")),
     "cyc":      ("magenta", "cyclic phase ψ(t) per arm",            plot_cyclic_phase),
     "lock":     ("magenta", "drive-relative phase Δφ(t) (locking)", plot_drive_phase),
+    "res":      ("magenta", "resonance curve (θ₁ amp vs f_drive)",  plot_resonance),
 }
 
 
@@ -397,7 +435,7 @@ def _print_menu(con):
         ("yellow",  "phase space", ["phase1", "phase2", "config", "full", "seis1", "seis2"]),
         ("blue",    "physical",    ["xy", "trace"]),
         ("red",     "chaos",       ["spectrum", "return"]),
-        ("magenta", "phase",       ["cyc", "lock"]),
+        ("magenta", "driven",      ["cyc", "lock", "res"]),
     ]
     panels = []
     for color, label, keys in cats:
