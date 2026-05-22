@@ -1,0 +1,24 @@
+{
+  "stem": "3.2V_1.20Hz",
+  "source": "verification.csv",
+  "drive_freq_hz": 1.2,
+  "transient_s": 5.0,
+  "n_frames": 5532,
+  "duration_s": 92.27552,
+  "arms": {
+    "upper": {
+      "arm_freq_hz": 1.1986233394036137,
+      "freq_ratio_to_drive": 0.9988527828363447,
+      "slip_rate_cycles_per_s": -0.0013766605963864433,
+      "dphi_span_cycles": 0.25051695529615264,
+      "phase_locked": true
+    },
+    "lower": {
+      "arm_freq_hz": 0.009273294355014082,
+      "freq_ratio_to_drive": 0.007727745295845068,
+      "slip_rate_cycles_per_s": -1.190726705644986,
+      "dphi_span_cycles": 103.91533877952487,
+      "phase_locked": false
+    }
+  }
+}
