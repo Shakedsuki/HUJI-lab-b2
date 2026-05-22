@@ -9,7 +9,6 @@ Subcommands
   status            list tracked vs pending; one-line summary
   report            regenerate data/status_report.xlsx
   roadmap           regenerate docs/tracking_roadmap.md (per-clip dropout/quality table)
-  audit             re-validate verified clips against current verdict logic
   track <stem>      standard track + verify + interpolate + verdict
   verify <stem>     standalone QA on an existing tracking.csv
   bulk              sequential bulk pass over plannable pending clips
@@ -55,7 +54,6 @@ SCRIPT_BULK       = os.path.join(ROOT, "scripts", "utils", "bulk_track.py")
 SCRIPT_STATUS     = os.path.join(ROOT, "scripts", "utils", "video_status.py")
 SCRIPT_REPORT     = os.path.join(ROOT, "scripts", "utils", "generate_status_report.py")
 SCRIPT_ROADMAP    = os.path.join(ROOT, "scripts", "utils", "generate_roadmap.py")
-SCRIPT_AUDIT      = os.path.join(ROOT, "scripts", "utils", "audit.py")
 SCRIPT_BATCH_FIGS = os.path.join(ROOT, "scripts", "utils", "batch_figures.py")
 SCRIPT_COMBINED   = os.path.join(ROOT, "scripts", "analysis", "combined_video.py")
 SCRIPT_ANALYZE    = os.path.join(ROOT, "scripts", "analysis", "chaos_analyze.py")
@@ -203,17 +201,6 @@ def cmd_roadmap(args):
     return run_script(SCRIPT_ROADMAP, *extra)
 
 
-def cmd_audit(args):
-    extra = []
-    if args.apply:         extra.append("--apply")
-    if args.upgrade:       extra.append("--upgrade")
-    if args.filter:        extra += ["--filter", args.filter]
-    if args.skip_reverify: extra.append("--skip-reverify")
-    if args.omega_cap is not None:
-        extra += ["--omega-cap", str(args.omega_cap)]
-    return run_script(SCRIPT_AUDIT, *extra)
-
-
 def cmd_render(args):
     """Render the original video with the existing tracking overlaid
     on top, plus phase-space plots. Reads tracking.csv only — no
@@ -353,8 +340,6 @@ INFO / REPORT COMMANDS
   chaos status               who's tracked, who's pending (one-screen)
   chaos report               regenerate data/status_report.xlsx (Excel)
   chaos roadmap              regenerate docs/tracking_roadmap.md (per-clip Markdown table)
-  chaos audit                re-validate verified clips against current thresholds
-                             --apply  downgrade clips that no longer pass
   chaos help                 this cheat sheet
   chaos <command> --help     full flag list for any subcommand
 
@@ -591,21 +576,6 @@ def build_parser():
     p_roadmap.add_argument("--dry-run", action="store_true",
         help="print the markdown to stdout instead of writing")
 
-    p_audit = sub.add_parser("audit",
-        help="re-validate verified clips against current verdict logic")
-    p_audit.add_argument("--apply", action="store_true",
-        help="downgrade tracking_quality on clips whose new verdict isn't PASS")
-    p_audit.add_argument("--upgrade", action="store_true",
-        help="also audit non-verified clips with tracking.csv; with "
-             "--apply, mark new PASSes as verified")
-    p_audit.add_argument("--filter", metavar="SUBSTR",
-        help="only audit clips whose stem contains SUBSTR")
-    p_audit.add_argument("--skip-reverify", action="store_true",
-        help="trust existing verification.csv; skip the verify_tracking re-run")
-    p_audit.add_argument("--omega-cap", type=float, default=None,
-        metavar="DEG_PER_S",
-        help="ω cap passed to verify_tracking (default 2500 °/s)")
-
     p_next = sub.add_parser("next",
         help="interactive driver — process pending clips end-to-end")
     p_next.add_argument("--stem", default=None, metavar="<stem>",
@@ -697,7 +667,6 @@ HANDLERS = {
     "status":     cmd_status,
     "report":     cmd_report,
     "roadmap":    cmd_roadmap,
-    "audit":      cmd_audit,
     "track":    cmd_track,
     "verify":   cmd_verify,
     "bulk":     cmd_bulk,

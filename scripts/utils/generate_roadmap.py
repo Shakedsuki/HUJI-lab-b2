@@ -377,9 +377,8 @@ def render_markdown(rows, reg, bulk_log):
         lines.append(
             f"> **{n_reaudit} clip(s) marked ⚠** were verified before the "
             f"Brief 5+6 physics checks landed (i.e. "
-            f"`verified_under_brief_version < 5`). Run `chaos audit "
-            f"--apply` or `chaos verify <stem>` to re-validate them "
-            f"against the current thresholds.")
+            f"`verified_under_brief_version < 5`). Run `chaos verify "
+            f"<stem>` to re-validate them against the current thresholds.")
         lines.append("")
 
     # What to do next

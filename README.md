@@ -73,8 +73,10 @@ own `measurements/`, `figures/`, `animations/`, `videos/`, `calibration/`,
 git clone https://github.com/Shakedsuki/HUJI-lab-b2
 cd HUJI-lab-b2
 pip install -r requirements.txt
+chaos                 # launch the interactive shell  (PowerShell: .\chaos)
 ```
 
+That's the whole 30-second start — `chaos` drops you into the hub.
 Tested on **Python 3.13 / Windows 11**; macOS + Linux work too.
 
 For the pendulum weeks you also need the raw videos — they're **not in
@@ -96,37 +98,7 @@ The motor-driven videos are copied separately into each driven phase's
 The pipeline's primary interface is an **interactive Rich TUI hub**. From
 the repo root just run `chaos` with no arguments (PowerShell: `.\chaos`):
 
-```
-┌─ CHAOS ──────────────────────────  ▓▓▓▓▓▓▓░░░░  23/33 ─┐
-│  double pendulum                   5 verified · 23 tracked · 0 pending
-│  week 6 · 3.2V resonance
-│
-│  ┌ track ──────────┐   ┌ analyze ───────────────┐
-│  │ tn next         │   │ ac chaos card          │
-│  │ tp pick & track │   │ ap poincaré            │
-│  │ tb bulk         │   │ al lyapunov            │
-│  │ ts sanity       │   │ ad driven poincaré     │
-│  │ tv verify       │   │ ai bifurcation         │
-│  │ tr re-track     │   │ ar rotations           │
-│  └─────────────────┘   │ aq quick insights      │
-│                        └────────────────────────┘
-│  ┌ output ─────────────────────────────────────┐
-│  │ figures             videos                   │
-│  │ fs single figure    vw render overlays       │
-│  │ fc clip · types     vr review overlays       │
-│  │ ft type · clips     vc 1-by-1 pipeline       │
-│  │ fa all              va all combined          │
-│  │ fi inventory        vi inventory             │
-│  └──────────────────────────────────────────────┘
-│  ┌ info ──────┐  ┌ system ┐
-│  │ s  status  │  │ q quit │
-│  │ e  export  │  │ h help │
-│  │ sw switch  │  │ - fold │
-│  │ p  paths   │  └────────┘
-│  │ c  calibrate
-│  └────────────┘
-└────────────────────────────────────────────────────────┘
-```
+![The chaos hub — track / analyze / output / info, with the active phase, an XP progress bar, and live verified / tracked / pending counts](docs/chaos-hub.png)
 
 The header shows the active **phase**, an XP-style progress bar, and a
 live `verified · tracked · pending` count. Type a one- or two-character
@@ -315,26 +287,25 @@ See also [`docs/PIPELINE.md`](experiments/week3-4-pendulum-free-swing/docs/PIPEL
 
 ## Weeks 5 & 6 — Motor-driven double pendulum
 
-A driven, damped double pendulum: a DC drill (Black & Decker) oscillates
-Arm 1 (upper arm) at a controlled frequency `f_drive` and amplitude
-proportional to `V_drill`. Arm 2 (lower arm) hangs free from Pivot β.
-Continuous energy input from the motor balances dissipation, so the system
-sustains a **strange attractor** (unlike the transient chaos of weeks 3–4).
+A driven, damped double pendulum — a DC drill (Black & Decker) oscillates
+Arm 1 at frequency `f_drive`, amplitude ∝ `V_drill`; Arm 2 hangs free from
+Pivot β.
 
-The control space is 2D: **`f_drive` (Hz) × `V_drill` (V)**. A V_drill
-sweep at fixed f_drive produces a period-doubling cascade (P1 → P2 → P4 →
-chaos), mirroring the RLD results from week 2.
+- **Strange attractor:** motor energy balances dissipation → sustained
+  chaos, unlike the transient decay of weeks 3–4.
+- **2D control space:** `f_drive` (Hz) × `V_drill` (V); a `V_drill` sweep at
+  fixed `f_drive` gives a period-doubling cascade (P1 → P2 → P4 → chaos),
+  mirroring week 2's RLD.
+- **Clip naming:** `<voltage>V_<freq>Hz` (e.g. `3.2V_1.20Hz`), or spec form
+  `fd_<freq>_vd_<voltage>`.
 
 | Parameter | Physical meaning        | Set via                    |
 | --------- | ----------------------- | -------------------------- |
 | `f_drive` | Driving frequency (Hz)  | Function generator → relay |
 | `V_drill` | Driving-amplitude proxy | Bench supply Ch2           |
 
-Clip naming: `<voltage>V_<freq>Hz` (e.g. `3.2V_1.20Hz`), or the
-specification form `fd_<freq>_vd_<voltage>` (e.g. `fd_1p5_vd_4v0`).
-
-The driven data is split into **two self-contained phases**, because the
-final report is written on the week-6 resonance sweep:
+Split into **two self-contained phases** (the final report is on the week-6
+resonance sweep):
 
 ### Week 5 — broad V/f survey
 
@@ -405,7 +376,10 @@ which phase you're working on.
 
 ### Registry schema (`experiments/<phase>/data/experiments.json`)
 
-Each entry is keyed by `config_description` and carries:
+Each entry is keyed by `config_description`.
+
+<details>
+<summary>Show a full registry entry</summary>
 
 ```json
 {
@@ -430,6 +404,8 @@ Each entry is keyed by `config_description` and carries:
   "notes": ""
 }
 ```
+
+</details>
 
 ---
 
