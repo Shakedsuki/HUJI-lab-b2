@@ -33,6 +33,13 @@ import subprocess
 import sys
 import time
 
+import rich.box
+from rich.console import Console
+from rich.rule import Rule
+from rich.table import Table
+
+console = Console()
+
 # UTF-8 stdout for the θ/ω glyphs in the summary.
 try:
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -164,12 +171,7 @@ def run_one(plan, no_debug=True, force=True):
     if no_debug:
         cmd.append("--no-debug")
 
-    print()
-    print("=" * 70)
-    print(f"TRACKING {plan.video_path}")
-    print(f"  config_description = {plan.config_description}")
-    print(f"  cmd                = {' '.join(cmd)}")
-    print("=" * 70)
+    console.print(f"[dim]{plan.video_path}[/]")
 
     t0 = time.time()
     rc = subprocess.run(cmd, cwd=REPO_ROOT).returncode
@@ -207,7 +209,7 @@ def emit_report(rows):
     then delegates rendering to render.render_bulk_summary.
     """
     if not rows:
-        print("\nNothing tracked — nothing to report.")
+        console.print("[dim]Nothing tracked — nothing to report.[/]")
         return
 
     results = []
@@ -242,16 +244,12 @@ def emit_report(rows):
             "elapsed_s":   r["elapsed_s"],
         })
 
-    print()
-    print("=" * 70)
-    print(f"BULK TRACKING REPORT — {len(rows)} videos")
-    print("=" * 70)
+    console.print(Rule(f"Bulk Tracking Report — {len(rows)} videos", style="dim"))
     render_bulk_summary(results)
 
     # Wall-clock aggregate.
     total_time = sum(r["elapsed_s"] for r in rows)
-    print(f"  total wall-clock: {total_time:.0f}s "
-          f"({total_time / 60:.1f} min)")
+    console.print(f"[dim]total wall-clock: {total_time:.0f}s ({total_time / 60:.1f} min)[/]")
 
 # ─────────────────────────────────────────────
 # MAIN
@@ -279,7 +277,7 @@ def main():
     args = parse_args()
 
     if not os.path.exists(EXPERIMENTS_FILE):
-        print(f"ERROR: registry not found: {EXPERIMENTS_FILE}")
+        console.print(f"[red]ERROR:[/] registry not found: {EXPERIMENTS_FILE}")
         return 2
 
     reg   = load_registry()
@@ -288,40 +286,39 @@ def main():
     runnable = [p for p in plans if p.runnable]
     skipped  = [p for p in plans if not p.runnable]
 
-    print(f"Plan: {len(runnable)} videos to track, {len(skipped)} skipped.")
-    if args.filter:
-        print(f"  filter: '{args.filter}'")
-    print()
-    print("RUNNABLE:")
+    filter_note = f"  [dim]filter: '{args.filter}'[/]" if args.filter else ""
+    console.print(f"[cyan]Plan:[/] [white]{len(runnable)}[/] to track, "
+                  f"[dim]{len(skipped)} skipped[/]{filter_note}")
+
+    t = Table(box=rich.box.SIMPLE_HEAD, show_header=True, padding=(0, 1))
+    t.add_column("", style="dim", width=1)
+    t.add_column("stem", style="white")
+    t.add_column("note", style="dim")
     for p in runnable:
-        print(f"  [+] {p.config_description}")
-    if skipped:
-        print()
-        print("SKIPPED:")
-        for p in skipped:
-            print(f"  [-] {p.config_description:<26}  "
-                  f"({p.skip_reason})")
+        t.add_row("[green]+[/]", p.config_description, "")
+    for p in skipped:
+        t.add_row("[dim]-[/]", f"[dim]{p.config_description}[/]",
+                  f"[dim]{p.skip_reason}[/]")
+    console.print(t)
 
     if args.dry_run:
-        print()
-        print("DRY-RUN — no tracking performed.")
+        console.print("[dim]DRY-RUN — no tracking performed.[/]")
         return 0
 
     if not runnable:
-        print()
-        print("Nothing to do.")
+        console.print("[dim]Nothing to do.[/]")
         return 0
 
     # ── Back up registry before the tracking pass writes to it. ───────
     bak = backup_registry_once()
-    print()
-    print(f"Registry backed up: {os.path.relpath(bak, REPO_ROOT)}")
+    console.print(f"[dim]Registry backed up: {os.path.relpath(bak, REPO_ROOT)}[/]")
 
     # ── Run tracker per video. ──────────────────────────────────────────
     bulk_log = load_bulk_log()
     rows     = []
     for i, p in enumerate(runnable, start=1):
-        print(f"\n[{i}/{len(runnable)}] {p.config_description}")
+        console.print(Rule(f"[bold][{i}/{len(runnable)}] {p.config_description}[/]",
+                           style="dim"))
         rc, elapsed = run_one(p, no_debug=not args.debug, force=True)
 
         # Re-read registry to capture the tracker's writes.
@@ -345,7 +342,7 @@ def main():
 
     # ── Emit final report. ──────────────────────────────────────────────
     emit_report(rows)
-    print(f"\nDetailed log: {os.path.relpath(BULK_LOG_FILE, REPO_ROOT)}")
+    console.print(f"[dim]Detailed log: {os.path.relpath(BULK_LOG_FILE, REPO_ROOT)}[/]")
     return 0 if all(r["returncode"] == 0 for r in rows) else 1
 
 if __name__ == "__main__":

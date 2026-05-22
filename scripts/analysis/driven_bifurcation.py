@@ -49,6 +49,13 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
+from rich.console import Console
+from rich.table import Table
+from rich.rule import Rule
+import rich.box
+
+console = Console()
+
 sys.path.insert(0, os.path.normpath(os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "..", "utils")))
 from paths import DATA_DIR, MEAS_DIR, EXPERIMENTS, clip_dir  # noqa: E402
@@ -112,17 +119,17 @@ def collect_strobe_points(matched, transient_s):
         try:
             t, th1, _, om1, _ = load_driven_csv(csv_path)
         except SystemExit as e:
-            print(f"  skip {stem}: {e}")
+            console.print(f"  [yellow]skip[/] [dim]{stem}:[/] {e}")
             continue
         fd = entry["drive_freq_hz"]
         ts, ths, oms = strobe_sample(t, th1, om1, fd, transient_s=transient_s)
         if len(ts) == 0:
-            print(f"  skip {stem}: no strobe points (window too short).")
+            console.print(f"  [yellow]skip[/] [dim]{stem}:[/] no strobe points (window too short).")
             continue
         per_clip.append((stem, x_val, ths, oms))
         for th, om in zip(ths, oms):
             flat_rows.append((stem, x_val, float(th), float(om)))
-        print(f"  {stem:15s}  x={x_val:.3f}   n_strobe={len(ts)}")
+        console.print(f"  [cyan]{stem:<15}[/]  [dim]x={x_val:.3f}   n_strobe={len(ts)}[/]")
     return per_clip, flat_rows
 
 
@@ -191,15 +198,27 @@ def main():
     else:
         tag = f"fd_at_vd_{args.fixed_vd:g}V"
 
-    print(f"Sweep: {args.sweep}  ({tag})")
-    print(f"Matched {len(matched)} tracked clips:")
-    for stem, _, x in matched:
-        print(f"  {stem:15s}  x={x:.3f}")
+    # Sweep summary table
+    sweep_t = Table(box=rich.box.SIMPLE_HEAD, show_header=True)
+    sweep_t.add_column("sweep", style="cyan")
+    sweep_t.add_column("tag",   style="dim")
+    sweep_t.add_column("matched clips", justify="right", style="white")
+    sweep_t.add_row(args.sweep, tag, str(len(matched)))
+    console.print(sweep_t)
+
+    if matched:
+        clip_t = Table(box=rich.box.SIMPLE_HEAD)
+        clip_t.add_column("stem",    style="cyan")
+        clip_t.add_column("x value", justify="right", style="white")
+        for stem, _, x in matched:
+            clip_t.add_row(stem, f"{x:.3f}")
+        console.print(clip_t)
 
     if len(matched) < args.min_clips:
         raise SystemExit(
             f"Only {len(matched)} matched clips (< --min-clips={args.min_clips}).")
 
+    console.print(Rule(style="dim"))
     per_clip, flat_rows = collect_strobe_points(matched, args.transient)
     if not per_clip:
         raise SystemExit("No strobe points collected — aborting.")
@@ -212,11 +231,11 @@ def main():
         for row in flat_rows:
             w.writerow([row[0], f"{row[1]:.4f}",
                         f"{row[2]:.4f}", f"{row[3]:.4f}"])
-    print(f"Wrote {out_csv}")
+    console.print(f"  [dim]Saved → {out_csv}[/]")
 
     out_png = aggregate_path(f"driven_bifurcation_{tag}.png")
     make_figure(per_clip, args, out_png)
-    print(f"Wrote {out_png}")
+    console.print(f"  [dim]Saved → {out_png}[/]")
 
 
 if __name__ == "__main__":

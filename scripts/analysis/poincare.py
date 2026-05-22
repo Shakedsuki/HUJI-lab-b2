@@ -41,8 +41,11 @@ import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from rich.console import Console
 
 sys.path.insert(0, os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "utils")))
+
+console = Console()
 from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT, clip_dir  # noqa: E402
 from figures_paths import figure_path, mirror_to_ready  # noqa: E402
 
@@ -230,12 +233,18 @@ def make_figure(t, th1, th2, om1, om2,
 def main():
     args = parse_args()
     csv_path, out_dir, label = resolve_io(args)
-    print(f"Reading {csv_path} ...")
+    console.print(f"[dim]reading {csv_path} ...[/]")
     t, th1, th2, om1, om2 = load_clean(csv_path)
-    print(f"  {len(t)} clean free-swing rows, t_max = {t[-1]:.2f}s")
+    console.print(
+        f"[cyan]{label}[/]  [dim]{len(t)} free-swing rows, "
+        f"t_max = {t[-1]:.2f} s[/]"
+    )
 
     t_p, th1_p, om1_p = poincare_points(t, th1, th2, om1, om2)
-    print(f"  {len(t_p)} Poincare crossings  (theta2_abs = 0, d/dt > 0)")
+    console.print(
+        f"  [white]{len(t_p)}[/] [dim]Poincaré crossings  "
+        f"(θ₂_abs = 0, d/dt > 0)[/]"
+    )
 
     if not args.no_csv:
         out_csv = os.path.join(out_dir, "poincare.csv")
@@ -244,13 +253,13 @@ def main():
             w.writerow(["t_s", "theta1_deg", "omega1_deg_s"])
             for tc, th, om in zip(t_p, th1_p, om1_p):
                 w.writerow([f"{tc:.4f}", f"{th:.4f}", f"{om:.4f}"])
-        print(f"  wrote {out_csv}")
+        console.print(f"[dim]csv  → {out_csv}[/]")
 
     if not args.no_plot:
         out_png = figure_path("poincare", label)
         make_figure(t, th1, th2, om1, om2,
                     t_p, th1_p, om1_p, label, out_png)
-        print(f"  wrote {out_png}")
+        console.print(f"[dim]plot → {out_png}[/]")
 
 if __name__ == "__main__":
     main()

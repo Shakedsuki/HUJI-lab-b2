@@ -297,21 +297,31 @@ def make_figure(t, x, S, dt, tau, m, theiler,
     plt.close(fig)
 
 def main():
+    from rich.console import Console as _Console
+    from rich.panel import Panel as _Panel
+    from rich.table import Table as _Table
+    from rich.rule import Rule as _Rule
+    from rich.console import Group as _Group
+    _con = _Console()
+
     args = parse_args()
     csv_path, out_dir, label = resolve_io(args)
-    print(f"Reading {csv_path} ...")
+    _con.print(f"[dim]reading {csv_path} ...[/]")
     t, x = load_series(csv_path, use_omega=args.use_omega)
     dt = float(np.mean(np.diff(t)))
-    print(f"  {len(x)} samples, dt = {dt*1000:.2f} ms, t_max = {t[-1]:.2f}s")
+    _con.print(
+        f"[cyan]{label}[/]  [dim]{len(x)} samples, "
+        f"dt = {dt*1000:.2f} ms, t_max = {t[-1]:.2f} s[/]"
+    )
 
     # Auto-pick tau and Theiler if not given.
     if args.tau is None:
         tau = autocorr_first_drop(x)
         tau = max(3, min(tau, 30))
-        print(f"  auto tau   = {tau} frames  (1/e of autocorrelation)")
+        _con.print(f"  [dim]auto tau = {tau} frames  (1/e of autocorrelation)[/]")
     else:
         tau = args.tau
-        print(f"  tau        = {tau} frames  (user-set)")
+        _con.print(f"  [dim]tau = {tau} frames  (user-set)[/]")
 
     if args.theiler is None:
         period = estimate_period_frames(t, x)
@@ -319,20 +329,22 @@ def main():
         # bins. Cap at 200 frames (~3.3s at 60fps), well above the rod
         # pendulum's natural period (~1.2s = 72 frames).
         theiler = max(min(period, 200), 30)
-        print(f"  auto Theiler window = {theiler} frames  "
-              f"(period estimate {period}, capped at 200)")
+        _con.print(
+            f"  [dim]auto Theiler = {theiler} frames  "
+            f"(period estimate {period}, capped at 200)[/]"
+        )
     else:
         theiler = args.theiler
 
     m = args.emb_dim
-    print(f"  embedding dim m = {m}")
+    _con.print(f"  [dim]embedding dim m = {m}[/]")
 
     emb = embed(x, m, tau)
     if emb.shape[0] < 2 * theiler:
         raise SystemExit(
             f"Embedded length {emb.shape[0]} too small for Theiler {theiler}.")
 
-    print(f"  computing nearest-neighbor divergence ...")
+    _con.print("  [dim]computing nearest-neighbor divergence ...[/]")
     S = rosenstein(emb, theiler=theiler, k_max=args.k_max)
 
     if args.fit_range:
@@ -340,20 +352,66 @@ def main():
         fit_lo, fit_hi = int(lo_s), int(hi_s)
     else:
         fit_lo, fit_hi = auto_fit_range(S, args.k_max)
-    print(f"  fitting slope over k = {fit_lo}..{fit_hi}")
 
     k = np.arange(len(S))
     slope, intercept, r2 = linear_fit_slope(k * dt, S, fit_lo, fit_hi)
-    print(f"  lambda_1 = {slope:+.4f} /s     R^2 = {r2:.3f}")
-    if np.isfinite(slope) and slope > 0:
-        print(f"  Lyapunov timescale 1/lambda_1 = {1/slope:.2f} s")
+
+    # ── Result card ──────────────────────────────────────────────────────
+    # λ₁ colour: positive (chaotic) → red, near-zero/negative → green
+    if np.isfinite(slope):
+        if slope > 0.05:
+            lam_color = "red"
+            lam_label = "CHAOTIC"
+        elif slope < -0.05:
+            lam_color = "green"
+            lam_label = "REGULAR"
+        else:
+            lam_color = "yellow"
+            lam_label = "BORDERLINE"
+        lam_str = f"[bold {lam_color}]{slope:+.4f} /s[/]"
+        timescale_str = (f"{1/slope:.2f} s" if slope > 0
+                         else "n/a (non-positive)")
+    else:
+        lam_color = "dim"
+        lam_label = "n/a"
+        lam_str   = "[dim]n/a[/]"
+        timescale_str = "n/a"
+
+    r2_str = f"{r2:.3f}" if np.isfinite(r2) else "n/a"
+
+    t_res = _Table(box=None, show_header=False, padding=(0, 1), expand=False)
+    t_res.add_column(style="dim", min_width=28)
+    t_res.add_column(style="white", justify="right")
+    t_res.add_row("λ₁  (Rosenstein slope)", lam_str)
+    t_res.add_row("R²  (fit quality)",       r2_str)
+    t_res.add_row("fit range  (k frames)",   f"{fit_lo}..{fit_hi}")
+
+    t_emb = _Table(box=None, show_header=False, padding=(0, 1), expand=False)
+    t_emb.add_column(style="dim", min_width=28)
+    t_emb.add_column(style="white", justify="right")
+    t_emb.add_row("embedding dim  m",  str(m))
+    t_emb.add_row("embedding delay  τ", f"{tau} frames  ({tau*dt*1000:.1f} ms)")
+    t_emb.add_row("Theiler window  W", f"{theiler} frames")
+    t_emb.add_row("Lyapunov timescale", timescale_str)
+
+    panel = _Panel(
+        _Group(
+            _Rule("result", style="dim"), t_res,
+            _Rule("embedding parameters", style="dim"), t_emb,
+        ),
+        title=f"[bold {lam_color}]{lam_label}[/]  [bold white]{label}[/]  "
+              f"[dim]Largest Lyapunov exponent[/]",
+        border_style=lam_color,
+        padding=(1, 2),
+    )
+    _con.print(panel)
 
     if not args.no_plot:
         out_png = figure_path("lyapunov", label)
         make_figure(t, x, S, dt, tau, m, theiler,
                     slope, intercept, r2, fit_lo, fit_hi,
                     label, out_png)
-        print(f"  wrote {out_png}")
+        _con.print(f"[dim]plot → {out_png}[/]")
 
 if __name__ == "__main__":
     main()

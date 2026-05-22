@@ -33,6 +33,9 @@ except (AttributeError, OSError):
     pass
 import os
 import csv
+
+from rich.console import Console
+console = Console()
 import argparse
 import numpy as np
 import matplotlib.pyplot as plt
@@ -68,8 +71,8 @@ def resolve_paths(args):
         meas_dir = clip_dir(args.stem)
         csv_path = os.path.join(meas_dir, "tracking.csv")
         if not os.path.exists(csv_path):
-            print(f"ERROR: tracking.csv not found for stem '{args.stem}'")
-            print(f"  Expected: {csv_path}")
+            console.print(f"[red]ERROR:[/] tracking.csv not found for stem '{args.stem}'")
+            console.print(f"  [dim]Expected: {csv_path}[/]")
             sys.exit(1)
         return csv_path, meas_dir, args.stem, True
 
@@ -303,7 +306,7 @@ def make_figure(t, th1, th2, om1, om2, label, out_path, force_save):
         os.makedirs(os.path.dirname(out_path), exist_ok=True)
         plt.savefig(out_path, dpi=150, bbox_inches='tight')
         mirror_to_ready(out_path)
-        print(f"Figure saved to: {out_path}")
+        console.print(f"  [dim]Saved → {out_path}[/]")
     else:
         plt.show()
 
@@ -316,26 +319,36 @@ def main():
     csv_path, output_dir, stem, force_save = resolve_paths(args)
 
     if not os.path.exists(csv_path):
-        print(f"ERROR: CSV not found: {csv_path}")
+        console.print(f"[red]ERROR:[/] CSV not found: [dim]{csv_path}[/]")
         sys.exit(1)
 
     ext = os.path.splitext(csv_path)[1].lower()
     if ext != ".csv":
-        print(f"ERROR: expected a tracking CSV, got '{csv_path}' (extension '{ext}').")
-        print("       This script reads the per-frame angle CSV, not videos.")
-        print(f"       Try:  python {os.path.basename(__file__)} --stem <config_description>")
+        console.print(f"[red]ERROR:[/] expected a tracking CSV, got [dim]{csv_path}[/] (extension '{ext}').")
+        console.print(f"  [dim]Try:  python {os.path.basename(__file__)} --stem <config_description>[/]")
         sys.exit(2)
 
-    print(f"Loading {csv_path} ...")
+    console.print(f"  [dim]Loading {csv_path} …[/]")
     t, th1, th2 = load_csv(csv_path)
-    print(f"  {len(t)} clean free-swing frames  "
-          f"({t[-1]:.2f}s of data)")
-    print(f"  θ₁: [{th1.min():.1f}°, {th1.max():.1f}°]")
-    print(f"  θ₂: [{th2.min():.1f}°, {th2.max():.1f}°]")
 
     om1, om2 = compute_velocities(t, th1, th2)
-    print(f"  ω₁: [{om1.min():.0f}, {om1.max():.0f}] deg/s")
-    print(f"  ω₂: [{om2.min():.0f}, {om2.max():.0f}] deg/s")
+
+    from rich.table import Table
+    import rich.box
+    tbl = Table(box=rich.box.SIMPLE_HEAD, show_header=False)
+    tbl.add_column(style="dim", min_width=20)
+    tbl.add_column(style="white", justify="right")
+    tbl.add_row("frames",
+                f"{len(t)}  [dim]({t[-1]:.2f} s)[/]")
+    tbl.add_row("θ₁ range",
+                f"[{th1.min():.1f}°, {th1.max():.1f}°]")
+    tbl.add_row("θ₂ range",
+                f"[{th2.min():.1f}°, {th2.max():.1f}°]")
+    tbl.add_row("ω₁ range",
+                f"[{om1.min():.0f}, {om1.max():.0f}] deg/s")
+    tbl.add_row("ω₂ range",
+                f"[{om2.min():.0f}, {om2.max():.0f}] deg/s")
+    console.print(tbl)
 
     # Canonical figure path: figures/phase_panels/<stem>_phase_panels.png.
     # Falls back to the local output_dir for ad-hoc CSV-only invocations

@@ -31,12 +31,14 @@ try:
 except (AttributeError, OSError):
     pass
 
+from rich.console import Console
+console = Console()
+
 # ── External deps: openpyxl + pandas. Fail with a helpful message ────
 try:
     import pandas as pd
 except ImportError:
-    print("ERROR: pandas is required.")
-    print("  pip install pandas")
+    console.print("[red]ERROR:[/] pandas is required.  pip install pandas")
     sys.exit(1)
 
 try:
@@ -44,8 +46,7 @@ try:
     from openpyxl.styles import Alignment, Font, PatternFill
     from openpyxl.utils import get_column_letter
 except ImportError:
-    print("ERROR: openpyxl is required.")
-    print("  pip install openpyxl")
+    console.print("[red]ERROR:[/] openpyxl is required.  pip install openpyxl")
     sys.exit(1)
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -487,13 +488,13 @@ def main():
     args = parse_args()
 
     if not os.path.exists(EXPERIMENTS_FILE):
-        print(f"ERROR: registry not found: {EXPERIMENTS_FILE}")
+        console.print(f"[red]ERROR:[/] registry not found: [dim]{EXPERIMENTS_FILE}[/]")
         return 2
     with open(EXPERIMENTS_FILE, "r", encoding="utf-8") as f:
         reg = json.load(f)
 
     if not os.path.isdir(MEAS_DIR):
-        print(f"WARN: {MEAS_DIR} does not exist — every row will be PENDING.")
+        console.print(f"[yellow]WARN:[/] [dim]{MEAS_DIR}[/] does not exist — every row will be PENDING.")
 
     main_rows = []
     long_row  = None
@@ -501,7 +502,7 @@ def main():
         entry = reg[key]
         cd = resolve_config_description(key, entry)
         if not cd:
-            print(f"WARN: skipping '{key}' — could not resolve config_description")
+            console.print(f"[yellow]WARN:[/] skipping [dim]{key!r}[/] — could not resolve config_description")
             continue
         row = build_row(key, entry, cd)
         if cd == LONG_RECORDING_CD:
@@ -569,8 +570,10 @@ def main():
     n_done = sum(1 for r in main_rows + ([long_row] if long_row else [])
                  if str(r["status"]).startswith("DONE"))
 
-    print(f"Report written: {os.path.relpath(out, REPO_ROOT)} — "
-          f"{n_total} measurements, {n_tracked} tracked, {n_done} done")
+    console.print(
+        f"  [green]✓[/] Wrote [dim]{os.path.relpath(out, REPO_ROOT)}[/]  "
+        f"[dim]{n_total} measurements, {n_tracked} tracked, {n_done} done[/]"
+    )
     return 0
 
 if __name__ == "__main__":

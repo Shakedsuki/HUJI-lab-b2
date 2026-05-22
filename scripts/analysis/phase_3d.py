@@ -30,6 +30,12 @@ except (AttributeError, OSError):
 import os
 import csv
 import argparse
+
+from rich.console import Console
+from rich.table import Table
+import rich.box
+
+console = Console()
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
@@ -81,8 +87,8 @@ def resolve_paths(args):
         meas_dir = clip_dir(args.stem)
         csv_path = os.path.join(meas_dir, "tracking.csv")
         if not os.path.exists(csv_path):
-            print(f"ERROR: tracking.csv not found for stem '{args.stem}'")
-            print(f"  Expected: {csv_path}")
+            console.print(f"[red]ERROR:[/] tracking.csv not found for stem '{args.stem}'")
+            console.print(f"  [dim]Expected: {csv_path}[/]")
             sys.exit(1)
         return csv_path, meas_dir, args.stem, True
 
@@ -211,7 +217,7 @@ def plot_3d(t, th1, th2, om1, label, out_path, output_dir):
     plt.savefig(out_path, dpi=150, bbox_inches='tight',
                 facecolor=fig.get_facecolor())
     mirror_to_ready(out_path)
-    print(f"Static figure saved to: {out_path}")
+    console.print(f"  [dim]Saved → {out_path}[/]")
     return fig, ax, lc, norm, cmap
 
 # ─────────────────────────────────────────────
@@ -234,7 +240,7 @@ def make_rotation_animation(fig, ax, out_mp4, output_dir):
 
     os.makedirs(output_dir, exist_ok=True)
     writer = animation.FFMpegWriter(fps=30, bitrate=1800)
-    print(f"Saving rotation to {out_mp4} ...")
+    console.print(f"  [dim]Rendering rotation → {out_mp4} …[/]")
 
     step = max(1, N_ROT_FRAMES // 20)
     with writer.saving(fig, out_mp4, dpi=120):
@@ -246,7 +252,7 @@ def make_rotation_animation(fig, ax, out_mp4, output_dir):
                 bar = '█' * (pct // 5) + '░' * (20 - pct // 5)
                 print(f"  [{bar}] {pct:3d}%", end='\r', flush=True)
 
-    print(f"\nRotation saved to: {out_mp4}")
+    console.print(f"  [dim]Saved → {out_mp4}[/]")
 
 # ─────────────────────────────────────────────
 # MAIN
@@ -257,22 +263,26 @@ def main():
     csv_path, output_dir, stem, force_save = resolve_paths(args)
 
     if not os.path.exists(csv_path):
-        print(f"ERROR: CSV not found: {csv_path}")
+        console.print(f"[red]ERROR:[/] CSV not found: [dim]{csv_path}[/]")
         sys.exit(1)
 
     ext = os.path.splitext(csv_path)[1].lower()
     if ext != ".csv":
-        print(f"ERROR: expected a tracking CSV, got '{csv_path}' (extension '{ext}').")
-        print("       This script reads the per-frame angle CSV, not videos.")
-        print(f"       Try:  python {os.path.basename(__file__)} --stem <config_description>")
+        console.print(f"[red]ERROR:[/] expected a tracking CSV, got [dim]{csv_path}[/] (extension '{ext}').")
+        console.print(f"  [dim]Try:  python {os.path.basename(__file__)} --stem <config_description>[/]")
         sys.exit(2)
 
-    print(f"Loading {csv_path} ...")
+    console.print(f"  [dim]Loading {csv_path} …[/]")
     t, th1, th2, om1, om2 = load(csv_path)
-    print(f"  {len(t)} frames  ({t[-1]:.2f}s)")
-    print(f"  theta1: [{th1.min():.1f}, {th1.max():.1f}] deg")
-    print(f"  theta2: [{th2.min():.1f}, {th2.max():.1f}] deg")
-    print(f"  omega1: [{om1.min():.0f}, {om1.max():.0f}] deg/s")
+
+    tbl = Table(box=rich.box.SIMPLE_HEAD, show_header=False)
+    tbl.add_column(style="dim", min_width=16)
+    tbl.add_column(style="white", justify="right")
+    tbl.add_row("frames",   f"{len(t)}  [dim]({t[-1]:.2f} s)[/]")
+    tbl.add_row("θ₁ range", f"[{th1.min():.1f}, {th1.max():.1f}] deg")
+    tbl.add_row("θ₂ range", f"[{th2.min():.1f}, {th2.max():.1f}] deg")
+    tbl.add_row("ω₁ range", f"[{om1.min():.0f}, {om1.max():.0f}] deg/s")
+    console.print(tbl)
 
     # When called via --stem (or --save) we write to the canonical
     # figures/ directory; otherwise (interactive fallback) we keep the

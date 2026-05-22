@@ -358,17 +358,16 @@ def main():
         targets = list(gather_verified_clips(reg, filter_substr=args.filter))
         scope = "verified"
     if not targets:
-        print(f"No {scope} clips matched.")
+        console.print(f"[dim]No {scope} clips matched.[/]")
         return 0
 
-    print(f"Auditing {len(targets)} {scope} clips "
-          f"({'in-place verify' if not args.skip_reverify else 'no re-verify'})…")
-    print()
+    mode_note = "in-place verify" if not args.skip_reverify else "no re-verify"
+    console.print(f"[cyan]Auditing[/] [white]{len(targets)}[/] [cyan]{scope} clips[/] "
+                  f"[dim]({mode_note})…[/]")
 
     rows = []
     for i, (key, entry) in enumerate(targets, start=1):
         stem = entry.get("config_description") or key
-        print(f"  [{i}/{len(targets)}]  {stem}", end="", flush=True)
         result = audit_one(stem,
                            skip_reverify=args.skip_reverify,
                            omega_cap=args.omega_cap,
@@ -376,11 +375,14 @@ def main():
         result["key"] = key
         rows.append(result)
         if "error" in result:
-            print(f"   [ERROR: {result['error']}]")
+            console.print(f"  [dim][{i}/{len(targets)}][/]  {stem}  "
+                          f"[red]ERROR: {result['error']}[/]")
         else:
-            print(f"   {result['old_status']} → {result['new_status']}")
+            old_b = _BADGE.get(result['old_status'], result['old_status'])
+            new_b = _BADGE.get(result['new_status'], result['new_status'])
+            console.print(f"  [dim][{i}/{len(targets)}][/]  {stem}  "
+                          f"[dim]{old_b} → {new_b}[/]")
 
-    print()
     render_audit_table(rows)
     render_summary(rows)
 
@@ -402,16 +404,16 @@ def main():
                 upgrade_clip(reg, r["key"], r["reasons"])
                 n_up += 1
         save_registry(reg)
-        msg = f"  Applied: {n_down} downgraded"
+        parts = [f"[yellow]{n_down} downgraded[/]"]
         if args.upgrade:
-            msg += f", {n_up} upgraded"
+            parts.append(f"[green]{n_up} upgraded[/]")
         if n_protected:
-            msg += f", {n_protected} protected by manual_accept"
-        print(f"\n{msg}.")
+            parts.append(f"[dim]{n_protected} protected by manual_accept[/]")
+        console.print("Applied: " + ", ".join(parts) + ".")
     elif any(r.get("new_status") in ("WARN", "FAIL") for r in rows
              if "error" not in r):
-        print("\n  Re-run with [bold]--apply[/] to downgrade clips that no "
-              "longer PASS.")
+        console.print("\n  Re-run with [bold]--apply[/] to downgrade clips that no "
+                      "longer PASS.")
     return 0
 
 if __name__ == "__main__":

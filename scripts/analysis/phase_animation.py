@@ -35,6 +35,9 @@ except (AttributeError, OSError):
 import os
 import csv
 import argparse
+
+from rich.console import Console
+console = Console()
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
@@ -75,8 +78,8 @@ def resolve_paths(args):
         meas_dir = clip_dir(args.stem)
         csv_path = os.path.join(meas_dir, "tracking.csv")
         if not os.path.exists(csv_path):
-            print(f"ERROR: tracking.csv not found for stem '{args.stem}'")
-            print(f"  Expected: {csv_path}")
+            console.print(f"[red]ERROR:[/] tracking.csv not found for stem '{args.stem}'")
+            console.print(f"  [dim]Expected: {csv_path}[/]")
             sys.exit(1)
         return csv_path, meas_dir, args.stem, True
 
@@ -141,10 +144,10 @@ def break_arrays(arrays, wrap_mask):
 # ─────────────────────────────────────────────
 
 def animate(path, output_dir, stem_label, force_save):
-    print(f"Loading {path} ...")
+    console.print(f"  [dim]Loading {path} …[/]")
     t, th1, th2, om1, om2 = load(path)
     N = len(t)
-    print(f"  {N} frames  ({t[-1]:.2f}s)")
+    console.print(f"  [dim]{N} frames  ({t[-1]:.2f} s)[/]")
 
     # Sub-sample if requested
     idx  = np.arange(0, N, SKIP)
@@ -261,8 +264,7 @@ def animate(path, output_dir, stem_label, force_save):
             output_mp4 = figure_path("phase_animation", stem_label, ext="mp4")
         writer = animation.FFMpegWriter(fps=int(1000 / INTERVAL_MS),
                                         bitrate=2000)
-        print(f"Saving {N} frames to {output_mp4} ...")
-        print("This may take a few minutes.")
+        console.print(f"  [dim]Rendering {N} frames → {output_mp4} …[/]")
 
         # Progress callback — print every 5%
         step = max(1, N // 20)
@@ -273,11 +275,11 @@ def animate(path, output_dir, stem_label, force_save):
                 writer.grab_frame()
                 if i % step == 0 or i == N - 1:
                     pct = 100 * (i + 1) // N
-                    bar = '#' * (pct // 5) + '.' * (20 - pct // 5)
+                    bar = '█' * (pct // 5) + '░' * (20 - pct // 5)
                     print(f"  [{bar}] {pct:3d}%  frame {i+1}/{N}",
                           end='\r', flush=True)
 
-        print(f"\nSaved to: {output_mp4}")
+        console.print(f"\n  [dim]Saved → {output_mp4}[/]")
     else:
         plt.show()
 
@@ -290,14 +292,13 @@ if __name__ == "__main__":
     csv_path, output_dir, stem_label, force_save = resolve_paths(args)
 
     if not os.path.exists(csv_path):
-        print(f"ERROR: CSV not found: {csv_path}")
+        console.print(f"[red]ERROR:[/] CSV not found: [dim]{csv_path}[/]")
         sys.exit(1)
 
     ext = os.path.splitext(csv_path)[1].lower()
     if ext != ".csv":
-        print(f"ERROR: expected a tracking CSV, got '{csv_path}' (extension '{ext}').")
-        print("       This script reads the per-frame angle CSV, not videos.")
-        print(f"       Try:  python {os.path.basename(__file__)} --stem <config_description>")
+        console.print(f"[red]ERROR:[/] expected a tracking CSV, got [dim]{csv_path}[/] (extension '{ext}').")
+        console.print(f"  [dim]Try:  python {os.path.basename(__file__)} --stem <config_description>[/]")
         sys.exit(2)
 
     animate(csv_path, output_dir, stem_label, force_save)

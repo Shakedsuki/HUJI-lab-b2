@@ -76,7 +76,8 @@ def video_for_stem(stem):
     if no entry matches the stem.
     """
     if not os.path.exists(EXPERIMENTS_FILE):
-        print(f"ERROR: registry missing: {EXPERIMENTS_FILE}")
+        from rich.console import Console as _Console
+        _Console().print(f"[red]ERROR:[/] registry missing: [dim]{EXPERIMENTS_FILE}[/]")
         sys.exit(1)
     with open(EXPERIMENTS_FILE, "r", encoding="utf-8") as f:
         reg = json.load(f)
@@ -86,9 +87,9 @@ def video_for_stem(stem):
             if not video_file:
                 continue
             return os.path.join(VIDEOS_DIR, video_file)
-    print(f"ERROR: no registry entry has config_description '{stem}'.")
-    print(f"       Add an entry to {EXPERIMENTS_FILE} or supply video "
-          f"path positionally.")
+    from rich.console import Console as _Console
+    _Console().print(f"[red]ERROR:[/] no registry entry has config_description '{stem}'.")
+    _Console().print(f"  [dim]Add an entry to {EXPERIMENTS_FILE} or supply video path positionally.[/]")
     sys.exit(1)
 
 def resolve_paths(args):
@@ -101,8 +102,9 @@ def resolve_paths(args):
         meas_dir = clip_dir(args.stem)
         csv_path = os.path.join(meas_dir, "tracking.csv")
         if not os.path.exists(csv_path):
-            print(f"ERROR: tracking.csv not found for stem '{args.stem}'")
-            print(f"  Expected: {csv_path}")
+            from rich.console import Console as _Console
+            _Console().print(f"[red]ERROR:[/] tracking.csv not found for stem '{args.stem}'")
+            _Console().print(f"  [dim]Expected: {csv_path}[/]")
             sys.exit(1)
         video_path = video_for_stem(args.stem)
         return (csv_path, video_path,
@@ -489,27 +491,35 @@ def main():
     stem = args.stem or os.path.basename(output_dir.rstrip(os.sep))
     pivot_orig, arm_length_px = get_pivot_arm(stem)
 
+    from rich.console import Console as _Console
+    _con = _Console()
+
     csv_ext = os.path.splitext(csv_path)[1].lower()
     if csv_ext != ".csv":
-        print(f"ERROR: first argument must be a tracking CSV, got '{csv_path}' "
-              f"(extension '{csv_ext}').")
-        print(f"       Try:  python {os.path.basename(__file__)} --stem <config_description>")
+        _con.print(f"[red]ERROR:[/] first argument must be a tracking CSV, got [dim]{csv_path}[/] "
+                   f"(extension '{csv_ext}').")
+        _con.print(f"  [dim]Try:  python {os.path.basename(__file__)} --stem <config_description>[/]")
         sys.exit(2)
 
     video_ext = os.path.splitext(video_path)[1].lower()
     if video_ext not in (".mov", ".mp4", ".avi", ".mkv", ".m4v"):
-        print(f"WARN: second argument doesn't look like a video ('{video_path}'). "
-              f"Continuing anyway.")
+        _con.print(f"[yellow]WARN:[/] second argument doesn't look like a video ([dim]{video_path}[/]). Continuing anyway.")
 
-    print(f"CSV    : {csv_path}")
-    print(f"Video  : {video_path}")
-    print(f"Output : {output_mp4}")
+    from rich.table import Table as _Table
+    import rich.box as _box
+    io_t = _Table(box=_box.SIMPLE_HEAD, show_header=False)
+    io_t.add_column(style="dim", min_width=10)
+    io_t.add_column(style="white")
+    io_t.add_row("CSV",    csv_path)
+    io_t.add_row("Video",  video_path)
+    io_t.add_row("Output", output_mp4)
+    _con.print(io_t)
 
     # ── Load data ──
-    print("Loading CSV ...")
+    _con.print("  [dim]Loading CSV …[/]")
     frames, times, phases, th1, th2, om1, om2, dropouts = load_csv(csv_path)
     N = len(frames)
-    print(f"  {N} frames, t_max = {times[-1]:.2f}s")
+    _con.print(f"  [dim]{N} frames, t_max = {times[-1]:.2f} s[/]")
 
     # Load x/y coordinates too (for left panel overlay)
     rows = list(csv.DictReader(open(csv_path)))
@@ -519,7 +529,7 @@ def main():
     yr = np.array([float(r['y_red'])   if r['y_red']   else np.nan for r in rows])
 
     # ── Set up matplotlib figure ──
-    print("Setting up figure ...")
+    _con.print("  [dim]Setting up figure …[/]")
     fig, trace_lines, head_dots, time_txt = setup_figure(th1, th2, om1, om2)
 
     # Pre-compute XY data for each panel. Insert NaN at ±180° wrap
@@ -546,7 +556,7 @@ def main():
     # ── Open video ──
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
-        print(f"ERROR: Cannot open {video_path}")
+        _con.print(f"[red]ERROR:[/] Cannot open [dim]{video_path}[/]")
         return
     video_fps = cap.get(cv2.CAP_PROP_FPS) or FPS_OUT
 
@@ -557,8 +567,7 @@ def main():
                              (PANEL_W * 2, PANEL_H))
 
     # ── Render loop ──
-    print(f"Rendering {N} frames → {output_mp4}")
-    print("(This will take several minutes)\n")
+    _con.print(f"  [dim]Rendering {N} frames → {output_mp4} …[/]")
 
     step = max(1, N // 40)   # progress update every 2.5%
 
@@ -566,7 +575,7 @@ def main():
         # Read video frame
         ret, vframe = cap.read()
         if not ret:
-            print(f"\nWARNING: video ended at frame {i}")
+            _con.print(f"\n[yellow]WARNING:[/] video ended at frame {i}")
             break
 
         # ── Update matplotlib plots ──
@@ -620,7 +629,7 @@ def main():
     writer.release()
     plt.close(fig)
 
-    print(f"\n\nDone. Saved to: {output_mp4}")
+    _con.print(f"\n  [dim]Saved → {output_mp4}[/]")
 
 if __name__ == "__main__":
     main()

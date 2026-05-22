@@ -48,6 +48,9 @@ except (AttributeError, OSError):
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT  # noqa: E402
 
+from rich.console import Console  # noqa: E402
+console = Console()
+
 EXPERIMENTS_FILE = EXPERIMENTS
 
 BULK_LOG_FILE    = os.path.join(DATA_DIR, "bulk_tracking_log.json")
@@ -432,11 +435,13 @@ def main():
     bucket_counts = {b[0]: 0 for b in BUCKETS}
     for r in rows:
         bucket_counts[r["bucket"]] += 1
-    print(f"Wrote: {args.output}")
-    print(f"  PASS={bucket_counts['verified']}  "
-          f"WARN={bucket_counts['tracked-warn']}  "
-          f"FAIL={bucket_counts['tracked-fail']}  "
-          f"PENDING={bucket_counts['never-attempted']}")
+    console.print(
+        f"  [green]✓[/] Wrote [dim]{args.output}[/]  "
+        f"[dim]PASS={bucket_counts['verified']}  "
+        f"WARN={bucket_counts['tracked-warn']}  "
+        f"FAIL={bucket_counts['tracked-fail']}  "
+        f"PENDING={bucket_counts['never-attempted']}[/]"
+    )
     return 0
 
 if __name__ == "__main__":
