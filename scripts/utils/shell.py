@@ -951,10 +951,11 @@ def do_e(): _run(SCRIPT_REPORT); _pause()
 def do_w():
     import importlib
     global DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, PHASE, clip_dir
-    from paths import PHASE_FREE, PHASE_DRIVEN as _PD
+    from paths import PHASE_FREE, PHASE_WEEK5, PHASE_WEEK6
     phases = [
-        (PHASE_FREE, "week 3-4", "free swing"),
-        (_PD,        "week 5-6", "motor-driven"),
+        (PHASE_FREE,  "week 3-4", "free swing"),
+        (PHASE_WEEK5, "week 5",   "broad V/f survey"),
+        (PHASE_WEEK6, "week 6",   "3.2V resonance"),
     ]
     choices = []
     for val, short, desc in phases:

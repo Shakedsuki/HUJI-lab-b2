@@ -76,6 +76,16 @@ def load_tracked_stems():
     return sorted(stems)
 
 
+def passed_qa_stems():
+    """Stems whose overlay-review verdict is 'pass' — the QA gate for figures."""
+    if not os.path.exists(EXPERIMENTS):
+        return set()
+    with open(EXPERIMENTS, "r", encoding="utf-8") as f:
+        reg = json.load(f)
+    return {e.get("config_description") for e in reg.values()
+            if e.get("overlay_verdict") == "pass" and e.get("config_description")}
+
+
 def has_verification(stem):
     return os.path.exists(os.path.join(clip_dir(stem), "verification.csv"))
 
@@ -140,6 +150,8 @@ def parse_args():
                    help="Re-render even if output files already exist.")
     p.add_argument("--types", default=None,
                    help="comma-separated figure types to render (default: all).")
+    p.add_argument("--all-quality", action="store_true",
+                   help="include clips that haven't passed overlay QA (default: pass only).")
     return p.parse_args()
 
 
@@ -153,8 +165,17 @@ def main():
     else:
         stems = load_tracked_stems()
 
+    if not args.all_quality:
+        passed = passed_qa_stems()
+        skipped = [s for s in stems if s not in passed]
+        stems = [s for s in stems if s in passed]
+        if skipped:
+            console.print(f"[yellow]QA gate:[/] skipped {len(skipped)} clip(s) not passed in "
+                          f"overlay review [dim](--all-quality to include)[/]")
+
     if not stems:
-        console.print("[yellow]WARN:[/] no tracked measurements found. Run [dim]chaos track <stem>[/] first.")
+        console.print("[yellow]WARN:[/] no clips to render — need an overlay-review "
+                      "[dim]'pass'[/] (run vr), or use [dim]--all-quality[/].")
         sys.exit(0)
 
     suite = STATIC_SUITE + (VIDEO_SUITE if args.video else [])

@@ -76,9 +76,15 @@ _trapz = getattr(np, "trapezoid", getattr(np, "trapz"))
 sys.path.insert(0, os.path.normpath(os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "..", "utils")))
 from paths import (clip_dir, iter_clip_dirs,          # noqa: E402
-                   MEAS_WEEK5, MEAS_WEEK6)
+                   EXPERIMENTS_ROOT, PHASE_WEEK5, PHASE_WEEK6)
 from figures_paths import figure_path, aggregate_path  # noqa: E402
 from driven_helpers import parse_stem                  # noqa: E402
+
+# week5/week6 are separate phases since the split; paths.py no longer
+# exports MEAS_WEEK5/6, so reconstruct each phase's measurements dir here
+# to keep _bucket_of's calibration-safety check working.
+MEAS_WEEK5 = os.path.join(EXPERIMENTS_ROOT, PHASE_WEEK5, "measurements")
+MEAS_WEEK6 = os.path.join(EXPERIMENTS_ROOT, PHASE_WEEK6, "measurements")
 
 
 ARMS = ("upper", "lower_abs", "lower_rel")
