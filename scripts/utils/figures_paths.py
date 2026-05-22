@@ -30,7 +30,11 @@ import os
 from paths import PHASE_ROOT  # noqa: E402
 
 FIGURES_DIR = os.path.join(PHASE_ROOT, "figures")
+ANIMATIONS_DIR = os.path.join(PHASE_ROOT, "animations")
 AGGREGATE   = os.path.join(FIGURES_DIR, "aggregate")
+
+# Animated outputs live under animations/, keeping figures/ static-only.
+VIDEO_OUTPUT_TYPES = {"combined", "phase_animation", "phase_3d_rotation"}
 
 
 # Canonical figure type names.  Keep the set deliberately small — adding
@@ -68,7 +72,8 @@ def figure_path(figure_type, stem, ext="png"):
         # Don't hard-fail — just warn and proceed. New scripts can add
         # new types without touching this module first.
         pass
-    out_dir = os.path.join(FIGURES_DIR, figure_type)
+    base = ANIMATIONS_DIR if figure_type in VIDEO_OUTPUT_TYPES else FIGURES_DIR
+    out_dir = os.path.join(base, figure_type)
     os.makedirs(out_dir, exist_ok=True)
     return os.path.join(out_dir, f"{stem}_{figure_type}.{ext}")
 

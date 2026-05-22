@@ -75,6 +75,8 @@ def parse_args():
                         "Resolves CSV and output dir from measurements/.")
     p.add_argument("--save", action="store_true",
                    help="Save outputs to disk instead of plt.show().")
+    p.add_argument("--static", action="store_true",
+                   help="Skip the rotation animation — write the static png only.")
     return p.parse_args()
 
 def resolve_paths(args):
@@ -303,10 +305,10 @@ def main():
     fig, ax, lc, norm, cmap = plot_3d(t, th1, th2, om1, stem, png_path,
                                       output_dir)
 
-    if force_save:
-        make_rotation_animation(fig, ax, mp4_path, output_dir)
-    else:
+    if not force_save:
         plt.show()
+    elif not args.static:
+        make_rotation_animation(fig, ax, mp4_path, output_dir)
 
 if __name__ == "__main__":
     main()

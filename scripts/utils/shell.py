@@ -568,8 +568,8 @@ def _fig_exists(ftype, stem):
 def _vid_exists(vtype, stem):
     if vtype == "overlay":
         return os.path.isfile(_overlay_path(stem))
-    from paths import FIGURES_DIR
-    return os.path.isfile(os.path.join(FIGURES_DIR, vtype, f"{stem}_{vtype}.mp4"))
+    from paths import ANIMATIONS_DIR
+    return os.path.isfile(os.path.join(ANIMATIONS_DIR, vtype, f"{stem}_{vtype}.mp4"))
 
 def _inventory(tr, title, color, types, exists_fn):
     if not tr:
@@ -638,7 +638,7 @@ def do_fi(tr):
     while True:
         console.clear()
         _inventory(tr, "figures inventory", CLR_FIGURES, FIG_TYPES, _fig_exists)
-        console.print("  [bold]g[/] fill gaps   [bold]q[/] back")
+        console.print("  [bold]g[/] fill gaps   [bold]r[/] fill row   [bold]c[/] fill column   [bold]q[/] back")
         try: k = input("  ▸ ").strip().lower()
         except (EOFError, KeyboardInterrupt): break
         if not k or k.startswith("q"): break
@@ -648,16 +648,28 @@ def do_fi(tr):
             if scope == ["__multi__"]:
                 scope = _pick_multi(tr, label="Fill gaps — pick clips")
                 if not scope: continue
-            console.print(f"\n  [dim]filling figure gaps for {len(scope)} clip(s)…[/]")
+            console.print(f"\n  [dim]filling gaps for {len(scope)} clip(s)…[/]")
             _run(SCRIPT_BATCH_FIGS, "--stems", ",".join(scope))
-            _log_activity(f"filled figure gaps ({len(scope)})")
-            _pause()
+            _log_activity(f"fill gaps ({len(scope)})"); _pause()
+        elif k.startswith("r"):
+            s = pick_t(tr, "Fill row — pick measurement (all figure types)")
+            if not s: continue
+            console.print(f"\n  [dim]filling all figure types for {s}…[/]")
+            _run(SCRIPT_BATCH_FIGS, "--stem", s)
+            _log_activity(f"fill row {s}"); _pause()
+        elif k.startswith("c"):
+            ft = _pick_figtype("Fill column — pick figure type (all measurements)")
+            if not ft: continue
+            console.print(f"\n  [dim]filling {ft} across all clips…[/]")
+            _run(SCRIPT_BATCH_FIGS, "--types", ft)
+            _log_activity(f"fill column {ft}"); _pause()
 
 # Videos
 VIDEO_TYPES = [
-    ("overlay",         "overlay", "ring overlay"),
-    ("combined",        "comb",    "combined + plots"),
-    ("phase_animation", "anim",    "phase animation"),
+    ("overlay",          "overlay", "ring overlay"),
+    ("combined",         "comb",    "combined + plots"),
+    ("phase_animation",  "anim",    "phase animation"),
+    ("phase_3d_rotation","3d-rot",  "3D rotation"),
 ]
 
 def do_vi(tr):

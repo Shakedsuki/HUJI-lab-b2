@@ -64,6 +64,7 @@ PHASE_ROOT = os.path.join(EXPERIMENTS_ROOT, PHASE)
 DATA_DIR    = os.path.join(PHASE_ROOT, "data")
 MEAS_DIR    = os.path.join(PHASE_ROOT, "measurements")
 FIGURES_DIR = os.path.join(PHASE_ROOT, "figures")
+ANIMATIONS_DIR = os.path.join(PHASE_ROOT, "animations")
 EXPERIMENTS = os.path.join(DATA_DIR, "experiments.json")
 
 # Driven phase stores videos directly under <phase>/videos/.

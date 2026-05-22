@@ -45,7 +45,7 @@ console = Console()
 STATIC_SUITE = [
     ("phase_panels",      "png", False, "phase_panels.py",   ["--save"]),
     ("poincare",          "png", True,  "poincare.py",       []),
-    ("phase_3d_trajectory","png",False, "phase_3d.py",       []),
+    ("phase_3d_trajectory","png",False, "phase_3d.py",       ["--static"]),
     ("chaos_analyze",     "png", True,  "chaos_analyze.py",  []),
     ("lyapunov",          "png", True,  "lyapunov.py",       []),
 ]
@@ -53,6 +53,7 @@ STATIC_SUITE = [
 VIDEO_SUITE = [
     ("phase_animation",   "mp4", False, "phase_animation.py", []),
     ("combined",          "mp4", False, "combined_video.py",   []),
+    ("phase_3d_rotation", "mp4", False, "phase_3d.py",         []),
 ]
 
 
