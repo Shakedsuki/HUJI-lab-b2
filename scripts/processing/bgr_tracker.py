@@ -85,6 +85,7 @@ from thresholds import (  # noqa: E402
     GREEN_BGR_HI,
     RED_BGR_RANGES,
     get_pivot_arm,
+    DROPOUT_FAIL_PCT,
 )
 
 SCALE_CM_PER_PX  = ARM_LENGTH_CM / ARM_LENGTH_PX
@@ -295,7 +296,8 @@ def resolve_inputs(args):
     if args.stem:
         key, entry = find_entry(reg, stem=args.stem)
         if entry is None:
-            print(f"ERROR: no registry entry with config_description '{args.stem}'")
+            from rich.console import Console as _C
+            _C().print(f"[red]ERROR:[/] no registry entry with config_description '{args.stem}'")
             sys.exit(2)
         video_file = entry.get("video_file") or f"{args.stem}.mov"
         video_path = os.path.join(VIDEOS_DIR, video_file)
@@ -306,20 +308,23 @@ def resolve_inputs(args):
         if not os.path.isabs(video_path):
             video_path = os.path.join(REPO_ROOT, video_path)
         if not os.path.exists(video_path):
-            print(f"ERROR: video not found: {video_path}")
+            from rich.console import Console as _C
+            _C().print(f"[red]ERROR:[/] video not found: {video_path}")
             sys.exit(2)
         video_filename = os.path.basename(video_path)
         key, entry = find_entry(reg, video_filename=video_filename)
         if entry is None:
             stem = os.path.splitext(video_filename)[0]
-            print(f"WARN: video '{video_filename}' has no registry entry; "
-                  f"will create one keyed '{stem}'.")
+            from rich.console import Console as _C
+            _C().print(f"[yellow]WARN:[/] video '{video_filename}' has no registry entry; "
+                       f"will create one keyed '{stem}'.")
             key = stem
             entry = {}
         stem = entry.get("config_description") or os.path.splitext(video_filename)[0]
         return video_path, stem, key, entry, reg
 
-    print("ERROR: provide --stem or a positional video path.")
+    from rich.console import Console as _C
+    _C().print("[red]ERROR:[/] provide --stem or a positional video path.")
     sys.exit(2)
 
 
@@ -402,30 +407,34 @@ def main():
     os.makedirs(out_dir, exist_ok=True)
     out_csv = os.path.join(out_dir, "tracking.csv")
 
-    if os.path.exists(out_csv) and not args.force:
-        print(f"ERROR: {out_csv} exists. Pass --force to overwrite.")
-        return 1
+    from rich.console import Console
+    from rich.table import Table
+    console = Console()
 
-    print()
-    print("=" * 70)
-    print(f"bgr_tracker  stem={stem}")
-    print(f"  video : {os.path.relpath(video_path, REPO_ROOT)}")
-    print(f"  out   : {os.path.relpath(out_csv, REPO_ROOT)}")
-    print(f"  pivot : {pivot}  (orig coords)")
-    print(f"  arm_L : {arm_length_px}px / {ARM_LENGTH_CM}cm")
-    print(f"  bbox  : 4·arm = {4*arm_length_px}px square around pivot")
-    print("=" * 70)
+    if os.path.exists(out_csv) and not args.force:
+        console.print(f"[red]ERROR:[/] {os.path.relpath(out_csv, REPO_ROOT)} exists. Pass --force to overwrite.")
+        return 1
 
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
-        print(f"ERROR: cannot open {video_path}")
+        console.print(f"[red]ERROR:[/] cannot open {video_path}")
         return 2
 
     fps = cap.get(cv2.CAP_PROP_FPS) or FPS_DEFAULT
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     dt = 1.0 / fps
-    print(f"  fps={fps:.3f}  frames={total_frames}  dt={dt:.5f}s")
-    print()
+
+    t = Table(box=None, show_header=False, padding=(0, 1), expand=False)
+    t.add_column(style="dim", min_width=10)
+    t.add_column(style="white")
+    t.add_row("stem",    stem)
+    t.add_row("video",   f"[dim]{os.path.relpath(video_path, REPO_ROOT)}[/]")
+    t.add_row("out",     f"[dim]{os.path.relpath(out_csv, REPO_ROOT)}[/]")
+    t.add_row("pivot",   str(pivot))
+    t.add_row("arm_L",   f"{arm_length_px}px / {ARM_LENGTH_CM}cm")
+    t.add_row("bbox",    f"4·arm = {4*arm_length_px}px square around pivot")
+    t.add_row("fps",     f"{fps:.3f}   frames={total_frames}   dt={dt:.5f}s")
+    console.print(t)
 
     times     = []
     xg_raw    = []
@@ -452,7 +461,7 @@ def main():
 
     n_total = len(times)
     if n_total == 0:
-        print("ERROR: no frames read from video.")
+        console.print("[red]ERROR:[/] no frames read from video.")
         return 2
 
     # ── Post-loop position smoothing ──────────────────────────────────
@@ -541,7 +550,7 @@ def main():
     # from that frame to the next clean one.
     r0 = next((r for r in rows if r["dropout"] == 0), None)
     if r0 is None:
-        print("ERROR: every frame is a dropout — refusing to update registry.")
+        console.print("[red]ERROR:[/] every frame is a dropout — refusing to update registry.")
         return 3
     th1_rel = float(r0["theta1_deg"])
     th2_rel = float(r0["theta2_deg"])
@@ -567,9 +576,14 @@ def main():
     )
     save_registry(reg)
 
-    print()
-    print(f"Wrote {n_total} rows  dropout={n_drop} ({dropout_pct:.2f}%)")
-    print(f"Registry updated: {os.path.relpath(EXPERIMENTS, REPO_ROOT)}  (tracker=bgr)")
+    from render import _make_dropout_bar
+    drop_color = "green" if dropout_pct <= DROPOUT_FAIL_PCT else "red"
+    bar = _make_dropout_bar(dropout_pct)
+    console.print(
+        f"  [{drop_color}]{n_total} rows[/]  "
+        f"dropout [{drop_color}]{dropout_pct:.2f}%[/] ({n_drop} frames)  {bar}"
+    )
+    console.print(f"  [dim]registry → {os.path.relpath(EXPERIMENTS, REPO_ROOT)}[/]")
     return 0
 
 

@@ -48,6 +48,12 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
+from rich.console import Console
+from rich.table import Table
+import rich.box
+
+console = Console()
+
 sys.path.insert(0, os.path.normpath(os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "..", "utils")))
 from paths import MEAS_DIR, EXPERIMENTS, clip_dir  # noqa: E402
@@ -150,17 +156,22 @@ def main():
         raise SystemExit(f"verification.csv not found at {csv_path}")
 
     f_drive, src = resolve_f_drive(stem, args.f_drive)
-    print(f"Stem: {stem}")
-    print(f"f_drive = {f_drive:.4f} Hz   (source: {src})")
-    print(f"T = {1/f_drive:.4f} s")
+
+    t_info = Table(box=rich.box.SIMPLE_HEAD, show_header=False)
+    t_info.add_column(style="dim", min_width=20)
+    t_info.add_column(style="white", justify="right")
+    t_info.add_row("stem",    f"[cyan]{stem}[/]")
+    t_info.add_row("f_drive", f"{f_drive:.4f} Hz  [dim](source: {src})[/]")
+    t_info.add_row("T",       f"{1/f_drive:.4f} s")
 
     t, th1, _, om1, _ = load_driven_csv(csv_path)
-    print(f"Loaded {len(t)} free_swing rows; t in [0, {t[-1]:.2f}] s")
+    t_info.add_row("rows loaded", f"{len(t)}  [dim]t ∈ [0, {t[-1]:.2f}] s[/]")
 
     t_s, th1_s, om1_s = strobe_sample(t, th1, om1, f_drive,
                                       transient_s=args.transient)
-    print(f"Stroboscopic samples: {len(t_s)} "
-          f"(skipping first {args.transient:.1f} s)")
+    t_info.add_row("strobe samples",
+                   f"{len(t_s)}  [dim](skipping first {args.transient:.1f} s)[/]")
+    console.print(t_info)
 
     if not args.no_csv:
         out_csv = os.path.join(clip_dir(stem), "driven_poincare.csv")
@@ -169,14 +180,14 @@ def main():
             w.writerow(["t_s", "theta1_deg", "omega1_deg_s"])
             for tc, th, om in zip(t_s, th1_s, om1_s):
                 w.writerow([f"{tc:.4f}", f"{th:.4f}", f"{om:.4f}"])
-        print(f"Wrote {out_csv}")
+        console.print(f"  [dim]Saved → {out_csv}[/]")
 
     out_dir = os.path.join(FIGURES_DIR, "driven_poincare")
     os.makedirs(out_dir, exist_ok=True)
     out_png = os.path.join(out_dir, f"{stem}_driven_poincare.png")
     make_figure(t, th1, om1, t_s, th1_s, om1_s,
                 stem, f_drive, args.transient, out_png)
-    print(f"Wrote {out_png}")
+    console.print(f"  [dim]Saved → {out_png}[/]")
 
 
 if __name__ == "__main__":

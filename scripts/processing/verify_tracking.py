@@ -45,6 +45,10 @@ sys.path.insert(0, os.path.normpath(
     os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "utils")))
 from paths import MEAS_DIR, clip_dir  # noqa: E402
 
+from rich.console import Console  # noqa: E402
+from rich.table import Table  # noqa: E402
+
+console = Console()
 
 SG_WINDOW = 7
 SG_POLY   = 3
@@ -74,8 +78,8 @@ def resolve_paths(args):
         meas_dir = clip_dir(args.stem)
         csv_path = os.path.join(meas_dir, "tracking.csv")
         if not os.path.exists(csv_path):
-            print(f"ERROR: tracking.csv not found for stem '{args.stem}'")
-            print(f"  Expected: {csv_path}")
+            console.print(f"[red]ERROR:[/] tracking.csv not found for stem '{args.stem}'")
+            console.print(f"  [dim]Expected: {csv_path}[/]")
             sys.exit(1)
         return csv_path, meas_dir, args.stem
     if args.csv:
@@ -85,7 +89,7 @@ def resolve_paths(args):
         output_dir = os.path.dirname(csv_path)
         stem_label = os.path.basename(output_dir)
         return csv_path, output_dir, stem_label
-    print("ERROR: provide --stem or a positional CSV path.")
+    console.print("[red]ERROR:[/] provide --stem or a positional CSV path.")
     sys.exit(1)
 
 
@@ -114,16 +118,19 @@ def main():
     args = parse_args()
     csv_path, output_dir, stem = resolve_paths(args)
 
-    print(f"verify_tracking.py")
-    print(f"  CSV    : {csv_path}")
-    print(f"  Folder : {output_dir}")
+    t_hdr = Table(box=None, show_header=False, padding=(0, 1), expand=False)
+    t_hdr.add_column(style="dim", min_width=12)
+    t_hdr.add_column(style="white")
+    t_hdr.add_row("CSV",    f"[dim]{csv_path}[/]")
+    t_hdr.add_row("Folder", f"[dim]{output_dir}[/]")
+    console.print(t_hdr)
 
     with open(csv_path, "r") as f:
         rows = list(csv.DictReader(f))
 
     n = len(rows)
     if n == 0:
-        print("ERROR: empty tracking.csv")
+        console.print("[red]ERROR:[/] empty tracking.csv")
         return 1
 
     def to_float_or_nan(x):
@@ -136,16 +143,21 @@ def main():
 
     diffs = np.diff(times)
     dt = float(np.median(diffs[diffs > 0])) if np.any(diffs > 0) else 1.0 / 60.0
-    print(f"  median dt: {dt * 1000:.2f} ms  ({1.0 / dt:.2f} fps)")
 
     om1 = smooth_omega(th1, dt)
     om2 = smooth_omega(th2, dt)
 
     n_drop = int(np.sum(drops == 1))
     drop_pct = 100.0 * n_drop / n
-    print()
-    print(f"  total frames : {n}")
-    print(f"  dropouts     : {n_drop} ({drop_pct:.2f}%)")
+    drop_color = "green" if drop_pct <= 5.0 else "red"
+
+    t_tot = Table(box=None, show_header=False, padding=(0, 1), expand=False)
+    t_tot.add_column(style="dim", min_width=16)
+    t_tot.add_column(style="white", justify="right")
+    t_tot.add_row("median dt",     f"{dt * 1000:.2f} ms  ({1.0 / dt:.2f} fps)")
+    t_tot.add_row("total frames",  str(n))
+    t_tot.add_row("dropouts",      f"[{drop_color}]{n_drop} ({drop_pct:.2f}%)[/]")
+    console.print(t_tot)
 
     # ── Write verification.csv ──────────────────────────────────────
     if not args.no_csv_out:
@@ -164,7 +176,7 @@ def main():
                 out["omega2_deg_s"] = (
                     f"{om2[i]:.2f}" if not np.isnan(om2[i]) else "")
                 w.writerow(out)
-        print(f"\nWrote: {out_csv}")
+        console.print(f"  [green]✓[/] wrote [dim]{out_csv}[/]")
 
     # ── Optional matplotlib plot ────────────────────────────────────
     if not args.no_plot:
@@ -173,7 +185,7 @@ def main():
             matplotlib.use("Agg")
             import matplotlib.pyplot as plt
         except ImportError:
-            print("matplotlib not available — skipping plot")
+            console.print("[dim]matplotlib not available — skipping plot[/]")
             return 0
         fig, axes = plt.subplots(2, 1, figsize=(13, 7), sharex=True)
         axes[0].plot(times, th1, lw=0.6, label="θ1")
@@ -191,7 +203,7 @@ def main():
         out_png = os.path.join(output_dir, "verification.png")
         plt.savefig(out_png, dpi=150)
         plt.close(fig)
-        print(f"Wrote: {out_png}")
+        console.print(f"  [green]✓[/] wrote [dim]{out_png}[/]")
 
     return 0
 

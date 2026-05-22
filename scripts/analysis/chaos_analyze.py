@@ -496,22 +496,27 @@ def parse_args():
     return p.parse_args()
 
 def main():
+    from rich.console import Console as _Console
+    _con = _Console()
+
     args     = parse_args()
     stem     = args.stem
     csv_path = os.path.join(clip_dir(stem), "verification.csv")
 
     if not os.path.exists(csv_path):
-        print(f"ERROR: {csv_path} not found")
+        _con.print(f"[red]ERROR:[/] {csv_path} not found")
         return 1
 
     try:
         data = load_free_swing(csv_path)
     except ValueError as e:
-        print(f"ERROR: {e}")
+        _con.print(f"[red]ERROR:[/] {e}")
         return 1
 
-    print(f"  {stem}: {data['n_frames']} free_swing frames, "
-          f"duration {data['time_s'][-1] - data['time_s'][0]:.1f} s")
+    _con.print(
+        f"[cyan]{stem}[/]  [dim]{data['n_frames']} free-swing frames, "
+        f"duration {data['time_s'][-1] - data['time_s'][0]:.1f} s[/]"
+    )
 
     topo            = compute_topological(data)
     stat            = compute_statistical(topo, n_c=args.n_c)
@@ -522,7 +527,7 @@ def main():
     if not args.no_plot:
         out_png = figure_path("chaos_analyze", stem)
         make_plot(stem, topo, stat, out_png)
-        print(f"  Plot: {out_png}")
+        _con.print(f"[dim]plot → {out_png}[/]")
 
     return 0
 

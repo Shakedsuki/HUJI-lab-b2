@@ -32,6 +32,10 @@ ROOT     = os.path.normpath(os.path.join(_THIS_DIR, "..", ".."))
 ANALYSIS = os.path.join(ROOT, "scripts", "analysis")
 PYTHON   = sys.executable
 
+from rich.console import Console  # noqa: E402
+from rich.rule import Rule        # noqa: E402
+console = Console()
+
 
 # ─────────────────────────────────────────────
 # Figure suite definition
@@ -80,20 +84,19 @@ def run_suite(stems, suite, force, label):
     done = skipped = failed = 0
 
     for stem in stems:
-        print(f"\n{'─'*60}")
-        print(f"  {stem}")
-        print(f"{'─'*60}")
+        console.print()
+        console.print(Rule(f"[bold]{stem}[/]", style="dim"))
 
         for fig_type, ext, needs_verif, script, extra in suite:
             out_path = figure_path(fig_type, stem, ext)
 
             if not force and os.path.exists(out_path):
-                print(f"  [skip] {fig_type}  (exists)")
+                console.print(f"  [dim]{fig_type:<20}[/] [yellow]skip[/]  [dim](exists)[/]")
                 skipped += 1
                 continue
 
             if needs_verif and not has_verification(stem):
-                print(f"  [skip] {fig_type}  (no verification.csv — run chaos verify first)")
+                console.print(f"  [dim]{fig_type:<20}[/] [yellow]skip[/]  [dim](no verification.csv — run chaos verify first)[/]")
                 skipped += 1
                 continue
 
@@ -105,24 +108,21 @@ def run_suite(stems, suite, force, label):
             else:
                 cmd = [PYTHON, script_path, "--stem", stem] + extra
 
-            print(f"  [ run] {fig_type} ...", end="", flush=True)
             result = subprocess.run(cmd, capture_output=True, text=True,
                                         encoding="utf-8", errors="replace")
             if result.returncode == 0:
-                print(f"  OK  → {os.path.relpath(out_path, ROOT)}")
+                relpath = os.path.relpath(out_path, ROOT)
+                console.print(f"  [dim]{fig_type:<20}[/] [green]OK[/]   [dim]{relpath}[/]")
                 done += 1
             else:
-                print(f"  FAIL")
-                # Print stderr indented for readability
+                console.print(f"  [dim]{fig_type:<20}[/] [red]FAIL[/]")
                 for line in (result.stderr or result.stdout or "").splitlines()[-8:]:
-                    print(f"       {line}")
+                    console.print(f"  [dim]  {line}[/]")
                 failed += 1
 
-    from rich.console import Console as _Con
-    _c = _Con()
-    _c.print()
+    console.print()
     style = "green" if failed == 0 else "red"
-    _c.print(f"  [{style} bold]{done}[/] rendered  [dim]{skipped} skipped  {failed} failed[/]")
+    console.print(f"  [{style} bold]{done}[/] rendered  [dim]{skipped} skipped  {failed} failed[/]")
     return failed
 
 
@@ -147,13 +147,15 @@ def main():
         stems = load_tracked_stems()
 
     if not stems:
-        print("No tracked measurements found. Run 'chaos track <stem>' first.")
+        console.print("[yellow]WARN:[/] no tracked measurements found. Run [dim]chaos track <stem>[/] first.")
         sys.exit(0)
 
     suite = STATIC_SUITE + (VIDEO_SUITE if args.video else [])
 
-    print(f"Batch figures — {len(stems)} clip(s), {len(suite)} figure type(s)")
-    print(f"Force re-render: {args.force}")
+    console.print(
+        f"[cyan]Batch figures[/]  [dim]{len(stems)} clip(s), {len(suite)} figure type(s)"
+        + ("  force" if args.force else "") + "[/]"
+    )
 
     failures = run_suite(stems, suite, args.force, "total")
     sys.exit(1 if failures else 0)
