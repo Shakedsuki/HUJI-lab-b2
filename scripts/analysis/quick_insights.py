@@ -399,11 +399,37 @@ def plot_resonance(d):
           f"[f₀≈{f0:.3f}Hz, Q≈{qtxt}]")
 
 
+def plot_rotations(d):
+    """Accumulated angle (revolutions) vs time, per arm — the rotations
+    trace. Net winding + loop count printed below. Reuses rotations.py
+    (θ₂ is already absolute; rel = θ₂−θ₁)."""
+    import plotext as plt
+    from rotations import winding_metrics
+    t = d["t"]
+    s = _sub(d)
+    arms = (("θ₁ upper",  d["th1"],            "blue"),
+            ("θ₂ lower",  d["th2"],            "red"),
+            ("θ₂−θ₁ rel", d["th2"] - d["th1"], "green"))
+    _setup(plt, "accumulated angle (revolutions) vs t")
+    summary = []
+    for label, sig, color in arms:
+        m = winding_metrics(sig)
+        plt.plot(t[::s], (m["trace"] / 360.0)[::s], color=color, label=label)
+        summary.append(f"{label}:  net {m['net_turns']:+.2f} rev   "
+                       f"loops {m['total_turns']:.0f}")
+    plt.xlabel("t (s)")
+    plt.ylabel("accum. angle (rev)")
+    plt.show()
+    for line in summary:
+        print("    " + line)
+
+
 PLOTS = {
     "both":     ("green",   "\u03b8\u2081(t) + \u03b8\u2082(t) overlay",         plot_both),
     "omega":    ("green",   "\u03c9\u2081(t) + \u03c9\u2082(t)",                  plot_omega),
     "tip":      ("green",   "\u03b8\u2082_abs(t) = \u03b8\u2081+\u03b8\u2082",    plot_tip),
     "energy":   ("green",   "E(t) = KE + PE",                                      plot_energy),
+    "rot":      ("green",   "accumulated angle / loops per arm",  plot_rotations),
     "phase1":   ("yellow",  "\u03b8\u2081 vs \u03c9\u2081 phase portrait",        plot_phase1),
     "phase2":   ("yellow",  "\u03b8\u2082 vs \u03c9\u2082 phase portrait",        plot_phase2),
     "config":   ("yellow",  "\u03b8\u2081 vs \u03b8\u2082 configuration",         plot_config),
@@ -431,7 +457,7 @@ def _print_menu(con):
     from rich.text import Text
 
     cats = [
-        ("green",   "time series", ["both", "omega", "tip", "energy"]),
+        ("green",   "time series", ["both", "omega", "tip", "energy", "rot"]),
         ("yellow",  "phase space", ["phase1", "phase2", "config", "full", "seis1", "seis2"]),
         ("blue",    "physical",    ["xy", "trace"]),
         ("red",     "chaos",       ["spectrum", "return"]),
