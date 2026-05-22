@@ -1,0 +1,49 @@
+{
+  "n_frames_clean": 5532,
+  "duration_s": 92.27552,
+  "has_omega": true,
+  "dt_med": 0.016680000000000916,
+  "fps_med": 59.95203836930126,
+  "n_gaps": 0,
+  "max_gap_s": 0.016690000000011196,
+  "arms": {
+    "upper": {
+      "net_turns": -0.02395277777777778,
+      "net_angle_deg": -8.623000000000001,
+      "total_turns": 0.0,
+      "turns_pos": 0.0,
+      "turns_neg": 0.0,
+      "peak_abs_angle_deg": 84.906,
+      "path_turns": 72.06934722222222,
+      "omega_net_turns": -0.023858990694435277,
+      "cross_check_diff_turns": 9.378708334250446e-05,
+      "suspect": false
+    },
+    "lower_abs": {
+      "net_turns": 7.457897222222222,
+      "net_angle_deg": 2684.843,
+      "total_turns": 64.0,
+      "turns_pos": 36.0,
+      "turns_neg": 28.0,
+      "peak_abs_angle_deg": 4513.539000000001,
+      "path_turns": 134.99794722222225,
+      "omega_net_turns": 7.4598087899999745,
+      "cross_check_diff_turns": 0.0019115677777525875,
+      "suspect": false
+    },
+    "lower_rel": {
+      "net_turns": 7.481849999999999,
+      "net_angle_deg": 2693.4659999999994,
+      "total_turns": 64.0,
+      "turns_pos": 36.0,
+      "turns_neg": 28.0,
+      "peak_abs_angle_deg": 4480.2300000000005,
+      "path_turns": 123.94266666666671,
+      "omega_net_turns": 7.483667780694409,
+      "cross_check_diff_turns": 0.0018177806944104091,
+      "suspect": false
+    }
+  },
+  "stem": "3.2V_1.20Hz",
+  "source": "verification.csv"
+}
