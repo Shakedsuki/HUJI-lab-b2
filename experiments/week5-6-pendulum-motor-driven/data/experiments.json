@@ -24,7 +24,7 @@
     "omega1_initial": -1.259,
     "omega2_initial": 0.4796,
     "n_frames": 2307,
-    "verification_notes": "dropout 0.00% \u2264 5%",
+    "verification_notes": "dropout 0.00% ≤ 5%",
     "verified_under_brief_version": 14,
     "verification_date": "2026-05-22"
   },
@@ -53,7 +53,7 @@
     "omega1_initial": 0.0,
     "omega2_initial": 0.0,
     "n_frames": 2283,
-    "verification_notes": "dropout 0.00% \u2264 5%",
+    "verification_notes": "dropout 0.00% ≤ 5%",
     "verified_under_brief_version": 14,
     "verification_date": "2026-05-22"
   },
@@ -82,7 +82,7 @@
     "omega1_initial": 0.0,
     "omega2_initial": 0.0,
     "n_frames": 2157,
-    "verification_notes": "dropout 0.00% \u2264 5%",
+    "verification_notes": "dropout 0.00% ≤ 5%",
     "verified_under_brief_version": 14,
     "verification_date": "2026-05-22"
   },
@@ -112,7 +112,7 @@
     "omega2_initial": 0.0,
     "n_frames": 2073,
     "verification_date": "2026-05-22",
-    "verification_notes": "dropout 0.00% \u2264 5%",
+    "verification_notes": "dropout 0.00% ≤ 5%",
     "verified_under_brief_version": 14
   },
   "2.6V_1Hz": {
@@ -141,7 +141,7 @@
     "omega2_initial": 0.0,
     "n_frames": 2157,
     "verification_date": "2026-05-22",
-    "verification_notes": "dropout 0.00% \u2264 5%",
+    "verification_notes": "dropout 0.00% ≤ 5%",
     "verified_under_brief_version": 14
   },
   "2.8V_1Hz": {
@@ -196,7 +196,7 @@
     "omega2_initial": 0.0,
     "n_frames": 2565,
     "verification_date": "2026-05-22",
-    "verification_notes": "dropout 0.00% \u2264 5%",
+    "verification_notes": "dropout 0.00% ≤ 5%",
     "verified_under_brief_version": 14
   },
   "3.4V_1Hz": {
@@ -804,8 +804,10 @@
     "n_frames": 4164,
     "dropout_rate_pct": 0.0,
     "verification_date": "2026-05-22",
-    "verification_notes": "dropout 0.00% \u2264 5%",
-    "verified_under_brief_version": 14
+    "verification_notes": "dropout 0.00% ≤ 5%",
+    "verified_under_brief_version": 14,
+    "overlay_verdict": "fail",
+    "overlay_verdict_note": "incorrect tracking video and overlay"
   },
   "3.2V_0.92Hz": {
     "video_file": "3.2V_0.92Hz.mov",
@@ -833,8 +835,10 @@
     "n_frames": 4041,
     "dropout_rate_pct": 0.0,
     "verification_date": "2026-05-22",
-    "verification_notes": "dropout 0.00% \u2264 5%",
-    "verified_under_brief_version": 14
+    "verification_notes": "dropout 0.00% ≤ 5%",
+    "verified_under_brief_version": 14,
+    "overlay_verdict": "fail",
+    "overlay_verdict_note": "incorrect tracking video"
   },
   "3.2V_0.93Hz": {
     "video_file": "3.2V_0.93Hz.mov",
@@ -862,8 +866,10 @@
     "n_frames": 3783,
     "dropout_rate_pct": 0.0,
     "verification_date": "2026-05-22",
-    "verification_notes": "dropout 0.00% \u2264 5%",
-    "verified_under_brief_version": 14
+    "verification_notes": "dropout 0.00% ≤ 5%",
+    "verified_under_brief_version": 14,
+    "overlay_verdict": "fail",
+    "overlay_verdict_note": "incorrect tracking video"
   },
   "3.2V_0.94Hz": {
     "video_file": "3.2V_0.94Hz.mov",
@@ -891,8 +897,10 @@
     "n_frames": 4338,
     "dropout_rate_pct": 0.0,
     "verification_date": "2026-05-22",
-    "verification_notes": "dropout 0.00% \u2264 5%",
-    "verified_under_brief_version": 14
+    "verification_notes": "dropout 0.00% ≤ 5%",
+    "verified_under_brief_version": 14,
+    "overlay_verdict": "fail",
+    "overlay_verdict_note": "incorrect tracking video"
   },
   "3.2V_0.95Hz": {
     "video_file": "3.2V_0.95Hz.mov",
@@ -920,8 +928,10 @@
     "n_frames": 4395,
     "dropout_rate_pct": 0.0,
     "verification_date": "2026-05-22",
-    "verification_notes": "dropout 0.00% \u2264 5%",
-    "verified_under_brief_version": 14
+    "verification_notes": "dropout 0.00% ≤ 5%",
+    "verified_under_brief_version": 14,
+    "overlay_verdict": "fail",
+    "overlay_verdict_note": "incorrect tracking video"
   },
   "3.2V_0.96Hz": {
     "video_file": "3.2V_0.96Hz.mov",
@@ -949,8 +959,10 @@
     "n_frames": 3936,
     "dropout_rate_pct": 0.0,
     "verification_date": "2026-05-22",
-    "verification_notes": "dropout 0.00% \u2264 5%",
-    "verified_under_brief_version": 14
+    "verification_notes": "dropout 0.00% ≤ 5%",
+    "verified_under_brief_version": 14,
+    "overlay_verdict": "fail",
+    "overlay_verdict_note": "incorrect tracking video"
   },
   "3.2V_0.97Hz": {
     "video_file": "3.2V_0.97Hz.mov",
@@ -978,8 +990,10 @@
     "n_frames": 5388,
     "dropout_rate_pct": 0.0,
     "verification_date": "2026-05-22",
-    "verification_notes": "dropout 0.00% \u2264 5%",
-    "verified_under_brief_version": 14
+    "verification_notes": "dropout 0.00% ≤ 5%",
+    "verified_under_brief_version": 14,
+    "overlay_verdict": "fail",
+    "overlay_verdict_note": "incorrect tracking video"
   },
   "3.2V_0.98Hz": {
     "video_file": "3.2V_0.98Hz.mov",
@@ -1007,8 +1021,10 @@
     "n_frames": 3966,
     "dropout_rate_pct": 0.0,
     "verification_date": "2026-05-22",
-    "verification_notes": "dropout 0.00% \u2264 5%",
-    "verified_under_brief_version": 14
+    "verification_notes": "dropout 0.00% ≤ 5%",
+    "verified_under_brief_version": 14,
+    "overlay_verdict": "fail",
+    "overlay_verdict_note": "incorrect tracking video"
   },
   "3.2V_0.99Hz": {
     "video_file": "3.2V_0.99Hz.mov",
@@ -1036,8 +1052,10 @@
     "n_frames": 3846,
     "dropout_rate_pct": 0.0,
     "verification_date": "2026-05-22",
-    "verification_notes": "dropout 0.00% \u2264 5%",
-    "verified_under_brief_version": 14
+    "verification_notes": "dropout 0.00% ≤ 5%",
+    "verified_under_brief_version": 14,
+    "overlay_verdict": "fail",
+    "overlay_verdict_note": "incorrect tracking video"
   },
   "3.2V_0.9Hz": {
     "video_file": "3.2V_0.9Hz.mov",
@@ -1065,7 +1083,8 @@
     "n_frames": 5460,
     "dropout_rate_pct": 0.0,
     "verification_date": "2026-05-21",
-    "verification_notes": "Visually verified end-to-end under the new tracker (bbox/porthole crop, sub-pixel float centroids, rigid-arm constraint projection, 5-frame median smoothing). Baseline for the video-by-video re-verification \u2014 tally restarted in this session."
+    "verification_notes": "Visually verified end-to-end under the new tracker (bbox/porthole crop, sub-pixel float centroids, rigid-arm constraint projection, 5-frame median smoothing). Baseline for the video-by-video re-verification — tally restarted in this session.",
+    "overlay_verdict": "pass"
   },
   "3.2V_1.00Hz": {
     "video_file": "3.2V_1.00Hz.mov",
@@ -1093,8 +1112,10 @@
     "n_frames": 4365,
     "dropout_rate_pct": 0.0,
     "verification_date": "2026-05-22",
-    "verification_notes": "dropout 0.00% \u2264 5%",
-    "verified_under_brief_version": 14
+    "verification_notes": "dropout 0.00% ≤ 5%",
+    "verified_under_brief_version": 14,
+    "overlay_verdict": "fail",
+    "overlay_verdict_note": "incorrect tracking video"
   },
   "3.2V_1.09Hz": {
     "video_file": "3.2V_1.09Hz.mov",
@@ -1122,8 +1143,10 @@
     "n_frames": 2796,
     "dropout_rate_pct": 0.0,
     "verification_date": "2026-05-22",
-    "verification_notes": "dropout 0.00% \u2264 5%",
-    "verified_under_brief_version": 14
+    "verification_notes": "dropout 0.00% ≤ 5%",
+    "verified_under_brief_version": 14,
+    "overlay_verdict": "fail",
+    "overlay_verdict_note": "incorrect tracking video"
   },
   "3.2V_1.15Hz": {
     "video_file": "3.2V_1.15Hz.mov",
@@ -1151,8 +1174,10 @@
     "n_frames": 5466,
     "dropout_rate_pct": 0.0,
     "verification_date": "2026-05-22",
-    "verification_notes": "dropout 0.00% \u2264 5%",
-    "verified_under_brief_version": 14
+    "verification_notes": "dropout 0.00% ≤ 5%",
+    "verified_under_brief_version": 14,
+    "overlay_verdict": "fail",
+    "overlay_verdict_note": "incorrect tracking video"
   },
   "3.2V_1.16Hz": {
     "video_file": "3.2V_1.16Hz.mov",
@@ -1180,8 +1205,9 @@
     "n_frames": 5973,
     "dropout_rate_pct": 0.0,
     "verification_date": "2026-05-22",
-    "verification_notes": "dropout 0.00% \u2264 5%",
-    "verified_under_brief_version": 14
+    "verification_notes": "dropout 0.00% ≤ 5%",
+    "verified_under_brief_version": 14,
+    "overlay_verdict": "pass"
   },
   "3.2V_1.17Hz": {
     "video_file": "3.2V_1.17Hz.mov",
@@ -1209,8 +1235,9 @@
     "n_frames": 6120,
     "dropout_rate_pct": 0.0,
     "verification_date": "2026-05-22",
-    "verification_notes": "dropout 0.00% \u2264 5%",
-    "verified_under_brief_version": 14
+    "verification_notes": "dropout 0.00% ≤ 5%",
+    "verified_under_brief_version": 14,
+    "overlay_verdict": "pass"
   },
   "3.2V_1.18Hz": {
     "video_file": "3.2V_1.18Hz.mov",
@@ -1238,8 +1265,9 @@
     "n_frames": 7584,
     "dropout_rate_pct": 0.0,
     "verification_date": "2026-05-22",
-    "verification_notes": "dropout 0.00% \u2264 5%",
-    "verified_under_brief_version": 14
+    "verification_notes": "dropout 0.00% ≤ 5%",
+    "verified_under_brief_version": 14,
+    "overlay_verdict": "pass"
   },
   "3.2V_1.19Hz": {
     "video_file": "3.2V_1.19Hz.mov",
@@ -1267,8 +1295,9 @@
     "n_frames": 7833,
     "dropout_rate_pct": 0.0,
     "verification_date": "2026-05-22",
-    "verification_notes": "dropout 0.00% \u2264 5%",
-    "verified_under_brief_version": 14
+    "verification_notes": "dropout 0.00% ≤ 5%",
+    "verified_under_brief_version": 14,
+    "overlay_verdict": "pass"
   },
   "3.2V_1.20Hz": {
     "video_file": "3.2V_1.20Hz.mov",
@@ -1296,8 +1325,9 @@
     "n_frames": 5532,
     "dropout_rate_pct": 0.0,
     "verification_date": "2026-05-22",
-    "verification_notes": "dropout 0.00% \u2264 5%",
-    "verified_under_brief_version": 14
+    "verification_notes": "dropout 0.00% ≤ 5%",
+    "verified_under_brief_version": 14,
+    "overlay_verdict": "pass"
   },
   "3.2V_1.21Hz": {
     "video_file": "3.2V_1.21Hz.mov",
@@ -1325,8 +1355,9 @@
     "n_frames": 6072,
     "dropout_rate_pct": 0.0,
     "verification_date": "2026-05-22",
-    "verification_notes": "dropout 0.00% \u2264 5%",
-    "verified_under_brief_version": 14
+    "verification_notes": "dropout 0.00% ≤ 5%",
+    "verified_under_brief_version": 14,
+    "overlay_verdict": "pass"
   },
   "3.2V_1.22Hz": {
     "video_file": "3.2V_1.22Hz.mov",
@@ -1354,7 +1385,7 @@
     "n_frames": 7023,
     "dropout_rate_pct": 0.0,
     "verification_date": "2026-05-22",
-    "verification_notes": "dropout 0.00% \u2264 5%",
+    "verification_notes": "dropout 0.00% ≤ 5%",
     "verified_under_brief_version": 14
   },
   "3.2V_1.23Hz": {
@@ -1383,7 +1414,7 @@
     "n_frames": 7230,
     "dropout_rate_pct": 0.0,
     "verification_date": "2026-05-22",
-    "verification_notes": "dropout 0.00% \u2264 5%",
+    "verification_notes": "dropout 0.00% ≤ 5%",
     "verified_under_brief_version": 14
   },
   "3.2V_1.24Hz": {
@@ -1412,7 +1443,7 @@
     "n_frames": 5181,
     "dropout_rate_pct": 0.0,
     "verification_date": "2026-05-22",
-    "verification_notes": "dropout 0.00% \u2264 5%",
+    "verification_notes": "dropout 0.00% ≤ 5%",
     "verified_under_brief_version": 14
   },
   "3.2V_1.25Hz": {
@@ -1441,8 +1472,9 @@
     "n_frames": 7413,
     "dropout_rate_pct": 0.0,
     "verification_date": "2026-05-22",
-    "verification_notes": "dropout 0.00% \u2264 5%",
-    "verified_under_brief_version": 14
+    "verification_notes": "dropout 0.00% ≤ 5%",
+    "verified_under_brief_version": 14,
+    "overlay_verdict": "pass"
   },
   "3.2V_1.26Hz": {
     "video_file": "3.2V_1.26Hz.mov",
@@ -1470,8 +1502,9 @@
     "n_frames": 7803,
     "dropout_rate_pct": 0.0,
     "verification_date": "2026-05-22",
-    "verification_notes": "dropout 0.00% \u2264 5%",
-    "verified_under_brief_version": 14
+    "verification_notes": "dropout 0.00% ≤ 5%",
+    "verified_under_brief_version": 14,
+    "overlay_verdict": "pass"
   },
   "3.2V_1.27Hz": {
     "video_file": "3.2V_1.27Hz.mov",
@@ -1499,8 +1532,9 @@
     "n_frames": 9042,
     "dropout_rate_pct": 0.0,
     "verification_date": "2026-05-22",
-    "verification_notes": "dropout 0.00% \u2264 5%",
-    "verified_under_brief_version": 14
+    "verification_notes": "dropout 0.00% ≤ 5%",
+    "verified_under_brief_version": 14,
+    "overlay_verdict": "pass"
   },
   "3.2V_1.28Hz": {
     "video_file": "3.2V_1.28Hz.mov",
@@ -1528,7 +1562,8 @@
     "n_frames": 7311,
     "dropout_rate_pct": 0.0,
     "verification_date": "2026-05-21",
-    "verification_notes": "Visually verified end-to-end under new tracker. Perfect tracking."
+    "verification_notes": "Visually verified end-to-end under new tracker. Perfect tracking.",
+    "overlay_verdict": "pass"
   },
   "3.2V_1.29Hz": {
     "video_file": "3.2V_1.29Hz.mov",
@@ -1556,7 +1591,8 @@
     "n_frames": 7632,
     "dropout_rate_pct": 0.0,
     "verification_date": "2026-05-21",
-    "verification_notes": "Visually verified end-to-end under new tracker. Perfect tracking."
+    "verification_notes": "Visually verified end-to-end under new tracker. Perfect tracking.",
+    "overlay_verdict": "pass"
   },
   "3.2V_1.30Hz": {
     "video_file": "3.2V_1.30Hz.mov",
@@ -1584,7 +1620,8 @@
     "n_frames": 6192,
     "dropout_rate_pct": 0.0,
     "verification_date": "2026-05-21",
-    "verification_notes": "Visually verified end-to-end under new tracker. Perfect tracking."
+    "verification_notes": "Visually verified end-to-end under new tracker. Perfect tracking.",
+    "overlay_verdict": "pass"
   },
   "3.2V_1.31Hz": {
     "video_file": "3.2V_1.31Hz.mov",
@@ -1612,7 +1649,8 @@
     "n_frames": 4089,
     "dropout_rate_pct": 0.0,
     "verification_date": "2026-05-21",
-    "verification_notes": "Visually verified end-to-end under new tracker. Perfect tracking."
+    "verification_notes": "Visually verified end-to-end under new tracker. Perfect tracking.",
+    "overlay_verdict": "pass"
   },
   "3.2V_1.32Hz": {
     "video_file": "3.2V_1.32Hz.mov",
@@ -1640,7 +1678,8 @@
     "n_frames": 5943,
     "dropout_rate_pct": 0.0,
     "verification_date": "2026-05-21",
-    "verification_notes": "Visually verified end-to-end under new tracker. Perfect tracking."
+    "verification_notes": "Visually verified end-to-end under new tracker. Perfect tracking.",
+    "overlay_verdict": "pass"
   },
   "3.2V_1.33Hz_1": {
     "video_file": "3.2V_1.33Hz_1.mov",
@@ -1668,7 +1707,8 @@
     "n_frames": 2550,
     "dropout_rate_pct": 0.0,
     "verification_date": "2026-05-21",
-    "verification_notes": "Visually verified end-to-end under new tracker. Perfect tracking."
+    "verification_notes": "Visually verified end-to-end under new tracker. Perfect tracking.",
+    "overlay_verdict": "pass"
   },
   "3.2V_1.33Hz_2": {
     "video_file": "3.2V_1.33Hz_2.mov",
@@ -1696,7 +1736,8 @@
     "n_frames": 3930,
     "dropout_rate_pct": 0.0,
     "verification_date": "2026-05-21",
-    "verification_notes": "Visually verified end-to-end under new tracker. Perfect tracking."
+    "verification_notes": "Visually verified end-to-end under new tracker. Perfect tracking.",
+    "overlay_verdict": "pass"
   },
   "3.2V_1.34Hz": {
     "video_file": "3.2V_1.34Hz.mov",
@@ -1724,6 +1765,7 @@
     "n_frames": 5790,
     "dropout_rate_pct": 0.0,
     "verification_date": "2026-05-21",
-    "verification_notes": "Visually verified end-to-end under new tracker. Flawless."
+    "verification_notes": "Visually verified end-to-end under new tracker. Flawless.",
+    "overlay_verdict": "pass"
   }
 }

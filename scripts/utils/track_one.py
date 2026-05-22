@@ -40,6 +40,12 @@ import os
 import subprocess
 import sys
 
+import rich.box
+from rich.console import Console
+from rich.panel import Panel
+from rich.rule import Rule
+from rich.table import Table
+
 try:
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 except (AttributeError, OSError):
@@ -47,6 +53,26 @@ except (AttributeError, OSError):
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT, clip_dir  # noqa: E402
+
+console = Console()
+
+
+def _rel(p):
+    try:
+        return os.path.relpath(p, REPO_ROOT)
+    except (ValueError, TypeError):
+        return p
+
+
+def _render_header(stem, video_path, key):
+    hdr = Table(box=None, show_header=False, padding=(0, 2))
+    hdr.add_column(style="dim", justify="right")
+    hdr.add_column(style="white")
+    hdr.add_row("stem", f"[bold]{stem}[/]")
+    hdr.add_row("video", f"[dim]{_rel(video_path)}[/]")
+    hdr.add_row("registry key", str(key))
+    console.print(Panel(hdr, title="[bold green]track[/]", border_style="green",
+                        box=rich.box.ROUNDED, padding=(0, 1), expand=False))
 
 LOG_FILE         = os.path.join(DATA_DIR, "track_one_log.txt")
 
@@ -96,12 +122,13 @@ def resolve_inputs(args):
     if args.stem:
         key, entry = find_entry_by_stem(reg, args.stem)
         if not entry:
-            print(f"ERROR: no registry entry has config_description "
-                  f"'{args.stem}' (and no key matches).")
+            console.print(f"  [red]✗[/] no registry entry has config_description "
+                          f"'{args.stem}' (and no key matches).")
             sys.exit(1)
         video_filename = entry.get("video_file")
         if not video_filename:
-            print(f"ERROR: registry entry for '{args.stem}' has no video_file.")
+            console.print(f"  [red]✗[/] registry entry for '{args.stem}' "
+                          f"has no video_file.")
             sys.exit(1)
         video_path = os.path.join(VIDEOS_DIR, video_filename)
         return video_path, args.stem, key, entry
@@ -111,18 +138,18 @@ def resolve_inputs(args):
         if not os.path.isabs(video_path):
             video_path = os.path.join(REPO_ROOT, video_path)
         if not os.path.exists(video_path):
-            print(f"ERROR: video not found: {video_path}")
+            console.print(f"  [red]✗[/] video not found: {video_path}")
             sys.exit(1)
         video_filename = os.path.basename(video_path)
         key, entry = find_entry_by_video(reg, video_filename)
         if not entry:
-            print(f"ERROR: video '{video_filename}' has no registry entry. "
-                  f"Add one to experiments.json first.")
+            console.print(f"  [red]✗[/] video '{video_filename}' has no registry "
+                          f"entry. Add one to experiments.json first.")
             sys.exit(1)
         stem = entry.get("config_description") or os.path.splitext(video_filename)[0]
         return video_path, stem, key, entry
 
-    print("ERROR: provide --stem or a positional video path.")
+    console.print("  [red]✗[/] provide --stem or a positional video path.")
     sys.exit(1)
 
 # ─────────────────────────────────────────────
@@ -242,17 +269,14 @@ def build_actionable_steps(stem, metrics_post, reasons, status,
 
 def run(cmd, *, label):
     """Wrap subprocess.run with a Rich label. Returns rc, elapsed_s."""
-    from rich.console import Console
-    from rich.rule import Rule
-    _con = Console()
-    _con.print()
-    _con.print(Rule(f"[bold]{label}[/]", style="dim"))
     import time
+    console.print()
+    console.print(Rule(f"[bold]{label}[/]", style="dim"))
     t0 = time.time()
     rc = subprocess.run(cmd, cwd=REPO_ROOT).returncode
     elapsed = time.time() - t0
     status = "[green]done[/]" if rc == 0 else f"[red]exit {rc}[/]"
-    _con.print(f"  {status} [dim]{elapsed:.0f}s[/]")
+    console.print(f"  {status} [dim]{elapsed:.0f}s[/]")
     return rc, elapsed
 
 def hsv_kind_for_video(video_filename):
@@ -337,9 +361,7 @@ def main():
     video_path, stem, key, entry = resolve_inputs(args)
     meas_dir = clip_dir(stem)
 
-    print(f"track_one: {stem}")
-    print(f"  video       : {video_path}")
-    print(f"  registry key: {key}")
+    _render_header(stem, video_path, key)
 
     import time
     t_total = time.time()

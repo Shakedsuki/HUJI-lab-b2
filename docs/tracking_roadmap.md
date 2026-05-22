@@ -1,6 +1,6 @@
 # Tracking Roadmap
 
-_Generated 2026-05-22 20:20._ Re-run with `chaos roadmap`.
+_Generated 2026-05-22 22:01._ Re-run with `chaos roadmap`.
 
 Lives at [`docs/tracking_roadmap.md`](tracking_roadmap.md). Every row reflects the current state of `data/experiments.json` plus the latest `data/bulk_tracking_log.json` and per-clip `measurements/<stem>/verification.csv`.
 

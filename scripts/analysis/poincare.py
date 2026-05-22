@@ -78,12 +78,13 @@ def resolve_io(args):
     return csv_path, out_dir, label
 
 def load_clean(csv_path):
-    """Load the free-swing rows. Returns (t, th1, th2, om1, om2) in
-    seconds and degrees / deg-per-sec, with NaN at gap rows."""
+    """Load the moving rows (free-swing or driven). Returns
+    (t, th1, th2, om1, om2) in seconds and degrees / deg-per-sec, with
+    NaN at gap rows."""
     rows = []
     with open(csv_path, newline="", encoding="utf-8") as f:
         for r in csv.DictReader(f):
-            if r.get("phase") != "free_swing":
+            if r.get("phase") not in ("free_swing", "driven"):
                 continue
             try:
                 rows.append((
@@ -97,7 +98,7 @@ def load_clean(csv_path):
                 # Drop gap / malformed rows.
                 continue
     if len(rows) < 50:
-        raise SystemExit(f"Too few free-swing rows ({len(rows)}) in {csv_path}.")
+        raise SystemExit(f"Too few analysis rows ({len(rows)}) in {csv_path}.")
     arr = np.array(rows, dtype=float)
     t   = arr[:, 0] - arr[0, 0]
     return t, arr[:, 1], arr[:, 2], arr[:, 3], arr[:, 4]
@@ -236,7 +237,7 @@ def main():
     console.print(f"[dim]reading {csv_path} ...[/]")
     t, th1, th2, om1, om2 = load_clean(csv_path)
     console.print(
-        f"[cyan]{label}[/]  [dim]{len(t)} free-swing rows, "
+        f"[cyan]{label}[/]  [dim]{len(t)} rows, "
         f"t_max = {t[-1]:.2f} s[/]"
     )
 

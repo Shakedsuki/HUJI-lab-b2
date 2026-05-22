@@ -197,7 +197,7 @@ def render_plots(stem, meta, diag, verdict, reasons, plot_width=80, plot_height=
     plt.theme("dark")
 
     plt.subplot(1, 1)
-    plt.axes_color("yellow")
+    plt.theme("dark")
     plt.ticks_color("yellow")
     plt.plot(ts, th1s, label="\u03b81", color="green")
     plt.plot(ts, th2s, label="\u03b82", color="orange")
@@ -206,7 +206,7 @@ def render_plots(stem, meta, diag, verdict, reasons, plot_width=80, plot_height=
     plt.ylabel("deg")
 
     plt.subplot(1, 2)
-    plt.axes_color("yellow")
+    plt.theme("dark")
     plt.ticks_color("yellow")
     plt.plot(ts, a1s, label="arm1", color="cyan")
     plt.plot(ts, a2s, label="arm2", color="magenta")
@@ -217,7 +217,7 @@ def render_plots(stem, meta, diag, verdict, reasons, plot_width=80, plot_height=
     plt.ylabel("%")
 
     plt.subplot(2, 1)
-    plt.axes_color("yellow")
+    plt.theme("dark")
     plt.ticks_color("yellow")
     plt.scatter(th1s, om1s, color="blue", marker="dot")
     plt.title("\u03b81 vs \u03c91")
@@ -225,7 +225,7 @@ def render_plots(stem, meta, diag, verdict, reasons, plot_width=80, plot_height=
     plt.ylabel("\u03c91 (\u00b0/s)")
 
     plt.subplot(2, 2)
-    plt.axes_color("yellow")
+    plt.theme("dark")
     plt.ticks_color("yellow")
     plt.plot(ts, es, color="orange")
     plt.hline(diag["energy_median"] * ENERGY_SPIKE_FACTOR, color="red")

@@ -27,6 +27,11 @@ import sys
 
 import cv2
 import numpy as np
+import rich.box
+from rich.console import Console
+from rich.panel import Panel
+from rich.progress import BarColumn, Progress, TextColumn, TimeElapsedColumn
+from rich.table import Table
 
 try:
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -44,7 +49,32 @@ from combined_video import (  # noqa: E402
     make_left_panel,
     resolve_paths,
 )
+from paths import REPO_ROOT  # noqa: E402
 from thresholds import get_pivot_arm  # noqa: E402
+
+console = Console()
+CLR_VIDEOS = "#38BDF8"  # matches the shell's videos accent
+
+
+def _rel(p):
+    try:
+        return os.path.relpath(p, REPO_ROOT)
+    except ValueError:
+        return p
+
+
+def _render_header(stem, csv_path, video_path, output_mp4, pivot, arm):
+    hdr = Table(box=None, show_header=False, padding=(0, 2))
+    hdr.add_column(style="dim", justify="right")
+    hdr.add_column(style="white")
+    hdr.add_row("stem", f"[bold]{stem}[/]")
+    hdr.add_row("pivot", f"({pivot[0]}, {pivot[1]})  [dim]arm[/] {arm} px")
+    hdr.add_row("video", f"[dim]{_rel(video_path)}[/]")
+    hdr.add_row("csv", f"[dim]{_rel(csv_path)}[/]")
+    hdr.add_row("output", _rel(output_mp4))
+    console.print(Panel(hdr, title=f"[bold {CLR_VIDEOS}]overlay render[/]",
+                        border_style=CLR_VIDEOS, box=rich.box.ROUNDED,
+                        padding=(0, 1), expand=False))
 
 
 def parse_args():
@@ -70,15 +100,11 @@ def main():
     output_mp4 = os.path.join(output_dir, f"{stem}_overlay.mp4")
     pivot_orig, arm_length_px = get_pivot_arm(stem)
 
-    print(f"CSV    : {csv_path}")
-    print(f"Video  : {video_path}")
-    print(f"Output : {output_mp4}")
-    print(f"Pivot  : {pivot_orig}  Arm: {arm_length_px} px")
+    _render_header(stem, csv_path, video_path, output_mp4,
+                   pivot_orig, arm_length_px)
 
-    print("Loading CSV ...")
     frames, times, phases, th1, th2, om1, om2, dropouts = load_csv(csv_path)
     N = len(frames)
-    print(f"  {N} frames, t_max = {times[-1]:.2f}s")
 
     rows = list(csv.DictReader(open(csv_path)))
     xg = np.array([float(r['x_green']) if r['x_green'] else np.nan for r in rows])
@@ -88,37 +114,44 @@ def main():
 
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
-        print(f"ERROR: cannot open {video_path}")
+        console.print(f"  [red]✗ cannot open video:[/] {video_path}")
         return 1
     fps = cap.get(cv2.CAP_PROP_FPS) or FPS_OUT
+
+    console.print(f"  [dim]source[/]  [white]{N}[/] frames  [dim]·[/]  "
+                  f"t_max [white]{times[-1]:.1f}s[/]  [dim]·[/]  "
+                  f"[white]{fps:.0f}[/] fps")
 
     os.makedirs(output_dir, exist_ok=True)
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
     writer = cv2.VideoWriter(output_mp4, fourcc, fps, (PANEL_W, PANEL_H))
 
-    print(f"Rendering {N} frames -> {output_mp4}")
-    step = max(1, N // 40)
-    for i in range(N):
-        ret, vframe = cap.read()
-        if not ret:
-            print(f"\nWARN: video ended at frame {i}")
-            break
-        panel = make_left_panel(
-            vframe, phases[i], times[i],
-            th1[i], th2[i], om1[i], om2[i],
-            xg[i], yg[i], xr[i], yr[i],
-            pivot_orig=pivot_orig, arm_length_px=arm_length_px,
-            stem=stem,
-        )
-        writer.write(panel)
-        if i % step == 0 or i == N - 1:
-            pct = 100 * (i + 1) // N
-            bar = '#' * (pct // 5) + '-' * (20 - pct // 5)
-            print(f"  [{bar}] {pct:3d}%  frame {i+1}/{N}",
-                  end='\r', flush=True)
+    with Progress(
+        TextColumn("  [progress.description]{task.description}"),
+        BarColumn(bar_width=30, complete_style=CLR_VIDEOS, finished_style="green"),
+        TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+        TextColumn("[dim]frame {task.completed}/{task.total}[/]"),
+        TimeElapsedColumn(),
+        console=console,
+    ) as progress:
+        task = progress.add_task("rendering", total=N)
+        for i in range(N):
+            ret, vframe = cap.read()
+            if not ret:
+                console.print(f"  [yellow]⚠ video ended early at frame {i}[/]")
+                break
+            panel = make_left_panel(
+                vframe, phases[i], times[i],
+                th1[i], th2[i], om1[i], om2[i],
+                xg[i], yg[i], xr[i], yr[i],
+                pivot_orig=pivot_orig, arm_length_px=arm_length_px,
+                stem=stem,
+            )
+            writer.write(panel)
+            progress.update(task, advance=1)
     cap.release()
     writer.release()
-    print(f"\nDone. Saved to: {output_mp4}")
+    console.print(f"  [green]✓ saved[/]  [dim]{_rel(output_mp4)}[/]")
     return 0
 
 

@@ -42,7 +42,6 @@ SCRIPT_DRIVEN_POIN = os.path.join(REPO_ROOT, "scripts", "analysis", "driven_poin
 SCRIPT_DRIVEN_BIF  = os.path.join(REPO_ROOT, "scripts", "analysis", "driven_bifurcation.py")
 SCRIPT_OVERLAY     = os.path.join(REPO_ROOT, "scripts", "analysis", "overlay_video.py")
 SCRIPT_REPORT      = os.path.join(REPO_ROOT, "scripts", "utils", "generate_status_report.py")
-SCRIPT_ROADMAP     = os.path.join(REPO_ROOT, "scripts", "utils", "generate_roadmap.py")
 
 CLR_TRACK   = "green"
 CLR_ANALYZE = "yellow"
@@ -86,11 +85,10 @@ def _resolve_entry(stem, reg):
         if Path(e.get("video_file","")).stem == stem: return e
     return None
 
-def _is_tracked(entry):
+def _is_tracked(entry, stem):
     if not entry: return False
-    md = entry.get("measurements_dir")
-    if not md: return False
-    return os.path.exists(os.path.join(os.path.dirname(MEAS_DIR), md, entry.get("csv_file","tracking.csv")))
+    csv = os.path.join(clip_dir(stem), entry.get("csv_file", "tracking.csv"))
+    return os.path.isfile(csv)
 
 def _week_bucket(stem):
     if PHASE != PHASE_DRIVEN: return None
@@ -113,7 +111,7 @@ def get_clips():
                     "dropout_pct": (entry or {}).get("dropout_rate_pct"),
                     "duration_s": (entry or {}).get("duration_s"),
                     "quality": (entry or {}).get("tracking_quality")}
-            if entry and _is_tracked(entry):
+            if entry and _is_tracked(entry, cfg):
                 info["status"] = entry.get("tracking_quality", "tracked"); tracked.append(info)
             else:
                 info["status"] = "pending"; pending.append(info)
@@ -184,15 +182,17 @@ def render_hub(tracked, pending, expanded=True):
     nv = sum(1 for c in tracked if c.get("quality") == "verified")
     nt = len(tracked); nu = nt - nv; np_ = len(pending)
     bar = _bar(nv, nt, total)
-    legend = f"[green]{nv}v[/] [dim]\u00b7[/] [yellow]{nu}t[/] [dim]\u00b7 {np_}p[/]"
+    legend = f"[green]{nv} verified[/] [dim]\u00b7[/] [yellow]{nu} tracked[/] [dim]\u00b7 {np_} pending[/]"
     phase_label = PHASE.replace("pendulum-","").replace("week","w")
+    logo_block = Text.from_markup(
+        f"{LOGO}\n[dim]double pendulum[/]\n[dim italic]{phase_label}[/]")
+    # Drop the bar + counts down so they sit on the double-pendulum / phase rows.
+    pad = "\n" * (LOGO.count("\n") + 1)
     info_right = Text.from_markup(
-        f"[dim]double pendulum[/]\n"
-        f"[dim italic]{phase_label}[/]\n"
-        f"{bar}  [bold]{nt}[/][dim]/{total}[/]  {legend}")
+        f"{pad}{bar}  [bold]{nt}[/][dim]/{total}[/]\n{legend}")
     hdr_tbl = Table(box=None, show_header=False, padding=(0,1), expand=True)
     hdr_tbl.add_column(width=20); hdr_tbl.add_column(ratio=1)
-    hdr_tbl.add_row(Text.from_markup(LOGO), info_right)
+    hdr_tbl.add_row(logo_block, info_right)
     header = hdr_tbl
 
     if expanded:
@@ -205,17 +205,17 @@ def render_hub(tracked, pending, expanded=True):
         r1 = Table(box=None, show_header=False, expand=True, padding=(0,1))
         r1.add_column(ratio=1); r1.add_column(ratio=1); r1.add_row(ct, ca)
 
-        cf = _card("figures", CLR_FIGURES, [("fa","all missing"),("fs","single clip"),("ff","force all"),("fp","preview")])
-        cv = _card("videos", CLR_VIDEOS, [("vw","render overlays"),("vr","review overlays"),("vc","1-by-1 pipeline"),("va","all combined")])
+        cf = _card("figures", CLR_FIGURES, [("fs","single figure"),("fc","clip · all types"),("ft","type · all clips"),("fa","all"),("fi","inventory")])
+        cv = _card("videos", CLR_VIDEOS, [("vw","render overlays"),("vr","review overlays"),("vc","1-by-1 pipeline"),("va","all combined"),("vi","inventory")])
         ir = Table(box=None, show_header=False, expand=True, padding=(0,1))
         ir.add_column(ratio=1); ir.add_column(ratio=1); ir.add_row(cf, cv)
         co = Panel(ir, title="[bold]output[/]", border_style=CLR_OUTPUT, padding=(0,0), expand=True)
 
         # Bottom row: info + system + contact
         ic = Text.from_markup(
-            f" [{CLR_INFO} bold]s[/] status  [{CLR_INFO} bold]e[/] export\n"
-            f" [{CLR_INFO} bold]m[/] roadmap [{CLR_INFO} bold]w[/] switch\n"
-            f" [{CLR_INFO} bold]p[/] paths   [{CLR_INFO} bold]c[/] calibrate")
+            f" [{CLR_INFO} bold]s[/]  status   [{CLR_INFO} bold]e[/] export\n"
+            f" [{CLR_INFO} bold]sw[/] switch   [{CLR_INFO} bold]p[/] paths\n"
+            f" [{CLR_INFO} bold]c[/]  calibrate")
         sc = Text.from_markup(
             f" [{CLR_SYSTEM} bold]q[/] quit\n [{CLR_SYSTEM} bold]h[/] help\n [{CLR_SYSTEM} bold]-[/] fold")
         cc = Text.from_markup(
@@ -234,8 +234,8 @@ def render_hub(tracked, pending, expanded=True):
         actions = Text.from_markup(
             f"    [{CLR_TRACK} bold]t[/]  track          [dim]\u2192 tn tp tb ts tv tr[/]\n"
             f"    [{CLR_ANALYZE} bold]a[/]  analyze        [dim]\u2192 ac ap al ad ai aq[/]\n"
-            f"    [{CLR_OUTPUT}]o[/]  output         [dim]\u2192 fa fs ff fp vw vr vc va[/]\n"
-            f"    [{CLR_INFO} bold]s[/]  info           [dim]\u2192 s e m w p[/]")
+            f"    [{CLR_OUTPUT}]o[/]  output         [dim]\u2192 fs fc ft fa fi vw vr vc va vi[/]\n"
+            f"    [{CLR_INFO} bold]s[/]  info           [dim]\u2192 s e sw p[/]")
         footer = Text.from_markup("  [dim]q quit    h help    + expand[/]")
         body = Group(header, Text(""), actions, Text(""), footer)
 
@@ -291,38 +291,116 @@ def _choices(clips, extra=None):
             ch.append(Choice(f" {br} {c['stem']:<20}{ex}", value=c["stem"]))
     return ch
 
-def pick_clip(clips, label="Pick a clip"):
-    if not clips: console.print("  [dim]No clips available.[/]"); return None
-    try: r = questionary.select(label, choices=_choices(clips), style=_sty(), use_arrow_keys=True, use_jk_keys=True).ask()
-    except KeyboardInterrupt: return None
-    return None if r is None or r == BACK else r
+def _pick_collapsible(clips, label, extra=None):
+    """Single-select picker with collapsible week groups: groups start
+    collapsed; Enter on a header expands/collapses it, so a whole group can
+    be skipped with one keypress. Falls back to a flat list when there is
+    only one named group. Returns a stem, an extra value, or None."""
+    if not clips:
+        console.print("  [dim]No clips available.[/]"); return None
+    groups = _group_by_week(clips)
+    named = [wk for wk, _ in groups if WEEK_GROUPS.get(wk)]
+    if len(named) < 2:
+        try:
+            r = questionary.select(label, choices=_choices(clips, extra), style=_sty(),
+                                   use_arrow_keys=True, use_jk_keys=True).ask()
+        except KeyboardInterrupt: return None
+        return None if r is None or r == BACK else r
+    expanded, default = set(), None
+    while True:
+        ch = [Choice("← back", value=BACK)]
+        if extra: ch.extend(extra)
+        for wk, gc in groups:
+            m = WEEK_GROUPS.get(wk, {"label": wk or "clips", "desc": ""})
+            arrow = "▾" if wk in expanded else "▸"
+            ch.append(Choice(f" {arrow} {m['label']} · {m['desc']} ({len(gc)})",
+                             value=f"__tg__{wk}"))
+            if wk in expanded:
+                for i, c in enumerate(gc):
+                    br = "╰─" if i == len(gc) - 1 else "├─"
+                    vd, fd = c.get("drive_voltage_v"), c.get("drive_freq_hz")
+                    ex = f"  {vd}V {fd}Hz" if vd and fd else ""
+                    ch.append(Choice(f"   {br} {c['stem']:<20}{ex}", value=c["stem"]))
+        try:
+            r = questionary.select(label, choices=ch, style=_sty(), use_arrow_keys=True,
+                                   use_jk_keys=True, default=default).ask()
+        except KeyboardInterrupt: return None
+        if r is None or r == BACK: return None
+        if isinstance(r, str) and r.startswith("__tg__"):
+            wk = r[len("__tg__"):]
+            if wk in expanded: expanded.discard(wk)
+            else: expanded.add(wk)
+            default = r
+            continue
+        return r
 
-def pick_group(clips, label="Select scope"):
-    """Pick a week group or individual clip. Returns list of stems or None."""
-    ch = [Choice("\u2190 back", value=BACK)]
-    for wk, gc in _group_by_week(clips):
-        m = WEEK_GROUPS.get(wk, {"label": wk or "clips", "desc": ""})
-        ch.append(Choice(f" \u2261 all {m['label']} \u00b7 {m['desc']} ({len(gc)})", value=f"__group_{wk}__"))
-    if len([wk for wk, _ in _group_by_week(clips)]) > 1:
-        ch.append(Choice(f" \u2261 everything ({len(clips)})", value="__all__"))
-    ch.append(Separator("\u2500" * 40))
+def pick_clip(clips, label="Pick a clip"):
+    return _pick_collapsible(clips, label)
+
+def pick_group(clips, label="Select scope", allow_multi=False):
+    """Collapsible scope picker: week groups start collapsed; Enter on a
+    header expands it to reveal 'all <week>' + individual clips. Returns a
+    list of stems, the sentinel ["__multi__"], or None."""
+    if not clips:
+        console.print("  [dim]No clips available.[/]"); return None
+    groups = _group_by_week(clips)
+    named = [wk for wk, _ in groups if WEEK_GROUPS.get(wk)]
+    expanded, default = set(), None
+    while True:
+        ch = [Choice("\u2190 back", value=BACK)]
+        if allow_multi:
+            ch.append(Choice(" \u2611 pick specific clips\u2026", value="__multi__"))
+        if len(named) < 2:
+            for wk, gc in groups:
+                for i, c in enumerate(gc):
+                    br = "\u2570\u2500" if i == len(gc) - 1 else "\u251c\u2500"
+                    ch.append(Choice(f" {br} {c['stem']}", value=c["stem"]))
+        else:
+            for wk, gc in groups:
+                m = WEEK_GROUPS.get(wk, {"label": wk or "clips", "desc": ""})
+                arrow = "\u25be" if wk in expanded else "\u25b8"
+                ch.append(Choice(f" {arrow} {m['label']} \u00b7 {m['desc']} ({len(gc)})",
+                                 value=f"__tg__{wk}"))
+                if wk in expanded:
+                    ch.append(Choice(f"     \u2261 all {m['label']} ({len(gc)})", value=f"__grp__{wk}"))
+                    for i, c in enumerate(gc):
+                        br = "\u2570\u2500" if i == len(gc) - 1 else "\u251c\u2500"
+                        ch.append(Choice(f"     {br} {c['stem']}", value=c["stem"]))
+        if len(clips) > 1:
+            ch.append(Choice(f" \u2261 everything ({len(clips)})", value="__all__"))
+        try:
+            r = questionary.select(label, choices=ch, style=_sty(), use_arrow_keys=True,
+                                   use_jk_keys=True, default=default).ask()
+        except KeyboardInterrupt: return None
+        if r is None or r == BACK: return None
+        if r == "__multi__": return ["__multi__"]
+        if r == "__all__": return [c["stem"] for c in clips]
+        if isinstance(r, str) and r.startswith("__tg__"):
+            wk = r[len("__tg__"):]
+            if wk in expanded: expanded.discard(wk)
+            else: expanded.add(wk)
+            default = r
+            continue
+        if isinstance(r, str) and r.startswith("__grp__"):
+            wk = r[len("__grp__"):]
+            return [c["stem"] for c in clips if c.get("week") == wk]
+        return [r]
+
+def _pick_multi(clips, preselect=None, label="Select clips to re-render (space toggles, enter confirms)"):
+    """Checkbox multi-select; preselect = set of stems to pre-check."""
+    if not clips:
+        console.print("  [dim]No clips available.[/]"); return None
+    preselect = preselect or set()
+    ch = []
     for wk, gc in _group_by_week(clips):
         m = WEEK_GROUPS.get(wk)
-        if m: ch.append(Separator(f"\u2500\u2500 {m['label']} \u00b7 {m['desc']} ({len(gc)}) \u2500\u2500"))
-        for i, c in enumerate(gc):
-            br = "\u2570\u2500" if i == len(gc) - 1 else "\u251c\u2500"
-            ch.append(Choice(f" {br} {c['stem']}", value=c["stem"]))
+        if m: ch.append(Separator(f"── {m['label']} · {m['desc']} ({len(gc)}) ──"))
+        for c in gc:
+            ch.append(Choice(c["stem"], value=c["stem"], checked=c["stem"] in preselect))
     try:
-        r = questionary.select(label, choices=ch, style=_sty(),
-                               use_arrow_keys=True, use_jk_keys=True).ask()
+        r = questionary.checkbox(label, choices=ch, style=_sty()).ask()
     except KeyboardInterrupt: return None
-    if r is None or r == BACK: return None
-    if r == "__all__": return [c["stem"] for c in clips]
-    if r.startswith("__group_") and r.endswith("__"):
-        wk = r[8:-2]
-        wk = None if wk == "None" else wk
-        return [c["stem"] for c in clips if c.get("week") == wk]
-    return [r]
+    return r or None
 
 def _pick_render_count(total, has_existing=False):
     choices = [
@@ -347,11 +425,7 @@ def _pick_render_count(total, has_existing=False):
     return r, False
 
 def pick_or_sweep(clips, label="Sanity check"):
-    if not clips: console.print("  [dim]No clips available.[/]"); return None
-    try: r = questionary.select(label, choices=_choices(clips, [Choice("\u2261 sweep all", value=SWEEP)]),
-             style=_sty(), use_arrow_keys=True, use_jk_keys=True).ask()
-    except KeyboardInterrupt: return None
-    return None if r is None or r == BACK else r
+    return _pick_collapsible(clips, label, extra=[Choice("\u2261 sweep all", value=SWEEP)])
 
 def pick_t(tr, label="Pick a clip"): return pick_clip(tr, label)
 def pick_p(pe, label="Pick a clip to track"): return pick_clip(pe, label)
@@ -384,21 +458,21 @@ def sub_analyze(tr):
      "ad":lambda:do_ad(tr),"ai":do_ai,"aq":lambda:do_aq(tr)}.get(k[:2],lambda:None)()
 
 def sub_output(tr, pe):
-    k = _sub("output", [("fa","all figures","batch",CLR_FIGURES),("fs","single fig","pick",CLR_FIGURES),
-        ("ff","force fig","redo",CLR_FIGURES),("fp","preview","frame",CLR_FIGURES),
+    k = _sub("output", [("fs","single figure","clip×type",CLR_FIGURES),("fc","clip","all types",CLR_FIGURES),
+        ("ft","type","all clips",CLR_FIGURES),("fa","all","everything",CLR_FIGURES),("fi","inventory","catalogue",CLR_FIGURES),
         ("vw","render overlays","group picker",CLR_VIDEOS),("vr","review overlays","verdict sweep",CLR_VIDEOS),
-        ("vc","1-by-1 pipeline","render + review",CLR_VIDEOS),("va","all combined","batch",CLR_VIDEOS)])
+        ("vc","1-by-1 pipeline","render + review",CLR_VIDEOS),("va","all combined","batch",CLR_VIDEOS),("vi","inventory","catalogue",CLR_VIDEOS)])
     if not k: return
-    {"fa":do_fa,"fs":lambda:do_fs(tr),"ff":do_ff,"fp":lambda:do_fp(tr),
-     "vw":lambda:do_vw(tr),"vr":lambda:do_vr(tr),"vc":lambda:do_vc(tr),
+    {"fs":lambda:do_fs(tr),"fc":lambda:do_fc(tr),"ft":lambda:do_ft(tr),"fa":do_fa,"fi":lambda:do_fi(tr),
+     "vw":lambda:do_vw(tr),"vr":lambda:do_vr(tr),"vc":lambda:do_vc(tr),"vi":lambda:do_vi(tr),
      "va":do_va,"vs":lambda:do_vs(tr),"vf":do_vf,"vp":lambda:do_vp(tr)}.get(k[:2],lambda:None)()
 
 def sub_info(tr, pe):
     k = _sub("info", [("s","status","panels",CLR_INFO),("e","export","xlsx",CLR_INFO),
-        ("m","roadmap","md",CLR_INFO),("w","switch","phase",CLR_INFO),("p","paths","config",CLR_INFO),
+        ("sw","switch","phase",CLR_INFO),("p","paths","config",CLR_INFO),
         ("c","calibration","pivot & arm",CLR_INFO)])
     if not k: return
-    {"s":lambda:do_s(tr,pe),"e":do_e,"m":do_m,"w":do_w,"p":do_p,"c":do_c}.get(k[0],lambda:None)()
+    {"s":lambda:do_s(tr,pe),"e":do_e,"sw":do_w,"p":do_p,"c":do_c}.get(k,lambda:None)()
 
 # ── Actions ──
 
@@ -486,43 +560,125 @@ def do_aq(tr):
     sys.path.insert(0,os.path.join(REPO_ROOT,"scripts","analysis"))
     from quick_insights import explore; explore(s)
 
+# ── Inventory ──
+def _fig_exists(ftype, stem):
+    from paths import FIGURES_DIR
+    return os.path.isfile(os.path.join(FIGURES_DIR, ftype, f"{stem}_{ftype}.png"))
+
+def _vid_exists(vtype, stem):
+    if vtype == "overlay":
+        return os.path.isfile(_overlay_path(stem))
+    from paths import FIGURES_DIR
+    return os.path.isfile(os.path.join(FIGURES_DIR, vtype, f"{stem}_{vtype}.mp4"))
+
+def _inventory(tr, title, color, types, exists_fn):
+    if not tr:
+        console.print("  [dim]No tracked clips.[/]"); return
+    t = Table(box=box.SIMPLE, show_header=True, padding=(0,1), expand=False)
+    t.add_column("clip", min_width=16)
+    for tn, short, desc in types: t.add_column(short, justify="center")
+    totals = [0]*len(types)
+    for wk, gc in _group_by_week(tr):
+        m = WEEK_GROUPS.get(wk)
+        if m: t.add_row(f"[dim]── {m['label']} ──[/]", *[""]*len(types))
+        for c in gc:
+            cells = []
+            for i,(tn,short,desc) in enumerate(types):
+                ok = exists_fn(tn, c["stem"])
+                if ok: totals[i] += 1
+                cells.append("[green]✓[/]" if ok else "[dim]·[/]")
+            t.add_row(c["stem"], *cells)
+    t.add_row("[bold]total[/]", *[f"[bold]{n}[/][dim]/{len(tr)}[/]" for n in totals])
+    legend = "   ".join(f"[bold]{short}[/] [dim]{desc}[/]" for tn,short,desc in types)
+    console.print()
+    console.print(Panel(Group(t, Text.from_markup("  " + legend)),
+                        title=f"[bold {color}]{title}[/]", border_style=color, padding=(0,1)))
+
 # Figures
-def do_fa(): _run(SCRIPT_BATCH_FIGS); _log_activity("figures done"); _pause()
+FIG_TYPES = [
+    ("phase_panels",        "panels", "phase panels"),
+    ("poincare",            "poinc",  "poincaré section"),
+    ("phase_3d_trajectory", "3d",     "3D trajectory"),
+    ("chaos_analyze",       "chaos",  "chaos card"),
+    ("lyapunov",            "lyap",   "lyapunov"),
+]
+
+def _pick_figtype(label="Figure type"):
+    ch = [Choice("← back", value=BACK)]
+    for tn, short, desc in FIG_TYPES:
+        ch.append(Choice(f"  {tn}  ({desc})", value=tn))
+    try:
+        r = questionary.select(label, choices=ch, style=_sty(), use_arrow_keys=True, use_jk_keys=True).ask()
+    except KeyboardInterrupt: return None
+    return None if r is None or r == BACK else r
+
 def do_fs(tr):
-    s=pick_t(tr,"Figures"); 
+    s = pick_t(tr, "Single figure — pick clip")
     if not s: return
-    _run(SCRIPT_BATCH_FIGS,"--stem",s); _pause()
-def do_ff(): _run(SCRIPT_BATCH_FIGS,"--force"); _pause()
-def do_fp(tr):
-    s=pick_t(tr,"Preview"); 
+    ft = _pick_figtype("Single figure — pick type")
+    if not ft: return
+    _run(SCRIPT_BATCH_FIGS, "--stem", s, "--types", ft, "--force")
+    _log_activity(f"figure {ft}/{s}"); _pause()
+
+def do_fc(tr):
+    s = pick_t(tr, "All figures for one clip — pick clip")
     if not s: return
-    _run(os.path.join(REPO_ROOT,"scripts","analysis","preview_frame.py"),"--stem",s); _pause()
+    _run(SCRIPT_BATCH_FIGS, "--stem", s)
+    _log_activity(f"figures/{s}"); _pause()
+
+def do_ft(tr):
+    ft = _pick_figtype("One type across all clips — pick type")
+    if not ft: return
+    _run(SCRIPT_BATCH_FIGS, "--types", ft)
+    _log_activity(f"figures {ft} (all)"); _pause()
+
+def do_fa(): _run(SCRIPT_BATCH_FIGS); _log_activity("figures done"); _pause()
+
+def do_fi(tr):
+    while True:
+        console.clear()
+        _inventory(tr, "figures inventory", CLR_FIGURES, FIG_TYPES, _fig_exists)
+        console.print("  [bold]g[/] fill gaps   [bold]q[/] back")
+        try: k = input("  ▸ ").strip().lower()
+        except (EOFError, KeyboardInterrupt): break
+        if not k or k.startswith("q"): break
+        if k.startswith("g"):
+            scope = pick_group(tr, "Fill gaps — select scope", allow_multi=True)
+            if not scope: continue
+            if scope == ["__multi__"]:
+                scope = _pick_multi(tr, label="Fill gaps — pick clips")
+                if not scope: continue
+            console.print(f"\n  [dim]filling figure gaps for {len(scope)} clip(s)…[/]")
+            _run(SCRIPT_BATCH_FIGS, "--stems", ",".join(scope))
+            _log_activity(f"filled figure gaps ({len(scope)})")
+            _pause()
 
 # Videos
+VIDEO_TYPES = [
+    ("overlay",         "overlay", "ring overlay"),
+    ("combined",        "comb",    "combined + plots"),
+    ("phase_animation", "anim",    "phase animation"),
+]
+
+def do_vi(tr):
+    _inventory(tr, "videos inventory", CLR_VIDEOS, VIDEO_TYPES, _vid_exists)
+    _pause()
+
 def do_va(): _run(SCRIPT_BATCH_FIGS,"--video"); _pause()
 def do_vs(tr):
-    s=pick_t(tr,"Overlay video"); 
+    s=pick_t(tr,"Overlay video")
     if not s: return
     _run(SCRIPT_COMBINED,"--stem",s); _pause()
 def do_vf(): _run(SCRIPT_BATCH_FIGS,"--video","--force"); _pause()
 def do_vp(tr):
-    s=pick_t(tr,"Preview video"); 
+    s=pick_t(tr,"Preview video")
     if not s: return
     _run(os.path.join(REPO_ROOT,"scripts","analysis","preview_frame.py"),"--stem",s,"--video"); _pause()
 
 # Overlay render + review
-def _render_overlay(stem, label=""):
-    """Render one overlay with Rich output. Returns True on success."""
-    from thresholds import get_pivot_arm
-    pv, al = get_pivot_arm(stem)
-    info_t = Table(box=None, show_header=False, padding=(0,2), expand=False)
-    info_t.add_column(style="dim"); info_t.add_column(style="white")
-    info_t.add_row("stem", f"[bold]{stem}[/]")
-    info_t.add_row("pivot", f"({pv[0]}, {pv[1]})")
-    info_t.add_row("arm", f"{al} px")
-    info_t.add_row("output", f"{stem}_overlay.mp4")
-    console.print(Panel(info_t, title=f"[bold {CLR_VIDEOS}]rendering{' ' + label if label else ''}[/]",
-                        border_style=CLR_VIDEOS, padding=(0,1), expand=False))
+def _render_overlay(stem):
+    """Render one overlay; overlay_video.py owns its own Rich output.
+    Returns True on success."""
     rc = subprocess.run([sys.executable, SCRIPT_OVERLAY, "--stem", stem],
                         cwd=REPO_ROOT).returncode
     return rc == 0
@@ -540,36 +696,14 @@ def _verdict_prompt(stem):
     if not v: return "p"
     return v[0]
 
-def do_vw(tr):
-    """Render overlay videos for a selected group."""
-    stems = pick_group(tr, "Render overlays \u2014 select scope")
-    if not stems: return
-    unrendered = [s for s in stems if not _has_overlay(s)]
-    existing = len(stems) - len(unrendered)
-    if not unrendered and not existing:
-        console.print("  [dim]No clips in scope.[/]")
-        _pause(); return
-    if not unrendered:
-        console.print(f"  [green]\u2713[/] All {len(stems)} clips already have overlay videos.")
-        console.print(f"  [dim]Use force re-render to overwrite.[/]")
-    else:
-        console.print(f"\n  [dim]{len(unrendered)} unrendered, {existing} existing[/]")
-    count, force = _pick_render_count(len(unrendered) if unrendered else len(stems), has_existing=existing > 0)
-    if count == 0: return
-    if force:
-        batch = stems  # re-render everything
-        # Delete existing overlays so they get re-rendered
-        for s in batch:
-            p = _overlay_path(s)
-            if os.path.isfile(p): os.remove(p)
-    else:
-        batch = unrendered[:count]
+def _render_batch(batch):
+    """Render (overwrite) overlays for the given stems."""
     console.print(Panel(f"Rendering {len(batch)} overlay video{'s' if len(batch)>1 else ''}",
                         title="[bold]batch render[/]", border_style=CLR_VIDEOS, expand=False))
     rendered, failed = 0, 0
     for i, stem in enumerate(batch, 1):
         console.print(Rule(f"[{CLR_VIDEOS}]({i}/{len(batch)})[/]", style="dim"))
-        ok = _render_overlay(stem, f"({i}/{len(batch)})")
+        ok = _render_overlay(stem)
         if not ok:
             console.print(f"  [red]\u2717 render failed[/]")
             failed += 1
@@ -590,9 +724,34 @@ def do_vw(tr):
     summary.add_column(style="dim"); summary.add_column()
     summary.add_row("rendered", f"[green]{rendered}[/]")
     if failed: summary.add_row("failed", f"[red]{failed}[/]")
-    summary.add_row("remaining", f"[dim]{len(unrendered)-rendered-failed}[/]")
     console.print(Panel(summary, title="[bold]done[/]", border_style="dim", expand=False))
     _log_activity(f"overlays: {rendered} rendered" + (f", {failed} failed" if failed else ""))
+
+def do_vw(tr):
+    """Render overlay videos: a whole group, or hand-pick a subset to re-render."""
+    stems = pick_group(tr, "Render overlays \u2014 select scope", allow_multi=True)
+    if not stems: return
+    if stems == ["__multi__"]:
+        reg = load_registry()
+        fails = {c["stem"] for c in tr if _get_verdict(c["stem"], reg) == "fail"}
+        sel = _pick_multi(tr, preselect=fails)
+        if not sel: return
+        _render_batch(sel)
+        _pause(); return
+    unrendered = [s for s in stems if not _has_overlay(s)]
+    existing = len(stems) - len(unrendered)
+    if not unrendered and not existing:
+        console.print("  [dim]No clips in scope.[/]")
+        _pause(); return
+    if not unrendered:
+        console.print(f"  [green]\u2713[/] All {len(stems)} clips already have overlay videos.")
+        console.print(f"  [dim]Use force re-render to overwrite.[/]")
+    else:
+        console.print(f"\n  [dim]{len(unrendered)} unrendered, {existing} existing[/]")
+    count, force = _pick_render_count(len(unrendered) if unrendered else len(stems), has_existing=existing > 0)
+    if count == 0: return
+    batch = stems if force else unrendered[:count]
+    _render_batch(batch)
     _pause()
 
 def do_vr(tr):
@@ -629,11 +788,11 @@ def do_vr(tr):
         legend = f"[green]{n_pass} pass[/]  [red]{n_fail} fail[/]  [yellow]{n_pend} pending[/]  [dim]{n_norend} no overlay[/]"
         console.print(Panel(Group(t, Text.from_markup(f"  {legend}")),
                             title="[bold]overlay review[/]", border_style=CLR_VIDEOS, padding=(0,1)))
-        console.print("  [bold]p[/] review all pending   [bold]#[/] pick by number   [bold]q[/] done")
+        console.print("  [bold]r[/] review pending   [bold]#[/] set/change a verdict   [bold]q[/] done")
         try: cmd = input("  \u25b8 ").strip().lower()
         except (EOFError, KeyboardInterrupt): break
         if not cmd or cmd.startswith("q"): break
-        if cmd.startswith("p"):
+        if cmd.startswith("r"):
             pending = [r["stem"] for r in rows if r["has_ov"] and r["verdict"] is None]
             if not pending:
                 console.print("  [dim]Nothing pending.[/]")
@@ -654,7 +813,7 @@ def do_vr(tr):
                     console.print(f"  [green]\u2713[/] {stem} \u2192 pass")
                 console.print()
             continue
-        # Pick by number
+        # Pick by number \u2192 set / change its verdict
         try:
             idx = int(cmd) - 1
             if 0 <= idx < len(rows):
@@ -662,15 +821,21 @@ def do_vr(tr):
                 if not r["has_ov"]:
                     console.print(f"  [dim]No overlay for {r['stem']}. Run vw first.[/]")
                     import time; time.sleep(0.8); continue
-                console.print(Rule(f"[{CLR_VIDEOS}]{r['stem']}[/]", style="dim"))
-                v = _verdict_prompt(r["stem"])
-                if v == "f":
+                cur = r["verdict"] or "pending"
+                console.print(Rule(f"[{CLR_VIDEOS}]{r['stem']}[/]  [dim]current: {cur}[/]", style="dim"))
+                console.print("  [green bold]p[/]ass   [red bold]f[/]ail   [bold]o[/]pen video   [dim bold]s[/]kip")
+                try: a = input("  \u25b8 ").strip().lower()
+                except (EOFError, KeyboardInterrupt): a = "s"
+                a = a[0] if a else "s"
+                if a == "o":
+                    a = _verdict_prompt(r["stem"])
+                if a == "f":
                     note = None
                     try: note = input("  reason (optional): ").strip() or None
                     except: pass
                     _set_verdict(r["stem"], "fail", note)
                     console.print(f"  [red]\u2717[/] {r['stem']} \u2192 fail")
-                elif v != "s" and v != "q":
+                elif a == "p":
                     _set_verdict(r["stem"], "pass")
                     console.print(f"  [green]\u2713[/] {r['stem']} \u2192 pass")
                 import time; time.sleep(0.5)
@@ -722,7 +887,7 @@ def do_vc(tr):
         for i, stem in enumerate(needs_render):
             seq += 1
             console.print(Rule(f"[{CLR_VIDEOS}]({seq}/{total_todo}) render + review[/]", style="dim"))
-            ok = _render_overlay(stem, f"({seq}/{total_todo})")
+            ok = _render_overlay(stem)
             if not ok:
                 console.print(f"  [red]\u2717 render failed[/]")
                 console.print("  [bold]s[/]kip   [bold]q[/]uit")
@@ -761,7 +926,6 @@ def do_vc(tr):
 # Info
 def do_s(tr,pe): console.print(); render_status_panels(tr,pe); _pause()
 def do_e(): _run(SCRIPT_REPORT); _pause()
-def do_m(): _run(SCRIPT_ROADMAP); _pause()
 def do_w():
     import importlib
     global DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, PHASE, clip_dir
@@ -782,8 +946,6 @@ def do_w():
     except KeyboardInterrupt:
         return
     if r is None or r == PHASE:
-        console.print("  [dim]No change.[/]")
-        _pause()
         return
     os.environ["CHAOS_PHASE"] = r
     # Reload paths so all module-level path vars pick up the new phase
@@ -797,9 +959,7 @@ def do_w():
     PHASE       = _paths_mod.PHASE
     clip_dir    = _paths_mod.clip_dir
     short = r.replace("pendulum-", "").replace("week", "w")
-    console.print(f"  [green]✓[/] Switched to [bold cyan]{short}[/]")
     _log_activity(f"phase → {short}")
-    _pause()
 def do_h(): _run(os.path.join(REPO_ROOT,"chaos.py"),"help"); _pause()
 def do_p():
     from thresholds import PIVOT, ARM_LENGTH_PX, get_pivot_arm
@@ -834,20 +994,20 @@ def do_c():
 
 # ── Hub loop ──
 
-TWO_CHAR_KEYS = ("tn","tp","tb","ts","tv","tr","ac","ap","al","ad","ai","aq","fa","fs","ff","fp","vw","vr","vc","va","vs","vf","vp")
+TWO_CHAR_KEYS = ("tn","tp","tb","ts","tv","tr","ac","ap","al","ad","ai","aq","fs","fc","ft","fa","fi","vw","vr","vc","va","vi","vs","vf","vp","sw")
 
 DISPATCH = {
     "tn":lambda t,p:do_tn(p), "tp":lambda t,p:do_tp(p), "tb":lambda t,p:do_tb(),
     "ts":lambda t,p:do_ts(t), "tv":lambda t,p:do_tv(t), "tr":lambda t,p:do_tr(t),
     "ac":lambda t,p:do_ac(t), "ap":lambda t,p:do_ap(t), "al":lambda t,p:do_al(t),
     "ad":lambda t,p:do_ad(t), "ai":lambda t,p:do_ai(),  "aq":lambda t,p:do_aq(t),
-    "fa":lambda t,p:do_fa(),  "fs":lambda t,p:do_fs(t), "ff":lambda t,p:do_ff(),
-    "fp":lambda t,p:do_fp(t), "vw":lambda t,p:do_vw(t), "vr":lambda t,p:do_vr(t),
-    "vc":lambda t,p:do_vc(t),
-    "va":lambda t,p:do_va(),  "vs":lambda t,p:do_vs(t),
-    "vf":lambda t,p:do_vf(),  "vp":lambda t,p:do_vp(t),
-    "s":lambda t,p:do_s(t,p), "e":lambda t,p:do_e(),    "m":lambda t,p:do_m(),
-    "w":lambda t,p:do_w(),    "p":lambda t,p:do_p(),     "h":lambda t,p:do_h(),
+    "fs":lambda t,p:do_fs(t), "fc":lambda t,p:do_fc(t), "ft":lambda t,p:do_ft(t),
+    "fa":lambda t,p:do_fa(),  "fi":lambda t,p:do_fi(t),
+    "vw":lambda t,p:do_vw(t), "vr":lambda t,p:do_vr(t), "vc":lambda t,p:do_vc(t),
+    "va":lambda t,p:do_va(),  "vi":lambda t,p:do_vi(t),
+    "vs":lambda t,p:do_vs(t), "vf":lambda t,p:do_vf(), "vp":lambda t,p:do_vp(t),
+    "s":lambda t,p:do_s(t,p), "e":lambda t,p:do_e(),
+    "sw":lambda t,p:do_w(),   "p":lambda t,p:do_p(),     "h":lambda t,p:do_h(),
 }
 
 def hub():

@@ -5,8 +5,8 @@ Single source of truth for all phase-specific data paths.
 
 Set the CHAOS_PHASE environment variable to switch between experiment phases:
 
-    CHAOS_PHASE=week3-4-pendulum-free-swing       (default)
-    CHAOS_PHASE=week5-6-pendulum-motor-driven
+    CHAOS_PHASE=week3-4-pendulum-free-swing
+    CHAOS_PHASE=week5-6-pendulum-motor-driven     (default)
 
 All experiment directories now live under ``experiments/`` at the repo root.
 The legacy phase names from earlier refactor cycles still resolve to the
@@ -57,7 +57,7 @@ _LEGACY_ALIASES = {
     "week4-pendulum-motor-driven": PHASE_DRIVEN,
 }
 
-_raw_phase = os.environ.get("CHAOS_PHASE", PHASE_FREE)
+_raw_phase = os.environ.get("CHAOS_PHASE", PHASE_DRIVEN)
 PHASE      = _LEGACY_ALIASES.get(_raw_phase, _raw_phase)
 PHASE_ROOT = os.path.join(EXPERIMENTS_ROOT, PHASE)
 

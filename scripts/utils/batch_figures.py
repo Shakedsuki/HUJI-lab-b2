@@ -131,17 +131,23 @@ def parse_args():
         description="Batch-render all per-clip figures for tracked measurements.")
     p.add_argument("--stem", default=None,
                    help="Render figures for one specific stem only.")
+    p.add_argument("--stems", default=None,
+                   help="comma-separated stems to render (overrides --stem).")
     p.add_argument("--video", action="store_true",
                    help="Also render phase_animation and combined mp4 (slow).")
     p.add_argument("--force", action="store_true",
                    help="Re-render even if output files already exist.")
+    p.add_argument("--types", default=None,
+                   help="comma-separated figure types to render (default: all).")
     return p.parse_args()
 
 
 def main():
     args = parse_args()
 
-    if args.stem:
+    if args.stems:
+        stems = [s.strip() for s in args.stems.split(",") if s.strip()]
+    elif args.stem:
         stems = [args.stem]
     else:
         stems = load_tracked_stems()
@@ -151,6 +157,12 @@ def main():
         sys.exit(0)
 
     suite = STATIC_SUITE + (VIDEO_SUITE if args.video else [])
+    if args.types:
+        want = {x.strip() for x in args.types.split(",") if x.strip()}
+        suite = [s for s in suite if s[0] in want]
+        if not suite:
+            console.print(f"[yellow]WARN:[/] no known figure types in {sorted(want)}.")
+            sys.exit(0)
 
     console.print(
         f"[cyan]Batch figures[/]  [dim]{len(stems)} clip(s), {len(suite)} figure type(s)"

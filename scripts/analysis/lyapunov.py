@@ -6,7 +6,7 @@ series, using Rosenstein et al.'s algorithm (Physica D, 1993).
 
 Pipeline
 ~~~~~~~~
-1. Read free-swing theta1(t) from verification.csv. Unwrap so jumps
+1. Read moving theta1(t) (free-swing or driven) from verification.csv. Unwrap so jumps
    across +-180 do not create phantom discontinuities.
 2. Build a time-delay embedding:
        y(t_i) = [ x(t_i), x(t_i + tau), ..., x(t_i + (m-1)*tau) ]
@@ -93,7 +93,7 @@ def load_series(csv_path, use_omega=False):
     rows = []
     with open(csv_path, newline="", encoding="utf-8") as f:
         for r in csv.DictReader(f):
-            if r.get("phase") != "free_swing":
+            if r.get("phase") not in ("free_swing", "driven"):
                 continue
             try:
                 rows.append((
@@ -104,7 +104,7 @@ def load_series(csv_path, use_omega=False):
             except (ValueError, KeyError):
                 continue
     if len(rows) < 200:
-        raise SystemExit(f"Too few free-swing rows ({len(rows)}).")
+        raise SystemExit(f"Too few analysis rows ({len(rows)}).")
     arr = np.array(rows, dtype=float)
     t   = arr[:, 0] - arr[0, 0]
     th  = arr[:, 1]
