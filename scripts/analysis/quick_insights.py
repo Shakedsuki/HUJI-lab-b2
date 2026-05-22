@@ -30,6 +30,15 @@ _L = 0.35
 _G = 9.8
 
 
+def _resolve_fdrive(stem):
+    """Drive frequency (Hz) parsed from the stem; None for non-driven stems."""
+    try:
+        from driven_helpers import parse_stem
+        return float(parse_stem(stem)["f_drive_hz"])
+    except (ValueError, ImportError, KeyError):
+        return None
+
+
 def load_clip(stem):
     """Load tracking.csv and precompute all derived quantities."""
     csv_path = os.path.join(clip_dir(stem), "tracking.csv")
@@ -78,6 +87,7 @@ def load_clip(stem):
         "energy": energy,
         "xg": xg, "yg": yg, "xr": xr, "yr": yr,
         "pivot": pivot,
+        "f_drive": _resolve_fdrive(stem),
     }
 
 
@@ -308,6 +318,50 @@ def plot_seismograph(d, mode="v1"):
           "[blue → orange → red by time]")
 
 
+def plot_cyclic_phase(d):
+    """#2 cyclic (oscillator) phase ψ(t) per arm — advances 2π per cycle
+    even when the arm only swings. Hilbert protophase of the de-trended
+    unwrapped angle (shared with phase_analysis.py)."""
+    import plotext as plt
+    from phase_analysis import cyclic_phase
+    t = d["t"]
+    s = _sub(d)
+    psi1, _ = cyclic_phase(d["th1"])
+    psi2, _ = cyclic_phase(d["th2"])
+    _setup(plt, "cyclic phase  ψ / 2π  (cycles)")
+    plt.plot(t[::s], (psi1 / (2 * np.pi))[::s], color="blue", label="θ₁ upper")
+    plt.plot(t[::s], (psi2 / (2 * np.pi))[::s], color="red",  label="θ₂ lower")
+    plt.xlabel("t (s)")
+    plt.ylabel("ψ / 2π")
+    plt.show()
+    print("    ● θ₁ upper   ● θ₂ lower")
+
+
+def plot_drive_phase(d):
+    """#3 drive-relative phase Δφ(t) = ψ_arm − 2π·f_drive·t per arm.
+    Flat = phase-locked to the motor; sloped = slipping. Needs a driven
+    clip (f_drive parsed from the stem)."""
+    import plotext as plt
+    from phase_analysis import cyclic_phase, drive_relative
+    fd = d.get("f_drive")
+    if not fd:
+        print("  drive-relative phase needs a driven clip (no f_drive in the stem)")
+        return
+    t = d["t"]
+    s = _sub(d)
+    psi1, _ = cyclic_phase(d["th1"])
+    psi2, _ = cyclic_phase(d["th2"])
+    dphi1, _ = drive_relative(t, psi1, fd)
+    dphi2, _ = drive_relative(t, psi2, fd)
+    _setup(plt, f"drive-relative phase  Δφ / 2π   (f_drive = {fd:g} Hz)")
+    plt.plot(t[::s], (dphi1 / (2 * np.pi))[::s], color="blue", label="θ₁ upper")
+    plt.plot(t[::s], (dphi2 / (2 * np.pi))[::s], color="red",  label="θ₂ lower")
+    plt.xlabel("t (s)")
+    plt.ylabel("Δφ / 2π (cycles)")
+    plt.show()
+    print("    ● θ₁ upper   ● θ₂ lower   [flat = locked, sloped = slipping]")
+
+
 PLOTS = {
     "both":     ("green",   "\u03b8\u2081(t) + \u03b8\u2082(t) overlay",         plot_both),
     "omega":    ("green",   "\u03c9\u2081(t) + \u03c9\u2082(t)",                  plot_omega),
@@ -323,6 +377,8 @@ PLOTS = {
     "return":   ("red",     "\u03b8\u2082(n) vs \u03b8\u2082(n+1) return map",    plot_return),
     "seis1":    ("yellow",  "seismograph v1 spiral (θ_tip=θ₂)",  lambda d: plot_seismograph(d, "v1")),
     "seis2":    ("yellow",  "seismograph v2 ripple (θ_tip=θ₂)",  lambda d: plot_seismograph(d, "v2")),
+    "cyc":      ("magenta", "cyclic phase ψ(t) per arm",            plot_cyclic_phase),
+    "lock":     ("magenta", "drive-relative phase Δφ(t) (locking)", plot_drive_phase),
 }
 
 
@@ -341,6 +397,7 @@ def _print_menu(con):
         ("yellow",  "phase space", ["phase1", "phase2", "config", "full", "seis1", "seis2"]),
         ("blue",    "physical",    ["xy", "trace"]),
         ("red",     "chaos",       ["spectrum", "return"]),
+        ("magenta", "phase",       ["cyc", "lock"]),
     ]
     panels = []
     for color, label, keys in cats:
