@@ -4,22 +4,19 @@ shell.py — interactive hub for the chaos pipeline.
 Launched by bare ``chaos`` (no subcommand). Presents a compact
 dashboard with single-key dispatch to all major pipeline actions.
 Uses questionary for arrow-key clip pickers and Rich for formatting.
+
+All commands use a consistent prefix system:
+  t* = track, a* = analyze, f* = figures, v* = videos
 """
 
-import json
-import os
-import subprocess
-import sys
+import json, os, subprocess, sys
 from pathlib import Path
 
-try:
-    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-except (AttributeError, OSError):
-    pass
+try: sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+except (AttributeError, OSError): pass
 
 import questionary
 from questionary import Choice, Separator
-
 from rich.console import Console, Group
 from rich.table import Table
 from rich.text import Text
@@ -28,13 +25,9 @@ from rich.rule import Rule
 from rich import box
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from paths import (
-    DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS,
-    REPO_ROOT, PHASE, PHASE_DRIVEN, clip_dir,
-)
+from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT, PHASE, PHASE_DRIVEN, clip_dir
 
 console = Console()
-
 VIDEO_EXTS = {".mov", ".mp4", ".avi", ".mkv", ".m4v"}
 
 SCRIPT_TRACK_ONE   = os.path.join(REPO_ROOT, "scripts", "utils", "track_one.py")
@@ -49,7 +42,22 @@ SCRIPT_DRIVEN_POIN = os.path.join(REPO_ROOT, "scripts", "analysis", "driven_poin
 SCRIPT_DRIVEN_BIF  = os.path.join(REPO_ROOT, "scripts", "analysis", "driven_bifurcation.py")
 SCRIPT_REPORT      = os.path.join(REPO_ROOT, "scripts", "utils", "generate_status_report.py")
 SCRIPT_ROADMAP     = os.path.join(REPO_ROOT, "scripts", "utils", "generate_roadmap.py")
-SCRIPT_STATUS      = os.path.join(REPO_ROOT, "scripts", "utils", "video_status.py")
+
+CLR_TRACK   = "green"
+CLR_ANALYZE = "yellow"
+CLR_OUTPUT  = "#FF6B35"
+CLR_FIGURES = "#FF3D6B"
+CLR_VIDEOS  = "#38BDF8"
+CLR_INFO    = "cyan"
+CLR_SYSTEM  = "dim"
+
+AUTHOR_NAME  = "Shaked Sukiennik"
+AUTHOR_EMAIL = "shaked.sukiennik@mail.huji.ac.il"
+
+_activity_log = []
+def _log_activity(msg):
+    _activity_log.append(msg)
+    if len(_activity_log) > 8: _activity_log.pop(0)
 
 WEEK_GROUPS = {
     "week5": {"label": "week 5", "desc": "broad V/f survey",     "color": "cyan"},
@@ -62,640 +70,394 @@ LOGO = (
     "[bold magenta]\u2514\u2500\u2518 \u2534 \u2534 \u2534 \u2534 \u2514\u2500\u2518 \u2514\u2500\u2518[/]"
 )
 
-
-# ─────────────────────────────────────────────
-# DATA
-# ─────────────────────────────────────────────
+# ── Data ──
 
 def load_registry():
-    if not os.path.exists(EXPERIMENTS):
-        return {}
+    if not os.path.exists(EXPERIMENTS): return {}
     try:
-        with open(EXPERIMENTS, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except (json.JSONDecodeError, OSError):
-        return {}
+        with open(EXPERIMENTS, "r", encoding="utf-8") as f: return json.load(f)
+    except (json.JSONDecodeError, OSError): return {}
 
-def _resolve_entry(stem, registry):
-    if stem in registry:
-        return registry[stem]
-    for entry in registry.values():
-        if entry.get("config_description") == stem:
-            return entry
-        vf = entry.get("video_file") or ""
-        if Path(vf).stem == stem:
-            return entry
+def _resolve_entry(stem, reg):
+    if stem in reg: return reg[stem]
+    for e in reg.values():
+        if e.get("config_description") == stem: return e
+        if Path(e.get("video_file","")).stem == stem: return e
     return None
 
 def _is_tracked(entry):
-    if not entry:
-        return False
+    if not entry: return False
     md = entry.get("measurements_dir")
-    if not md:
-        return False
-    csv_name = entry.get("csv_file") or "tracking.csv"
-    phase_root = os.path.dirname(MEAS_DIR)
-    return os.path.exists(os.path.join(phase_root, md, csv_name))
+    if not md: return False
+    return os.path.exists(os.path.join(os.path.dirname(MEAS_DIR), md, entry.get("csv_file","tracking.csv")))
 
 def _week_bucket(stem):
-    if PHASE != PHASE_DRIVEN:
-        return None
-    if stem.startswith("3.2V_") and stem != "3.2V_1Hz":
-        return "week6"
-    return "week5"
+    if PHASE != PHASE_DRIVEN: return None
+    return "week6" if stem.startswith("3.2V_") and stem != "3.2V_1Hz" else "week5"
 
 def get_clips():
     reg = load_registry()
-    by_video = {}
-    for entry in reg.values():
-        vf = entry.get("video_file")
-        if vf:
-            by_video[vf] = entry
+    by_vid = {e.get("video_file"): e for e in reg.values() if e.get("video_file")}
     tracked, pending = [], []
     if os.path.isdir(VIDEOS_DIR):
         for name in sorted(os.listdir(VIDEOS_DIR), key=str.lower):
-            full = os.path.join(VIDEOS_DIR, name)
-            if not os.path.isfile(full) or Path(name).suffix.lower() not in VIDEO_EXTS:
-                continue
+            if not os.path.isfile(os.path.join(VIDEOS_DIR, name)): continue
+            if Path(name).suffix.lower() not in VIDEO_EXTS: continue
             stem = Path(name).stem
-            entry = by_video.get(name) or _resolve_entry(stem, reg)
-            cfg_stem = entry.get("config_description", stem) if entry else stem
-            info = {
-                "stem": cfg_stem, "video": name,
-                "drive_voltage_v": entry.get("drive_voltage_v") if entry else None,
-                "drive_freq_hz": entry.get("drive_freq_hz") if entry else None,
-                "dropout_pct": entry.get("dropout_rate_pct") if entry else None,
-                "duration_s": entry.get("duration_s") if entry else None,
-                "quality": entry.get("tracking_quality") if entry else None,
-                "week": _week_bucket(cfg_stem),
-            }
+            entry = by_vid.get(name) or _resolve_entry(stem, reg)
+            cfg = entry.get("config_description", stem) if entry else stem
+            info = {"stem": cfg, "video": name, "week": _week_bucket(cfg),
+                    "drive_voltage_v": (entry or {}).get("drive_voltage_v"),
+                    "drive_freq_hz": (entry or {}).get("drive_freq_hz"),
+                    "dropout_pct": (entry or {}).get("dropout_rate_pct"),
+                    "duration_s": (entry or {}).get("duration_s"),
+                    "quality": (entry or {}).get("tracking_quality")}
             if entry and _is_tracked(entry):
-                info["status"] = entry.get("tracking_quality", "tracked")
-                tracked.append(info)
+                info["status"] = entry.get("tracking_quality", "tracked"); tracked.append(info)
             else:
-                info["status"] = "pending"
-                pending.append(info)
+                info["status"] = "pending"; pending.append(info)
     return tracked, pending
 
 def _group_by_week(clips):
-    groups = {}
-    order = []
-    for clip in clips:
-        wk = clip.get("week")
-        if wk not in groups:
-            groups[wk] = []
-            order.append(wk)
-        groups[wk].append(clip)
+    groups, order = {}, []
+    for c in clips:
+        wk = c.get("week")
+        if wk not in groups: groups[wk] = []; order.append(wk)
+        groups[wk].append(c)
     return [(k, groups[k]) for k in order]
 
+# ── Rendering ──
 
-# ─────────────────────────────────────────────
-# RENDERING
-# ─────────────────────────────────────────────
+def _bar(nv, nt, total, w=30):
+    if total == 0: return "[dim]no clips[/]"
+    uv = nt - nv; wv = int(round(nv/total*w)); wt = int(round(uv/total*w)); wp = w-wv-wt
+    return f"[green]{'\u2588'*wv}[/][yellow]{'\u2588'*wt}[/][dim]{'\u2591'*wp}[/]"
 
-def _stacked_bar(n_verified, n_tracked, total, width=30):
-    if total == 0:
-        return "[dim]no clips[/]"
-    n_unverified = n_tracked - n_verified
-    w_ver = int(round(n_verified / total * width))
-    w_trk = int(round(n_unverified / total * width))
-    w_pen = width - w_ver - w_trk
-    return (f"[green]{'\u2588' * w_ver}[/]"
-            f"[yellow]{'\u2588' * w_trk}[/]"
-            f"[dim]{'\u2591' * w_pen}[/]")
-
-
-def _action_card(title, color, items):
-    """Build a Rich Panel card with a list of key-label pairs."""
-    lines = []
-    for key, label in items:
-        lines.append(f"  [{color} bold]{key:<3}[/] {label}")
-    content = "\n".join(lines)
-    return Panel(
-        Text.from_markup(content),
-        title=f"[bold]{title}[/]",
-        border_style=color,
-        padding=(0, 0),
-        expand=True,
-    )
-
+def _card(title, color, items):
+    lines = [f"  [{color} bold]{k:<3}[/] {l}" for k, l in items]
+    return Panel(Text.from_markup("\n".join(lines)), title=f"[bold]{title}[/]",
+                 border_style=color, padding=(0,0), expand=True)
 
 def render_hub(tracked, pending, expanded=True):
     total = len(tracked) + len(pending)
-    n_verified = sum(1 for c in tracked if c.get("quality") == "verified")
-    n_tracked = len(tracked)
-    n_unverified = n_tracked - n_verified
-    n_pending = len(pending)
-
-    phase_short = PHASE.replace("pendulum-", "").replace("week", "w")
-    bar = _stacked_bar(n_verified, n_tracked, total)
-    legend = (f"[green]{n_verified} verified[/] [dim]\u00b7[/] "
-              f"[yellow]{n_unverified} tracked[/] [dim]\u00b7 {n_pending} pending[/]")
-
-    # Header: logo left, stats right
+    nv = sum(1 for c in tracked if c.get("quality") == "verified")
+    nt = len(tracked); nu = nt - nv; np_ = len(pending)
+    bar = _bar(nv, nt, total)
+    legend = f"[green]{nv} verified[/] [dim]\u00b7[/] [yellow]{nu} tracked[/] [dim]\u00b7 {np_} pending[/]"
     header = Text.from_markup(
-        f"  {LOGO}\n"
-        f"  [dim]double pendulum[/]"
-        f"         {bar}  [bold]{n_tracked}[/][dim]/{total}[/]\n"
-        f"  [dim]{phase_short}[/]"
-        f"       {legend}"
-    )
+        f"  {LOGO}\n  [dim]double pendulum[/]    {bar}  [bold]{nt}[/][dim]/{total}[/]\n"
+        f"  [dim]HUJI-LAB-B2[/]        {legend}")
 
     if expanded:
-        # 2x2 action card grid
-        card_track = _action_card("track", "green", [
-            ("n", "next"),
-            ("p", "pick & track"),
-            ("b", "bulk"),
-            ("x", "sanity check"),
-            ("k", "sanity sweep"),
-            ("v", "verify"),
-            ("r", "render"),
-        ])
-        card_analyze = _action_card("analyze", "yellow", [
-            ("c", "chaos card"),
-            ("o", "poincar\u00e9"),
-            ("l", "lyapunov"),
-            ("d", "driven poincar\u00e9"),
-            ("i", "bifurcation"),
-            ("qi", "quick insights"),
-        ])
-        card_figures = _action_card("figures", "magenta", [
-            ("fa", "all missing"),
-            ("fs", "single clip"),
-            ("fv", "+ video"),
-            ("ff", "force all"),
-            ("fp", "preview frame"),
-        ])
-        card_info = _action_card("info", "cyan", [
-            ("s", "full status table"),
-            ("e", "export report"),
-            ("m", "roadmap"),
-            ("w", "switch phase"),
-            ("h", "help"),
-        ])
+        ct = _card("track", CLR_TRACK, [
+            ("tn","next"),("tp","pick & track"),("tb","bulk"),
+            ("ts","sanity"),("tv","verify"),("tr","re-track")])
+        ca = _card("analyze", CLR_ANALYZE, [
+            ("ac","chaos card"),("ap","poincar\u00e9"),("al","lyapunov"),
+            ("ad","driven poincar\u00e9"),("ai","bifurcation"),("aq","quick insights")])
+        r1 = Table(box=None, show_header=False, expand=True, padding=(0,1))
+        r1.add_column(ratio=1); r1.add_column(ratio=1); r1.add_row(ct, ca)
 
-        row1 = Table(box=None, show_header=False, expand=True, padding=(0, 1))
-        row1.add_column(ratio=1)
-        row1.add_column(ratio=1)
-        row1.add_row(card_track, card_analyze)
+        cf = _card("figures", CLR_FIGURES, [("fa","all missing"),("fs","single clip"),("ff","force all"),("fp","preview")])
+        cv = _card("videos", CLR_VIDEOS, [("va","all overlays"),("vs","single clip"),("vf","force re-render"),("vp","preview")])
+        ir = Table(box=None, show_header=False, expand=True, padding=(0,1))
+        ir.add_column(ratio=1); ir.add_column(ratio=1); ir.add_row(cf, cv)
+        co = Panel(ir, title="[bold]output[/]", border_style=CLR_OUTPUT, padding=(0,0), expand=True)
 
-        row2 = Table(box=None, show_header=False, expand=True, padding=(0, 1))
-        row2.add_column(ratio=1)
-        row2.add_column(ratio=1)
-        row2.add_row(card_figures, card_info)
+        # Bottom row: info + system + contact
+        ic = Text.from_markup(
+            f" [{CLR_INFO} bold]s[/] status  [{CLR_INFO} bold]e[/] export\n"
+            f" [{CLR_INFO} bold]m[/] roadmap [{CLR_INFO} bold]w[/] switch\n"
+            f" [{CLR_INFO} bold]p[/] paths")
+        sc = Text.from_markup(
+            f" [{CLR_SYSTEM} bold]q[/] quit\n [{CLR_SYSTEM} bold]h[/] help\n [{CLR_SYSTEM} bold]-[/] fold")
+        cc = Text.from_markup(
+            f" [dim]Shaked.Sukiennik[/]\n"
+            f" [dim]@mail.huji.ac.il[/]\n"
+            f" [dim]\u00a9 2026 HUJI[/]")
+        pi = Panel(ic, title="[bold]info[/]", border_style=CLR_INFO, padding=(0,0), expand=True)
+        ps = Panel(sc, title="[bold]system[/]", border_style=CLR_SYSTEM, padding=(0,0), expand=True)
+        pc = Panel(cc, title="[bold]contact[/]", border_style="dim", padding=(0,0), expand=True)
+        r3 = Table(box=None, show_header=False, expand=True, padding=(0,1))
+        r3.add_column(ratio=3); r3.add_column(ratio=2); r3.add_column(ratio=3)
+        r3.add_row(pi, ps, pc)
 
-        footer = Text.from_markup(
-            "  [dim]q quit[/]                          [dim]\u2212 collapse[/]"
-        )
-
-        body = Group(header, Text(""), row1, row2, Text(""), footer)
+        body = Group(header, Text(""), r1, co, Text(""), r3)
     else:
-        # Collapsed: compact list with submenu hints
         actions = Text.from_markup(
-            "    [green bold]t[/]  track          [dim]\u2192 track, verify, render clips[/]\n"
-            "    [yellow bold]a[/]  analyze        [dim]\u2192 chaos card, Poincar\u00e9, \u03bb\u2081[/]\n"
-            "    [magenta bold]f[/]  figures        [dim]\u2192 batch-render plots[/]\n"
-            "    [cyan bold]s[/]  info           [dim]\u2192 status, report, roadmap[/]"
-        )
-        footer = Text.from_markup(
-            "  [dim]q quit[/]                            [dim]+ expand[/]"
-        )
+            f"    [{CLR_TRACK} bold]t[/]  track          [dim]\u2192 tn tp tb ts tv tr[/]\n"
+            f"    [{CLR_ANALYZE} bold]a[/]  analyze        [dim]\u2192 ac ap al ad ai aq[/]\n"
+            f"    [{CLR_OUTPUT}]o[/]  output         [dim]\u2192 fa fs ff fp va vs vf vp[/]\n"
+            f"    [{CLR_INFO} bold]s[/]  info           [dim]\u2192 s e m w p[/]")
+        footer = Text.from_markup("  [dim]q quit    h help    + expand[/]")
         body = Group(header, Text(""), actions, Text(""), footer)
 
-    console.print(Panel(
-        body,
-        border_style="magenta",
-        padding=(1, 2),
-        width=min(console.width, 76),
-    ))
-
+    console.print(Panel(body, border_style="magenta", padding=(1,2), width=min(console.width, 76)))
 
 def render_status_panels(tracked, pending):
-    all_clips = tracked + pending
-    groups = _group_by_week(all_clips)
-    num = 1
-    for week_key, clips in groups:
-        meta = WEEK_GROUPS.get(week_key, {"label": "clips", "desc": "", "color": "white"})
-        color = meta["color"]
-        grp_tracked = [c for c in clips if c["status"] != "pending"]
-        grp_verified = [c for c in grp_tracked if c.get("quality") == "verified"]
-        grp_pending = [c for c in clips if c["status"] == "pending"]
-        bar = _stacked_bar(len(grp_verified), len(grp_tracked), len(clips), width=24)
-        legend = (f"[green]{len(grp_verified)} verified[/] [dim]\u00b7[/] "
-                  f"[yellow]{len(grp_tracked) - len(grp_verified)} tracked[/] [dim]\u00b7 "
-                  f"{len(grp_pending)} pending[/]")
-        t = Table(box=None, show_header=False, padding=(0, 1), expand=True)
-        t.add_column(justify="right", style="dim", width=4)
-        t.add_column(style="white", min_width=18, ratio=1)
-        t.add_column(min_width=10)
-        t.add_column(justify="right", width=7)
-        t.add_column(justify="right", width=9)
-        for clip in clips:
-            quality = clip.get("quality")
-            status = clip.get("status", "pending")
-            if status == "pending":
-                s_cell = "[yellow]pending[/]"
-            elif quality == "verified":
-                s_cell = "[green]verified[/]"
-            elif quality == "manual_accept":
-                s_cell = "[yellow]accepted[/]"
-            else:
-                s_cell = f"[cyan]{quality or 'tracked'}[/]"
-            drop = clip.get("dropout_pct")
-            d_cell = f"{drop:.1f}%" if drop is not None else "[dim]\u2014[/]"
-            dur = clip.get("duration_s")
-            dur_cell = f"{dur:.1f}s" if dur is not None else "[dim]\u2014[/]"
-            t.add_row(str(num), clip["stem"], s_cell, d_cell, dur_cell)
-            num += 1
-        title_str = f"[bold]{meta['label']}[/]"
-        if meta["desc"]:
-            title_str += f" [dim]\u00b7 {meta['desc']}[/]"
-        title_str += f" [dim]\u00b7[/] {len(grp_tracked)}[dim]/{len(clips)}[/]"
-        body = Group(Text.from_markup(f"  {bar}  {legend}"), Text(""), t)
-        console.print(Panel(body, title=title_str, border_style=color, padding=(0, 1)))
+    for wk, clips in _group_by_week(tracked + pending):
+        meta = WEEK_GROUPS.get(wk, {"label":"clips","desc":"","color":"white"})
+        gt = [c for c in clips if c["status"]!="pending"]
+        gv = [c for c in gt if c.get("quality")=="verified"]
+        gp = [c for c in clips if c["status"]=="pending"]
+        b = _bar(len(gv), len(gt), len(clips), 24)
+        leg = f"[green]{len(gv)} ver[/] [dim]\u00b7[/] [yellow]{len(gt)-len(gv)} trk[/] [dim]\u00b7 {len(gp)} pen[/]"
+        t = Table(box=None, show_header=False, padding=(0,1), expand=True)
+        t.add_column(justify="right",style="dim",width=4); t.add_column(style="white",min_width=18,ratio=1)
+        t.add_column(min_width=10); t.add_column(justify="right",width=7); t.add_column(justify="right",width=9)
+        for i, c in enumerate(clips, 1):
+            q, st = c.get("quality"), c.get("status","pending")
+            sc = "[yellow]pending[/]" if st=="pending" else "[green]verified[/]" if q=="verified" else f"[cyan]{q or 'tracked'}[/]"
+            dp = f"{c['dropout_pct']:.1f}%" if c.get("dropout_pct") is not None else "[dim]\u2014[/]"
+            du = f"{c['duration_s']:.1f}s" if c.get("duration_s") is not None else "[dim]\u2014[/]"
+            t.add_row(str(i), c["stem"], sc, dp, du)
+        ti = f"[bold]{meta['label']}[/]"
+        if meta["desc"]: ti += f" [dim]\u00b7 {meta['desc']}[/]"
+        ti += f" [dim]\u00b7[/] {len(gt)}[dim]/{len(clips)}[/]"
+        console.print(Panel(Group(Text.from_markup(f"  {b}  {leg}"), Text(""), t),
+            title=ti, border_style=meta["color"], padding=(0,1)))
         console.print()
 
-
-# ─────────────────────────────────────────────
-# PICKERS
-# ─────────────────────────────────────────────
+# ── Pickers ──
 
 _PICKER_STYLE = None
-
-def _get_picker_style():
+def _sty():
     global _PICKER_STYLE
     if _PICKER_STYLE is None:
-        from prompt_toolkit.styles import Style as PtStyle
-        _PICKER_STYLE = PtStyle([
-            ("qmark", "fg:#fbbf24 bold"),
-            ("question", "bold"),
-            ("pointer", "fg:#22d3ee bold"),
-            ("highlighted", "fg:#5eead4 bold"),
-            ("selected", "fg:#5eead4"),
-        ])
+        from prompt_toolkit.styles import Style as S
+        _PICKER_STYLE = S([("qmark","fg:#fbbf24 bold"),("question","bold"),
+            ("pointer","fg:#22d3ee bold"),("highlighted","fg:#5eead4 bold"),("selected","fg:#5eead4")])
     return _PICKER_STYLE
 
+BACK = "__back__"; SWEEP = "__sweep__"
+
+def _choices(clips, extra=None):
+    ch = [Choice("\u2190 back", value=BACK)]
+    if extra: ch.extend(extra)
+    for wk, gc in _group_by_week(clips):
+        m = WEEK_GROUPS.get(wk)
+        if m: ch.append(Separator(f"\u2500\u2500 {m['label']} \u00b7 {m['desc']} ({len(gc)}) \u2500\u2500"))
+        for i, c in enumerate(gc):
+            br = "\u2570\u2500" if i==len(gc)-1 else "\u251c\u2500"
+            vd, fd = c.get("drive_voltage_v"), c.get("drive_freq_hz")
+            ex = f"  {vd}V {fd}Hz" if vd and fd else ""
+            ch.append(Choice(f" {br} {c['stem']:<20}{ex}", value=c["stem"]))
+    return ch
+
 def pick_clip(clips, label="Pick a clip"):
-    if not clips:
-        console.print("  [dim]No clips available.[/]")
-        return None
-    choices = [Choice("\u2190 back", value=None)]
-    groups = _group_by_week(clips)
-    for week_key, group_clips in groups:
-        meta = WEEK_GROUPS.get(week_key)
-        if meta:
-            choices.append(Separator(
-                f"\u2500\u2500\u2500\u2500 {meta['label']} \u00b7 "
-                f"{meta['desc']} ({len(group_clips)} clips) "
-                f"\u2500\u2500\u2500\u2500"
-            ))
-        for i, clip in enumerate(group_clips):
-            is_last = (i == len(group_clips) - 1)
-            branch = "\u2570\u2500" if is_last else "\u251c\u2500"
-            vd = clip.get("drive_voltage_v")
-            fd = clip.get("drive_freq_hz")
-            extra = ""
-            if vd is not None and fd is not None:
-                extra = f"  {vd}V  {fd}Hz"
-            display = f" {branch} {clip['stem']:<20}{extra}"
-            choices.append(Choice(display, value=clip["stem"]))
-    try:
-        result = questionary.select(
-            label, choices=choices, style=_get_picker_style(),
-            use_arrow_keys=True, use_jk_keys=True,
-        ).ask()
-    except KeyboardInterrupt:
-        return None
-    return result
+    if not clips: console.print("  [dim]No clips available.[/]"); return None
+    try: r = questionary.select(label, choices=_choices(clips), style=_sty(), use_arrow_keys=True, use_jk_keys=True).ask()
+    except KeyboardInterrupt: return None
+    return None if r is None or r == BACK else r
 
-def pick_tracked(tracked, label="Pick a clip"):
-    return pick_clip(tracked, label)
+def pick_or_sweep(clips, label="Sanity check"):
+    if not clips: console.print("  [dim]No clips available.[/]"); return None
+    try: r = questionary.select(label, choices=_choices(clips, [Choice("\u2261 sweep all", value=SWEEP)]),
+             style=_sty(), use_arrow_keys=True, use_jk_keys=True).ask()
+    except KeyboardInterrupt: return None
+    return None if r is None or r == BACK else r
 
-def pick_pending(pending, label="Pick a clip to track"):
-    return pick_clip(pending, label)
+def pick_t(tr, label="Pick a clip"): return pick_clip(tr, label)
+def pick_p(pe, label="Pick a clip to track"): return pick_clip(pe, label)
 
+# ── Submenus (collapsed) ──
 
-# ─────────────────────────────────────────────
-# SUBMENUS (collapsed mode fallback)
-# ─────────────────────────────────────────────
+def _sub(title, actions):
+    console.print(); console.print(f"  [bold]{title}[/]"); console.print(Rule(style="dim"))
+    for k, l, d, c in actions:
+        console.print(f"  [{c} bold]{k:<3}[/] {l:<18} [dim]{d}[/]")
+    console.print(f"  [dim bold]\u2190[/]  [dim]back[/]"); console.print(Rule(style="dim"))
+    try: k = input("  \u25b8 ").strip().lower()
+    except (EOFError, KeyboardInterrupt): return None
+    return k if k else None
 
-def _submenu(title, actions):
-    console.print()
-    console.print(f"  [bold]{title}[/]")
-    console.print(Rule(style="dim"))
-    for key, label, desc, color in actions:
-        desc_part = f"  [dim]\u2192 {desc}[/]" if desc else ""
-        console.print(f"  [{color} bold]{key}[/]  {label:<20}{desc_part}")
-    console.print(f"  [dim bold]\u2190[/]  [dim]back[/]")
-    console.print(Rule(style="dim"))
-    try:
-        k = input("  \u25b8 ").strip().lower()
-    except (EOFError, KeyboardInterrupt):
-        return None
-    return k[0] if k else None
+def sub_track(tr, pe):
+    k = _sub("track", [("tn","next","first pending",CLR_TRACK),("tp","pick","arrow-key",CLR_TRACK),
+        ("tb","bulk","batch all",CLR_TRACK),("ts","sanity","check/sweep",CLR_TRACK),
+        ("tv","verify","re-verify",CLR_TRACK),("tr","re-track","force redo",CLR_TRACK)])
+    if not k: return
+    {"tn":lambda:do_tn(pe),"tp":lambda:do_tp(pe),"tb":do_tb,
+     "ts":lambda:do_ts(tr),"tv":lambda:do_tv(tr),"tr":lambda:do_tr(tr)}.get(k[:2],lambda:None)()
 
-def submenu_track(tracked, pending):
-    k = _submenu("track", [
-        ("n", "next",          "auto-pick first pending",   "green"),
-        ("p", "pick & track",  "arrow-key picker",          "blue"),
-        ("b", "bulk",          "sequential batch",          "magenta"),
-        ("x", "sanity check",  "examine one tracked clip",  "cyan"),
-        ("k", "sanity sweep",  "auto-check all tracked",    "cyan"),
-        ("v", "verify",        "re-verify a tracked clip",  "yellow"),
-        ("r", "render",        "overlay video for a clip",  "white"),
-    ])
-    if k == "n": do_track_next(pending)
-    elif k == "p": do_pick_and_track(pending)
-    elif k == "b": do_bulk()
-    elif k == "x": do_sanity_check(tracked)
-    elif k == "k": do_sanity_sweep(tracked)
-    elif k == "v": do_verify(tracked)
-    elif k == "r": do_render(tracked)
+def sub_analyze(tr):
+    k = _sub("analyze", [("ac","chaos card","verdict",CLR_ANALYZE),("ap","poincar\u00e9","section",CLR_ANALYZE),
+        ("al","lyapunov","\u03bb\u2081",CLR_ANALYZE),("ad","driven","stroboscopic",CLR_ANALYZE),
+        ("ai","bifurcation","sweep",CLR_ANALYZE),("aq","insights","plot explorer",CLR_ANALYZE)])
+    if not k: return
+    {"ac":lambda:do_ac(tr),"ap":lambda:do_ap(tr),"al":lambda:do_al(tr),
+     "ad":lambda:do_ad(tr),"ai":do_ai,"aq":lambda:do_aq(tr)}.get(k[:2],lambda:None)()
 
-def submenu_analyze(tracked):
-    k = _submenu("analyze", [
-        ("c", "chaos card",      "0-1 test, verdict",             "yellow"),
-        ("p", "poincar\u00e9",        "section at \u03b8\u2081+\u03b8\u2082=0",           "blue"),
-        ("l", "lyapunov",        "largest \u03bb\u2081 (Rosenstein)",  "magenta"),
-        ("d", "driven poincar\u00e9", "stroboscopic",                 "white"),
-        ("b", "bifurcation",     "cross-clip Vd or fd sweep",     "white"),
-        ("q", "quick insights",  "interactive plot explorer",     "cyan"),
-    ])
-    if k == "c": do_analyze(tracked)
-    elif k == "p": do_poincare(tracked)
-    elif k == "l": do_lyapunov(tracked)
-    elif k == "d": do_driven_poincare(tracked)
-    elif k == "b": do_driven_bifurcation()
-    elif k == "q": do_quick_insights(tracked)
+def sub_output(tr, pe):
+    k = _sub("output", [("fa","all figures","batch",CLR_FIGURES),("fs","single fig","pick",CLR_FIGURES),
+        ("ff","force fig","redo",CLR_FIGURES),("fp","preview","frame",CLR_FIGURES),
+        ("va","all videos","batch",CLR_VIDEOS),("vs","single vid","pick",CLR_VIDEOS),
+        ("vf","force vid","redo",CLR_VIDEOS),("vp","preview vid","frame",CLR_VIDEOS)])
+    if not k: return
+    {"fa":do_fa,"fs":lambda:do_fs(tr),"ff":do_ff,"fp":lambda:do_fp(tr),
+     "va":do_va,"vs":lambda:do_vs(tr),"vf":do_vf,"vp":lambda:do_vp(tr)}.get(k[:2],lambda:None)()
 
-def submenu_figures(tracked):
-    k = _submenu("figures", [
-        ("a", "all missing",  "batch-render every tracked clip", "magenta"),
-        ("s", "single clip",  "pick one \u2192 render its figures",  "blue"),
-        ("v", "+ video",      "include mp4s (slow)",              "white"),
-        ("f", "force all",    "re-render even existing",          "white"),
-    ])
-    if k == "a": do_figures()
-    elif k == "s": do_figures_single(tracked)
-    elif k == "v": do_figures_with_video()
-    elif k == "f": do_figures_force()
+def sub_info(tr, pe):
+    k = _sub("info", [("s","status","panels",CLR_INFO),("e","export","xlsx",CLR_INFO),
+        ("m","roadmap","md",CLR_INFO),("w","switch","phase",CLR_INFO),("p","paths","config",CLR_INFO)])
+    if not k: return
+    {"s":lambda:do_s(tr,pe),"e":do_e,"m":do_m,"w":do_w,"p":do_p}.get(k[0],lambda:None)()
 
-def submenu_info(tracked, pending):
-    k = _submenu("info", [
-        ("s", "full status",  "stacked panel view",           "cyan"),
-        ("e", "export",       "generate status_report.xlsx",  "white"),
-        ("m", "roadmap",      "generate tracking_roadmap.md", "white"),
-        ("w", "switch phase", "toggle free-swing / driven",   "white"),
-        ("h", "help",         "cheat sheet",                  "white"),
-    ])
-    if k == "s": do_status(tracked, pending)
-    elif k == "e": do_export()
-    elif k == "m": do_roadmap()
-    elif k == "w": do_switch_phase()
-    elif k == "h": do_help()
-
-
-# ─────────────────────────────────────────────
-# ACTION RUNNERS
-# ─────────────────────────────────────────────
+# ── Actions ──
 
 def _run(script, *args):
-    cmd = [sys.executable, script, *map(str, args)]
-    return subprocess.run(cmd, cwd=REPO_ROOT).returncode
+    return subprocess.run([sys.executable, script, *map(str, args)], cwd=REPO_ROOT).returncode
 
 def _pause():
     console.print()
-    try:
-        questionary.press_any_key_to_continue("press any key to return...").ask()
-    except KeyboardInterrupt:
-        pass
+    try: questionary.press_any_key_to_continue("press any key to return...").ask()
+    except KeyboardInterrupt: pass
 
-# ── Track ──
-def do_track_next(pending):
-    if not pending:
-        console.print("  [green]Nothing pending \u2014 all clips tracked.[/]")
-        _pause(); return
-    stem = pending[0]["stem"]
-    console.print(f"  [bold]Tracking:[/] {stem}\n")
-    _run(SCRIPT_TRACK_ONE, "--stem", stem); _pause()
-
-def do_pick_and_track(pending):
-    stem = pick_pending(pending)
-    if not stem: return
-    console.print(f"  [bold]Tracking:[/] {stem}\n")
-    _run(SCRIPT_TRACK_ONE, "--stem", stem); _pause()
-
-def do_bulk():
-    _run(SCRIPT_BULK); _pause()
-
-def do_sanity_check(tracked):
-    stem = pick_tracked(tracked, "Pick a clip to examine")
-    if not stem: return
-    sys.path.insert(0, os.path.join(REPO_ROOT, "scripts", "analysis"))
-    from sanity_check import check_one
-    try:
-        check_one(stem)
-    except Exception as e:
-        console.print(f"  [red]ERROR:[/] {e}")
+# Track
+def do_tn(pe):
+    if not pe: console.print("  [green]Nothing pending.[/]"); _pause(); return
+    s=pe[0]["stem"]; console.print(f"  [bold]Tracking:[/] {s}\n")
+    _run(SCRIPT_TRACK_ONE,"--stem",s); _log_activity(f"tracked {s}"); _pause()
+def do_tp(pe):
+    s=pick_p(pe); 
+    if not s: return
+    console.print(f"  [bold]Tracking:[/] {s}\n"); _run(SCRIPT_TRACK_ONE,"--stem",s); _pause()
+def do_tb(): _run(SCRIPT_BULK); _log_activity("bulk done"); _pause()
+def do_ts(tr):
+    r=pick_or_sweep(tr,"Sanity check")
+    if not r: return
+    sys.path.insert(0,os.path.join(REPO_ROOT,"scripts","analysis"))
+    if r==SWEEP:
+        from sanity_check import check_sweep
+        def on_p(stem,v,reasons):
+            console.print("  [dim][a]ccept [f]lag [n]ext [q]uit[/]")
+            try: k=input("  \u25b8 ").strip().lower()
+            except: return "q"
+            return k[0] if k else "n"
+        console.print(); res=check_sweep(tr,on_pause=on_p)
+        nc=sum(1 for _,v in res if v=="CLEAN"); nw=sum(1 for _,v in res if v in("WARN","REVIEW"))
+        console.print(); console.print(f"  [green]{nc} clean[/]  [yellow]{nw} flagged[/]  [dim]{len(res)} total[/]")
+        _log_activity(f"sanity: {nc} clean, {nw} flagged")
+    else:
+        from sanity_check import check_one
+        try: check_one(r)
+        except Exception as e: console.print(f"  [red]ERROR:[/] {e}")
     _pause()
+def do_tv(tr):
+    s=pick_t(tr,"Verify"); 
+    if not s: return
+    _run(SCRIPT_VERIFY,"--stem",s); _log_activity(f"verified {s}"); _pause()
+def do_tr(tr):
+    s=pick_t(tr,"Re-track"); 
+    if not s: return
+    console.print(f"  [bold]Re-tracking:[/] {s}\n"); _run(SCRIPT_TRACK_ONE,"--stem",s,"--force"); _pause()
 
-def do_sanity_sweep(tracked):
-    if not tracked:
-        console.print("  [dim]No tracked clips to check.[/]")
-        _pause()
-        return
-    sys.path.insert(0, os.path.join(REPO_ROOT, "scripts", "analysis"))
-    from sanity_check import check_sweep
+# Analyze
+def do_ac(tr):
+    s=pick_t(tr,"Analyze"); 
+    if not s: return
+    _run(SCRIPT_ANALYZE,s); _log_activity(f"analyzed {s}"); _pause()
+def do_ap(tr):
+    s=pick_t(tr,"Poincar\u00e9"); 
+    if not s: return
+    _run(SCRIPT_POINCARE,"--stem",s); _pause()
+def do_al(tr):
+    s=pick_t(tr,"\u03bb\u2081"); 
+    if not s: return
+    _run(SCRIPT_LYAPUNOV,"--stem",s); _pause()
+def do_ad(tr):
+    s=pick_t(tr,"Driven Poincar\u00e9"); 
+    if not s: return
+    _run(SCRIPT_DRIVEN_POIN,"--stem",s); _pause()
+def do_ai(): _run(SCRIPT_DRIVEN_BIF,"--sweep","vd"); _pause()
+def do_aq(tr):
+    s=pick_t(tr,"Explore"); 
+    if not s: return
+    sys.path.insert(0,os.path.join(REPO_ROOT,"scripts","analysis"))
+    from quick_insights import explore; explore(s)
 
-    def on_pause(stem, verdict, reasons):
-        console.print("  [dim][a]ccept  [f]lag  [r]ender video  [n]ext  [q]uit[/]")
-        try:
-            k = input("  \u25b8 ").strip().lower()
-        except (EOFError, KeyboardInterrupt):
-            return "q"
-        return k[0] if k else "n"
+# Figures
+def do_fa(): _run(SCRIPT_BATCH_FIGS); _log_activity("figures done"); _pause()
+def do_fs(tr):
+    s=pick_t(tr,"Figures"); 
+    if not s: return
+    _run(SCRIPT_BATCH_FIGS,"--stem",s); _pause()
+def do_ff(): _run(SCRIPT_BATCH_FIGS,"--force"); _pause()
+def do_fp(tr):
+    s=pick_t(tr,"Preview"); 
+    if not s: return
+    _run(os.path.join(REPO_ROOT,"scripts","analysis","preview_frame.py"),"--stem",s); _pause()
 
-    console.print()
-    results = check_sweep(tracked, on_pause=on_pause)
-    n_clean = sum(1 for _, v in results if v == "CLEAN")
-    n_warn = sum(1 for _, v in results if v in ("WARN", "REVIEW"))
-    console.print()
-    console.print(
-        f"  [green]{n_clean} clean[/]  "
-        f"[yellow]{n_warn} flagged[/]  "
-        f"[dim]{len(results)} total[/]"
-    )
-    _pause()
+# Videos
+def do_va(): _run(SCRIPT_BATCH_FIGS,"--video"); _pause()
+def do_vs(tr):
+    s=pick_t(tr,"Overlay video"); 
+    if not s: return
+    _run(SCRIPT_COMBINED,"--stem",s); _pause()
+def do_vf(): _run(SCRIPT_BATCH_FIGS,"--video","--force"); _pause()
+def do_vp(tr):
+    s=pick_t(tr,"Preview video"); 
+    if not s: return
+    _run(os.path.join(REPO_ROOT,"scripts","analysis","preview_frame.py"),"--stem",s,"--video"); _pause()
 
-def do_verify(tracked):
-    stem = pick_tracked(tracked, "Pick a clip to re-verify")
-    if not stem: return
-    _run(SCRIPT_VERIFY, "--stem", stem); _pause()
-
-def do_render(tracked):
-    stem = pick_tracked(tracked, "Pick a clip to render")
-    if not stem: return
-    _run(SCRIPT_COMBINED, "--stem", stem); _pause()
-
-# ── Analyze ──
-def do_analyze(tracked):
-    stem = pick_tracked(tracked, "Pick a clip to analyze")
-    if not stem: return
-    _run(SCRIPT_ANALYZE, stem); _pause()
-
-def do_poincare(tracked):
-    stem = pick_tracked(tracked, "Pick a clip for Poincar\u00e9")
-    if not stem: return
-    _run(SCRIPT_POINCARE, "--stem", stem); _pause()
-
-def do_lyapunov(tracked):
-    stem = pick_tracked(tracked, "Pick a clip for \u03bb\u2081")
-    if not stem: return
-    _run(SCRIPT_LYAPUNOV, "--stem", stem); _pause()
-
-def do_driven_poincare(tracked):
-    stem = pick_tracked(tracked, "Pick a clip for driven Poincar\u00e9")
-    if not stem: return
-    _run(SCRIPT_DRIVEN_POIN, "--stem", stem); _pause()
-
-def do_driven_bifurcation():
-    _run(SCRIPT_DRIVEN_BIF, "--sweep", "vd"); _pause()
-
-def do_quick_insights(tracked):
-    stem = pick_tracked(tracked, "Pick a clip to explore")
-    if not stem: return
-    sys.path.insert(0, os.path.join(REPO_ROOT, "scripts", "analysis"))
-    from quick_insights import explore
-    explore(stem)
-
-# ── Figures ──
-def do_figures():
-    _run(SCRIPT_BATCH_FIGS); _pause()
-
-def do_figures_single(tracked):
-    stem = pick_tracked(tracked, "Pick a clip for figures")
-    if not stem: return
-    _run(SCRIPT_BATCH_FIGS, "--stem", stem); _pause()
-
-def do_figures_with_video():
-    _run(SCRIPT_BATCH_FIGS, "--video"); _pause()
-
-def do_figures_force():
-    _run(SCRIPT_BATCH_FIGS, "--force"); _pause()
-
-def do_figures_preview(tracked):
-    stem = pick_tracked(tracked, "Pick a clip to preview")
-    if not stem: return
-    _run(os.path.join(REPO_ROOT, "scripts", "analysis", "preview_frame.py"),
-         "--stem", stem); _pause()
-
-# ── Info ──
-def do_status(tracked, pending):
-    console.print()
-    render_status_panels(tracked, pending)
-    _pause()
-
-def do_export():
-    _run(SCRIPT_REPORT); _pause()
-
-def do_roadmap():
-    _run(SCRIPT_ROADMAP); _pause()
-
-def do_switch_phase():
-    console.print()
-    console.print("  [bold]Switch phase[/]")
-    console.print()
-    current = PHASE.replace("pendulum-", "").replace("week", "w")
-    console.print(f"  Current: [cyan]{current}[/]")
-    console.print()
-    console.print("  Set in your shell before launching chaos:")
+# Info
+def do_s(tr,pe): console.print(); render_status_panels(tr,pe); _pause()
+def do_e(): _run(SCRIPT_REPORT); _pause()
+def do_m(): _run(SCRIPT_ROADMAP); _pause()
+def do_w():
+    cur=PHASE.replace("pendulum-","").replace("week","w")
+    console.print(f"\n  [bold]Switch phase[/]  [dim]current: [cyan]{cur}[/][/]\n")
     console.print('  [dim]$env:CHAOS_PHASE = "week3-4-pendulum-free-swing"[/]')
-    console.print('  [dim]$env:CHAOS_PHASE = "week5-6-pendulum-motor-driven"[/]')
-    _pause()
+    console.print('  [dim]$env:CHAOS_PHASE = "week5-6-pendulum-motor-driven"[/]'); _pause()
+def do_h(): _run(sys.executable, os.path.join(REPO_ROOT,"chaos.py"),"help"); _pause()
+def do_p():
+    from thresholds import PIVOT, ARM_LENGTH_PX, get_pivot_arm
+    pv5,al5=PIVOT,ARM_LENGTH_PX; pv6,al6=get_pivot_arm("3.2V_0.9Hz")
+    console.print()
+    t=Table(box=None,show_header=False,padding=(0,2),expand=False)
+    t.add_column(style="dim"); t.add_column(style="white")
+    t.add_row("repo",REPO_ROOT); t.add_row("phase",PHASE)
+    t.add_row("videos",VIDEOS_DIR); t.add_row("measurements",MEAS_DIR)
+    t.add_row("",""); t.add_row("week5 pivot",f"({pv5[0]},{pv5[1]}) arm {al5}px")
+    t.add_row("week6 pivot",f"({pv6[0]},{pv6[1]}) arm {al6}px")
+    console.print(Panel(t,title="[bold]paths[/]",border_style=CLR_INFO,padding=(0,1))); _pause()
 
-def do_help():
-    _run(sys.executable, os.path.join(REPO_ROOT, "chaos.py"), "help"); _pause()
+# ── Hub loop ──
 
+TWO_CHAR_KEYS = ("tn","tp","tb","ts","tv","tr","ac","ap","al","ad","ai","aq","fa","fs","ff","fp","va","vs","vf","vp")
 
-# ─────────────────────────────────────────────
-# HUB LOOP
-# ─────────────────────────────────────────────
-
-EXPANDED_DISPATCH = {
-    # track
-    "n": lambda tr, pe: do_track_next(pe),
-    "p": lambda tr, pe: do_pick_and_track(pe),
-    "b": lambda tr, pe: do_bulk(),
-    "x": lambda tr, pe: do_sanity_check(tr),
-    "k": lambda tr, pe: do_sanity_sweep(tr),
-    "v": lambda tr, pe: do_verify(tr),
-    "r": lambda tr, pe: do_render(tr),
-    # analyze
-    "c": lambda tr, pe: do_analyze(tr),
-    "o": lambda tr, pe: do_poincare(tr),
-    "l": lambda tr, pe: do_lyapunov(tr),
-    "d": lambda tr, pe: do_driven_poincare(tr),
-    "i": lambda tr, pe: do_driven_bifurcation(),
-    "qi": lambda tr, pe: do_quick_insights(tr),
-    # info
-    "s": lambda tr, pe: do_status(tr, pe),
-    "e": lambda tr, pe: do_export(),
-    "m": lambda tr, pe: do_roadmap(),
-    "w": lambda tr, pe: do_switch_phase(),
-    "h": lambda tr, pe: do_help(),
+DISPATCH = {
+    "tn":lambda t,p:do_tn(p), "tp":lambda t,p:do_tp(p), "tb":lambda t,p:do_tb(),
+    "ts":lambda t,p:do_ts(t), "tv":lambda t,p:do_tv(t), "tr":lambda t,p:do_tr(t),
+    "ac":lambda t,p:do_ac(t), "ap":lambda t,p:do_ap(t), "al":lambda t,p:do_al(t),
+    "ad":lambda t,p:do_ad(t), "ai":lambda t,p:do_ai(),  "aq":lambda t,p:do_aq(t),
+    "fa":lambda t,p:do_fa(),  "fs":lambda t,p:do_fs(t), "ff":lambda t,p:do_ff(),
+    "fp":lambda t,p:do_fp(t), "va":lambda t,p:do_va(),  "vs":lambda t,p:do_vs(t),
+    "vf":lambda t,p:do_vf(),  "vp":lambda t,p:do_vp(t),
+    "s":lambda t,p:do_s(t,p), "e":lambda t,p:do_e(),    "m":lambda t,p:do_m(),
+    "w":lambda t,p:do_w(),    "p":lambda t,p:do_p(),     "h":lambda t,p:do_h(),
 }
-
 
 def hub():
     expanded = True
     try:
         while True:
-            console.clear()
-            tracked, pending = get_clips()
-            render_hub(tracked, pending, expanded=expanded)
-
-            try:
-                raw = input("  \u25b8 ").strip().lower()
-            except (EOFError, KeyboardInterrupt):
-                break
-
-            if not raw:
-                continue
-
-            # Toggle expand/collapse
-            if raw in ("+", "-", "="):
-                expanded = not expanded
-                continue
-
-            key = raw[:2] if raw[:2] in ("fa", "fs", "fv", "ff", "fp", "qi") else raw[0]
-
-            if key == "q":
-                break
+            console.clear(); tr, pe = get_clips()
+            render_hub(tr, pe, expanded=expanded)
+            try: raw = input("  \u25b8 ").strip().lower()
+            except (EOFError, KeyboardInterrupt): break
+            if not raw: continue
+            if raw in ("+","-","="): expanded = not expanded; continue
+            key = raw[:2] if raw[:2] in TWO_CHAR_KEYS else raw[0]
+            if key == "q": break
             elif expanded:
-                handler = EXPANDED_DISPATCH.get(key)
-                if handler:
-                    handler(tracked, pending)
-                elif key == "fa": do_figures()
-                elif key == "fs": do_figures_single(tracked)
-                elif key == "fv": do_figures_with_video()
-                elif key == "ff": do_figures_force()
-                elif key == "fp": do_figures_preview(tracked)
-                else:
-                    console.print(f"  [dim]Unknown key: {key}[/]")
-                    import time; time.sleep(0.5)
+                h = DISPATCH.get(key)
+                if h: h(tr, pe)
+                else: console.print(f"  [dim]Unknown: {key}[/]"); import time; time.sleep(0.5)
             else:
-                if key == "t": submenu_track(tracked, pending)
-                elif key == "a": submenu_analyze(tracked)
-                elif key == "f": submenu_figures(tracked)
-                elif key == "s": submenu_info(tracked, pending)
-                else:
-                    console.print(f"  [dim]Unknown key: {key}[/]")
-                    import time; time.sleep(0.5)
-    except KeyboardInterrupt:
-        pass
+                {"t":lambda:sub_track(tr,pe),"a":lambda:sub_analyze(tr),
+                 "o":lambda:sub_output(tr,pe),"s":lambda:sub_info(tr,pe),
+                 "h":do_h}.get(key, lambda:console.print(f"  [dim]Unknown: {key}[/]"))()
+    except KeyboardInterrupt: pass
     console.print("\n  [dim]bye.[/]")
 
-
-if __name__ == "__main__":
-    hub()
+if __name__ == "__main__": hub()

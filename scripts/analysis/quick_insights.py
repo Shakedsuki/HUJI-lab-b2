@@ -102,22 +102,52 @@ def _sub(d, n=800):
 def plot_both(d):
     import plotext as plt
     s = _sub(d)
-    _setup(plt, "\u03b8\u2081(t) and \u03b8\u2082(t)")
-    plt.plot(d["t"][::s], d["th1"][::s], label="\u03b81", color="green")
-    plt.plot(d["t"][::s], d["th2"][::s], label="\u03b82", color="orange")
+    plt.clf()
+    plt.subplots(2, 1)
+    plt.plotsize(76, 24)
+    plt.theme("dark")
+
+    plt.subplot(1, 1)
+    plt.axes_color("yellow")
+    plt.ticks_color("yellow")
+    plt.plot(d["t"][::s], d["th1"][::s], color="green")
+    plt.title("\u03b8\u2081(t)")
+    plt.ylabel("deg")
+
+    plt.subplot(2, 1)
+    plt.axes_color("yellow")
+    plt.ticks_color("yellow")
+    plt.plot(d["t"][::s], d["th2"][::s], color="orange")
+    plt.title("\u03b8\u2082(t)")
     plt.xlabel("t (s)")
     plt.ylabel("deg")
+
     plt.show()
 
 
 def plot_omega(d):
     import plotext as plt
     s = _sub(d)
-    _setup(plt, "\u03c9\u2081(t) and \u03c9\u2082(t)")
-    plt.plot(d["t"][::s], d["om1"][::s], label="\u03c91", color="cyan")
-    plt.plot(d["t"][::s], d["om2"][::s], label="\u03c92", color="magenta")
+    plt.clf()
+    plt.subplots(2, 1)
+    plt.plotsize(76, 24)
+    plt.theme("dark")
+
+    plt.subplot(1, 1)
+    plt.axes_color("yellow")
+    plt.ticks_color("yellow")
+    plt.plot(d["t"][::s], d["om1"][::s], color="cyan")
+    plt.title("\u03c9\u2081(t)")
+    plt.ylabel("\u00b0/s")
+
+    plt.subplot(2, 1)
+    plt.axes_color("yellow")
+    plt.ticks_color("yellow")
+    plt.plot(d["t"][::s], d["om2"][::s], color="magenta")
+    plt.title("\u03c9\u2082(t)")
     plt.xlabel("t (s)")
     plt.ylabel("\u00b0/s")
+
     plt.show()
 
 
@@ -267,17 +297,36 @@ PLOTS = {
 # ─────────────────────────────────────────────
 
 def _print_menu(con):
-    """Print the available plot commands, color-coded."""
+    """Print the available plot commands in compact inline frames."""
+    from rich.panel import Panel
+    from rich.columns import Columns
+    from rich.text import Text
+
     cats = [
-        ("green",   ["both", "omega", "tip", "energy"]),
-        ("yellow",  ["phase1", "phase2", "config", "full"]),
-        ("blue",    ["xy", "trace"]),
-        ("red",     ["spectrum", "return"]),
+        ("green",   "time series", ["both", "omega", "tip", "energy"]),
+        ("yellow",  "phase space", ["phase1", "phase2", "config", "full"]),
+        ("blue",    "physical",    ["xy", "trace"]),
+        ("red",     "chaos",       ["spectrum", "return"]),
     ]
-    parts = []
-    for color, keys in cats:
-        parts.append("  ".join(f"[{color}]{k}[/]" for k in keys))
-    con.print("  " + "    ".join(parts) + "    [dim]back[/]")
+    panels = []
+    for color, label, keys in cats:
+        content = " ".join(f"[{color} bold]{k}[/]" for k in keys)
+        panels.append(Panel(
+            Text.from_markup(content),
+            title=f"[{color}]{label}[/]",
+            border_style=color,
+            padding=(0, 1),
+            expand=False,
+        ))
+    con.print(Columns(panels, padding=(0, 1)))
+    con.print()
+    con.print("  [dim]examples:[/]")
+    con.print("    [dim]\u25b8[/] [green bold]both[/]          [dim]\u2192 see \u03b8\u2081 and \u03b8\u2082 over time[/]")
+    con.print("    [dim]\u25b8[/] [yellow bold]phase1[/]        [dim]\u2192 then switch to arm 1 phase portrait[/]")
+    con.print("    [dim]\u25b8[/] [red bold]spectrum[/]       [dim]\u2192 check frequency content[/]")
+    con.print("    [dim]\u25b8[/] [bold]back[/]           [dim]\u2192 done, return to menu[/]")
+    con.print()
+    con.print("  [dim]type a command, or[/] [bold]back[/] [dim]to return[/]  [dim italic]h = show menu again[/]")
 
 
 def explore(stem):
@@ -295,6 +344,9 @@ def explore(stem):
     con.print(
         f"  [green bold]explore[/]  [bold white]{stem}[/]  "
         f"[dim]{d['n_frames']} frames  {d['duration_s']:.1f}s[/]"
+    )
+    con.print(
+        f"  [dim]type a plot name to view it instantly. data stays loaded between plots.[/]"
     )
     con.print()
     _print_menu(con)
