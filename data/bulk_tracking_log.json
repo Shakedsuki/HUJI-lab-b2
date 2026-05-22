@@ -323,5 +323,70 @@
     "theta2_release": null,
     "energy_proxy": null,
     "ran_at": "2026-05-22T16:56:58"
+  },
+  "2.45V_1Hz": {
+    "config_description": "2.45V_1Hz",
+    "key": "2.45V_1Hz",
+    "returncode": 0,
+    "elapsed_s": 20.40529227256775,
+    "dropout_rate_pct": 0.0,
+    "n_free_frames": null,
+    "duration_s": 38.488,
+    "theta1_release": null,
+    "theta2_release": null,
+    "energy_proxy": null,
+    "ran_at": "2026-05-22T18:30:07"
+  },
+  "2.4V_1Hz_1": {
+    "config_description": "2.4V_1Hz_1",
+    "key": "2.4V_1Hz_1",
+    "returncode": 0,
+    "elapsed_s": 24.18909454345703,
+    "dropout_rate_pct": 0.0,
+    "n_free_frames": null,
+    "duration_s": 38.088,
+    "theta1_release": null,
+    "theta2_release": null,
+    "energy_proxy": null,
+    "ran_at": "2026-05-22T18:30:31"
+  },
+  "2.4V_1Hz_2": {
+    "config_description": "2.4V_1Hz_2",
+    "key": "2.4V_1Hz_2",
+    "returncode": 0,
+    "elapsed_s": 28.985660791397095,
+    "dropout_rate_pct": 0.0,
+    "n_free_frames": null,
+    "duration_s": 35.986,
+    "theta1_release": null,
+    "theta2_release": null,
+    "energy_proxy": null,
+    "ran_at": "2026-05-22T18:31:00"
+  },
+  "2.5V_1Hz": {
+    "config_description": "2.5V_1Hz",
+    "key": "2.5V_1Hz",
+    "returncode": 0,
+    "elapsed_s": 27.634886980056763,
+    "dropout_rate_pct": 0.0,
+    "n_free_frames": null,
+    "duration_s": 34.585,
+    "theta1_release": null,
+    "theta2_release": null,
+    "energy_proxy": null,
+    "ran_at": "2026-05-22T18:31:28"
+  },
+  "2.6V_1Hz": {
+    "config_description": "2.6V_1Hz",
+    "key": "2.6V_1Hz",
+    "returncode": 0,
+    "elapsed_s": 28.195662021636963,
+    "dropout_rate_pct": 0.0,
+    "n_free_frames": null,
+    "duration_s": 35.986,
+    "theta1_release": null,
+    "theta2_release": null,
+    "energy_proxy": null,
+    "ran_at": "2026-05-22T18:31:56"
   }
 }

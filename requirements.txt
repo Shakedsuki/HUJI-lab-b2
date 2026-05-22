@@ -14,6 +14,7 @@ pandas >= 2.0                  # generate_status_report dropout aggregation
 openpyxl >= 3.1                # status_report.xlsx writer
 rich >= 13.0                   # verdict panels + bulk-summary tables (scripts/utils/render.py)
 questionary >= 2.0             # interactive clip picker + hub shell (scripts/utils/shell.py)
+plotext >= 5.2                 # terminal plots for sanity-check diagnostics (scripts/analysis/sanity_check.py)
 
 # Optional — only required for scripts/utils/download_videos.py:
 gdown >= 5.0

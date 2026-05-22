@@ -207,6 +207,8 @@ def render_hub(tracked, pending, expanded=True):
             ("n", "next"),
             ("p", "pick & track"),
             ("b", "bulk"),
+            ("x", "sanity check"),
+            ("k", "sanity sweep"),
             ("v", "verify"),
             ("r", "render"),
         ])
@@ -216,6 +218,7 @@ def render_hub(tracked, pending, expanded=True):
             ("l", "lyapunov"),
             ("d", "driven poincar\u00e9"),
             ("i", "bifurcation"),
+            ("qi", "quick insights"),
         ])
         card_figures = _action_card("figures", "magenta", [
             ("fa", "all missing"),
@@ -394,15 +397,19 @@ def _submenu(title, actions):
 
 def submenu_track(tracked, pending):
     k = _submenu("track", [
-        ("n", "next",         "auto-pick first pending",   "green"),
-        ("p", "pick & track", "arrow-key picker",          "blue"),
-        ("b", "bulk",         "sequential batch",          "magenta"),
-        ("v", "verify",       "re-verify a tracked clip",  "yellow"),
-        ("r", "render",       "overlay video for a clip",  "white"),
+        ("n", "next",          "auto-pick first pending",   "green"),
+        ("p", "pick & track",  "arrow-key picker",          "blue"),
+        ("b", "bulk",          "sequential batch",          "magenta"),
+        ("x", "sanity check",  "examine one tracked clip",  "cyan"),
+        ("k", "sanity sweep",  "auto-check all tracked",    "cyan"),
+        ("v", "verify",        "re-verify a tracked clip",  "yellow"),
+        ("r", "render",        "overlay video for a clip",  "white"),
     ])
     if k == "n": do_track_next(pending)
     elif k == "p": do_pick_and_track(pending)
     elif k == "b": do_bulk()
+    elif k == "x": do_sanity_check(tracked)
+    elif k == "k": do_sanity_sweep(tracked)
     elif k == "v": do_verify(tracked)
     elif k == "r": do_render(tracked)
 
@@ -413,12 +420,14 @@ def submenu_analyze(tracked):
         ("l", "lyapunov",        "largest \u03bb\u2081 (Rosenstein)",  "magenta"),
         ("d", "driven poincar\u00e9", "stroboscopic",                 "white"),
         ("b", "bifurcation",     "cross-clip Vd or fd sweep",     "white"),
+        ("q", "quick insights",  "interactive plot explorer",     "cyan"),
     ])
     if k == "c": do_analyze(tracked)
     elif k == "p": do_poincare(tracked)
     elif k == "l": do_lyapunov(tracked)
     elif k == "d": do_driven_poincare(tracked)
     elif k == "b": do_driven_bifurcation()
+    elif k == "q": do_quick_insights(tracked)
 
 def submenu_figures(tracked):
     k = _submenu("figures", [
@@ -480,6 +489,45 @@ def do_pick_and_track(pending):
 def do_bulk():
     _run(SCRIPT_BULK); _pause()
 
+def do_sanity_check(tracked):
+    stem = pick_tracked(tracked, "Pick a clip to examine")
+    if not stem: return
+    sys.path.insert(0, os.path.join(REPO_ROOT, "scripts", "analysis"))
+    from sanity_check import check_one
+    try:
+        check_one(stem)
+    except Exception as e:
+        console.print(f"  [red]ERROR:[/] {e}")
+    _pause()
+
+def do_sanity_sweep(tracked):
+    if not tracked:
+        console.print("  [dim]No tracked clips to check.[/]")
+        _pause()
+        return
+    sys.path.insert(0, os.path.join(REPO_ROOT, "scripts", "analysis"))
+    from sanity_check import check_sweep
+
+    def on_pause(stem, verdict, reasons):
+        console.print("  [dim][a]ccept  [f]lag  [r]ender video  [n]ext  [q]uit[/]")
+        try:
+            k = input("  \u25b8 ").strip().lower()
+        except (EOFError, KeyboardInterrupt):
+            return "q"
+        return k[0] if k else "n"
+
+    console.print()
+    results = check_sweep(tracked, on_pause=on_pause)
+    n_clean = sum(1 for _, v in results if v == "CLEAN")
+    n_warn = sum(1 for _, v in results if v in ("WARN", "REVIEW"))
+    console.print()
+    console.print(
+        f"  [green]{n_clean} clean[/]  "
+        f"[yellow]{n_warn} flagged[/]  "
+        f"[dim]{len(results)} total[/]"
+    )
+    _pause()
+
 def do_verify(tracked):
     stem = pick_tracked(tracked, "Pick a clip to re-verify")
     if not stem: return
@@ -513,6 +561,13 @@ def do_driven_poincare(tracked):
 
 def do_driven_bifurcation():
     _run(SCRIPT_DRIVEN_BIF, "--sweep", "vd"); _pause()
+
+def do_quick_insights(tracked):
+    stem = pick_tracked(tracked, "Pick a clip to explore")
+    if not stem: return
+    sys.path.insert(0, os.path.join(REPO_ROOT, "scripts", "analysis"))
+    from quick_insights import explore
+    explore(stem)
 
 # ── Figures ──
 def do_figures():
@@ -572,6 +627,8 @@ EXPANDED_DISPATCH = {
     "n": lambda tr, pe: do_track_next(pe),
     "p": lambda tr, pe: do_pick_and_track(pe),
     "b": lambda tr, pe: do_bulk(),
+    "x": lambda tr, pe: do_sanity_check(tr),
+    "k": lambda tr, pe: do_sanity_sweep(tr),
     "v": lambda tr, pe: do_verify(tr),
     "r": lambda tr, pe: do_render(tr),
     # analyze
@@ -580,6 +637,7 @@ EXPANDED_DISPATCH = {
     "l": lambda tr, pe: do_lyapunov(tr),
     "d": lambda tr, pe: do_driven_poincare(tr),
     "i": lambda tr, pe: do_driven_bifurcation(),
+    "qi": lambda tr, pe: do_quick_insights(tr),
     # info
     "s": lambda tr, pe: do_status(tr, pe),
     "e": lambda tr, pe: do_export(),
@@ -610,7 +668,7 @@ def hub():
                 expanded = not expanded
                 continue
 
-            key = raw[:2] if raw[:2] in ("fa", "fs", "fv", "ff", "fp") else raw[0]
+            key = raw[:2] if raw[:2] in ("fa", "fs", "fv", "ff", "fp", "qi") else raw[0]
 
             if key == "q":
                 break
