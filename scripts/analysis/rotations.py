@@ -492,25 +492,44 @@ def write_sweep_csv(rows, voltage, out_path):
 
 
 def print_sweep_table(rows, voltage):
-    t = Table(title=f"rotation sweep — {voltage:g} V  (lower arm, lab frame)",
-              box=rich.box.SIMPLE_HEAD, title_style="bold cyan")
+    # Thin vertical rules between the per-arm column pairs give each arm its
+    # own bounded area. collapse_padding + pad_edge keep the 13 columns within
+    # ~80 cols so the net values never truncate.
+    bar = "[grey50]│[/]"
+    t = Table(title=f"rotation sweep — {voltage:g} V   (net winding · loops ↻, per arm)",
+              box=rich.box.SIMPLE_HEAD, title_style="bold cyan",
+              collapse_padding=True, pad_edge=False)
     t.add_column("f (Hz)", justify="right")
     t.add_column("stem")
-    t.add_column("net", justify="right")
-    t.add_column("total", justify="right")
-    t.add_column("peak |angle|", justify="right")
+    t.add_column("│", style="grey50")
+    t.add_column("θ₁ net", justify="right", header_style="blue")
+    t.add_column("θ₁ ↻",   justify="right", header_style="blue bold")
+    t.add_column("│", style="grey50")
+    t.add_column("θ₂ net", justify="right", header_style="red")
+    t.add_column("θ₂ ↻",   justify="right", header_style="red bold")
+    t.add_column("│", style="grey50")
+    t.add_column("rel net", justify="right", header_style="green")
+    t.add_column("rel ↻",   justify="right", header_style="green bold")
+    t.add_column("│", style="grey50")
     t.add_column("ω-check", justify="right")
+
     for f_hz, stem, res in rows:
-        m = res["arms"]["lower_abs"]
-        if m["suspect"] is True:
-            chk = "[red]suspect[/]"
-        elif m["suspect"] is False:
-            chk = "[green]ok[/]"
-        else:
-            chk = "[dim]—[/]"
-        t.add_row(f"{f_hz:g}", stem, f"{m['net_turns']:+.2f}",
-                  f"{m['total_turns']:.0f}", f"{m['peak_abs_angle_deg']:.0f}°", chk)
+        suspect = any(res["arms"][a]["suspect"] is True for a in ARMS)
+        has_chk = any(res["arms"][a]["suspect"] is not None for a in ARMS)
+        chk = ("[red]suspect[/]" if suspect
+               else "[green]ok[/]" if has_chk else "[dim]—[/]")
+        u, lo, rel = (res["arms"]["upper"], res["arms"]["lower_abs"],
+                      res["arms"]["lower_rel"])
+        t.add_row(
+            f"{f_hz:g}", stem, bar,
+            f"{u['net_turns']:+.2f}",   f"[bold]{u['total_turns']:.0f}[/]", bar,
+            f"{lo['net_turns']:+.2f}",  f"[bold]{lo['total_turns']:.0f}[/]", bar,
+            f"{rel['net_turns']:+.2f}", f"[bold]{rel['total_turns']:.0f}[/]", bar,
+            chk,
+        )
     console.print(t)
+    console.print("  [dim]net = signed net winding (turns) · ↻ = loop count (full 360° "
+                  "turns, either way);  θ₁ upper · θ₂ lower (lab) · rel = θ₂−θ₁[/]")
 
 
 def run_sweep(args):
