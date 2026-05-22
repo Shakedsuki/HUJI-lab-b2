@@ -40,6 +40,7 @@ SCRIPT_POINCARE    = os.path.join(REPO_ROOT, "scripts", "analysis", "poincare.py
 SCRIPT_LYAPUNOV    = os.path.join(REPO_ROOT, "scripts", "analysis", "lyapunov.py")
 SCRIPT_DRIVEN_POIN = os.path.join(REPO_ROOT, "scripts", "analysis", "driven_poincare.py")
 SCRIPT_DRIVEN_BIF  = os.path.join(REPO_ROOT, "scripts", "analysis", "driven_bifurcation.py")
+SCRIPT_ROTATIONS   = os.path.join(REPO_ROOT, "scripts", "analysis", "rotations.py")
 SCRIPT_OVERLAY     = os.path.join(REPO_ROOT, "scripts", "analysis", "overlay_video.py")
 SCRIPT_REPORT      = os.path.join(REPO_ROOT, "scripts", "utils", "generate_status_report.py")
 
@@ -201,7 +202,8 @@ def render_hub(tracked, pending, expanded=True):
             ("ts","sanity"),("tv","verify"),("tr","re-track")])
         ca = _card("analyze", CLR_ANALYZE, [
             ("ac","chaos card"),("ap","poincar\u00e9"),("al","lyapunov"),
-            ("ad","driven poincar\u00e9"),("ai","bifurcation"),("aq","quick insights")])
+            ("ad","driven poincar\u00e9"),("ai","bifurcation"),("ar","rotations"),
+            ("aq","quick insights")])
         r1 = Table(box=None, show_header=False, expand=True, padding=(0,1))
         r1.add_column(ratio=1); r1.add_column(ratio=1); r1.add_row(ct, ca)
 
@@ -233,7 +235,7 @@ def render_hub(tracked, pending, expanded=True):
     else:
         actions = Text.from_markup(
             f"    [{CLR_TRACK} bold]t[/]  track          [dim]\u2192 tn tp tb ts tv tr[/]\n"
-            f"    [{CLR_ANALYZE} bold]a[/]  analyze        [dim]\u2192 ac ap al ad ai aq[/]\n"
+            f"    [{CLR_ANALYZE} bold]a[/]  analyze        [dim]\u2192 ac ap al ad ai ar aq[/]\n"
             f"    [{CLR_OUTPUT}]o[/]  output         [dim]\u2192 fs fc ft fa fi vw vr vc va vi[/]\n"
             f"    [{CLR_INFO} bold]s[/]  info           [dim]\u2192 s e sw p[/]")
         footer = Text.from_markup("  [dim]q quit    h help    + expand[/]")
@@ -452,10 +454,11 @@ def sub_track(tr, pe):
 def sub_analyze(tr):
     k = _sub("analyze", [("ac","chaos card","verdict",CLR_ANALYZE),("ap","poincar\u00e9","section",CLR_ANALYZE),
         ("al","lyapunov","\u03bb\u2081",CLR_ANALYZE),("ad","driven","stroboscopic",CLR_ANALYZE),
-        ("ai","bifurcation","sweep",CLR_ANALYZE),("aq","insights","plot explorer",CLR_ANALYZE)])
+        ("ai","bifurcation","sweep",CLR_ANALYZE),("ar","rotations","loops & angle",CLR_ANALYZE),
+        ("aq","insights","plot explorer",CLR_ANALYZE)])
     if not k: return
     {"ac":lambda:do_ac(tr),"ap":lambda:do_ap(tr),"al":lambda:do_al(tr),
-     "ad":lambda:do_ad(tr),"ai":do_ai,"aq":lambda:do_aq(tr)}.get(k[:2],lambda:None)()
+     "ad":lambda:do_ad(tr),"ai":do_ai,"ar":lambda:do_ar(tr),"aq":lambda:do_aq(tr)}.get(k[:2],lambda:None)()
 
 def sub_output(tr, pe):
     k = _sub("output", [("fs","single figure","clip×type",CLR_FIGURES),("fc","clip","all types",CLR_FIGURES),
@@ -554,6 +557,13 @@ def do_ad(tr):
     if not s: return
     _run(SCRIPT_DRIVEN_POIN,"--stem",s); _pause()
 def do_ai(): _run(SCRIPT_DRIVEN_BIF,"--sweep","vd"); _pause()
+def do_ar(tr):
+    r=_pick_collapsible(tr,"Rotations — loops & accumulated angle",
+                        extra=[Choice("≡ sweep 3.2V family", value=SWEEP)])
+    if not r: return
+    if r==SWEEP: _run(SCRIPT_ROTATIONS,"--sweep"); _log_activity("rotations sweep")
+    else: _run(SCRIPT_ROTATIONS,"--stem",r); _log_activity(f"rotations {r}")
+    _pause()
 def do_aq(tr):
     s=pick_t(tr,"Explore"); 
     if not s: return
@@ -1006,13 +1016,14 @@ def do_c():
 
 # ── Hub loop ──
 
-TWO_CHAR_KEYS = ("tn","tp","tb","ts","tv","tr","ac","ap","al","ad","ai","aq","fs","fc","ft","fa","fi","vw","vr","vc","va","vi","vs","vf","vp","sw")
+TWO_CHAR_KEYS = ("tn","tp","tb","ts","tv","tr","ac","ap","al","ad","ai","ar","aq","fs","fc","ft","fa","fi","vw","vr","vc","va","vi","vs","vf","vp","sw")
 
 DISPATCH = {
     "tn":lambda t,p:do_tn(p), "tp":lambda t,p:do_tp(p), "tb":lambda t,p:do_tb(),
     "ts":lambda t,p:do_ts(t), "tv":lambda t,p:do_tv(t), "tr":lambda t,p:do_tr(t),
     "ac":lambda t,p:do_ac(t), "ap":lambda t,p:do_ap(t), "al":lambda t,p:do_al(t),
-    "ad":lambda t,p:do_ad(t), "ai":lambda t,p:do_ai(),  "aq":lambda t,p:do_aq(t),
+    "ad":lambda t,p:do_ad(t), "ai":lambda t,p:do_ai(),  "ar":lambda t,p:do_ar(t),
+    "aq":lambda t,p:do_aq(t),
     "fs":lambda t,p:do_fs(t), "fc":lambda t,p:do_fc(t), "ft":lambda t,p:do_ft(t),
     "fa":lambda t,p:do_fa(),  "fi":lambda t,p:do_fi(t),
     "vw":lambda t,p:do_vw(t), "vr":lambda t,p:do_vr(t), "vc":lambda t,p:do_vc(t),
