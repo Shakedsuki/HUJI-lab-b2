@@ -333,7 +333,11 @@ def _win_key_setup():
     try:
         import ctypes
         from ctypes import wintypes
-        k32 = ctypes.windll.kernel32
+        # Private kernel32 instance — ctypes.windll.kernel32 is a process-wide
+        # cached singleton, so setting argtypes/restype on its functions would
+        # corrupt other users of it (prompt_toolkit/questionary call
+        # ReadConsoleInputW with an array pointer and break on our argtypes).
+        k32 = ctypes.WinDLL("kernel32")
 
         class KEY_EVENT_RECORD(ctypes.Structure):
             _fields_ = [("bKeyDown", wintypes.BOOL), ("wRepeatCount", wintypes.WORD),
