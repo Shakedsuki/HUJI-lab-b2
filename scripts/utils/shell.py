@@ -1269,6 +1269,7 @@ class Mode:
     cell_actions: object = None
     cell_hint: object = None
     preview_fn: object = None
+    banner: object = None        # optional orientation/progress block under the title
 
 def _ring_title(modes, active):
     t = Text()
@@ -1280,18 +1281,20 @@ def _ring_title(modes, active):
                  style=(f"bold {m.color}" if i == active else "dim"))
     return t
 
-def _status_line(modes, phase_label):
-    t = Text("  ")
-    t.append(phase_label, style="dim")
-    t.append("    ")
+def _status_line(modes, phase_label, width):
+    left = Text("  ")
+    left.append(phase_label, style="dim")
+    left.append("    ")
     for i, m in enumerate(modes):
-        if i: t.append("/", style="dim")
-        t.append(m.glyph or m.key, style=f"bold {m.color}")
-    t.append(" mode", style="dim")
-    t.append("        ")
-    for lbl, act in (("sw", "switch"), ("p", "paths"), ("c", "cal")):
-        t.append(lbl, style="dim"); t.append(f" {act}   ", style="dim")
-    return t
+        if i: left.append("/", style="dim")
+        left.append(m.glyph or m.key, style=f"bold {m.color}")
+    left.append(" mode", style="dim")
+    right = Text()
+    for j, (k, act) in enumerate((("sw", "switch"), ("pa", "paths"), ("cal", "calibrate"))):
+        if j: right.append("   ")
+        right.append(k, style="dim"); right.append(f" {act}", style="dim")
+    pad = max(3, width - left.cell_len - right.cell_len - 2)
+    return left + Text(" " * pad) + right
 
 def run_modes(modes, start=0, phase_label=None, selected_bg="grey23"):
     """Shell v2 driver — one persistent table; 0-4 swap modes, cursor persists.
@@ -1336,7 +1339,13 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23"):
         idx = max(0, min(idx, n - 1)) if n else 0
         _active = cell_tgts if mode == "cell" else m.col_targets
         if _active: cidx = max(0, min(cidx, len(_active) - 1))
-        avail = max(5, min(23, console.height - 10))
+        width = console.width
+        try:
+            banner = _resolve(m.banner) if m.banner else None
+        except Exception:
+            banner = None
+        banner_lines = (banner.count("\n") + 1) if banner else 0
+        avail = max(5, min(23 - banner_lines, console.height - 10 - banner_lines))
         try:
             tr2, pe2 = get_clips()
             nver = sum(1 for c in tr2 if c.get("quality") == "verified")
@@ -1344,7 +1353,7 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23"):
         except Exception:
             right_info = None
         if show_help:
-            return rows, n, avail, Group(_help_panel(m), _status_line(modes, phase_label))
+            return rows, n, avail, Group(_help_panel(m), _status_line(modes, phase_label, width))
         cols = m.columns
         ncol = len(cols)
         sel_col = m.col_targets[cidx] if (has_cols and mode == "col") else None
@@ -1374,7 +1383,9 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23"):
                 else:
                     t.add_row(" ", *cells)
             if hi < n: t.add_row(" ", "[dim]↓…[/]", *[""] * (ncol - 1))
-        body = [t]
+        body = []
+        if banner: body.append(Text.from_markup(banner))
+        body.append(t)
         leg = _resolve(m.legend)
         if leg: body.append(Text.from_markup("  " + leg))
         panel = Panel(Group(*body), title=_ring_title(modes, midx), title_align="left",
@@ -1396,7 +1407,7 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23"):
             h = (h or "") + f"     [bold cyan]{pending}…[/]"
         parts = [main_r]
         if h: parts.append(Text.from_markup("  " + h))
-        parts.append(_status_line(modes, phase_label))
+        parts.append(_status_line(modes, phase_label, width))
         return rows, n, avail, Group(*parts)
 
     rows, n, avail, renderable = frame()
@@ -1487,11 +1498,21 @@ def _v2_demo():
     cols = [("#",      lambda r: str(r["_n"]), dict(justify="right", width=3, style="dim")),
             ("clip",   lambda r: r["stem"],    dict(min_width=16, no_wrap=True)),
             ("status", lambda r: r["status"],  dict(width=10))]
-    def mk(name, key, clr, glyph=""):
-        return Mode(name, key, clr, glyph=glyph, build_rows=rows, columns=cols,
+    def _overall():
+        tr, pe = get_clips()
+        total = len(tr) + len(pe)
+        nver = sum(1 for c in tr if c.get("quality") == "verified")
+        pct = round(100 * nver / total) if total else 0
+        filled = round(pct / 10)
+        bar = f"[{CLR_TRACK}]" + "█" * filled + f"[/][{CLR_ANALYZE}]" + "░" * (10 - filled) + "[/]"
+        return ("  [bold]Pipeline overview[/] [dim]— one row per clip; columns show how far each stage has progressed.[/]\n"
+                f"  [dim]Press[/] [bold]1–4[/] [dim]to open a stage  ·  [/][bold]+/-[/][dim] expand a clip  ·  [/][bold]h[/][dim] help[/]"
+                f"      overall {bar} [bold]{pct}%[/]")
+    def mk(name, key, clr, glyph="", banner=None):
+        return Mode(name, key, clr, glyph=glyph, build_rows=rows, columns=cols, banner=banner,
                     legend=f"demo · {name}",
                     hint=f"[dim]↑↓[/] navigate   [bold]h[/] help   [bold]q[/] quit   [dim](stub: {name})[/]")
-    run_modes([mk("main", "0", CLR_MAIN, glyph="⌂"), mk("track", "1", CLR_TRACK),
+    run_modes([mk("main", "0", CLR_MAIN, glyph="⌂", banner=_overall), mk("track", "1", CLR_TRACK),
                mk("analyze", "2", CLR_ANALYZE), mk("figures", "3", CLR_FIGURES),
                mk("videos", "4", CLR_VIDEOS)], start=0)
 
