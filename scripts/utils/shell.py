@@ -781,14 +781,14 @@ def build_mode_analyze():
     def run_cell(stem, t, ctx):
         fn = _RUN.get(t[1])
         if fn: fn({"stem": stem}, None, None, ctx)
-    hint = ("[dim]\u2191\u2193[/] [bold]\u21b5[/] explore   [bold]s[/] chaos card   [bold]i[/] insights   [bold]e[/] entry mode   "
+    hint = ("[dim]\u2191\u2193[/] [bold]\u21b5[/] explore   [bold]i[/] insights   [bold]e[/] entry mode   "
             "[bold]h[/] help   [bold]q[/] quit")
     cell_hint = ("[bold cyan]entry mode[/]   [dim]\u2191\u2193\u2190\u2192[/] pick a cell   [bold]\u21b5[/] run that analysis   "
                  "[bold]e[/]/[bold]r[/] row mode   [bold]q[/] quit")
     keys = {"enter": act_explore}
     return _inventory_mode("analyze", "2", CLR_ANALYZE, ANALYZE_TYPES, _analyze_exists,
                            key_actions=keys, hint=hint, on_view=run_cell, cell_hint=cell_hint,
-                           preview_fn=_chaos_preview(), preview_key="s", explain_fn=_chaos_explain)
+                           preview_fn=_chaos_preview(), explain_fn=_chaos_explain)
 
 def do_a(tr):
     _run_one_mode(build_mode_analyze())
