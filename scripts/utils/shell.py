@@ -1060,13 +1060,29 @@ def build_mode_analyze():
     def run_cell(stem, t, ctx):
         fn = _RUN.get(t[1])
         if fn: fn({"stem": stem}, None, None, ctx)
-    hint = ("[dim]\u2191\u2193[/] [bold]\u21b5[/] explore   [bold]i[/] insights   [bold]e[/] entry mode   "
-            "[bold]h[/] help   [bold]q[/] quit")
+    def col_batch(t, ctx):
+        """Column mode — run one analysis type across every clip (e.g. FTLE on all)."""
+        fn = _RUN.get(t[1])
+        if not fn: return
+        tr, _pe = get_clips()
+        if not tr: return
+        def work():
+            prev = ctx.batch
+            ctx.batch = True        # one confirm/pause via _do_suspended; per-clip ones suppressed
+            try:
+                for c in tr:
+                    fn({"stem": c["stem"]}, None, None, ctx)
+            finally:
+                ctx.batch = prev
+        _do_suspended(ctx, work, confirm=f"Run [bold]{t[2]}[/] for all {len(tr)} clips?")
+    hint = ("[dim]\u2191\u2193[/] [bold]\u21b5[/] explore   [bold]i[/] insights   [bold]c[/] column mode   "
+            "[bold]e[/] entry mode   [bold]h[/] help   [bold]q[/] quit")
     cell_hint = ("[bold cyan]entry mode[/]   [dim]\u2191\u2193\u2190\u2192[/] pick a cell   [bold]\u21b5[/] run that analysis   "
                  "[bold]e[/]/[bold]r[/] row mode   [bold]q[/] quit")
     keys = {"enter": act_explore}
     return _inventory_mode("analyze", "2", CLR_ANALYZE, ANALYZE_TYPES, _analyze_exists,
-                           key_actions=keys, hint=hint, on_view=run_cell, cell_hint=cell_hint,
+                           key_actions=keys, hint=hint, on_col=col_batch,
+                           on_view=run_cell, cell_hint=cell_hint,
                            preview_fn=_chaos_preview(), explain_fn=_chaos_explain,
                            insights=ANALYZE_INSIGHTS)
 
@@ -1879,8 +1895,6 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
     Rigid frame (title ring + bordered table + hint + status line); only the
     clip-row band scrolls. Reuses the row/column/entry + type-ahead + help
     interaction model from navigate_table."""
-    if phase_label is None:
-        phase_label = PHASE.replace("pendulum-", "").replace("week", "w")
     by_key = {m.key: i for i, m in enumerate(modes)}
     midx = start
     idx = cidx = 0
@@ -1925,6 +1939,8 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
     def frame():
         nonlocal idx, cidx
         m = cur()
+        # recompute the phase label every frame so a runtime phase switch (/sw) shows
+        pl = phase_label or PHASE.replace("pendulum-", "").replace("week", "w")
         has_cols = bool(m.col_actions) and bool(m.col_targets)
         cell_tgts = m.cell_targets or m.col_targets
         has_cells = bool(cell_tgts) and bool(m.cell_actions)
@@ -1962,7 +1978,7 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
             title.append(" " + "─" * (fill - 2) + " ", style="dim")
             title.append_text(prog)
         if show_help:
-            return rows, n, avail, Group(_help_panel(m), _status_line(modes, phase_label, width))
+            return rows, n, avail, Group(_help_panel(m), _status_line(modes, pl, width))
         preview_on = ((show_preview and m.preview_fn is not None) or (insights and m.insights)) and mode == "row"
         # collapse to identity cols for the preview/insights pane; main's leading
         # sparkline (empty header) keeps 3 (spark+#+clip), others keep 2 (#+clip)
@@ -2074,7 +2090,7 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
             if h:
                 ht = Text.from_markup("  " + h); ht.no_wrap = True; ht.overflow = "ellipsis"
                 content.append(ht)
-        st = _status_line(modes, phase_label, width - 4); st.no_wrap = True; st.overflow = "ellipsis"
+        st = _status_line(modes, pl, width - 4); st.no_wrap = True; st.overflow = "ellipsis"
         content.append(st)
         panel = Panel(Group(*content), title=title, title_align="left",
                       border_style=m.color, padding=(0, 1), box=box.SQUARE, expand=True)
