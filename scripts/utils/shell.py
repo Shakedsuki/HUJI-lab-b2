@@ -42,6 +42,7 @@ SCRIPT_DRIVEN_POIN = os.path.join(REPO_ROOT, "scripts", "analysis", "driven_poin
 SCRIPT_DRIVEN_BIF  = os.path.join(REPO_ROOT, "scripts", "analysis", "driven_bifurcation.py")
 SCRIPT_ROTATIONS   = os.path.join(REPO_ROOT, "scripts", "analysis", "rotations.py")
 SCRIPT_DIMENSION   = os.path.join(REPO_ROOT, "scripts", "analysis", "dimension.py")
+SCRIPT_DIM_SWEEP   = os.path.join(REPO_ROOT, "scripts", "analysis", "dimension_sweep.py")
 SCRIPT_WATERFALL   = os.path.join(REPO_ROOT, "scripts", "analysis", "spectral_waterfall.py")
 SCRIPT_OVERLAY     = os.path.join(REPO_ROOT, "scripts", "analysis", "overlay_video.py")
 
@@ -710,17 +711,20 @@ def build_mode_analyze():
         vlab = f"{vf:g}V" if vf else "3.2V"
         def work(): _run(SCRIPT_WATERFALL, *args); _log_activity("spectral waterfall")
         _do_suspended(ctx, work, confirm=f"Run [bold]spectral waterfall[/] across the {vlab} family?")
+    def act_dim_sweep(row, rows, i, ctx):
+        def work(): _run(SCRIPT_DIM_SWEEP); _log_activity("dimension sweep")
+        _do_suspended(ctx, work, confirm="Run [bold]dimension sweep[/] across the 3.2V family?")
     bif_ok = _voltage_sweep_ok(tr)
     fd_ok = _freq_sweep_ok(tr)
     hint = ("[dim]\u2191\u2193[/] run   [bold]ch[/] chaos   [bold]po[/] poinc   [bold]ly[/] lyap   [bold]dr[/] driven   [bold]ro[/] rot   [bold]fr[/] frac   "
             "[bold]\u21b5[/] explore   "
             + ("[bold]bs[/] bif-sweep   " if bif_ok else "")
             + ("[bold]bf[/] bif-fd   " if fd_ok else "")
-            + "[bold]rs[/] rot-sweep   [bold]wf[/] waterfall   [bold]h[/] help   [bold]q[/] back")
+            + "[bold]rs[/] rot-sweep   [bold]wf[/] waterfall   [bold]ds[/] dim-sweep   [bold]h[/] help   [bold]q[/] back")
     keys = {"ch": act_chaos, "po": act_poin, "ly": act_lyap,
             "dr": act_driven, "ro": act_rot, "fr": act_dim,
             "enter": act_explore,
-            "rs": act_rotsweep, "wf": act_waterfall}
+            "rs": act_rotsweep, "wf": act_waterfall, "ds": act_dim_sweep}
     if bif_ok: keys["bs"] = act_bif
     if fd_ok: keys["bf"] = act_bif_fd
     return _inventory_mode("analyze", "2", CLR_ANALYZE, ANALYZE_TYPES, _analyze_exists,
