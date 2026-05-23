@@ -571,7 +571,7 @@ def do_t(tr, pe):
         nv = sum(1 for c in tr2 if c.get("quality") == "verified")
         return (f"[green]{nv} verified[/]  [cyan]{len(tr2) - nv} tracked[/]  [yellow]{len(pe2)} pending[/]")
     hint = ("[dim]↑↓[/] [bold]t[/] track/re-track   [bold]v[/] verify   [bold]s[/] sanity   "
-            "[bold]o[/] open   [bold]a[/] all   [bold]c[/] columns   [bold]h[/] help   [bold]q[/] back")
+            "[bold]o[/] open   [bold]a[/] all   [bold]c[/] column mode   [bold]h[/] help   [bold]q[/] back")
     col_hint = ("[bold cyan]column mode[/]   [bold]↵[/] re-track every clip in view   "
                 "[bold]r[/] row mode   [bold]q[/] back")
     def act_track(row, rows, i, ctx):
@@ -1022,7 +1022,7 @@ def do_fi(tr):
     def create_fig(stem, t, ctx):
         _do_suspended(ctx, lambda: _run(SCRIPT_BATCH_FIGS, "--stem", stem, "--types", t[0], "--force", "--all-quality"))
         _log_activity(f"create {t[1]}/{stem}")
-    hint = ("[dim]↑↓[/] [bold]↵[/] render   [bold]c[/] columns   [bold]e[/] entry   "
+    hint = ("[dim]↑↓[/] [bold]↵[/] render   [bold]c[/] column mode   [bold]e[/] entry mode   "
             "[bold]a[/] all   [bold]w[/] waterfall   [bold]h[/] help   [bold]q[/] back")
     _inventory_nav(tr, "figures inventory", CLR_FIGURES, FIG_TYPES, _fig_exists,
                    key_actions={"enter": render_clip, "a": fill_all, "w": fig_waterfall},
@@ -1090,7 +1090,7 @@ def do_vi(tr):
         return (f"[green]{npa} pass[/]  [red]{nfa} fail[/]  [yellow]{npe} to review[/]  "
                 f"[dim]{nno} no overlay[/]")
     hint = ("[dim]↑↓[/] [bold]o[/]/[bold]↵[/] open   [green bold]p[/]ass [red bold]f[/]ail [bold]x[/] clear   "
-            "[bold]c[/] columns   [bold]e[/] entry   [bold]h[/] help   [bold]q[/] back")
+            "[bold]c[/] column mode   [bold]e[/] entry mode   [bold]h[/] help   [bold]q[/] back")
     col_hint = ("[bold cyan]column mode[/]   [dim]←→[/] pick type   [bold]↵[/] batch all clips   "
                 "[bold]r[/] row mode   [bold]q[/] back")
     def act_review(row, rows, i, ctx):
