@@ -23,6 +23,12 @@ experiments/**/data/bulk_tracking_log.json
 experiments/**/data/*.bak
 experiments/**/measurements/**/tracking.csv.bak*
 
+# ── Editor backups / autosave ────────────────────
+# Editors (LyX, Emacs) leave foo~ backups and #foo# autosave files —
+# never commit them. The leading # is escaped so it's a pattern, not a comment.
+*~
+\#*#
+
 # Personal VS Code workspace
 *.code-workspace
 .vscode/
