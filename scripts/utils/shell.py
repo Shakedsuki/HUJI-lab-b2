@@ -501,7 +501,8 @@ def _pause():
 def do_t(tr, pe):
     """Track + status — one table over all clips. Row keys act on the highlighted
     clip: t track / re-track, v verify, s sanity, o overlay. b = bulk-track all
-    pending. Filters: 1 all · 2 pending · 3 tracked."""
+    pending. Column mode (c) re-tracks every clip in the current view.
+    Filters: 1 all · 2 pending · 3 tracked."""
     state = {"filter": "all"}
     def build_rows():
         tr2, pe2 = get_clips()
@@ -534,14 +535,17 @@ def do_t(tr, pe):
         return (f"[green]{nv} verified[/]  [cyan]{len(tr2) - nv} tracked[/]  [yellow]{len(pe2)} pending[/]"
                 f"   [dim]·[/]   filter: [bold]{state['filter']}[/]")
     hint = ("[dim]↑↓[/] [bold]t[/] track/re-track   [bold]v[/] verify   [bold]s[/] sanity   "
-            "[bold]o[/] overlay   [bold]b[/] bulk-pending   [bold]1[/]/[bold]2[/]/[bold]3[/] filter   [bold]q[/] back")
+            "[bold]o[/] overlay   [bold]b[/] bulk-pending   [bold]c[/] re-track all   "
+            "[bold]1[/]/[bold]2[/]/[bold]3[/] filter   [bold]q[/] back")
+    col_hint = ("[bold cyan]column mode[/]   [bold]↵[/] re-track every clip in view   "
+                "[bold]r[/] row mode   [bold]q[/] back")
     def act_track(row, rows, i, ctx):
         if not row: return
         stem = row["stem"]
         if row["status"] == "pending":
             _do_suspended(ctx, lambda: _run(SCRIPT_TRACK_ONE, "--stem", stem)); _log_activity(f"tracked {stem}")
         else:
-            _do_suspended(ctx, lambda: _run(SCRIPT_TRACK_ONE, "--stem", stem, "--force"),
+            _do_suspended(ctx, lambda: _run(SCRIPT_TRACK_ONE, "--stem", stem),
                           confirm=f"Re-track [bold]{stem}[/]? Overwrites existing tracking.")
     def act_verify(row, rows, i, ctx):
         if row and row["status"] != "pending":
@@ -564,6 +568,18 @@ def do_t(tr, pe):
             _do_suspended(ctx, lambda: console.print("  [green]Nothing pending.[/]")); return
         def work(): _run(SCRIPT_BULK); _log_activity("bulk done")
         _do_suspended(ctx, work, confirm=f"Bulk-track all [bold]{len(pe2)}[/] pending clips?")
+    def col_retrack_all(cpos, rows, ctx):
+        stems = [r["stem"] for r in rows]
+        if not stems:
+            _do_suspended(ctx, lambda: console.print("  [dim]No clips in view.[/]")); return
+        def work():
+            for j, s in enumerate(stems, 1):
+                console.print(Rule(f"[bold][{j}/{len(stems)}] {s}[/]", style="dim"))
+                _run(SCRIPT_TRACK_ONE, "--stem", s)
+            _log_activity(f"re-tracked {len(stems)} clips")
+        _do_suspended(ctx, work,
+            confirm=f"[red]Re-track[/] all [bold]{len(stems)}[/] clip(s) in view? "
+                    f"Overwrites existing tracking.")
     def mkfilter(val):
         def _f(row, rows, i, ctx): state["filter"] = val; return "top"
         return _f
@@ -589,7 +605,8 @@ def do_t(tr, pe):
                    legend=legend, hint=hint, empty_msg="No clips match this filter.", preview_fn=preview,
                    key_actions={"t": act_track, "v": act_verify, "s": act_sanity, "o": act_open,
                                 "b": act_bulk,
-                                "1": mkfilter("all"), "2": mkfilter("pending"), "3": mkfilter("tracked")})
+                                "1": mkfilter("all"), "2": mkfilter("pending"), "3": mkfilter("tracked")},
+                   col_targets=[2], col_actions={"enter": col_retrack_all}, col_hint=col_hint)
     _log_activity("track/status")
 
 # Analyze

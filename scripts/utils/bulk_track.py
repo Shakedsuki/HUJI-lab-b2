@@ -15,6 +15,7 @@ Usage
     python scripts/utils/bulk_track.py --filter 3.2V     # subset
     python scripts/utils/bulk_track.py --debug           # also write debug.mp4
     python scripts/utils/bulk_track.py --redo            # re-track already-tracked
+    python scripts/utils/bulk_track.py --only-untracked  # redo 'untracked'-quality only
 
 Notes
 ~~~~~
@@ -121,10 +122,13 @@ class Plan:
     def runnable(self):
         return self.skip_reason is None
 
-def build_plan(reg, *, filter_substr=None, redo=False):
+def build_plan(reg, *, filter_substr=None, redo=False, only_untracked=False):
     """
     Walk the registry and produce a list of Plan rows. `redo=True`
     includes already-tracked entries (which would otherwise be skipped).
+    `only_untracked=True` restricts the run to entries whose
+    tracking_quality is exactly 'untracked', forcing a re-track even
+    though those clips already have a tracking.csv on disk.
 
     Driven-mode: every clip with a video file and a registry entry is
     plannable. There's no init/release/tag-frame gate any more — the
@@ -148,6 +152,14 @@ def build_plan(reg, *, filter_substr=None, redo=False):
         if not os.path.exists(video_path):
             plans.append(Plan(key, cd, video_path,
                               skip_reason=f"video missing on disk"))
+            continue
+
+        if only_untracked:
+            if entry.get("tracking_quality") != "untracked":
+                plans.append(Plan(key, cd, video_path,
+                                  skip_reason="tracking_quality != 'untracked'"))
+                continue
+            plans.append(Plan(key, cd, video_path))
             continue
 
         if is_tracked(entry) and not redo:
@@ -268,6 +280,9 @@ def parse_args():
                         "and ~30%% wall clock per clip).")
     p.add_argument("--redo", action="store_true",
                    help="Re-track entries that already have tracking.csv.")
+    p.add_argument("--only-untracked", action="store_true",
+                   help="Restrict the run to entries whose tracking_quality is "
+                        "'untracked' (forces re-track over an existing CSV).")
     p.add_argument("--jobs", type=int, default=1,
                    help="Reserved for future parallel execution. "
                         "Currently always 1.")
@@ -281,7 +296,8 @@ def main():
         return 2
 
     reg   = load_registry()
-    plans = build_plan(reg, filter_substr=args.filter, redo=args.redo)
+    plans = build_plan(reg, filter_substr=args.filter, redo=args.redo,
+                       only_untracked=args.only_untracked)
 
     runnable = [p for p in plans if p.runnable]
     skipped  = [p for p in plans if not p.runnable]

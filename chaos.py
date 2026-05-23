@@ -12,6 +12,7 @@ Subcommands
   track <stem>      standard track + verify + interpolate + verdict
   verify <stem>     standalone QA on an existing tracking.csv
   bulk              sequential bulk pass over plannable pending clips
+  retrack           re-track every 'untracked'-quality video (force)
   next              interactive driver — drive pending queue end-to-end
   help              print this cheat sheet
 
@@ -194,6 +195,16 @@ def cmd_bulk(args):
     return run_script(SCRIPT_BULK, *extra)
 
 
+def cmd_retrack(args):
+    """Re-track every video whose tracking_quality is 'untracked' — forces a
+    fresh track + verify over the existing CSV (which `bulk` would skip)."""
+    extra = ["--only-untracked"]
+    if args.dry_run: extra.append("--dry-run")
+    if args.filter:  extra += ["--filter", args.filter]
+    if args.debug:   extra.append("--debug")
+    return run_script(SCRIPT_BULK, *extra)
+
+
 def cmd_roadmap(args):
     extra = []
     if args.output: extra += ["--output", args.output]
@@ -310,6 +321,9 @@ BATCH / DRIVER COMMANDS
   chaos next --stem <stem>   same loop but only one clip
   chaos bulk                 sequential bulk pass over plannable pendings
   chaos bulk --dry-run       show the plan without tracking anything
+  chaos retrack              re-track every video whose tracking_quality is
+                             'untracked' (forces a fresh track over the
+                             existing CSV). --dry-run previews; --filter SUBSTR
   chaos render <stem>        render the original video with marker rings +
                              phase plots overlaid (uses existing tracking;
                              no re-track). Output: measurements/<stem>/
@@ -569,6 +583,15 @@ def build_parser():
     p_bulk.add_argument("--redo", action="store_true",
         help="re-track even clips that already have a verified tracking.csv")
 
+    p_retrack = sub.add_parser("retrack",
+        help="re-track every video whose tracking_quality is 'untracked'")
+    p_retrack.add_argument("--dry-run", action="store_true",
+        help="print the plan and exit; don't track anything")
+    p_retrack.add_argument("--filter", metavar="SUBSTR",
+        help="only process clips whose stem contains SUBSTR")
+    p_retrack.add_argument("--debug", action="store_true",
+        help="generate debug.mp4 for each clip (default: skipped)")
+
     p_roadmap = sub.add_parser("roadmap",
         help="regenerate docs/tracking_roadmap.md from registry state")
     p_roadmap.add_argument("--output", metavar="PATH", default=None,
@@ -670,6 +693,7 @@ HANDLERS = {
     "track":    cmd_track,
     "verify":   cmd_verify,
     "bulk":     cmd_bulk,
+    "retrack":  cmd_retrack,
     "next":     cmd_next,
     "render":       cmd_render,
     "analyze":          cmd_analyze,
