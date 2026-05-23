@@ -45,6 +45,7 @@ except (AttributeError, OSError):
     pass
 
 import numpy as np
+from scipy.signal import welch
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -113,12 +114,14 @@ def clip_spectrum(t, th2, fmax, nfreq, transient_s):
     om2 = np.gradient(phi, t)
     x = om2 - om2.mean()
 
+    # Welch PSD: averaging ~8 s segments tames the periodogram's huge
+    # variance so a sharp line reads as a sharp line and a broadband floor
+    # reads as broadband (the whole point of the waterfall).
     n = len(x)
-    w = np.hanning(n)
     dt = float(np.median(np.diff(t)))
-    fft = np.fft.rfft(x * w)
-    freqs = np.fft.rfftfreq(n, d=dt)
-    power = np.abs(fft) ** 2
+    fs = 1.0 / dt
+    nper = max(64, min(n // 4, int(round(fs * 8.0))))
+    freqs, power = welch(x, fs=fs, nperseg=nper, detrend="constant")
     freqs, power = freqs[1:], power[1:]          # drop DC
 
     peak_freq = float(freqs[int(np.argmax(power))]) if len(power) else np.nan
@@ -163,7 +166,7 @@ def make_figure(rows, voltage, fmax, out_path):
     grid = rows[0][2]
     Z = np.vstack([r[3] for r in rows])          # (n_clips, nfreq)
     ent = np.array([r[4] for r in rows])
-    dB = 10.0 * np.log10(np.clip(Z, 1e-4, None))  # per-row already max=1
+    dB = 10.0 * np.log10(np.clip(Z, 1e-3, None))  # per-row already max=1
 
     # y-cell edges from the (irregular) drive frequencies
     yc = fdrv
@@ -180,7 +183,7 @@ def make_figure(rows, voltage, fmax, out_path):
     cax = fig.add_subplot(gs[0, 2])
 
     pcm = ax.pcolormesh(xed, yed, dB, cmap="magma",
-                        norm=Normalize(vmin=-40, vmax=0), shading="flat")
+                        norm=Normalize(vmin=-30, vmax=0), shading="flat")
     # drive-locked guides
     ax.plot(fdrv, fdrv, color="cyan", lw=1.0, ls="--", alpha=0.8,
             label="f = f_drive (1:1)")
@@ -192,7 +195,7 @@ def make_figure(rows, voltage, fmax, out_path):
     ax.set_xlabel("frequency (Hz)")
     ax.set_ylabel("drive frequency (Hz)")
     ax.set_title(f"Spectral waterfall — {voltage:g} V   "
-                 f"(θ₂ power, per-row dB)")
+                 f"(ω₂ power, per-row dB)")
     ax.legend(loc="lower right", fontsize=8, framealpha=0.7)
     fig.colorbar(pcm, cax=cax, label="power (dB, per row)")
 
@@ -248,4 +251,9 @@ def main():
     write_csv(rows, args.voltage, csv_out)
     png_out = aggregate_path(f"spectral_waterfall_{args.voltage:g}V.png")
     make_figure(rows, args.voltage, args.fmax, png_out)
-    console.print(f"  [dim]{len(rows)} 
+    console.print(f"  [dim]{len(rows)} clips → {csv_out}[/]")
+    console.print(f"  [dim]→ {png_out}[/]")
+
+
+if __name__ == "__main__":
+    main()
