@@ -56,6 +56,7 @@ CLR_ANALYZE = "#fbbf24"
 CLR_OUTPUT  = "#FF6B35"
 CLR_FIGURES = "#FF3D6B"
 CLR_VIDEOS  = "#38BDF8"
+CLR_INTERACTIVE = "#2dd4bf"
 CLR_MAIN    = "#c084fc"
 CLR_INFO    = "cyan"
 CLR_SYSTEM  = "dim"
@@ -658,7 +659,6 @@ ANALYZE_TYPES = [
     ("return_map",    "ret",    "return map"),
     ("recurrence",    "rec",    "recurrence plot"),
     ("attractor",     "attr",   "attractor embed"),
-    ("phase_3d_plotly", "i3d",  "interactive 3d"),
 ]
 
 def _analyze_exists(tn, stem):
@@ -666,9 +666,6 @@ def _analyze_exists(tn, stem):
     if tn == "rotations":  return os.path.isfile(os.path.join(clip_dir(stem), "rotations.json"))
     if tn == "dimension":  return os.path.isfile(os.path.join(clip_dir(stem), "dimension.json"))
     if tn == "return_map": return os.path.isfile(os.path.join(clip_dir(stem), "return_map.csv"))
-    if tn == "phase_3d_plotly":
-        from paths import ANIMATIONS_DIR
-        return os.path.isfile(os.path.join(ANIMATIONS_DIR, "phase_3d_plotly", f"{stem}_phase_3d_plotly.html"))
     return _fig_exists(tn, stem)
 
 def _voltage_sweep_ok(clips):
@@ -706,18 +703,6 @@ def build_mode_analyze():
         if row: _runclip(ctx, SCRIPT_RECURRENCE, "--stem", row["stem"]); _log_activity(f"recurrence {row['stem']}")
     def act_attractor(row, rows, i, ctx):
         if row: _runclip(ctx, SCRIPT_ATTRACTOR, "--stem", row["stem"]); _log_activity(f"attractor {row['stem']}")
-    def act_phase3d(row, rows, i, ctx):
-        if not row: return
-        stem = row["stem"]
-        def work():
-            _run(SCRIPT_PHASE3D_PLOTLY, "--stem", stem)
-            from paths import ANIMATIONS_DIR
-            html = os.path.join(ANIMATIONS_DIR, "phase_3d_plotly", f"{stem}_phase_3d_plotly.html")
-            if os.path.isfile(html):
-                try: _open_file(html)
-                except Exception: pass
-            _log_activity(f"phase3d {stem}")
-        _do_suspended(ctx, work)
     def act_explore(row, rows, i, ctx):
         if not row: return
         sys.path.insert(0, os.path.join(REPO_ROOT, "scripts", "analysis"))
@@ -725,7 +710,7 @@ def build_mode_analyze():
         _do_suspended(ctx, lambda: explore(row["stem"]), pause=False)
     _RUN = {"chaos": act_chaos, "poinc": act_poin, "lyap": act_lyap, "driven": act_driven,
             "rot": act_rot, "dim": act_dim, "ret": act_returnmap, "rec": act_recurrence,
-            "attr": act_attractor, "i3d": act_phase3d}
+            "attr": act_attractor}
     def run_cell(stem, t, ctx):
         fn = _RUN.get(t[1])
         if fn: fn({"stem": stem}, None, None, ctx)
@@ -1202,6 +1187,64 @@ def do_vi(tr):
     _run_one_mode(build_mode_videos())
     _log_activity("videos")
 
+# Interactive (HTML viewers — regenerable, open in browser)
+INTERACTIVE_TYPES = [
+    ("phase_3d_plotly", "3d", "interactive 3D phase"),
+]
+SCRIPT_INTERACTIVE = {"phase_3d_plotly": SCRIPT_PHASE3D_PLOTLY}
+
+def _interactive_path(itype, stem):
+    from paths import ANIMATIONS_DIR
+    return os.path.join(ANIMATIONS_DIR, itype, f"{stem}_{itype}.html")
+
+def _interactive_exists(itype, stem):
+    return os.path.isfile(_interactive_path(itype, stem))
+
+def build_mode_interactive():
+    """Interactive mode — per-clip HTML viewers (regenerable, open in browser).
+    o/enter render-if-missing then open; column mode batch-renders a type;
+    entry mode opens / force-creates one cell."""
+    tr, _pe = get_clips()
+    def render_open(row, rows, i, ctx):
+        if not row: return
+        stem = row["stem"]
+        def work():
+            for itype, _s, _d in INTERACTIVE_TYPES:
+                script = SCRIPT_INTERACTIVE.get(itype)
+                if script and not _interactive_exists(itype, stem):
+                    _run(script, "--stem", stem)
+                p = _interactive_path(itype, stem)
+                if os.path.isfile(p):
+                    try: _open_file(p)
+                    except Exception: pass
+            _log_activity(f"interactive {stem}")
+        _do_suspended(ctx, work)
+    def col_render(t, ctx):
+        itype = t[0]; script = SCRIPT_INTERACTIVE.get(itype)
+        def work():
+            tgt = [c["stem"] for c in tr if not _interactive_exists(itype, c["stem"])]
+            if not tgt:
+                console.print(f"  [dim]All {t[2]} already rendered.[/]"); return
+            for s in tgt:
+                if script: _run(script, "--stem", s)
+            _log_activity(f"interactive col {t[1]}")
+        _do_suspended(ctx, work, confirm=f"Render [bold]{t[2]}[/] for all missing clips?")
+    def open_html(stem, t, ctx):
+        p = _interactive_path(t[0], stem)
+        if os.path.isfile(p):
+            try: _open_file(p); _log_activity(f"open {t[1]}/{stem}")
+            except Exception: pass
+    def create_html(stem, t, ctx):
+        script = SCRIPT_INTERACTIVE.get(t[0])
+        if not script: return
+        _do_suspended(ctx, lambda: _run(script, "--stem", stem)); _log_activity(f"create {t[1]}/{stem}")
+    hint = ("[dim]↑↓[/] [bold]o[/]/[bold]↵[/] open   [bold]c[/] column mode   [bold]e[/] entry mode   "
+            "[bold]h[/] help   [bold]q[/] quit")
+    return _inventory_mode("interactive", "5", CLR_INTERACTIVE, INTERACTIVE_TYPES, _interactive_exists,
+                           key_actions={"enter": render_open, "o": render_open},
+                           hint=hint, on_col=col_render,
+                           on_view=open_html, on_create=create_html)
+
 # Overlay render + review
 def _render_overlay(stem):
     """Render one overlay; overlay_video.py owns its own Rich output.
@@ -1389,7 +1432,7 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
 
     def _help_panel(m):
         hp = [Text.from_markup("  [dim]move[/]  ↑↓ / k j   Home/End   PgUp/PgDn   [dim]·[/]   q/Esc quit"),
-              Text.from_markup("  [dim]switch[/]  m/1/2/3/4 mode   [bold]tab[/] cycle"),
+              Text.from_markup("  [dim]switch[/]  m/1/2/3/4/5 mode   [bold]tab[/] cycle"),
               Text.from_markup("  [dim]palette[/]  [bold cyan]/[/]  sw switch · pa paths · cal calibrate · "
                                "wf waterfall · bif bifurcation · rs rot · ds dim · ws wind")]
         rh = _resolve(m.hint)
@@ -1661,13 +1704,13 @@ def build_mode_main():
 
 def main():
     """Shell v2 — mode-ring entry point (launched by bare `chaos`). Opens on the
-    main pipeline overview; 1-4 open the stage modes (cursor persists)."""
+    main pipeline overview; 1-5 switch modes (cursor persists)."""
     def _overall():
         tr, pe = get_clips()
         nver = sum(1 for c in tr if c.get("quality") == "verified")
         return (nver, len(tr) - nver, len(pe))
     modes = [build_mode_main(), build_mode_track(), build_mode_analyze(),
-             build_mode_figures(), build_mode_videos()]
+             build_mode_figures(), build_mode_videos(), build_mode_interactive()]
     run_modes(modes, start=0, overall_fn=_overall)
 
 # ── Hub loop ──
