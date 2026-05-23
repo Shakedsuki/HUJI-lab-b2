@@ -44,6 +44,7 @@ SCRIPT_ROTATIONS   = os.path.join(REPO_ROOT, "scripts", "analysis", "rotations.p
 SCRIPT_DIMENSION   = os.path.join(REPO_ROOT, "scripts", "analysis", "dimension.py")
 SCRIPT_DIM_SWEEP   = os.path.join(REPO_ROOT, "scripts", "analysis", "dimension_sweep.py")
 SCRIPT_RETURN_MAP  = os.path.join(REPO_ROOT, "scripts", "analysis", "return_map.py")
+SCRIPT_RECURRENCE  = os.path.join(REPO_ROOT, "scripts", "analysis", "recurrence.py")
 SCRIPT_WATERFALL   = os.path.join(REPO_ROOT, "scripts", "analysis", "spectral_waterfall.py")
 SCRIPT_OVERLAY     = os.path.join(REPO_ROOT, "scripts", "analysis", "overlay_video.py")
 
@@ -550,7 +551,7 @@ def _sanity_preview():
         if not row: return None
         stem = row["stem"]
         if stem not in pcache:
-            ph = max(6, (console.height - 28) // 2)
+            ph = max(4, (console.height - 26) // 2)
             pw = max(44, console.width - 78)
             try:
                 sys.path.insert(0, os.path.join(REPO_ROOT, "scripts", "analysis"))
@@ -609,14 +610,6 @@ def build_mode_track():
     def act_verify(row, rows, i, ctx):
         if row and row["status"] != "pending":
             _do_suspended(ctx, lambda: _run(SCRIPT_VERIFY, "--stem", row["stem"])); _log_activity(f"verified {row['stem']}")
-    def act_sanity(row, rows, i, ctx):
-        if not row: return
-        def work():
-            sys.path.insert(0, os.path.join(REPO_ROOT, "scripts", "analysis"))
-            from sanity_check import check_one
-            try: check_one(row["stem"])
-            except Exception as e: console.print(f"  [red]ERROR:[/] {e}")
-        _do_suspended(ctx, work)
     def act_open(row, rows, i, ctx):
         if row and _has_overlay(row["stem"]):
             try: _open_file(_overlay_path(row["stem"]))
@@ -640,9 +633,8 @@ def build_mode_track():
             confirm=f"[red]Re-track[/] all [bold]{len(stems)}[/] clip(s) in view? "
                     f"Overwrites existing tracking.")
     return Mode(name="track", key="1", color=CLR_TRACK, build_rows=build_rows, columns=columns,
-                legend=legend, hint=hint, preview_fn=_sanity_preview(),
-                key_actions={"t": act_track, "v": act_verify, "s": act_sanity, "o": act_open,
-                             "a": act_bulk},
+                legend=legend, hint=hint, preview_fn=_sanity_preview(), preview_key="s",
+                key_actions={"t": act_track, "v": act_verify, "o": act_open, "a": act_bulk},
                 col_targets=[2], col_actions={"enter": col_retrack_all}, col_hint=col_hint)
 
 def do_t(tr, pe):
@@ -658,6 +650,7 @@ ANALYZE_TYPES = [
     ("rotations",     "rot",    "rotations"),
     ("dimension",     "dim",    "fractal dimension"),
     ("return_map",    "ret",    "return map"),
+    ("recurrence",    "rec",    "recurrence plot"),
 ]
 
 def _analyze_exists(tn, stem):
@@ -699,6 +692,8 @@ def build_mode_analyze():
         if row: _runclip(ctx, SCRIPT_DIMENSION, "--stem", row["stem"]); _log_activity(f"dimension {row['stem']}")
     def act_returnmap(row, rows, i, ctx):
         if row: _runclip(ctx, SCRIPT_RETURN_MAP, "--stem", row["stem"]); _log_activity(f"return map {row['stem']}")
+    def act_recurrence(row, rows, i, ctx):
+        if row: _runclip(ctx, SCRIPT_RECURRENCE, "--stem", row["stem"]); _log_activity(f"recurrence {row['stem']}")
     def act_explore(row, rows, i, ctx):
         if not row: return
         sys.path.insert(0, os.path.join(REPO_ROOT, "scripts", "analysis"))
@@ -725,7 +720,7 @@ def build_mode_analyze():
         _do_suspended(ctx, work, confirm="Run [bold]dimension sweep[/] across the 3.2V family?")
     bif_ok = _voltage_sweep_ok(tr)
     fd_ok = _freq_sweep_ok(tr)
-    hint = ("[dim]\u2191\u2193[/] run   [bold]ch[/] chaos   [bold]po[/] poinc   [bold]ly[/] lyap   [bold]dr[/] driven   [bold]ro[/] rot   [bold]fr[/] frac   [bold]rm[/] return   "
+    hint = ("[dim]\u2191\u2193[/] run   [bold]ch[/] chaos   [bold]po[/] poinc   [bold]ly[/] lyap   [bold]dr[/] driven   [bold]ro[/] rot   [bold]fr[/] frac   [bold]rm[/] return   [bold]rc[/] recur   "
             "[bold]\u21b5[/] explore   "
             + ("[bold]bs[/] bif-sweep   " if bif_ok else "")
             + ("[bold]bf[/] bif-fd   " if fd_ok else "")
@@ -734,7 +729,7 @@ def build_mode_analyze():
             "dr": act_driven, "ro": act_rot, "fr": act_dim,
             "enter": act_explore,
             "rs": act_rotsweep, "wf": act_waterfall, "ds": act_dim_sweep,
-            "rm": act_returnmap}
+            "rm": act_returnmap, "rc": act_recurrence}
     if bif_ok: keys["bs"] = act_bif
     if fd_ok: keys["bf"] = act_bif_fd
     return _inventory_mode("analyze", "2", CLR_ANALYZE, ANALYZE_TYPES, _analyze_exists,
@@ -1025,6 +1020,7 @@ FIG_TYPES = [
     ("dimension",           "dim",    "fractal dimension"),
     ("driven_poincare",     "drpoinc","driven poincaré"),
     ("return_map",          "ret",    "return map"),
+    ("recurrence",          "rec",    "recurrence plot"),
 ]
 
 def build_mode_figures():
@@ -1318,6 +1314,7 @@ class Mode:
     cell_actions: object = None
     cell_hint: object = None
     preview_fn: object = None
+    preview_key: object = None   # key that toggles the preview panel (track: "s")
 
 def _ring_title(modes, active):
     t = Text()
@@ -1366,6 +1363,7 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
     mode = "row"
     pending = ""
     show_help = False
+    show_preview = False
 
     def cur():
         return modes[midx]
@@ -1397,7 +1395,7 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
         _active = cell_tgts if mode == "cell" else m.col_targets
         if _active: cidx = max(0, min(cidx, len(_active) - 1))
         width = console.width
-        avail = max(5, min(23, console.height - 10))
+        avail = max(5, min(23, console.height - 12))
         try:
             tr2, pe2 = get_clips()
             nver = sum(1 for c in tr2 if c.get("quality") == "verified")
@@ -1405,16 +1403,22 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
         except Exception:
             right_info = None
         try:
-            overall_pct = overall_fn() if overall_fn else None
+            ov = overall_fn() if overall_fn else None
         except Exception:
-            overall_pct = None
+            ov = None
         title = _ring_title(modes, midx)
-        if overall_pct is not None:
-            filled = max(0, min(10, round(overall_pct / 10)))
+        if ov:
+            nver, ntr, npe = ov
+            total = nver + ntr + npe
+            filled = max(0, min(10, round(10 * nver / total))) if total else 0
             title.append("    ")
             title.append("█" * filled, style=CLR_TRACK)
             title.append("░" * (10 - filled), style="dim")
-            title.append(f" {overall_pct}%", style="dim")
+            title.append(f"  {nver} verified", style="dim")
+            title.append(" · ", style="dim")
+            title.append(f"{ntr} tracked", style="dim")
+            title.append(" · ", style="dim")
+            title.append(f"{npe} pending", style="dim")
         if show_help:
             return rows, n, avail, Group(_help_panel(m), _status_line(modes, phase_label, width))
         cols = m.columns
@@ -1450,7 +1454,7 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
         leg = _resolve(m.legend)
         if leg: body.append(Text.from_markup("  " + leg))
         inner = Group(*body)
-        if m.preview_fn is not None:
+        if show_preview and m.preview_fn is not None:
             try: prev = m.preview_fn(rows[idx] if n else None)
             except Exception: prev = None
             if prev is not None:
@@ -1488,10 +1492,10 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
                 rows, n, avail, renderable = frame(); live.update(renderable, refresh=True); continue
             if key in ("q", "esc"): break
             if key == "\t":
-                midx = (midx + 1) % len(modes); mode = "row"; cidx = 0; pending = ""
+                midx = (midx + 1) % len(modes); mode = "row"; cidx = 0; pending = ""; show_preview = False
                 rows, n, avail, renderable = frame(); live.update(renderable, refresh=True); continue
             if key in by_key:
-                midx = by_key[key]; mode = "row"; cidx = 0; pending = ""
+                midx = by_key[key]; mode = "row"; cidx = 0; pending = ""; show_preview = False
                 rows, n, avail, renderable = frame(); live.update(renderable, refresh=True); continue
             m = cur()
             has_cols = bool(m.col_targets)
@@ -1524,6 +1528,8 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
                 elif key == "pageup": idx -= avail; pending = ""
                 elif key == "pagedown": idx += avail; pending = ""
                 elif key in ("backspace", "\x08", "\x7f"): pending = pending[:-1]
+                elif m.preview_key and key == m.preview_key:
+                    show_preview = not show_preview; pending = ""
                 elif key == "enter":
                     pending = ""
                     act = ka.get("enter")
@@ -1556,11 +1562,10 @@ def main():
     """Shell v2 — mode-ring entry point (launched by bare `chaos`). Track / analyze
     / figures / videos are live; the main overview is a placeholder until Phase 3,
     so we land on track for now."""
-    def _overall_pct():
+    def _overall():
         tr, pe = get_clips()
-        total = len(tr) + len(pe)
         nver = sum(1 for c in tr if c.get("quality") == "verified")
-        return round(100 * nver / total) if total else 0
+        return (nver, len(tr) - nver, len(pe))
     def _main_stub():
         def rows():
             tr, _pe = get_clips()
@@ -1575,12 +1580,11 @@ def main():
                     columns=[("#", lambda r: str(r["_n"]), dict(justify="right", width=3, style="dim")),
                              ("clip", lambda r: r["stem"], dict(min_width=16, no_wrap=True)),
                              ("status", _scell, dict(width=9))],
-                    legend="[dim]pipeline overview — coming next; press 1-4 to open a stage[/]",
-                    hint="[dim]↑↓[/] navigate   [bold]1-4[/] open a stage   [bold]h[/] help   [bold]q[/] quit",
-                    preview_fn=_sanity_preview())
+                    legend="",
+                    hint="[dim]↑↓[/] navigate   [bold]1-4[/] open a stage   [bold]h[/] help   [bold]q[/] quit")
     modes = [_main_stub(), build_mode_track(), build_mode_analyze(),
              build_mode_figures(), build_mode_videos()]
-    run_modes(modes, start=0, overall_fn=_overall_pct)
+    run_modes(modes, start=0, overall_fn=_overall)
 
 # ── Hub loop ──
 
