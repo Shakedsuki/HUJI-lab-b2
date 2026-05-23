@@ -86,7 +86,8 @@
     "n_frames": 2157,
     "verification_notes": "dropout 0.00% ≤ 5%",
     "verified_under_brief_version": 14,
-    "verification_date": "2026-05-23"
+    "verification_date": "2026-05-23",
+    "overlay_verdict": "pass"
   },
   "2.5V_1Hz": {
     "video_file": "2.5V_1Hz.mov",
@@ -115,7 +116,8 @@
     "n_frames": 2073,
     "verification_date": "2026-05-23",
     "verification_notes": "dropout 0.00% ≤ 5%",
-    "verified_under_brief_version": 14
+    "verified_under_brief_version": 14,
+    "overlay_verdict": "pass"
   },
   "2.6V_1Hz": {
     "video_file": "2.6V_1Hz.mov",
@@ -144,7 +146,8 @@
     "n_frames": 2157,
     "verification_date": "2026-05-23",
     "verification_notes": "dropout 0.00% ≤ 5%",
-    "verified_under_brief_version": 14
+    "verified_under_brief_version": 14,
+    "overlay_verdict": "pass"
   },
   "2.8V_1Hz": {
     "video_file": "2.8V_1Hz.mov",
@@ -173,7 +176,8 @@
     "n_frames": 2115,
     "verification_date": "2026-05-23",
     "verification_notes": "dropout 0.00% ≤ 5%",
-    "verified_under_brief_version": 14
+    "verified_under_brief_version": 14,
+    "overlay_verdict": "pass"
   },
   "3.2V_1Hz": {
     "video_file": "3.2V_1Hz.mov",
@@ -202,7 +206,8 @@
     "n_frames": 2565,
     "verification_date": "2026-05-23",
     "verification_notes": "dropout 0.00% ≤ 5%",
-    "verified_under_brief_version": 14
+    "verified_under_brief_version": 14,
+    "overlay_verdict": "pass"
   },
   "3.4V_1Hz": {
     "video_file": "3.4V_1Hz.mov",
@@ -261,7 +266,8 @@
     "omega2_initial": 0.0,
     "n_frames": 2433,
     "verification_date": "2026-05-23",
-    "verified_under_brief_version": 14
+    "verified_under_brief_version": 14,
+    "overlay_verdict": "pass"
   },
   "3V_0.25Hz": {
     "video_file": "3V_0.25Hz.mov",
@@ -290,7 +296,8 @@
     "omega2_initial": 0.0,
     "n_frames": 2889,
     "verification_date": "2026-05-23",
-    "verified_under_brief_version": 14
+    "verified_under_brief_version": 14,
+    "overlay_verdict": "pass"
   },
   "3V_0.5Hz": {
     "video_file": "3V_0.5Hz.mov",
@@ -319,7 +326,8 @@
     "omega2_initial": -2.6379,
     "n_frames": 2187,
     "verification_date": "2026-05-23",
-    "verified_under_brief_version": 14
+    "verified_under_brief_version": 14,
+    "overlay_verdict": "pass"
   },
   "3V_0.75Hz": {
     "video_file": "3V_0.75Hz.mov",
@@ -348,7 +356,8 @@
     "omega2_initial": 0.0,
     "n_frames": 2274,
     "verification_date": "2026-05-23",
-    "verified_under_brief_version": 14
+    "verified_under_brief_version": 14,
+    "overlay_verdict": "pass"
   },
   "3V_1.25Hz": {
     "video_file": "3V_1.25Hz.mov",
@@ -377,7 +386,8 @@
     "omega2_initial": 17.1463,
     "n_frames": 1968,
     "verification_date": "2026-05-23",
-    "verified_under_brief_version": 14
+    "verified_under_brief_version": 14,
+    "overlay_verdict": "pass"
   },
   "3V_1.5Hz": {
     "video_file": "3V_1.5Hz.mov",
@@ -406,7 +416,8 @@
     "omega2_initial": 0.0,
     "n_frames": 2760,
     "verified_under_brief_version": 14,
-    "verification_date": "2026-05-23"
+    "verification_date": "2026-05-23",
+    "overlay_verdict": "pass"
   },
   "3V_1Hz": {
     "video_file": "3V_1Hz.mov",
@@ -435,7 +446,8 @@
     "n_frames": 3150,
     "verification_date": "2026-05-23",
     "verification_notes": "dropout 0.00% ≤ 5%",
-    "verified_under_brief_version": 14
+    "verified_under_brief_version": 14,
+    "overlay_verdict": "pass"
   },
   "4V_0.6Hz": {
     "video_file": "4V_0.6Hz.mov",
@@ -464,7 +476,8 @@
     "n_frames": 2541,
     "verification_date": "2026-05-23",
     "verification_notes": "dropout 0.75% ≤ 5%",
-    "verified_under_brief_version": 14
+    "verified_under_brief_version": 14,
+    "overlay_verdict": "pass"
   },
   "4V_0.7Hz": {
     "video_file": "4V_0.7Hz.mov",
@@ -493,7 +506,8 @@
     "n_frames": 2856,
     "verification_date": "2026-05-23",
     "verification_notes": "dropout 0.84% ≤ 5%",
-    "verified_under_brief_version": 14
+    "verified_under_brief_version": 14,
+    "overlay_verdict": "pass"
   },
   "4V_0.8Hz": {
     "video_file": "4V_0.8Hz.mov",
@@ -522,7 +536,8 @@
     "dropout_rate_pct": 1.81,
     "verification_date": "2026-05-23",
     "verification_notes": "dropout 1.81% ≤ 5%",
-    "verified_under_brief_version": 14
+    "verified_under_brief_version": 14,
+    "overlay_verdict": "pass"
   },
   "4V_0.9Hz": {
     "video_file": "4V_0.9Hz.mov",
@@ -551,7 +566,8 @@
     "dropout_rate_pct": 3.73,
     "verification_date": "2026-05-23",
     "verification_notes": "dropout 3.73% ≤ 5%",
-    "verified_under_brief_version": 14
+    "verified_under_brief_version": 14,
+    "overlay_verdict": "pass"
   },
   "4V_1.1Hz": {
     "video_file": "4V_1.1Hz.mov",
@@ -580,7 +596,8 @@
     "dropout_rate_pct": 0.09,
     "verification_date": "2026-05-23",
     "verification_notes": "dropout 0.09% ≤ 5%",
-    "verified_under_brief_version": 14
+    "verified_under_brief_version": 14,
+    "overlay_verdict": "pass"
   },
   "4V_1.2Hz": {
     "video_file": "4V_1.2Hz.mov",
@@ -609,7 +626,8 @@
     "dropout_rate_pct": 0.0,
     "verification_date": "2026-05-23",
     "verification_notes": "dropout 0.00% ≤ 5%",
-    "verified_under_brief_version": 14
+    "verified_under_brief_version": 14,
+    "overlay_verdict": "pass"
   },
   "4V_1.3Hz": {
     "video_file": "4V_1.3Hz.mov",
@@ -638,7 +656,8 @@
     "dropout_rate_pct": 0.0,
     "verification_date": "2026-05-23",
     "verification_notes": "dropout 0.00% ≤ 5%",
-    "verified_under_brief_version": 14
+    "verified_under_brief_version": 14,
+    "overlay_verdict": "pass"
   },
   "4V_1.4Hz": {
     "video_file": "4V_1.4Hz.mov",
@@ -667,7 +686,8 @@
     "dropout_rate_pct": 0.0,
     "verification_date": "2026-05-23",
     "verification_notes": "dropout 0.00% ≤ 5%",
-    "verified_under_brief_version": 14
+    "verified_under_brief_version": 14,
+    "overlay_verdict": "pass"
   },
   "4V_1.5Hz": {
     "video_file": "4V_1.5Hz.mov",
@@ -696,7 +716,8 @@
     "dropout_rate_pct": 0.0,
     "verification_date": "2026-05-23",
     "verification_notes": "dropout 0.00% ≤ 5%",
-    "verified_under_brief_version": 14
+    "verified_under_brief_version": 14,
+    "overlay_verdict": "pass"
   },
   "4V_1.6Hz": {
     "video_file": "4V_1.6Hz.mov",
@@ -725,7 +746,8 @@
     "dropout_rate_pct": 0.0,
     "verification_date": "2026-05-23",
     "verification_notes": "dropout 0.00% ≤ 5%",
-    "verified_under_brief_version": 14
+    "verified_under_brief_version": 14,
+    "overlay_verdict": "pass"
   },
   "4V_1.8Hz": {
     "video_file": "4V_1.8Hz.mov",
@@ -754,7 +776,8 @@
     "dropout_rate_pct": 0.0,
     "verification_date": "2026-05-23",
     "verification_notes": "dropout 0.00% ≤ 5%",
-    "verified_under_brief_version": 14
+    "verified_under_brief_version": 14,
+    "overlay_verdict": "pass"
   },
   "4V_1.9Hz": {
     "video_file": "4V_1.9Hz.mov",
@@ -783,7 +806,8 @@
     "n_frames": 2400,
     "verification_date": "2026-05-23",
     "verification_notes": "dropout 0.00% ≤ 5%",
-    "verified_under_brief_version": 14
+    "verified_under_brief_version": 14,
+    "overlay_verdict": "pass"
   },
   "4V_1Hz": {
     "video_file": "4V_1Hz.mov",
@@ -812,7 +836,8 @@
     "dropout_rate_pct": 1.09,
     "verification_date": "2026-05-23",
     "verification_notes": "dropout 1.09% ≤ 5%",
-    "verified_under_brief_version": 14
+    "verified_under_brief_version": 14,
+    "overlay_verdict": "pass"
   },
   "4V_2Hz": {
     "video_file": "4V_2Hz.mov",
@@ -841,6 +866,7 @@
     "dropout_rate_pct": 0.0,
     "verification_date": "2026-05-23",
     "verification_notes": "dropout 0.00% ≤ 5%",
-    "verified_under_brief_version": 14
+    "verified_under_brief_version": 14,
+    "overlay_verdict": "pass"
   }
 }
