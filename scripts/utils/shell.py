@@ -204,9 +204,11 @@ def render_hub(tracked, pending, expanded=True):
 
     if expanded:
         ct = _card("track", CLR_TRACK, [("t","track · status")])
-        ca = _card("analyze", CLR_ANALYZE, [
-            ("a","analyze"),("aq","quick insights"),("g","gallery"),
-            ("ai","bifurcation"),("ar","rotations")])
+        analyze_items = [("a","analyze"),("aq","quick insights")]
+        if _voltage_sweep_ok(tracked + pending):
+            analyze_items.append(("ai","bifurcation"))
+        analyze_items.append(("ar","rotations"))
+        ca = _card("analyze", CLR_ANALYZE, analyze_items)
         r1 = Table(box=None, show_header=False, expand=True, padding=(0,1))
         r1.add_column(ratio=1); r1.add_column(ratio=1); r1.add_row(ct, ca)
 
@@ -683,6 +685,12 @@ def _analyze_exists(tn, stem):
     if tn == "dimension": return os.path.isfile(os.path.join(clip_dir(stem), "dimension.json"))
     return _fig_exists(tn, stem)
 
+def _voltage_sweep_ok(clips):
+    """A voltage bifurcation needs >=2 distinct drive voltages. Week6 (a single
+    3.2V frequency sweep) -> False, so 'ai'/bifurcation is hidden / N/A there."""
+    volts = {c.get("drive_voltage_v") for c in clips if c.get("drive_voltage_v") is not None}
+    return len(volts) >= 2
+
 def do_a(tr):
     """Analyze \u2014 navigate clips; row keys run a per-clip analysis on the
     highlighted clip; the \u2713/\u00b7 columns show what's already been computed.
@@ -717,39 +725,121 @@ def do_a(tr):
         _do_suspended(ctx, work, confirm="Run [bold]rotations sweep[/] across the 3.2V family?")
     def toggle_gaps(row, rows, i, ctx):
         fstate["gaps"] = not fstate["gaps"]; return "top"
+    bif_ok = _voltage_sweep_ok(tr)
     hint = ("[dim]\u2191\u2193[/] run [bold]c[/]haos [bold]p[/]oinc [bold]l[/]yap [bold]d[/]riven [bold]r[/]ot [bold]f[/]rac   "
-            "[bold]\u21b5[/] explore   [bold]b[/] bif-sweep [bold]s[/] rot-sweep   "
-            "[bold]g[/] gaps   [bold]q[/] back")
+            "[bold]\u21b5[/] explore   "
+            + ("[bold]b[/] bif-sweep " if bif_ok else "")
+            + "[bold]s[/] rot-sweep   [bold]g[/] gaps   [bold]q[/] back")
+    keys = {"c": act_chaos, "p": act_poin, "l": act_lyap,
+            "d": act_driven, "r": act_rot, "f": act_dim,
+            "enter": act_explore, "x": act_explore,
+            "s": act_rotsweep, "g": toggle_gaps}
+    if bif_ok: keys["b"] = act_bif
     _inventory_nav(tr, "analyze", CLR_ANALYZE, ANALYZE_TYPES, _analyze_exists,
-                   key_actions={"c": act_chaos, "p": act_poin, "l": act_lyap,
-                                "d": act_driven, "r": act_rot, "f": act_dim,
-                                "enter": act_explore, "x": act_explore,
-                                "b": act_bif, "s": act_rotsweep, "g": toggle_gaps},
-                   hint=hint, fstate=fstate)
+                   key_actions=keys, hint=hint, fstate=fstate)
     _log_activity("analyze")
 
+_QI_CATS = [
+    ("green",   "time series", ["both", "omega", "tip", "energy", "rot"]),
+    ("yellow",  "phase space", ["phase1", "phase2", "config", "full", "seis1", "seis2"]),
+    ("blue",    "physical",    ["xy", "trace"]),
+    ("red",     "chaos",       ["spectrum", "return", "dim"]),
+    ("magenta", "driven",      ["cyc", "lock", "res"]),
+]
+
 def do_aq(tr):
-    """Quick insights — pick a clip, drop into the interactive plot explorer."""
+    """Quick insights — clips on the left; type plot names to render them on the
+    right and chain more. ↑↓ navigate · ↵ select a clip · type a plot keyword + ↵
+    to add it · 'l' clears the pane · 'back' exits."""
     if not tr:
         console.print("  [dim]No tracked clips.[/]"); _pause(); return
-    def build_rows():
-        rows = [{"stem": c["stem"]} for c in tr]
-        for k, r in enumerate(rows, 1): r["_n"] = k
-        return rows
-    columns = [
-        ("#",    lambda r: str(r["_n"]), dict(justify="right", width=3, style="dim")),
-        ("clip", lambda r: r["stem"],    dict(min_width=16, no_wrap=True)),
-    ]
-    def act_explore(row, rows, i, ctx):
-        if not row: return
-        sys.path.insert(0, os.path.join(REPO_ROOT, "scripts", "analysis"))
-        from quick_insights import explore
-        _do_suspended(ctx, lambda: explore(row["stem"]), pause=False)
-        _log_activity(f"insights {row['stem']}")
-    navigate_table(build_rows, columns, title="quick insights", border_style=CLR_ANALYZE,
-                   legend="[dim]interactive plot explorer (plotext REPL) — 12 views[/]",
-                   hint="[dim]↑↓[/] move   [bold]↵[/] explore clip   [bold]q[/] back",
-                   key_actions={"enter": act_explore, "x": act_explore})
+    sys.path.insert(0, os.path.join(REPO_ROOT, "scripts", "analysis"))
+    from quick_insights import PLOTS, build_gallery
+    clips = [c["stem"] for c in tr]
+    st = {"idx": 0, "sel": None, "plots": [], "buf": "", "msg": ""}
+    pcache = {}
+    def menu():
+        lines = [f"[{c} bold]{lbl:<12}[/]" + "  ".join(f"[{c}]{k}[/]" for k in keys)
+                 for c, lbl, keys in _QI_CATS]
+        return Text.from_markup("\n".join(lines) +
+            "\n\n[dim]type a plot keyword + ↵ to render it · chain more · "
+            "[bold]l[/] clears · [bold]back[/] exits[/]")
+    def right():
+        if st["sel"] and st["plots"]:
+            key = (st["sel"], tuple(st["plots"]))
+            if key not in pcache:
+                pw = max(46, console.width - 40); mh = max(12, console.height - 8)
+                try:
+                    txt = build_gallery(st["sel"], width=pw - 4, plot_height=11,
+                                        max_height=mh, keys=st["plots"])
+                    pcache[key] = Text.from_ansi(txt) if txt else Text.from_markup("[dim](no output)[/]")
+                except Exception as e:
+                    pcache[key] = Text.from_markup(f"[red]{e}[/]")
+            body = pcache[key]
+            title = f"[bold]{st['sel']}[/]  [dim]{' · '.join(st['plots'])}[/]"
+        else:
+            body = menu()
+            tgt = (f"[green]{st['sel']}[/]" if st["sel"]
+                   else f"[dim]{clips[st['idx']]} — ↵ to select[/]")
+            title = f"[bold]plots[/]  [dim]·[/]  {tgt}"
+        return Panel(body, title=title, border_style=CLR_ANALYZE, padding=(0, 1))
+    def frame():
+        n = len(clips); avail = max(5, console.height - 9)
+        if n <= avail: lo, hi = 0, n
+        else:
+            lo = max(0, min(st["idx"] - avail // 2, n - avail)); hi = lo + avail
+        t = Table(box=box.SIMPLE, show_header=True, padding=(0, 1), expand=False)
+        t.add_column(" ", width=2); t.add_column("#", justify="right", width=3, style="dim")
+        t.add_column("clip", min_width=14, no_wrap=True)
+        if lo > 0: t.add_row(" ", "", "[dim]↑…[/]")
+        for i in range(lo, hi):
+            stem = clips[i]
+            cur, issel = i == st["idx"], clips[i] == st["sel"]
+            mark = "[bold cyan]▸[/]" if cur else ("[green]●[/]" if issel else " ")
+            disp = f"[green]{stem}[/]" if issel else stem
+            t.add_row(mark, str(i + 1), disp, style="on grey23" if cur else None)
+        if hi < n: t.add_row(" ", "", "[dim]↓…[/]")
+        left = Panel(t, title="[bold]quick insights[/]", border_style=CLR_ANALYZE,
+                     padding=(0, 1), expand=False)
+        lay = Table(box=None, show_header=False, expand=True, padding=(0, 1))
+        lay.add_column(); lay.add_column(ratio=1); lay.add_row(left, right())
+        cl = (f"  [bold cyan]▸[/] {st['buf']}▌" if st["buf"]
+              else "  [bold cyan]▸[/] [dim]type a plot name…[/]")
+        hint = ("  [dim]↵[/] run plot   [dim]esc cancel · ⌫ edit[/]" if st["buf"]
+                else "  [dim]↑↓[/] navigate   [bold]↵[/] select   type a plot + [bold]↵[/]   "
+                     "[bold]l[/] clear   [bold]back[/] exit")
+        parts = [lay, Text.from_markup(cl)]
+        if st["msg"]: parts.append(Text.from_markup("  " + st["msg"]))
+        parts.append(Text.from_markup(hint))
+        return Group(*parts)
+    with Live(frame(), console=console, screen=True, auto_refresh=False) as live:
+        while True:
+            try: k = _read_key()
+            except KeyboardInterrupt: break
+            st["msg"] = ""
+            if st["buf"]:
+                if k == "enter":
+                    cmd = st["buf"].strip().lower(); st["buf"] = ""
+                    if cmd in ("back", "b", "q", "quit"): break
+                    elif cmd in ("l", "clear"): st["plots"] = []
+                    elif cmd in ("h", "help", "?"): st["plots"] = []
+                    elif cmd in PLOTS:
+                        if st["sel"] is None: st["sel"] = clips[st["idx"]]
+                        st["plots"].append(cmd)
+                    else: st["msg"] = f"[yellow]unknown plot:[/] {cmd}  [dim](l clears, back exits)[/]"
+                elif k in ("\x08", "\x7f", "backspace"): st["buf"] = st["buf"][:-1]
+                elif k == "esc": st["buf"] = ""
+                elif len(k) == 1 and k.isprintable(): st["buf"] += k
+            else:
+                if k in ("up", "k"): st["idx"] = max(0, st["idx"] - 1)
+                elif k in ("down", "j"): st["idx"] = min(len(clips) - 1, st["idx"] + 1)
+                elif k == "home": st["idx"] = 0
+                elif k == "end": st["idx"] = len(clips) - 1
+                elif k == "enter": st["sel"] = clips[st["idx"]]; st["plots"] = []
+                elif k in ("q", "esc"): break
+                elif len(k) == 1 and k.isprintable(): st["buf"] += k
+            live.update(frame(), refresh=True)
+    _log_activity("quick insights")
 
 def do_gallery(tr):
     """Gallery — clips on the left; the right pane fills with as many
@@ -785,8 +875,14 @@ def do_gallery(tr):
                    hint="[dim]↑↓[/] move   [bold]q[/] back", preview_fn=preview)
     _log_activity("gallery")
 
-def do_ai():
-    """Bifurcation — driven sweep (θ₁ vs drive voltage) across the family."""
+def do_ai(tr):
+    """Bifurcation — driven voltage sweep (θ₁ vs drive voltage). Needs ≥2 drive
+    voltages, so it only applies to multi-voltage phases (e.g. week5), not the
+    single-voltage week6 frequency sweep."""
+    if not _voltage_sweep_ok(tr):
+        console.print("  [yellow]Bifurcation needs a voltage sweep[/] — this phase has a single "
+                      "drive voltage (a frequency sweep), so it doesn't apply here.")
+        _pause(); return
     if not _ask_confirm("Run [bold]bifurcation sweep[/] (vd) across the family?"):
         return
     _run(SCRIPT_DRIVEN_BIF, "--sweep", "vd"); _log_activity("bifurcation sweep"); _pause()
@@ -804,13 +900,35 @@ def do_ar(tr):
         try:
             with open(p, encoding="utf-8") as f: return json.load(f)
         except Exception: return None
+    def _sweep_map():
+        # the --sweep aggregate CSV holds every clip even when no per-clip json
+        # exists yet; read it as the fallback so the table isn't empty.
+        import glob, csv as _csv
+        from paths import FIGURES_DIR
+        m = {}
+        for path in glob.glob(os.path.join(FIGURES_DIR, "aggregate", "rotations_sweep_*.csv")):
+            try:
+                with open(path, encoding="utf-8") as f:
+                    for row in _csv.DictReader(f):
+                        try:
+                            m.setdefault(row["stem"], {})[row["arm"]] = {
+                                "net_turns": float(row["net_turns"]),
+                                "total_turns": float(row["total_turns"]),
+                                "suspect": row.get("suspect", "") in ("1", "True", "true"),
+                            }
+                        except (ValueError, KeyError):
+                            continue
+            except OSError:
+                continue
+        return m
     def build_rows():
+        sweep = _sweep_map()
         rows = []
         for c in tr:
             r = _load(c["stem"])
-            arms = (r or {}).get("arms", {})
+            arms = (r or {}).get("arms") or sweep.get(c["stem"], {})
             susp = any((arms.get(a) or {}).get("suspect") for a in arms)
-            rows.append({"stem": c["stem"], "arms": arms, "has": r is not None, "susp": susp})
+            rows.append({"stem": c["stem"], "arms": arms, "has": bool(arms), "susp": susp})
         f = state["filter"]
         if f == "suspect":   rows = [r for r in rows if r["susp"]]
         elif f == "missing": rows = [r for r in rows if not r["has"]]
@@ -832,7 +950,8 @@ def do_ar(tr):
         ("susp",    lambda r: "[yellow]⚠[/]" if r["susp"] else "", dict(justify="center", width=4)),
     ]
     def legend():
-        nh = sum(1 for c in tr if _load(c["stem"]))
+        sweep = _sweep_map()
+        nh = sum(1 for c in tr if _load(c["stem"]) or sweep.get(c["stem"]))
         return (f"[dim]{nh}/{len(tr)} computed[/]   [dim]·  ↻ = completed loops[/]"
                 f"   [dim]·[/]   filter: [bold]{state['filter']}[/]")
     hint = ("[dim]↑↓[/] [bold]c[/]/[bold]↵[/] compute   [bold]o[/] figure   [bold]a[/] recompute all + sweep   "
@@ -873,11 +992,12 @@ def _vid_exists(vtype, stem):
 
 def _inventory_nav(tr, title, color, types, exists_fn, *, key_actions, hint, fstate,
                    on_col=None, on_col_force=None, col_hint=None,
-                   on_view=None, cell_hint=None):
+                   on_view=None, on_create=None, cell_hint=None):
     """Navigable clip×type matrix. fstate is a mutable {'gaps': bool} filter.
     on_col(type_tuple, ctx) enables column mode ('c'): ←→ pick a type column, enter
-    batches it across all clips (on_col_force = 'f'). on_view(stem, type_tuple, ctx)
-    enables cell mode ('e'): ↑↓←→ pick one cell, 'v' views that file."""
+    batches it across all clips (on_col_force = 'f'). on_view / on_create
+    (stem, type_tuple, ctx) enable cell mode ('e'): ↑↓←→ pick one cell, 'v' views
+    that file, '+' creates it."""
     def build_rows():
         rows = []
         for c in tr:
@@ -899,7 +1019,7 @@ def _inventory_nav(tr, title, color, types, exists_fn, *, key_actions, hint, fst
         flt = "   [dim]·[/]   filter: [bold]gaps[/]" if fstate.get("gaps") else ""
         return "   ".join(parts) + flt
     col_targets = col_actions = cell_actions = None
-    if on_col or on_view:
+    if on_col or on_view or on_create:
         col_targets = list(range(2, 2 + len(types)))   # the type columns, after #, clip
     if on_col:
         def col_enter(cpos, rows, ctx): on_col(types[cpos], ctx)
@@ -911,13 +1031,21 @@ def _inventory_nav(tr, title, color, types, exists_fn, *, key_actions, hint, fst
             col_hint = ("[bold cyan]column mode[/]   [dim]←→[/] pick type   [bold]↵[/] batch all clips"
                         + ("   [bold]f[/] force" if on_col_force else "")
                         + "   [bold]r[/] row mode   [bold]q[/] back")
-    if on_view:
-        def cell_view(row, cpos, ctx):
-            if row: on_view(row["stem"], types[cpos], ctx)
-        cell_actions = {"v": cell_view, "enter": cell_view}
+    if on_view or on_create:
+        cell_actions = {}
+        if on_view:
+            def cell_view(row, cpos, ctx):
+                if row: on_view(row["stem"], types[cpos], ctx)
+            cell_actions["v"] = cell_view; cell_actions["enter"] = cell_view
+        if on_create:
+            def cell_create(row, cpos, ctx):
+                if row: on_create(row["stem"], types[cpos], ctx)
+            cell_actions["+"] = cell_create
         if cell_hint is None:
-            cell_hint = ("[bold cyan]cell mode[/]   [dim]↑↓←→[/] pick cell   [bold]↵[/]/[bold]v[/] view file   "
-                         "[bold]e[/]/[bold]r[/] row mode   [bold]q[/] back")
+            cell_hint = ("[bold cyan]cell mode[/]   [dim]↑↓←→[/] pick cell"
+                         + ("   [bold]↵[/]/[bold]v[/] view" if on_view else "")
+                         + ("   [bold]+[/] create" if on_create else "")
+                         + "   [bold]e[/]/[bold]r[/] row mode   [bold]q[/] back")
     navigate_table(build_rows, columns, title=title, border_style=color,
                    key_actions=key_actions, legend=legend, hint=hint,
                    empty_msg="No clips match this filter.",
@@ -984,13 +1112,16 @@ def do_fi(tr):
             try: _open_file(path)
             except Exception: pass
             _log_activity(f"view {t[1]}/{stem}")
+    def create_fig(stem, t, ctx):
+        _do_suspended(ctx, lambda: _run(SCRIPT_BATCH_FIGS, "--stem", stem, "--types", t[0], "--force", "--all-quality"))
+        _log_activity(f"create {t[1]}/{stem}")
     hint = ("[dim]↑↓[/] [bold]↵[/] render   [bold]c[/] columns   [bold]e[/] cells   "
             "[bold]o[/] one-type   [bold]a[/] all   [bold]f[/] force   [bold]g[/] gaps   [bold]q[/] back")
     _inventory_nav(tr, "figures inventory", CLR_FIGURES, FIG_TYPES, _fig_exists,
                    key_actions={"enter": render_clip, "f": force_clip,
                                 "o": one_type, "a": fill_all, "g": toggle_gaps},
                    hint=hint, fstate=fstate, on_col=col_batch, on_col_force=col_force,
-                   on_view=view_fig)
+                   on_view=view_fig, on_create=create_fig)
 
 # Videos
 VIDEO_TYPES = [
@@ -1125,8 +1256,16 @@ def do_vi(tr):
             view_vid(row["stem"], col, ctx)
     def cell_view(row, cpos, ctx):
         if row and CELL_COLS[cpos] != "__verdict__": view_vid(row["stem"], CELL_COLS[cpos], ctx)
+    def cell_create(row, cpos, ctx):
+        if not row: return
+        col = CELL_COLS[cpos]
+        if col == "__verdict__": return
+        def work():
+            if col == "overlay": _render_overlay(row["stem"])
+            else: _run(SCRIPT_BATCH_FIGS, "--video", "--types", col, "--stem", row["stem"], "--force", "--all-quality")
+        _do_suspended(ctx, work); _log_activity(f"create {col}/{row['stem']}")
     cell_hint = ("[bold cyan]cell mode[/]   [dim]↑↓←→[/] pick cell   [bold]↵[/] toggle verdict · view   "
-                 "[bold]e[/]/[bold]r[/] row mode   [bold]q[/] back")
+                 "[bold]+[/] create   [bold]e[/]/[bold]r[/] row mode   [bold]q[/] back")
     navigate_table(build_rows, columns, title="videos", border_style=CLR_VIDEOS,
                    legend=legend, hint=hint, col_hint=col_hint, cell_hint=cell_hint,
                    empty_msg="No clips match this filter.",
@@ -1135,7 +1274,7 @@ def do_vi(tr):
                                 "1": mkfilter("all"), "2": mkfilter("review"), "3": mkfilter("norender")},
                    col_targets=col_targets, col_actions={"enter": col_batch, "f": col_force},
                    cell_targets=cell_targets,
-                   cell_actions={"enter": cell_enter, "v": cell_view})
+                   cell_actions={"enter": cell_enter, "v": cell_view, "+": cell_create})
     _log_activity("videos")
 
 # Overlay render + review
@@ -1220,8 +1359,8 @@ TWO_CHAR_KEYS = ("aq","ai","ar","fi","vi","sw")
 
 DISPATCH = {
     "t":lambda t,p:do_t(t,p),
-    "a":lambda t,p:do_a(t),   "aq":lambda t,p:do_aq(t),  "g":lambda t,p:do_gallery(t),
-    "ai":lambda t,p:do_ai(),  "ar":lambda t,p:do_ar(t),
+    "a":lambda t,p:do_a(t),   "aq":lambda t,p:do_aq(t),
+    "ai":lambda t,p:do_ai(t),  "ar":lambda t,p:do_ar(t),
     "fi":lambda t,p:do_fi(t),
     "vi":lambda t,p:do_vi(t),
     "s":lambda t,p:do_t(t,p),
@@ -1245,7 +1384,7 @@ def hub():
                 if h: h(tr, pe)
                 else: console.print(f"  [dim]Unknown: {key}[/]"); import time; time.sleep(0.5)
             else:
-                {"t":lambda:do_t(tr,pe),"a":lambda:do_a(tr),"g":lambda:do_gallery(tr),
+                {"t":lambda:do_t(tr,pe),"a":lambda:do_a(tr),
                  "o":lambda:sub_output(tr,pe),"s":lambda:sub_info(tr,pe),
                  "h":do_h}.get(key, lambda:console.print(f"  [dim]Unknown: {key}[/]"))()
     except KeyboardInterrupt: pass

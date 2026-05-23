@@ -1,0 +1,10 @@
+{
+  "stem": "3.2V_1.24Hz",
+  "embedding_m": 5,
+  "delay_tau": 1086,
+  "n_points": 4881,
+  "D2_correlation": null,
+  "D2_r2": null,
+  "D_box": 1.8001480611032858,
+  "D_box_r2": 0.9987441961349538
+}
