@@ -1698,6 +1698,30 @@ def do_w():
     clip_dir    = _paths_mod.clip_dir
     short = r.replace("pendulum-", "").replace("week", "w")
     _log_activity(f"phase → {short}")
+def _pick_folder_gui(title="Select this phase's videos folder"):
+    """Native OS folder-picker dialog (tkinter). Returns a path, or None if
+    cancelled / unavailable (caller falls back to typing)."""
+    try:
+        import tkinter as tk
+        from tkinter import filedialog
+        root = tk.Tk(); root.withdraw(); root.attributes("-topmost", True)
+        d = filedialog.askdirectory(title=title, mustexist=True)
+        root.destroy()
+        return d or None
+    except Exception:
+        return None
+def _clipboard_path():
+    """Clipboard contents as text (Windows Get-Clipboard) — a folder copied in
+    Explorer comes back as its path. First non-empty line, or None."""
+    try:
+        out = subprocess.run(["powershell", "-NoProfile", "-Command", "Get-Clipboard"],
+                             capture_output=True, text=True, timeout=5)
+        for line in out.stdout.splitlines():
+            if line.strip():
+                return line.strip()
+    except Exception:
+        pass
+    return None
 def _load():
     """/load — point the video loader at an external folder for the current phase
     (e.g. a fresh clone whose clips live elsewhere), without copying files in.
@@ -1713,7 +1737,9 @@ def _load():
     t.add_row("loading from", VIDEOS_DIR)
     t.add_row("source", "[yellow]external override[/]" if cur else "[dim]in-repo default[/]")
     console.print(Panel(t, title="[bold]video source[/]", border_style=CLR_INFO, padding=(0, 1)))
-    choices = [Choice(" set a new folder…", value="set")]
+    choices = [Choice(" browse for a folder…", value="browse"),
+               Choice(" paste path from clipboard", value="paste"),
+               Choice(" type the path", value="type")]
     if cur:
         choices.append(Choice(" revert to in-repo default", value="clear"))
     choices.append(Choice(" ← back", value=None))
@@ -1728,11 +1754,23 @@ def _load():
         _pm.clear_video_source(PHASE)
         console.print("  [green]✓[/] reverted to the in-repo videos folder")
     else:
-        try:
-            d = questionary.path("Folder with this phase's videos:",
-                                 only_directories=True, style=_sty()).ask()
-        except KeyboardInterrupt:
-            return
+        d = None
+        if action == "browse":
+            console.print("  [dim]opening folder picker…[/]")
+            d = _pick_folder_gui()
+            if not d:
+                console.print("  [dim]picker cancelled — type the path instead[/]")
+        elif action == "paste":
+            d = _clipboard_path()
+            if not d:
+                console.print("  [yellow]clipboard is empty[/]"); _pause(); return
+            console.print(f"  [dim]from clipboard:[/] {d}")
+        if not d:                       # 'type', or a cancelled browse → manual entry
+            try:
+                d = questionary.path("Folder with this phase's videos:",
+                                     only_directories=True, style=_sty()).ask()
+            except KeyboardInterrupt:
+                return
         if not d:
             return
         d = os.path.abspath(os.path.expanduser(d.strip().strip('"')))
