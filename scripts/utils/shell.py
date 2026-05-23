@@ -315,15 +315,104 @@ BACK = "__back__"
 
 # ── Navigable tables (overview → arrow-key drill-down) ──
 
+# Windows msvcrt.getwch() can't report modifier state, so Shift+Arrow is
+# indistinguishable from Arrow. ReadConsoleInputW exposes dwControlKeyState, so we
+# read raw key-down events via ctypes to detect Shift; falls back to getwch if the
+# console API is unavailable (e.g. stdin redirected / not a real console).
+_WIN_KEY = None   # cache: None=uninit · False=unavailable · dict of ctypes bits
+_WIN_VK = {0x25: "left", 0x26: "up", 0x27: "right", 0x28: "down",
+           0x24: "home", 0x23: "end", 0x21: "pageup", 0x22: "pagedown",
+           0x0D: "enter", 0x1B: "esc", 0x08: "backspace", 0x09: "\t"}
+_WIN_VK_VIM = {0x48: "left", 0x4A: "down", 0x4B: "up", 0x4C: "right"}   # h j k l
+
+def _win_key_setup():
+    """Build the ctypes structs + console handle once; False if unavailable."""
+    global _WIN_KEY
+    if _WIN_KEY is not None:
+        return _WIN_KEY
+    try:
+        import ctypes
+        from ctypes import wintypes
+        k32 = ctypes.windll.kernel32
+
+        class KEY_EVENT_RECORD(ctypes.Structure):
+            _fields_ = [("bKeyDown", wintypes.BOOL), ("wRepeatCount", wintypes.WORD),
+                        ("wVirtualKeyCode", wintypes.WORD), ("wVirtualScanCode", wintypes.WORD),
+                        ("UnicodeChar", ctypes.c_wchar), ("dwControlKeyState", wintypes.DWORD)]
+
+        class INPUT_RECORD(ctypes.Structure):
+            class _EVT(ctypes.Union):
+                _fields_ = [("KeyEvent", KEY_EVENT_RECORD), ("_raw", ctypes.c_byte * 16)]
+            _fields_ = [("EventType", wintypes.WORD), ("Event", _EVT)]
+
+        k32.GetStdHandle.restype = wintypes.HANDLE      # avoid 64-bit handle truncation
+        k32.GetStdHandle.argtypes = [wintypes.DWORD]
+        k32.GetConsoleMode.argtypes = [wintypes.HANDLE, ctypes.POINTER(wintypes.DWORD)]
+        k32.GetConsoleMode.restype = wintypes.BOOL
+        k32.ReadConsoleInputW.argtypes = [wintypes.HANDLE, ctypes.POINTER(INPUT_RECORD),
+                                          wintypes.DWORD, ctypes.POINTER(wintypes.DWORD)]
+        k32.ReadConsoleInputW.restype = wintypes.BOOL
+
+        h = k32.GetStdHandle(-10)            # STD_INPUT_HANDLE
+        mode = wintypes.DWORD()
+        if not h or not k32.GetConsoleMode(h, ctypes.byref(mode)):
+            _WIN_KEY = False
+        else:
+            _WIN_KEY = {"k32": k32, "h": h, "ctypes": ctypes,
+                        "INPUT_RECORD": INPUT_RECORD, "DWORD": wintypes.DWORD}
+    except Exception:
+        _WIN_KEY = False
+    return _WIN_KEY
+
+def _win_read_key():
+    """Read one key-down event with Shift awareness; None if console API unusable."""
+    s = _win_key_setup()
+    if not s:
+        return None
+    ctypes = s["ctypes"]; k32 = s["k32"]
+    rec = s["INPUT_RECORD"](); n = s["DWORD"]()
+    while True:
+        if not k32.ReadConsoleInputW(s["h"], ctypes.byref(rec), 1, ctypes.byref(n)) or n.value == 0:
+            return None
+        if rec.EventType != 1:                      # KEY_EVENT == 1
+            continue
+        ke = rec.Event.KeyEvent
+        if not ke.bKeyDown:
+            continue
+        vk = ke.wVirtualKeyCode
+        if vk in (0x10, 0x11, 0x12):                # lone Shift/Ctrl/Alt — wait for the real key
+            continue
+        cks = ke.dwControlKeyState
+        if (cks & 0x000C) and vk == 0x43:           # Ctrl+C
+            raise KeyboardInterrupt
+        shift = bool(cks & 0x0010)
+        name = _WIN_VK.get(vk)
+        if shift and name in ("left", "right", "up", "down"):
+            return "shift+" + name
+        if shift and vk in _WIN_VK_VIM:             # Shift+h/j/k/l = Shift+arrow (real modifier)
+            return "shift+" + _WIN_VK_VIM[vk]
+        if name:
+            return name
+        ch = ke.UnicodeChar
+        if not ch or ch == "\x00":
+            continue
+        if ch == "\x03":
+            raise KeyboardInterrupt
+        return ch.lower()
+
 def _read_key():
     """Block for one keypress; return a normalized token: 'up','down','left',
-    'right','enter','esc','home','end','pageup','pagedown', or the lowercased
-    character. Raises KeyboardInterrupt on Ctrl-C."""
+    'right','enter','esc','home','end','pageup','pagedown', a 'shift+<arrow>'
+    variant when Shift is held during navigation, or the lowercased character.
+    Raises KeyboardInterrupt on Ctrl-C."""
     try:
         import msvcrt
     except ImportError:
         msvcrt = None
     if msvcrt is not None:
+        tok = _win_read_key()                 # Shift-aware; None if console API unavailable
+        if tok is not None:
+            return tok
         ch = msvcrt.getwch()
         if ch in ("\x00", "\xe0"):
             code = msvcrt.getwch()
@@ -340,11 +429,31 @@ def _read_key():
         tty.setraw(fd)
         ch = sys.stdin.read(1)
         if ch == "\x1b":
-            seq = sys.stdin.read(2)
-            return {"[A": "up", "[B": "down", "[C": "right", "[D": "left",
-                    "[H": "home", "[F": "end", "[5": "pageup", "[6": "pagedown"}.get(seq, "esc")
+            ch2 = sys.stdin.read(1)
+            if ch2 not in ("[", "O"):
+                return "esc"
+            buf = ""
+            while True:
+                c = sys.stdin.read(1); buf += c
+                if c.isalpha() or c == "~" or len(buf) > 8:
+                    break
+            final = buf[-1]
+            params = buf[:-1].split(";")
+            mod = int(params[1]) if len(params) >= 2 and params[1].isdigit() else 1
+            base = {"A": "up", "B": "down", "C": "right", "D": "left",
+                    "H": "home", "F": "end"}.get(final)
+            if final == "~":
+                base = {"5": "pageup", "6": "pagedown", "1": "home", "4": "end"}.get(
+                    params[0] if params and params[0] else "")
+            if base is None:
+                return "esc"
+            if mod == 2 and base in ("up", "down", "left", "right"):
+                return "shift+" + base
+            return base
         if ch in ("\r", "\n"): return "enter"
         if ch == "\x03": raise KeyboardInterrupt
+        if ch in "HJKL":                      # Shift+h/j/k/l (best-effort; no modifier byte on TTY)
+            return "shift+" + {"H": "left", "J": "down", "K": "up", "L": "right"}[ch]
         return ch.lower()
     finally:
         termios.tcsetattr(fd, termios.TCSADRAIN, old)
@@ -354,14 +463,23 @@ def _resolve(x):
 
 class _NavCtx:
     """Handed to navigate_table key handlers. ctx.suspend(fn) pauses the live
-    display so fn() can prompt on a normal terminal, then resumes."""
-    def __init__(self, live): self._live = live
+    display so fn() can prompt on a normal terminal, then resumes. Re-entrant:
+    only the outermost suspend toggles the Live, so a multi-select batch that
+    calls per-item actions (each of which suspends) doesn't thrash the display.
+    ctx.batch is set during such a batch so per-item confirms/pauses are skipped."""
+    def __init__(self, live):
+        self._live = live
+        self._depth = 0
+        self.batch = False
     def suspend(self, fn):
-        if self._live is not None: self._live.stop()
+        outer = self._depth == 0
+        self._depth += 1
+        if outer and self._live is not None: self._live.stop()
         try:
             return fn()
         finally:
-            if self._live is not None: self._live.start(refresh=False)
+            self._depth -= 1
+            if outer and self._live is not None: self._live.start(refresh=False)
 
 _SPECIAL_KEYS = frozenset({"enter", "esc", "tab", "backspace", "up", "down",
                            "left", "right", "home", "end", "pageup", "pagedown"})
@@ -583,12 +701,36 @@ def _do_suspended(ctx, work, pause=True, confirm=None, confirm_default=False):
     for a keypress, then resume. If confirm is given, ask y/n first and skip
     work() unless confirmed. For row/column actions that shell out to a renderer."""
     def go():
-        if confirm and not _ask_confirm(confirm, default=confirm_default):
+        if confirm and not ctx.batch and not _ask_confirm(confirm, default=confirm_default):
             return
         work()
         _invalidate_chaos_windows_cache()   # the action may have changed a clip's verdict
-        if pause: _pause()
+        if pause and not ctx.batch: _pause()
     ctx.suspend(go)
+
+def _run_batch(thunks, noun, ctx):
+    """Run a list of zero-arg action thunks (one per selected column/row/cell).
+    One item → call it directly (keeps the action's own confirm/pause). Multiple →
+    one summary confirm, then run each with per-item confirms/pauses suppressed
+    (ctx.batch) under a single suspend. Returns 'quit' if any thunk asked to quit."""
+    if not thunks:
+        return None
+    if len(thunks) == 1:
+        return thunks[0]()
+    result = {"r": None}
+    def run():
+        if not _ask_confirm(f"Run across [bold]{len(thunks)}[/] selected {noun}?"):
+            return
+        ctx.batch = True
+        try:
+            for th in thunks:
+                if th() == "quit":
+                    result["r"] = "quit"; break
+        finally:
+            ctx.batch = False
+        _pause()
+    ctx.suspend(run)
+    return result["r"]
 
 # ── Submenus (collapsed) ──
 
@@ -1180,7 +1322,8 @@ def _inventory_mode(name, key, color, types, exists_fn, *, key_actions, hint, gl
         def col_enter(cpos, rows, ctx): on_col(types[cpos], ctx)
         col_actions = {"enter": col_enter}
         if col_hint is None:
-            col_hint = ("[bold cyan]column mode[/]   [dim]←→[/] pick type   [bold]↵[/] batch all clips"
+            col_hint = ("[bold cyan]column mode[/]   [dim]←→[/] pick type   [bold]⇧←→[/] select range   "
+                        "[bold]↵[/] batch all clips"
                         + "   [bold]r[/] row mode   [bold]q[/] quit")
     if on_view or on_create:
         cell_actions = {}
@@ -1193,7 +1336,7 @@ def _inventory_mode(name, key, color, types, exists_fn, *, key_actions, hint, gl
                 if row: on_create(row["stem"], types[cpos], ctx)
             cell_actions["+"] = cell_create
         if cell_hint is None:
-            cell_hint = ("[bold cyan]entry mode[/]   [dim]↑↓←→[/] pick cell"
+            cell_hint = ("[bold cyan]entry mode[/]   [dim]↑↓←→[/] pick cell   [bold]⇧[/]+move select"
                          + ("   [bold]↵[/]/[bold]o[/] open" if on_view else "")
                          + ("   [bold]+[/] create" if on_create else "")
                          + "   [bold]e[/]/[bold]r[/] row mode   [bold]q[/] quit")
@@ -1336,6 +1479,8 @@ def build_mode_videos():
         if row and row["ov"]: _set_verdict(row["stem"], "pass"); return "advance"
     def act_fail(row, rows, i, ctx):
         if not (row and row["ov"]): return
+        if ctx.batch:                      # multi-row batch: no per-clip reason prompt
+            _set_verdict(row["stem"], "fail"); return "advance"
         def ask():
             console.print(f"\n  [red]fail[/] {row['stem']} — reason (optional):")
             try: return input("  ▸ ").strip() or None
@@ -1691,6 +1836,8 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
     show_preview = False
     cmd = None
     flash = None
+    sel_anchor = None     # col/row multi-select anchor; shift+nav extends a range from here
+    cell_anchor = None    # entry-mode rectangle anchor (idx, cidx)
     insights = False
     ins_explain = True
     ins_sel = 0
@@ -1704,6 +1851,8 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
 
     def _help_panel(m):
         hp = [Text.from_markup("  [dim]move[/]  ↑↓ / k j   Home/End   PgUp/PgDn   [dim]·[/]   q/Esc quit"),
+              Text.from_markup("  [dim]multi[/]  [bold]⇧[/]+move extends a selection (rows / columns / cell block); "
+                               "[bold]↵[/] or an action key runs it across the range · esc clears"),
               Text.from_markup("  [dim]switch[/]  m/1/2/3/4/5 mode   [bold]tab[/] cycle"),
               Text.from_markup("  [dim]palette[/]  [bold cyan]/[/]  sw switch · pa paths · cal calibrate · "
                                "wf waterfall · bif bifurcation · rs rot · ds dim · ws wind · ftle windows · cw verdict")]
@@ -1768,8 +1917,29 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
         ncol = len(cols)
         flash_on = bool(flash) and mode == "row" and not preview_on
         extra = 1 if flash_on else 0
-        sel_col = m.col_targets[cidx] if (has_cols and mode == "col") else None
-        cell_col = cell_tgts[cidx] if (has_cells and mode == "cell") else None
+        # selection sets — single cursor, or a range/rectangle while shift-selecting
+        sel_cols = set()      # table column positions highlighted in column mode
+        sel_rows = set()      # row indices highlighted (row / cell modes)
+        sel_cells = set()     # (row, colpos) cells highlighted in entry mode
+        if has_cols and mode == "col":
+            if sel_anchor is not None:
+                a, b = sorted((sel_anchor, cidx)); crange = range(a, b + 1)
+            else:
+                crange = (cidx,)
+            sel_cols = {m.col_targets[ci] for ci in crange if 0 <= ci < len(m.col_targets)}
+        elif mode == "row" and n:
+            if sel_anchor is not None:
+                a, b = sorted((sel_anchor, idx)); sel_rows = set(range(a, b + 1))
+            else:
+                sel_rows = {idx}
+        elif mode == "cell" and has_cells and n:
+            if cell_anchor is not None:
+                ai, aci = cell_anchor
+                r0, r1 = sorted((ai, idx)); c0, c1 = sorted((aci, cidx)); ccs = range(c0, c1 + 1)
+                sel_rows = set(range(r0, r1 + 1))
+            else:
+                sel_rows = {idx}; ccs = (cidx,)
+            sel_cells = {(i, cell_tgts[ci]) for i in sel_rows for ci in ccs if 0 <= ci < len(cell_tgts)}
         if n <= avail:
             lo, hi = 0, n
         else:
@@ -1777,7 +1947,7 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
         t = Table(box=box.SIMPLE, show_header=True, padding=(0, 1), expand=False)
         t.add_column(" ", width=2)
         for p, (header, _rf, kw) in enumerate(cols):
-            if p == sel_col:
+            if p in sel_cols:
                 kw = {**kw, "style": f"on {selected_bg}", "header_style": f"bold on {selected_bg}"}
             t.add_column(header, **kw)
         if flash_on:
@@ -1790,12 +1960,13 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
                 cells = [rf(rows[i]) for _h, rf, _k in cols]
                 if flash_on:
                     cells = cells + [f"  [{m.color}]{flash}[/]" if i == idx else ""]
-                if mode == "cell" and i == idx:
-                    if cell_col is not None:
-                        cells[cell_col] = f"[bold black on bright_cyan]{cells[cell_col]}[/]"
-                    t.add_row("[bold cyan]▸[/]", *cells, style=f"on {selected_bg}")
-                elif mode == "row" and i == idx:
-                    t.add_row("[bold cyan]▸[/]", *cells, style=f"on {selected_bg}")
+                if mode == "cell":
+                    for (ci, cc) in sel_cells:
+                        if ci == i and cc < len(cells):
+                            cells[cc] = f"[bold black on bright_cyan]{cells[cc]}[/]"
+                if i in sel_rows:
+                    t.add_row("[bold cyan]▸[/]" if i == idx else " ", *cells,
+                              style=f"on {selected_bg}")
                 else:
                     t.add_row(" ", *cells)
             if hi < n: t.add_row(" ", "[dim]↓…[/]", *[""] * (ncol - 1 + extra))
@@ -1858,6 +2029,12 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
     rows, n, avail, renderable = frame()
     with Live(renderable, console=console, screen=True, auto_refresh=False) as live:
         ctx = _NavCtx(live)
+        def _row_thunks(actfn):
+            """Thunks applying a row action across the shift-selected row range."""
+            a, b = sorted((sel_anchor, idx))
+            a = max(0, a); b = min(n - 1, b)
+            return [(lambda i=i: ("quit" if actfn(rows[i], rows, i, ctx) == "quit" else None))
+                    for i in range(a, b + 1)]
         while True:
             try:
                 key = _read_key()
@@ -1894,16 +2071,21 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
             if key == "esc" and pending:
                 pending = ""
                 rows, n, avail, renderable = frame(); live.update(renderable, refresh=True); continue
+            if key == "esc" and (sel_anchor is not None or cell_anchor is not None):
+                sel_anchor = cell_anchor = None      # esc cancels a multi-selection (not quit)
+                rows, n, avail, renderable = frame(); live.update(renderable, refresh=True); continue
             if key in ("q", "esc"): break
             if key == "/":
                 cmd = ""
                 rows, n, avail, renderable = frame(); live.update(renderable, refresh=True); continue
             if key == "\t":
                 midx = (midx + 1) % len(modes); mode = "row"; cidx = 0; pending = ""; show_preview = False
+                sel_anchor = cell_anchor = None
                 _invalidate_chaos_windows_cache()
                 rows, n, avail, renderable = frame(); live.update(renderable, refresh=True); continue
             if key in by_key:
                 midx = by_key[key]; mode = "row"; cidx = 0; pending = ""; show_preview = False
+                sel_anchor = cell_anchor = None
                 _invalidate_chaos_windows_cache()
                 rows, n, avail, renderable = frame(); live.update(renderable, refresh=True); continue
             m = cur()
@@ -1911,66 +2093,111 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
             cell_tgts = m.cell_targets or m.col_targets
             has_cells = bool(cell_tgts) and bool(m.cell_actions)
             if mode == "col":
-                if key in ("left", "h"): cidx -= 1
-                elif key in ("right", "l"): cidx += 1
+                if key in ("left", "h"): cidx -= 1; sel_anchor = None
+                elif key in ("right", "l"): cidx += 1; sel_anchor = None
+                elif key == "shift+left":
+                    if sel_anchor is None: sel_anchor = cidx
+                    cidx -= 1
+                elif key == "shift+right":
+                    if sel_anchor is None: sel_anchor = cidx
+                    cidx += 1
                 elif key in ("up", "k"): idx -= 1
                 elif key in ("down", "j"): idx += 1
-                elif key in ("r", "c"): mode = "row"
+                elif key in ("r", "c"): mode = "row"; sel_anchor = None
                 else:
                     act = (m.col_actions or {}).get(key)
-                    if act and act(cidx, rows, ctx) == "quit": break
+                    if act:
+                        if sel_anchor is not None:
+                            a, b = sorted((sel_anchor, cidx))
+                            a = max(0, a); b = min(len(m.col_targets) - 1, b)
+                            sel = list(range(a, b + 1))
+                        else:
+                            sel = [cidx]
+                        thunks = [(lambda ci=ci: act(ci, rows, ctx)) for ci in sel]
+                        if _run_batch(thunks, "columns", ctx) == "quit": break
+                        sel_anchor = None
             elif mode == "cell":
-                if key in ("left", "h"): cidx -= 1
-                elif key in ("right", "l"): cidx += 1
-                elif key in ("up", "k"): idx -= 1
-                elif key in ("down", "j"): idx += 1
-                elif key in ("r", "e"): mode = "row"
+                if key in ("left", "h"): cidx -= 1; cell_anchor = None
+                elif key in ("right", "l"): cidx += 1; cell_anchor = None
+                elif key in ("up", "k"): idx -= 1; cell_anchor = None
+                elif key in ("down", "j"): idx += 1; cell_anchor = None
+                elif key in ("shift+left", "shift+right", "shift+up", "shift+down"):
+                    if cell_anchor is None: cell_anchor = (idx, cidx)
+                    if key == "shift+left": cidx -= 1
+                    elif key == "shift+right": cidx += 1
+                    elif key == "shift+up": idx -= 1
+                    else: idx += 1
+                elif key in ("r", "e"): mode = "row"; cell_anchor = None
                 else:
                     act = (m.cell_actions or {}).get(key)
                     if act:
-                        res = act(rows[idx] if n else None, cidx, ctx)
-                        if res == "quit": break
-                        elif isinstance(res, str) and res.startswith("mode:"):
-                            midx = by_key.get(res[5:], midx); mode = "row"; cidx = 0; pending = ""; show_preview = False
+                        if cell_anchor is not None and n:
+                            ai, aci = cell_anchor
+                            r0, r1 = sorted((ai, idx)); c0, c1 = sorted((aci, cidx))
+                            r0 = max(0, r0); r1 = min(n - 1, r1)
+                            c0 = max(0, c0); c1 = min(len(cell_tgts) - 1, c1)
+                            pairs = [(i, ci) for i in range(r0, r1 + 1) for ci in range(c0, c1 + 1)]
+                            thunks = [(lambda i=i, ci=ci: act(rows[i], ci, ctx)) for (i, ci) in pairs]
+                            if _run_batch(thunks, "cells", ctx) == "quit": break
+                            cell_anchor = None
+                        else:
+                            res = act(rows[idx] if n else None, cidx, ctx)
+                            if res == "quit": break
+                            elif isinstance(res, str) and res.startswith("mode:"):
+                                midx = by_key.get(res[5:], midx); mode = "row"; cidx = 0; pending = ""; show_preview = False
             else:
                 ka = m.key_actions or {}
-                if key in ("up", "k"): idx -= 1; pending = ""
-                elif key in ("down", "j"): idx += 1; pending = ""
-                elif key == "home": idx = 0; pending = ""
-                elif key == "end": idx = n - 1; pending = ""
-                elif key == "pageup": idx -= avail; pending = ""
-                elif key == "pagedown": idx += avail; pending = ""
+                if key in ("up", "k"): idx -= 1; pending = ""; sel_anchor = None
+                elif key in ("down", "j"): idx += 1; pending = ""; sel_anchor = None
+                elif key == "shift+up":
+                    if sel_anchor is None: sel_anchor = idx
+                    idx -= 1; pending = ""
+                elif key == "shift+down":
+                    if sel_anchor is None: sel_anchor = idx
+                    idx += 1; pending = ""
+                elif key == "home": idx = 0; pending = ""; sel_anchor = None
+                elif key == "end": idx = n - 1; pending = ""; sel_anchor = None
+                elif key == "pageup": idx -= avail; pending = ""; sel_anchor = None
+                elif key == "pagedown": idx += avail; pending = ""; sel_anchor = None
                 elif key in ("backspace", "\x08", "\x7f"): pending = pending[:-1]
                 elif m.preview_key and key == m.preview_key:
-                    show_preview = not show_preview; pending = ""
+                    show_preview = not show_preview; pending = ""; sel_anchor = None
                 elif key == "enter":
                     pending = ""
                     act = ka.get("enter")
                     if act:
-                        res = act(rows[idx] if n else None, rows, idx, ctx)
-                        if res == "quit": break
-                        elif res == "advance": idx += 1
-                        elif res == "top": idx = 0
-                        elif isinstance(res, str) and res.startswith("flash:"): flash = res[6:]
+                        if sel_anchor is not None and n:
+                            if _run_batch(_row_thunks(act), "rows", ctx) == "quit": break
+                            sel_anchor = None
+                        else:
+                            res = act(rows[idx] if n else None, rows, idx, ctx)
+                            if res == "quit": break
+                            elif res == "advance": idx += 1
+                            elif res == "top": idx = 0
+                            elif isinstance(res, str) and res.startswith("flash:"): flash = res[6:]
                 elif len(key) == 1 and key.isprintable():
                     cand = pending + key
                     prefixed = any(len(k) > len(cand) and k.startswith(cand) and k not in _SPECIAL_KEYS for k in ka)
                     if cand in ka and not prefixed:
                         pending = ""
-                        res = ka[cand](rows[idx] if n else None, rows, idx, ctx)
-                        if res == "quit": break
-                        elif res == "advance": idx += 1
-                        elif res == "top": idx = 0
-                        elif isinstance(res, str) and res.startswith("flash:"): flash = res[6:]
+                        if sel_anchor is not None and n:
+                            if _run_batch(_row_thunks(ka[cand]), "rows", ctx) == "quit": break
+                            sel_anchor = None
+                        else:
+                            res = ka[cand](rows[idx] if n else None, rows, idx, ctx)
+                            if res == "quit": break
+                            elif res == "advance": idx += 1
+                            elif res == "top": idx = 0
+                            elif isinstance(res, str) and res.startswith("flash:"): flash = res[6:]
                     elif prefixed:
                         pending = cand
                     elif pending:
                         pending = ""
                     elif key == "h": show_help = True
                     elif m.insights and key == "i":
-                        insights = True; ins_explain = True; show_preview = False; ins_sel = 0
-                    elif has_cols and key == "c": mode = "col"; cidx = 0; show_preview = False
-                    elif has_cells and key == "e": mode = "cell"; cidx = 0; show_preview = False
+                        insights = True; ins_explain = True; show_preview = False; ins_sel = 0; sel_anchor = None
+                    elif has_cols and key == "c": mode = "col"; cidx = 0; show_preview = False; sel_anchor = None
+                    elif has_cells and key == "e": mode = "cell"; cidx = 0; show_preview = False; cell_anchor = None
                 else:
                     pending = ""
             rows, n, avail, renderable = frame(); live.update(renderable, refresh=True)
