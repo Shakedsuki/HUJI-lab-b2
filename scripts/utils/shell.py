@@ -61,11 +61,6 @@ def _log_activity(msg):
     _activity_log.append(msg)
     if len(_activity_log) > 8: _activity_log.pop(0)
 
-WEEK_GROUPS = {
-    "week5": {"label": "week 5", "desc": "broad V/f survey",     "color": "cyan"},
-    "week6": {"label": "week 6", "desc": "3.2V resonance sweep", "color": "yellow"},
-}
-
 LOGO = (
     "[bold magenta]\u250c\u2500\u2510 \u252c \u252c \u250c\u2500\u2510 \u250c\u2500\u2510 \u250c\u2500\u2510[/]\n"
     "[bold magenta]\u2502   \u251c\u2500\u2524 \u251c\u2500\u2524 \u2502 \u2502 \u2514\u2500\u2510[/]\n"
@@ -164,14 +159,6 @@ def _set_verdict(stem, verdict, note=None):
     with open(EXPERIMENTS, "w", encoding="utf-8") as f:
         json.dump(reg, f, indent=2, ensure_ascii=False)
 
-def _group_by_week(clips):
-    groups, order = {}, []
-    for c in clips:
-        wk = c.get("week")
-        if wk not in groups: groups[wk] = []; order.append(wk)
-        groups[wk].append(c)
-    return [(k, groups[k]) for k in order]
-
 # ── Rendering ──
 
 def _bar(nv, nt, total, w=30):
@@ -258,72 +245,7 @@ def _sty():
             ("pointer","fg:#22d3ee bold"),("highlighted","fg:#5eead4 bold"),("selected","fg:#5eead4")])
     return _PICKER_STYLE
 
-BACK = "__back__"; SWEEP = "__sweep__"
-
-def _choices(clips, extra=None):
-    ch = [Choice("\u2190 back", value=BACK)]
-    if extra: ch.extend(extra)
-    for wk, gc in _group_by_week(clips):
-        m = WEEK_GROUPS.get(wk)
-        if m: ch.append(Separator(f"\u2500\u2500 {m['label']} \u00b7 {m['desc']} ({len(gc)}) \u2500\u2500"))
-        for i, c in enumerate(gc):
-            br = "\u2570\u2500" if i==len(gc)-1 else "\u251c\u2500"
-            vd, fd = c.get("drive_voltage_v"), c.get("drive_freq_hz")
-            ex = f"  {vd}V {fd}Hz" if vd and fd else ""
-            ch.append(Choice(f" {br} {c['stem']:<20}{ex}", value=c["stem"]))
-    return ch
-
-def _pick_collapsible(clips, label, extra=None):
-    """Single-select picker with collapsible week groups: groups start
-    collapsed; Enter on a header expands/collapses it, so a whole group can
-    be skipped with one keypress. Falls back to a flat list when there is
-    only one named group. Returns a stem, an extra value, or None."""
-    if not clips:
-        console.print("  [dim]No clips available.[/]"); return None
-    groups = _group_by_week(clips)
-    named = [wk for wk, _ in groups if WEEK_GROUPS.get(wk)]
-    if len(named) < 2:
-        try:
-            r = questionary.select(label, choices=_choices(clips, extra), style=_sty(),
-                                   use_arrow_keys=True, use_jk_keys=True).ask()
-        except KeyboardInterrupt: return None
-        return None if r is None or r == BACK else r
-    expanded, default = set(), None
-    while True:
-        ch = [Choice("← back", value=BACK)]
-        if extra: ch.extend(extra)
-        for wk, gc in groups:
-            m = WEEK_GROUPS.get(wk, {"label": wk or "clips", "desc": ""})
-            arrow = "▾" if wk in expanded else "▸"
-            ch.append(Choice(f" {arrow} {m['label']} · {m['desc']} ({len(gc)})",
-                             value=f"__tg__{wk}"))
-            if wk in expanded:
-                for i, c in enumerate(gc):
-                    br = "╰─" if i == len(gc) - 1 else "├─"
-                    vd, fd = c.get("drive_voltage_v"), c.get("drive_freq_hz")
-                    ex = f"  {vd}V {fd}Hz" if vd and fd else ""
-                    ch.append(Choice(f"   {br} {c['stem']:<20}{ex}", value=c["stem"]))
-        try:
-            r = questionary.select(label, choices=ch, style=_sty(), use_arrow_keys=True,
-                                   use_jk_keys=True, default=default).ask()
-        except KeyboardInterrupt: return None
-        if r is None or r == BACK: return None
-        if isinstance(r, str) and r.startswith("__tg__"):
-            wk = r[len("__tg__"):]
-            if wk in expanded: expanded.discard(wk)
-            else: expanded.add(wk)
-            default = r
-            continue
-        return r
-
-def pick_clip(clips, label="Pick a clip"):
-    return _pick_collapsible(clips, label)
-
-def pick_or_sweep(clips, label="Sanity check"):
-    return _pick_collapsible(clips, label, extra=[Choice("\u2261 sweep all", value=SWEEP)])
-
-def pick_t(tr, label="Pick a clip"): return pick_clip(tr, label)
-def pick_p(pe, label="Pick a clip to track"): return pick_clip(pe, label)
+BACK = "__back__"
 
 # ── Navigable tables (overview → arrow-key drill-down) ──
 
@@ -840,40 +762,6 @@ def do_aq(tr):
                 elif len(k) == 1 and k.isprintable(): st["buf"] += k
             live.update(frame(), refresh=True)
     _log_activity("quick insights")
-
-def do_gallery(tr):
-    """Gallery — clips on the left; the right pane fills with as many
-    quick-insights plots as fit for the highlighted clip."""
-    if not tr:
-        console.print("  [dim]No tracked clips.[/]"); _pause(); return
-    def build_rows():
-        rows = [{"stem": c["stem"]} for c in tr]
-        for k, r in enumerate(rows, 1): r["_n"] = k
-        return rows
-    columns = [
-        ("#",    lambda r: str(r["_n"]), dict(justify="right", width=3, style="dim")),
-        ("clip", lambda r: r["stem"],    dict(min_width=15, no_wrap=True)),
-    ]
-    pcache = {}
-    def preview(row):
-        if not row: return None
-        stem = row["stem"]
-        if stem not in pcache:
-            pw = max(48, console.width - 32)
-            mh = max(12, console.height - 6)
-            try:
-                sys.path.insert(0, os.path.join(REPO_ROOT, "scripts", "analysis"))
-                from quick_insights import build_gallery
-                txt = build_gallery(stem, width=pw - 4, plot_height=10, max_height=mh)
-                pcache[stem] = Text.from_ansi(txt) if txt else Text.from_markup("[dim]no plots[/]")
-            except Exception as e:
-                pcache[stem] = Text.from_markup(f"[red]gallery unavailable:[/] {e}")
-        return Panel(pcache[stem], title=f"[bold]gallery[/] [dim]·[/] {row['stem']}",
-                     border_style=CLR_ANALYZE, padding=(0, 1))
-    navigate_table(build_rows, columns, title="gallery", border_style=CLR_ANALYZE,
-                   legend="[dim]quick-insights plot wall — ↑↓ to change clip[/]",
-                   hint="[dim]↑↓[/] move   [bold]q[/] back", preview_fn=preview)
-    _log_activity("gallery")
 
 def do_ai(tr):
     """Bifurcation — driven voltage sweep (θ₁ vs drive voltage). Needs ≥2 drive
