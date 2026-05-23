@@ -1678,6 +1678,60 @@ def do_w():
     clip_dir    = _paths_mod.clip_dir
     short = r.replace("pendulum-", "").replace("week", "w")
     _log_activity(f"phase → {short}")
+def _load():
+    """/load — point the video loader at an external folder for the current phase
+    (e.g. a fresh clone whose clips live elsewhere), without copying files in.
+    Persists per phase in .video_sources.json; reloads paths so it takes effect now."""
+    import importlib
+    global DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, PHASE, clip_dir
+    import paths as _pm
+    cur = _pm.get_video_source(PHASE)
+    console.print()
+    t = Table(box=None, show_header=False, padding=(0, 2), expand=False)
+    t.add_column(style="dim"); t.add_column(style="white")
+    t.add_row("phase", PHASE)
+    t.add_row("loading from", VIDEOS_DIR)
+    t.add_row("source", "[yellow]external override[/]" if cur else "[dim]in-repo default[/]")
+    console.print(Panel(t, title="[bold]video source[/]", border_style=CLR_INFO, padding=(0, 1)))
+    choices = [Choice(" set a new folder…", value="set")]
+    if cur:
+        choices.append(Choice(" revert to in-repo default", value="clear"))
+    choices.append(Choice(" ← back", value=None))
+    try:
+        action = questionary.select("Video source", choices=choices, style=_sty(),
+                                    use_arrow_keys=True, use_jk_keys=True).ask()
+    except KeyboardInterrupt:
+        return
+    if action is None:
+        return
+    if action == "clear":
+        _pm.clear_video_source(PHASE)
+        console.print("  [green]✓[/] reverted to the in-repo videos folder")
+    else:
+        try:
+            d = questionary.path("Folder with this phase's videos:",
+                                 only_directories=True, style=_sty()).ask()
+        except KeyboardInterrupt:
+            return
+        if not d:
+            return
+        d = os.path.abspath(os.path.expanduser(d.strip().strip('"')))
+        if not os.path.isdir(d):
+            console.print(f"  [red]Not a folder:[/] {d}"); _pause(); return
+        vids = [f for f in os.listdir(d) if os.path.splitext(f)[1].lower() in VIDEO_EXTS]
+        if not vids and not _ask_confirm(f"[yellow]No video files in[/] {d}\nUse it anyway?"):
+            return
+        _pm.set_video_source(d, PHASE)
+        console.print(f"  [green]✓[/] {len(vids)} video(s) will load from this folder")
+    importlib.reload(_pm)      # recompute VIDEOS_DIR (+ derived) from the new source
+    DATA_DIR    = _pm.DATA_DIR
+    MEAS_DIR    = _pm.MEAS_DIR
+    VIDEOS_DIR  = _pm.VIDEOS_DIR
+    EXPERIMENTS = _pm.EXPERIMENTS
+    PHASE       = _pm.PHASE
+    clip_dir    = _pm.clip_dir
+    _log_activity("video source")
+    _pause()
 def do_h(): _run(os.path.join(REPO_ROOT,"chaos.py"),"help"); _pause()
 def do_p():
     from thresholds import PIVOT, ARM_LENGTH_PX, get_pivot_arm
@@ -1758,7 +1812,7 @@ def _status_line(modes, phase_label, width):
     left.append("   ⇥ cycle", style="dim")
     right = Text()
     right.append("/ ", style="bold cyan")
-    for j, (k, act) in enumerate((("sw", "switch"), ("pa", "paths"), ("cal", "calibrate"))):
+    for j, (k, act) in enumerate((("sw", "switch"), ("pa", "paths"), ("cal", "calibrate"), ("load", "videos"))):
         if j: right.append("  ", style="dim")
         right.append(k, style="dim"); right.append(f" {act}", style="dim")
     pad = max(3, width - left.cell_len - right.cell_len - 2)
@@ -1841,7 +1895,7 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
     insights = False
     ins_explain = True
     ins_sel = 0
-    shell_cmds = {"sw": do_w, "pa": do_p, "cal": do_c,
+    shell_cmds = {"sw": do_w, "pa": do_p, "cal": do_c, "load": _load,
                   "wf": _palette_waterfall, "bif": _palette_bif, "rs": _palette_rotsweep,
                   "ds": _palette_dimsweep, "ws": _palette_windsweep, "ftle": _palette_ftle,
                   "cw": _palette_chaoswin}
@@ -1854,7 +1908,7 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
               Text.from_markup("  [dim]multi[/]  [bold]⇧[/]+move extends a selection (rows / columns / cell block); "
                                "[bold]↵[/] or an action key runs it across the range · esc clears"),
               Text.from_markup("  [dim]switch[/]  m/1/2/3/4/5 mode   [bold]tab[/] cycle"),
-              Text.from_markup("  [dim]palette[/]  [bold cyan]/[/]  sw switch · pa paths · cal calibrate · "
+              Text.from_markup("  [dim]palette[/]  [bold cyan]/[/]  sw switch · pa paths · cal calibrate · load videos · "
                                "wf waterfall · bif bifurcation · rs rot · ds dim · ws wind · ftle windows · cw verdict")]
         rh = _resolve(m.hint)
         if rh: hp.append(Text.from_markup("  [bold]row[/]      " + rh))
@@ -2004,7 +2058,7 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
                 table_block = lay
         content = [table_block]
         if cmd is not None:
-            cl = Text.from_markup(f"  [bold cyan]/[/] {cmd}▌   [dim]sw switch · pa paths · cal calibrate   ·   wf waterfall · bif bifurcation · rs rot · ds dim · ws wind · ftle windows · cw verdict   · esc cancel[/]")
+            cl = Text.from_markup(f"  [bold cyan]/[/] {cmd}▌   [dim]sw switch · pa paths · cal calibrate · load videos   ·   wf waterfall · bif bifurcation · rs rot · ds dim · ws wind · ftle windows · cw verdict   · esc cancel[/]")
             cl.no_wrap = True; cl.overflow = "ellipsis"
             content.append(cl)
         else:

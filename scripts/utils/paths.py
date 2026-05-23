@@ -31,9 +31,14 @@ Each phase is a single week with a flat ``measurements/<stem>/`` layout.
 Static figures live in ``figures/<type>/``; animations (mp4) in
 ``animations/<type>/``; source clips in ``videos/`` (free-swing uses
 ``data/videos/``).
+
+Source clips can also live outside the repo: set ``CHAOS_VIDEOS_DIR`` (env) or
+use the shell's ``/load`` command to point the loader at an external folder per
+phase (stored in a gitignored ``.video_sources.json``) without copying files in.
 """
 
 import os
+import json
 
 # Repo root: scripts/utils/paths.py -> scripts/utils/ -> scripts/ -> repo root
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(
@@ -69,10 +74,49 @@ FIGURES_DIR = os.path.join(PHASE_ROOT, "figures")
 ANIMATIONS_DIR = os.path.join(PHASE_ROOT, "animations")
 EXPERIMENTS = os.path.join(DATA_DIR, "experiments.json")
 
-# Driven phase stores videos directly under <phase>/videos/.
-# Free-swing phase historically used <phase>/data/videos/; keep that on disk
-# so existing tooling continues to work.
-if PHASE == PHASE_FREE:
+# External video-source override: a user whose raw clips live outside the repo
+# (e.g. a fresh clone with the videos in some other folder) can point the loader
+# at them per phase, without copying files in. CHAOS_VIDEOS_DIR (env) wins as a
+# one-shot override; otherwise a gitignored {phase: dir} map in .video_sources.json
+# at the repo root is consulted. Falls back to the in-repo layout when neither is set.
+VIDEO_SOURCES_FILE = os.path.join(REPO_ROOT, ".video_sources.json")
+
+def _load_video_sources():
+    try:
+        with open(VIDEO_SOURCES_FILE, encoding="utf-8") as f:
+            data = json.load(f)
+        return data if isinstance(data, dict) else {}
+    except (OSError, ValueError):
+        return {}
+
+def get_video_source(phase=None):
+    """External override dir for a phase, or None if it uses the in-repo layout."""
+    env = os.environ.get("CHAOS_VIDEOS_DIR")
+    if env:
+        return env
+    return _load_video_sources().get(phase or PHASE)
+
+def set_video_source(directory, phase=None):
+    """Persist an external video dir for a phase (writes .video_sources.json)."""
+    data = _load_video_sources()
+    data[phase or PHASE] = directory
+    with open(VIDEO_SOURCES_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+
+def clear_video_source(phase=None):
+    """Drop a phase's external override (revert to the in-repo layout)."""
+    data = _load_video_sources()
+    if (phase or PHASE) in data:
+        del data[phase or PHASE]
+        with open(VIDEO_SOURCES_FILE, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+
+# Driven phase stores videos directly under <phase>/videos/; free-swing uses
+# <phase>/data/videos/. An external override (above) replaces either.
+_override = get_video_source(PHASE)
+if _override:
+    VIDEOS_DIR = _override
+elif PHASE == PHASE_FREE:
     VIDEOS_DIR = os.path.join(PHASE_ROOT, "data", "videos")
 else:
     VIDEOS_DIR = os.path.join(PHASE_ROOT, "videos")

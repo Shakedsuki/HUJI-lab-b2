@@ -39,6 +39,11 @@ experiments/**/measurements/**/tracking.csv.bak*
 *.code-workspace
 .vscode/
 
+# ── Machine-local config ─────────────────────────
+# Per-machine external video source folders (set via the shell's /load command);
+# paths differ per clone, so this is never committed.
+.video_sources.json
+
 # ── Claude worktrees ─────────────────────────────
 .claude/
 
