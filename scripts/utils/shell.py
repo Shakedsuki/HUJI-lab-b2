@@ -332,6 +332,22 @@ def navigate_table(build_rows, columns, *, title="", border_style="cyan",
     has_cols = bool(col_targets)
     has_cells = bool(cell_targets)
     idx, cidx, mode = 0, 0, "row"
+    pending = ""        # type-ahead buffer for multi-char (two-letter) keys
+    show_help = False
+
+    def _help_panel():
+        hp = [Text.from_markup("  [dim]move[/]  ↑↓ / k j   Home/End   PgUp/PgDn   [dim]·[/]   q/Esc back")]
+        rh = _resolve(hint)
+        if rh: hp.append(Text.from_markup("  [bold]row[/]      " + rh))
+        if has_cols:
+            ch = _resolve(col_hint)
+            if ch: hp.append(Text.from_markup("  [bold]column[/]   " + ch))
+        if has_cells:
+            eh = _resolve(cell_hint)
+            if eh: hp.append(Text.from_markup("  [bold]entry[/]    " + eh))
+        hp.append(Text.from_markup("  [dim]— any key to close —[/]"))
+        return Panel(Group(*hp), title=f"[bold]keys · {_resolve(title)}[/]",
+                     border_style=border_style, padding=(1, 2), expand=False)
 
     def frame():
         nonlocal idx, cidx
@@ -341,6 +357,8 @@ def navigate_table(build_rows, columns, *, title="", border_style="cyan",
         _active = cell_targets if mode == "cell" else col_targets
         if _active: cidx = max(0, min(cidx, len(_active) - 1))
         avail = max(5, console.height - 10)
+        if show_help:
+            return rows, n, avail, _help_panel()
         if n <= avail:
             lo, hi = 0, n
         else:
@@ -387,6 +405,8 @@ def navigate_table(build_rows, columns, *, title="", border_style="cyan",
         if mode == "cell" and cell_hint: h = _resolve(cell_hint)
         elif mode == "col" and col_hint:  h = _resolve(col_hint)
         else:                             h = _resolve(hint)
+        if mode == "row" and pending:
+            h = (h or "") + f"     [bold cyan]{pending}…[/]"
         renderable = Group(main, Text.from_markup("  " + h)) if h else main
         return rows, n, avail, renderable
 
@@ -398,6 +418,12 @@ def navigate_table(build_rows, columns, *, title="", border_style="cyan",
                 key = _read_key()
             except KeyboardInterrupt:
                 break
+            if show_help:
+                show_help = False
+                rows, n, avail, renderable = frame(); live.update(renderable, refresh=True); continue
+            if key == "esc" and pending:
+                pending = ""
+                rows, n, avail, renderable = frame(); live.update(renderable, refresh=True); continue
             if key in ("q", "esc"): break
             if mode == "col":
                 if key in ("left", "h"): cidx -= 1
@@ -418,22 +444,39 @@ def navigate_table(build_rows, columns, *, title="", border_style="cyan",
                     act = cell_actions.get(key)
                     if act and act(rows[idx] if n else None, cidx, ctx) == "quit": break
             else:
-                if key in ("up", "k"): idx -= 1
-                elif key in ("down", "j"): idx += 1
-                elif key == "home": idx = 0
-                elif key == "end": idx = n - 1
-                elif key == "pageup": idx -= avail
-                elif key == "pagedown": idx += avail
-                elif has_cols and key == "c": mode = "col"; cidx = 0
-                elif has_cells and key == "e": mode = "cell"; cidx = 0
-                elif has_cols and key == "r": pass
-                else:
-                    act = key_actions.get(key)
+                if key in ("up", "k"): idx -= 1; pending = ""
+                elif key in ("down", "j"): idx += 1; pending = ""
+                elif key == "home": idx = 0; pending = ""
+                elif key == "end": idx = n - 1; pending = ""
+                elif key == "pageup": idx -= avail; pending = ""
+                elif key == "pagedown": idx += avail; pending = ""
+                elif key in ("backspace", "\x08", "\x7f"): pending = pending[:-1]
+                elif key == "enter":
+                    pending = ""
+                    act = key_actions.get("enter")
                     if act:
                         res = act(rows[idx] if n else None, rows, idx, ctx)
                         if res == "quit": break
-                        if res == "advance": idx += 1
+                        elif res == "advance": idx += 1
                         elif res == "top": idx = 0
+                elif len(key) == 1 and key.isprintable():
+                    cand = pending + key
+                    prefixed = any(len(k) > len(cand) and k.startswith(cand) for k in key_actions)
+                    if cand in key_actions and not prefixed:
+                        pending = ""
+                        res = key_actions[cand](rows[idx] if n else None, rows, idx, ctx)
+                        if res == "quit": break
+                        elif res == "advance": idx += 1
+                        elif res == "top": idx = 0
+                    elif prefixed:
+                        pending = cand
+                    elif pending:
+                        pending = ""
+                    elif key == "h": show_help = True
+                    elif has_cols and key == "c": mode = "col"; cidx = 0
+                    elif has_cells and key == "e": mode = "cell"; cidx = 0
+                else:
+                    pending = ""
             rows, n, avail, renderable = frame()
             live.update(renderable, refresh=True)
 
@@ -528,7 +571,7 @@ def do_t(tr, pe):
         nv = sum(1 for c in tr2 if c.get("quality") == "verified")
         return (f"[green]{nv} verified[/]  [cyan]{len(tr2) - nv} tracked[/]  [yellow]{len(pe2)} pending[/]")
     hint = ("[dim]↑↓[/] [bold]t[/] track/re-track   [bold]v[/] verify   [bold]s[/] sanity   "
-            "[bold]o[/] open   [bold]a[/] all   [bold]c[/] columns   [bold]q[/] back")
+            "[bold]o[/] open   [bold]a[/] all   [bold]c[/] columns   [bold]h[/] help   [bold]q[/] back")
     col_hint = ("[bold cyan]column mode[/]   [bold]↵[/] re-track every clip in view   "
                 "[bold]r[/] row mode   [bold]q[/] back")
     def act_track(row, rows, i, ctx):
@@ -658,15 +701,15 @@ def do_a(tr):
         def work(): _run(SCRIPT_WATERFALL, *args); _log_activity("spectral waterfall")
         _do_suspended(ctx, work, confirm=f"Run [bold]spectral waterfall[/] across the {vlab} family?")
     bif_ok = _voltage_sweep_ok(tr)
-    hint = ("[dim]\u2191\u2193[/] run   [bold]h[/] chaos   [bold]i[/] poinc   [bold]l[/] lyap   [bold]d[/] driven   [bold]t[/] rot   [bold]f[/] frac   "
+    hint = ("[dim]\u2191\u2193[/] run   [bold]ch[/] chaos   [bold]po[/] poinc   [bold]ly[/] lyap   [bold]dr[/] driven   [bold]ro[/] rot   [bold]fr[/] frac   "
             "[bold]\u21b5[/] explore   "
-            + ("[bold]b[/] bif-sweep   " if bif_ok else "")
-            + "[bold]m[/] rot-sweep   [bold]w[/] waterfall   [bold]q[/] back")
-    keys = {"h": act_chaos, "i": act_poin, "l": act_lyap,
-            "d": act_driven, "t": act_rot, "f": act_dim,
-            "enter": act_explore, "x": act_explore,
-            "m": act_rotsweep, "w": act_waterfall}
-    if bif_ok: keys["b"] = act_bif
+            + ("[bold]bs[/] bif-sweep   " if bif_ok else "")
+            + "[bold]rs[/] rot-sweep   [bold]wf[/] waterfall   [bold]h[/] help   [bold]q[/] back")
+    keys = {"ch": act_chaos, "po": act_poin, "ly": act_lyap,
+            "dr": act_driven, "ro": act_rot, "fr": act_dim,
+            "enter": act_explore,
+            "rs": act_rotsweep, "wf": act_waterfall}
+    if bif_ok: keys["bs"] = act_bif
     _inventory_nav(tr, "analyze", CLR_ANALYZE, ANALYZE_TYPES, _analyze_exists,
                    key_actions=keys, hint=hint)
     _log_activity("analyze")
@@ -847,7 +890,7 @@ def do_ar(tr):
         sweep = _sweep_map()
         nh = sum(1 for c in tr if _load(c["stem"]) or sweep.get(c["stem"]))
         return (f"[dim]{nh}/{len(tr)} computed[/]   [dim]·  ↻ = completed loops[/]")
-    hint = ("[dim]↑↓[/] [bold]↵[/] compute   [bold]o[/] open   [bold]a[/] all + sweep   [bold]q[/] back")
+    hint = ("[dim]↑↓[/] [bold]↵[/] compute   [bold]o[/] open   [bold]a[/] all + sweep   [bold]h[/] help   [bold]q[/] back")
     def act_compute(row, rows, i, ctx):
         if row:
             _do_suspended(ctx, lambda: _run(SCRIPT_ROTATIONS, "--stem", row["stem"]))
@@ -980,7 +1023,7 @@ def do_fi(tr):
         _do_suspended(ctx, lambda: _run(SCRIPT_BATCH_FIGS, "--stem", stem, "--types", t[0], "--force", "--all-quality"))
         _log_activity(f"create {t[1]}/{stem}")
     hint = ("[dim]↑↓[/] [bold]↵[/] render   [bold]c[/] columns   [bold]e[/] entry   "
-            "[bold]a[/] all   [bold]w[/] waterfall   [bold]q[/] back")
+            "[bold]a[/] all   [bold]w[/] waterfall   [bold]h[/] help   [bold]q[/] back")
     _inventory_nav(tr, "figures inventory", CLR_FIGURES, FIG_TYPES, _fig_exists,
                    key_actions={"enter": render_clip, "a": fill_all, "w": fig_waterfall},
                    hint=hint, on_col=col_batch,
@@ -1047,7 +1090,7 @@ def do_vi(tr):
         return (f"[green]{npa} pass[/]  [red]{nfa} fail[/]  [yellow]{npe} to review[/]  "
                 f"[dim]{nno} no overlay[/]")
     hint = ("[dim]↑↓[/] [bold]o[/]/[bold]↵[/] open   [green bold]p[/]ass [red bold]f[/]ail [bold]x[/] clear   "
-            "[bold]c[/] columns   [bold]e[/] entry   [bold]q[/] back")
+            "[bold]c[/] columns   [bold]e[/] entry   [bold]h[/] help   [bold]q[/] back")
     col_hint = ("[bold cyan]column mode[/]   [dim]←→[/] pick type   [bold]↵[/] batch all clips   "
                 "[bold]r[/] row mode   [bold]q[/] back")
     def act_review(row, rows, i, ctx):
