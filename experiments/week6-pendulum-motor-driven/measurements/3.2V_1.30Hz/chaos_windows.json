@@ -1,0 +1,21 @@
+{
+  "stem": "3.2V_1.30Hz",
+  "verdict": "CHAOTIC",
+  "reasons": [
+    "E_peak / E_inversion = 16.64 > 1.2 with K = 0.76 > 0.5"
+  ],
+  "K_chaos": 0.7582,
+  "K_chaos_iqr": 0.191,
+  "spectral_entropy_th2": 0.2874,
+  "n_windows": 8,
+  "window_entropy": [
+    0.4179,
+    0.2335,
+    0.2449,
+    0.2616,
+    0.2534,
+    0.2158,
+    0.2322,
+    0.1951
+  ]
+}

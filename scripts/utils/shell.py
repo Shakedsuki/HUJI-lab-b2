@@ -124,73 +124,6 @@ def get_clips():
                 info["status"] = "pending"; pending.append(info)
     return tracked, pending
 
-# ── FTLE windows (optional lambda1 diagnostic) ──
-# Reads measurements/<stem>/ftle_windows.json (ftle_windows.py). NOTE: the glyph
-# and sparkline source of truth moved to the chaos verdict (chaos_windows.json,
-# below); this lambda1 data is kept for the /ftle palette + analyze ftle cell.
-# Missing file -> graceful dots. Cached; cleared on mode switch / suspended action.
-_ftle_cache = {}
-_ftle_range = None   # auto-scaled (floor, ceil) for sparkline blocks; see _ftle_lambda_range
-
-def _load_ftle(stem):
-    path = os.path.join(clip_dir(stem), "ftle_windows.json")
-    if not os.path.isfile(path):
-        return None
-    try:
-        with open(path, encoding="utf-8") as f:
-            return json.load(f)
-    except (json.JSONDecodeError, OSError):
-        return None
-
-def _get_ftle(stem):
-    if stem not in _ftle_cache:
-        _ftle_cache[stem] = _load_ftle(stem)
-    return _ftle_cache[stem]
-
-def _invalidate_ftle_cache():
-    global _ftle_range
-    _ftle_cache.clear()
-    _ftle_range = None
-
-_BLOCKS = "▁▂▃▄▅▆▇█"
-# Block height scales lambda1 onto [floor, ceil]; the range auto-scales to the
-# loaded family (see _ftle_lambda_range). Fallbacks apply only when no json exists
-# (driven runs hotter, lambda1 ~0.7-1.2, than free-swing).
-_LAMBDA_FALLBACK_DRIVEN = (-0.3, 1.2)
-_LAMBDA_FALLBACK_FREE   = (-0.15, 0.35)
-
-def _ftle_lambda_range():
-    """(floor, ceil) for sparkline block scaling — global min/max window lambda1
-    across every computed clip in the phase, padded 10%, so the bars span the full
-    dynamic range of the loaded dataset. Phase-aware fallback when <2 values exist.
-    Cached; reset by _invalidate_ftle_cache()."""
-    global _ftle_range
-    if _ftle_range is not None:
-        return _ftle_range
-    from paths import iter_clip_dirs, PHASE_FREE
-    vals = []
-    for stem, _d in iter_clip_dirs():
-        data = _get_ftle(stem)
-        if not data:
-            continue
-        for w in data.get("windows", []):
-            lam = w.get("lambda1")
-            if lam is not None and lam == lam:
-                vals.append(lam)
-    if len(vals) >= 2:
-        lo, hi = min(vals), max(vals)
-        pad = 0.1 * (hi - lo) if hi > lo else 0.1
-        _ftle_range = (lo - pad, hi + pad)
-    else:
-        _ftle_range = _LAMBDA_FALLBACK_FREE if PHASE == PHASE_FREE else _LAMBDA_FALLBACK_DRIVEN
-    return _ftle_range
-
-def _block_color(lam):
-    """Per-window colour from the sign of lambda1 (one bar can mix colours)."""
-    if lam > 0.05:  return "#ff5555"    # chaotic
-    if lam > -0.02: return "#fbbf24"    # edge
-    return "#55ff55"                    # periodic
-
 # ── Chaos verdict windows (the glyph + sparkline source of truth) ──
 # measurements/<stem>/chaos_windows.json (chaos_windows.py): the SAME verdict the
 # i-insights chaos card shows + per-window theta2 spectral entropy. Glyph = verdict,
@@ -221,6 +154,7 @@ _VERDICT_GLYPH = {"REGULAR":    ("[#55ff55]○[/]", "#55ff55"),
                   "BORDERLINE": ("[#fbbf24]◎[/]", "#fbbf24"),
                   "CHAOTIC":    ("[#ff5555]●[/]", "#ff5555")}
 _GLYPH_NONE = "[dim]·[/]"
+_BLOCKS = "▁▂▃▄▅▆▇█"   # sparkline ramp: low entropy -> short, high -> tall
 
 def _render_sparkline(stem):
     """8-char time-resolved chaos bar — per-window theta2 spectral entropy [0,1]
@@ -638,8 +572,7 @@ def _do_suspended(ctx, work, pause=True, confirm=None, confirm_default=False):
         if confirm and not _ask_confirm(confirm, default=confirm_default):
             return
         work()
-        _invalidate_ftle_cache()   # the action may have (re)generated ftle_windows.json
-        _invalidate_chaos_windows_cache()
+        _invalidate_chaos_windows_cache()   # the action may have changed a clip's verdict
         if pause: _pause()
     ctx.suspend(go)
 
@@ -1688,7 +1621,7 @@ def _palette_ftle():
     for j, c in enumerate(tr, 1):
         console.print(Rule(f"[bold][{j}/{len(tr)}] {c['stem']}[/]", style="dim"))
         _run(SCRIPT_FTLE_WINDOWS, "--stem", c["stem"])
-    _invalidate_ftle_cache(); _log_activity("ftle (all clips)"); _pause()
+    _log_activity("ftle (all clips)"); _pause()
 def _palette_chaoswin():
     # chaos_windows.py is per-clip; batch by looping the family. Cheap (no Rosenstein) —
     # recomputes the verdict + sparkline source of truth behind the glyph/sparkline.
@@ -1926,11 +1859,11 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
                 rows, n, avail, renderable = frame(); live.update(renderable, refresh=True); continue
             if key == "\t":
                 midx = (midx + 1) % len(modes); mode = "row"; cidx = 0; pending = ""; show_preview = False
-                _invalidate_ftle_cache(); _invalidate_chaos_windows_cache()
+                _invalidate_chaos_windows_cache()
                 rows, n, avail, renderable = frame(); live.update(renderable, refresh=True); continue
             if key in by_key:
                 midx = by_key[key]; mode = "row"; cidx = 0; pending = ""; show_preview = False
-                _invalidate_ftle_cache(); _invalidate_chaos_windows_cache()
+                _invalidate_chaos_windows_cache()
                 rows, n, avail, renderable = frame(); live.update(renderable, refresh=True); continue
             m = cur()
             has_cols = bool(m.col_actions) and bool(m.col_targets)
