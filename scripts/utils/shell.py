@@ -648,7 +648,10 @@ def _chaos_panel(stem, topo, stat, verdict, reasons):
     topo_t.add_row("E_peak / E_inv", _f(topo['E_ratio_peak'], '.2f'))
     stat_t = Table(box=None, show_header=False, padding=(0, 1), expand=False)
     stat_t.add_column(style="dim"); stat_t.add_column(justify="right")
-    stat_t.add_row("K_chaos (median)", _f(stat['K_chaos']))
+    _kiqr = stat.get('K_chaos_iqr', float('nan'))
+    _kval = (f"{_f(stat['K_chaos'])} ± {_f(_kiqr)}"
+             if not (isinstance(_kiqr, float) and math.isnan(_kiqr)) else _f(stat['K_chaos']))
+    stat_t.add_row("K_chaos (median)", _kval)
     stat_t.add_row("spectral entropy θ₁", _f(stat['spectral_entropy_th1_norm']))
     stat_t.add_row("spectral entropy θ₂", _f(stat['spectral_entropy_th2_norm']))
     rt = Text()
