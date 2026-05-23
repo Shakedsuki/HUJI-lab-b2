@@ -290,6 +290,28 @@ def plot_return(d):
     plt.show()
 
 
+def plot_strobe_return(d):
+    """Stroboscopic return map \u03b8\u2081(nT) vs \u03b8\u2081((n+1)T), sampled once
+    per drive period T = 1/f_drive (skips 5 s transient). Needs a driven clip.
+    period-1 -> one dot; chaos -> a spread 1-D curve. (`return` is the
+    non-stroboscopic successive-sample version.)"""
+    import plotext as plt
+    from driven_helpers import strobe_sample
+    fd = d.get("f_drive")
+    if not fd:
+        print("  stroboscopic return map needs a driven clip (no f_drive)")
+        return
+    _t, th1_s, _o = strobe_sample(d["t"], d["th1"], d["om1"], fd, transient_s=5.0)
+    if len(th1_s) < 3:
+        print("  too few strobe samples for a return map")
+        return
+    _setup(plt, f"\u03b8\u2081(nT) vs \u03b8\u2081((n+1)T)  strobe return  (f_drive = {fd:g} Hz)")
+    plt.scatter(th1_s[:-1], th1_s[1:], color="red", marker="dot")
+    plt.xlabel("\u03b8\u2081(nT)")
+    plt.ylabel("\u03b8\u2081((n+1)T)")
+    plt.show()
+
+
 def plot_seismograph(d, mode="v1"):
     """Terminal preview of the seismograph. theta_tip = theta2 (absolute
     lower-arm angle from the green pivot). v1 spiral: r grows with time;
@@ -506,6 +528,7 @@ PLOTS = {
     "trace":    ("blue",    "tip trajectory in pixel space",                        plot_trace),
     "spectrum": ("red",     "power spectrum of \u03b8\u2082",                      plot_spectrum),
     "return":   ("red",     "\u03b8\u2082(n) vs \u03b8\u2082(n+1) return map",    plot_return),
+    "ret":      ("red",     "\u03b8\u2081(nT) vs \u03b8\u2081((n+1)T) strobe return", plot_strobe_return),
     "dim":      ("red",     "fractal dimension (D₂ corr + D_box)",  plot_dimension),
     "wfall":    ("red",     "spectral broadband-ness vs f_drive (waterfall)", plot_waterfall),
     "seis1":    ("yellow",  "seismograph v1 spiral (θ_tip=θ₂)",  lambda d: plot_seismograph(d, "v1")),
@@ -566,7 +589,7 @@ def _print_menu(con):
         ("green",   "time series", ["both", "omega", "tip", "energy", "rot"]),
         ("yellow",  "phase space", ["phase1", "phase2", "config", "full", "seis1", "seis2"]),
         ("blue",    "physical",    ["xy", "trace"]),
-        ("red",     "chaos",       ["spectrum", "return", "dim", "wfall"]),
+        ("red",     "chaos",       ["spectrum", "return", "ret", "dim", "wfall"]),
         ("magenta", "driven",      ["cyc", "lock", "res"]),
     ]
     panels = []

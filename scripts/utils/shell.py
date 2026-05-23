@@ -43,6 +43,7 @@ SCRIPT_DRIVEN_BIF  = os.path.join(REPO_ROOT, "scripts", "analysis", "driven_bifu
 SCRIPT_ROTATIONS   = os.path.join(REPO_ROOT, "scripts", "analysis", "rotations.py")
 SCRIPT_DIMENSION   = os.path.join(REPO_ROOT, "scripts", "analysis", "dimension.py")
 SCRIPT_DIM_SWEEP   = os.path.join(REPO_ROOT, "scripts", "analysis", "dimension_sweep.py")
+SCRIPT_RETURN_MAP  = os.path.join(REPO_ROOT, "scripts", "analysis", "return_map.py")
 SCRIPT_WATERFALL   = os.path.join(REPO_ROOT, "scripts", "analysis", "spectral_waterfall.py")
 SCRIPT_OVERLAY     = os.path.join(REPO_ROOT, "scripts", "analysis", "overlay_video.py")
 
@@ -656,12 +657,14 @@ ANALYZE_TYPES = [
     ("driven",        "driven", "driven poincar\u00e9"),
     ("rotations",     "rot",    "rotations"),
     ("dimension",     "dim",    "fractal dimension"),
+    ("return_map",    "ret",    "return map"),
 ]
 
 def _analyze_exists(tn, stem):
-    if tn == "driven":    return os.path.isfile(os.path.join(clip_dir(stem), "driven_poincare.csv"))
-    if tn == "rotations": return os.path.isfile(os.path.join(clip_dir(stem), "rotations.json"))
-    if tn == "dimension": return os.path.isfile(os.path.join(clip_dir(stem), "dimension.json"))
+    if tn == "driven":     return os.path.isfile(os.path.join(clip_dir(stem), "driven_poincare.csv"))
+    if tn == "rotations":  return os.path.isfile(os.path.join(clip_dir(stem), "rotations.json"))
+    if tn == "dimension":  return os.path.isfile(os.path.join(clip_dir(stem), "dimension.json"))
+    if tn == "return_map": return os.path.isfile(os.path.join(clip_dir(stem), "return_map.csv"))
     return _fig_exists(tn, stem)
 
 def _voltage_sweep_ok(clips):
@@ -694,6 +697,8 @@ def build_mode_analyze():
         if row: _runclip(ctx, SCRIPT_ROTATIONS, "--stem", row["stem"]); _log_activity(f"rotations {row['stem']}")
     def act_dim(row, rows, i, ctx):
         if row: _runclip(ctx, SCRIPT_DIMENSION, "--stem", row["stem"]); _log_activity(f"dimension {row['stem']}")
+    def act_returnmap(row, rows, i, ctx):
+        if row: _runclip(ctx, SCRIPT_RETURN_MAP, "--stem", row["stem"]); _log_activity(f"return map {row['stem']}")
     def act_explore(row, rows, i, ctx):
         if not row: return
         sys.path.insert(0, os.path.join(REPO_ROOT, "scripts", "analysis"))
@@ -720,7 +725,7 @@ def build_mode_analyze():
         _do_suspended(ctx, work, confirm="Run [bold]dimension sweep[/] across the 3.2V family?")
     bif_ok = _voltage_sweep_ok(tr)
     fd_ok = _freq_sweep_ok(tr)
-    hint = ("[dim]\u2191\u2193[/] run   [bold]ch[/] chaos   [bold]po[/] poinc   [bold]ly[/] lyap   [bold]dr[/] driven   [bold]ro[/] rot   [bold]fr[/] frac   "
+    hint = ("[dim]\u2191\u2193[/] run   [bold]ch[/] chaos   [bold]po[/] poinc   [bold]ly[/] lyap   [bold]dr[/] driven   [bold]ro[/] rot   [bold]fr[/] frac   [bold]rm[/] return   "
             "[bold]\u21b5[/] explore   "
             + ("[bold]bs[/] bif-sweep   " if bif_ok else "")
             + ("[bold]bf[/] bif-fd   " if fd_ok else "")
@@ -728,7 +733,8 @@ def build_mode_analyze():
     keys = {"ch": act_chaos, "po": act_poin, "ly": act_lyap,
             "dr": act_driven, "ro": act_rot, "fr": act_dim,
             "enter": act_explore,
-            "rs": act_rotsweep, "wf": act_waterfall, "ds": act_dim_sweep}
+            "rs": act_rotsweep, "wf": act_waterfall, "ds": act_dim_sweep,
+            "rm": act_returnmap}
     if bif_ok: keys["bs"] = act_bif
     if fd_ok: keys["bf"] = act_bif_fd
     return _inventory_mode("analyze", "2", CLR_ANALYZE, ANALYZE_TYPES, _analyze_exists,
@@ -742,7 +748,7 @@ _QI_CATS = [
     ("green",   "time series", ["both", "omega", "tip", "energy", "rot"]),
     ("yellow",  "phase space", ["phase1", "phase2", "config", "full", "seis1", "seis2"]),
     ("blue",    "physical",    ["xy", "trace"]),
-    ("red",     "chaos",       ["spectrum", "return", "dim", "wfall"]),
+    ("red",     "chaos",       ["spectrum", "return", "ret", "dim", "wfall"]),
     ("magenta", "driven",      ["cyc", "lock", "res"]),
 ]
 
@@ -1018,6 +1024,7 @@ FIG_TYPES = [
     ("seismograph_v2",      "seis2",  "seismograph v2 (ripple)"),
     ("dimension",           "dim",    "fractal dimension"),
     ("driven_poincare",     "drpoinc","driven poincaré"),
+    ("return_map",          "ret",    "return map"),
 ]
 
 def build_mode_figures():

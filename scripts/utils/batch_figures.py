@@ -52,6 +52,7 @@ STATIC_SUITE = [
     ("seismograph_v2",    "png", False, "seismograph.py",    ["--mode", "v2"]),
     ("dimension",         "png", False, "dimension.py",      []),
     ("driven_poincare",   "png", True,  "driven_poincare.py",[]),
+    ("return_map",        "png", True,  "return_map.py",     []),
 ]
 
 VIDEO_SUITE = [
