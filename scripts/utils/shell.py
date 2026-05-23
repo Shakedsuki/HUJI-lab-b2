@@ -1622,23 +1622,7 @@ def main():
         tr, pe = get_clips()
         nver = sum(1 for c in tr if c.get("quality") == "verified")
         return (nver, len(tr) - nver, len(pe))
-    def _main_stub():
-        def rows():
-            tr, _pe = get_clips()
-            return [{"stem": c["stem"], "status": c.get("status", "?"), "_n": i}
-                    for i, c in enumerate(tr, 1)]
-        def _scell(r):
-            s = r["status"]
-            if s == "verified": return "[green]verified[/]"
-            if s == "pending":  return "[yellow]pending[/]"
-            return f"[cyan]{s}[/]"
-        return Mode("main", "m", CLR_MAIN, glyph="⌂", build_rows=rows,
-                    columns=[("#", lambda r: str(r["_n"]), dict(justify="right", width=3, style="dim")),
-                             ("clip", lambda r: r["stem"], dict(min_width=16, no_wrap=True)),
-                             ("status", _scell, dict(width=9))],
-                    legend="",
-                    hint="[dim]↑↓[/] navigate   [bold]1-4[/] open a stage   [bold]h[/] help   [bold]q[/] quit")
-    modes = [_main_stub(), build_mode_track(), build_mode_analyze(),
+    modes = [build_mode_main(), build_mode_track(), build_mode_analyze(),
              build_mode_figures(), build_mode_videos()]
     run_modes(modes, start=0, overall_fn=_overall)
 
