@@ -46,6 +46,7 @@ SCRIPT_DIM_SWEEP   = os.path.join(REPO_ROOT, "scripts", "analysis", "dimension_s
 SCRIPT_RETURN_MAP  = os.path.join(REPO_ROOT, "scripts", "analysis", "return_map.py")
 SCRIPT_RECURRENCE  = os.path.join(REPO_ROOT, "scripts", "analysis", "recurrence.py")
 SCRIPT_ATTRACTOR   = os.path.join(REPO_ROOT, "scripts", "analysis", "attractor.py")
+SCRIPT_WINDING_SWEEP = os.path.join(REPO_ROOT, "scripts", "analysis", "winding_sweep.py")
 SCRIPT_WATERFALL   = os.path.join(REPO_ROOT, "scripts", "analysis", "spectral_waterfall.py")
 SCRIPT_OVERLAY     = os.path.join(REPO_ROOT, "scripts", "analysis", "overlay_video.py")
 
@@ -722,17 +723,21 @@ def build_mode_analyze():
     def act_dim_sweep(row, rows, i, ctx):
         def work(): _run(SCRIPT_DIM_SWEEP); _log_activity("dimension sweep")
         _do_suspended(ctx, work, confirm="Run [bold]dimension sweep[/] across the 3.2V family?")
+    def act_winding_sweep(row, rows, i, ctx):
+        def work(): _run(SCRIPT_WINDING_SWEEP); _log_activity("winding sweep")
+        _do_suspended(ctx, work, confirm="Run [bold]winding-number sweep[/] across the 3.2V family?")
     bif_ok = _voltage_sweep_ok(tr)
     fd_ok = _freq_sweep_ok(tr)
     hint = ("[dim]\u2191\u2193[/] run   [bold]ch[/] chaos   [bold]po[/] poinc   [bold]ly[/] lyap   [bold]dr[/] driven   [bold]ro[/] rot   [bold]fr[/] frac   [bold]rm[/] return   [bold]rc[/] recur   [bold]at[/] attr   "
             "[bold]\u21b5[/] explore   "
             + ("[bold]bs[/] bif-sweep   " if bif_ok else "")
             + ("[bold]bf[/] bif-fd   " if fd_ok else "")
-            + "[bold]rs[/] rot-sweep   [bold]wf[/] waterfall   [bold]ds[/] dim-sweep   [bold]h[/] help   [bold]q[/] back")
+            + "[bold]rs[/] rot-sweep   [bold]wf[/] waterfall   [bold]ds[/] dim-sweep   [bold]ws[/] wind-sweep   [bold]h[/] help   [bold]q[/] back")
     keys = {"ch": act_chaos, "po": act_poin, "ly": act_lyap,
             "dr": act_driven, "ro": act_rot, "fr": act_dim,
             "enter": act_explore,
             "rs": act_rotsweep, "wf": act_waterfall, "ds": act_dim_sweep,
+            "ws": act_winding_sweep,
             "rm": act_returnmap, "rc": act_recurrence, "at": act_attractor}
     if bif_ok: keys["bs"] = act_bif
     if fd_ok: keys["bf"] = act_bif_fd
