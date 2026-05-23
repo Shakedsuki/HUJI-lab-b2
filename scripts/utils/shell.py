@@ -1421,14 +1421,17 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
             nver, ntr, npe = ov
             total = nver + ntr + npe
             filled = max(0, min(10, round(10 * nver / total))) if total else 0
-            title.append("    ")
-            title.append("█" * filled, style=CLR_TRACK)
-            title.append("░" * (10 - filled), style="dim")
-            title.append(f"  {nver} verified", style="dim")
-            title.append(" · ", style="dim")
-            title.append(f"{ntr} tracked", style="dim")
-            title.append(" · ", style="dim")
-            title.append(f"{npe} pending", style="dim")
+            prog = Text()
+            prog.append("█" * filled, style=CLR_TRACK)
+            prog.append("░" * (10 - filled), style="dim")
+            prog.append(f"  {nver} verified", style=CLR_TRACK)
+            prog.append(" · ", style="dim")
+            prog.append(f"{ntr} tracked", style=CLR_ANALYZE)
+            prog.append(" · ", style="dim")
+            prog.append(f"{npe} pending", style="dim")
+            fill = max(3, (width - 6) - title.cell_len - prog.cell_len)
+            title.append(" " + "─" * (fill - 2) + " ", style="dim")
+            title.append_text(prog)
         if show_help:
             return rows, n, avail, Group(_help_panel(m), _status_line(modes, phase_label, width))
         cols = m.columns
@@ -1460,31 +1463,34 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
                 else:
                     t.add_row(" ", *cells)
             if hi < n: t.add_row(" ", "[dim]↓…[/]", *[""] * (ncol - 1))
-        body = [t]
-        leg = _resolve(m.legend)
-        if leg: body.append(Text.from_markup("  " + leg))
-        inner = Group(*body)
+        table_block = t
         if show_preview and m.preview_fn is not None:
             try: prev = m.preview_fn(rows[idx] if n else None)
             except Exception: prev = None
             if prev is not None:
                 lay = Table(box=None, show_header=False, expand=True, padding=(0, 1))
                 lay.add_column(ratio=2); lay.add_column(ratio=1)
-                lay.add_row(Group(*body), prev)
-                inner = lay
-        panel = Panel(inner, title=title, title_align="left",
-                      subtitle=right_info, subtitle_align="right",
-                      border_style=m.color, padding=(0, 1), box=box.SQUARE, expand=True)
-        main_r = panel
+                lay.add_row(t, prev)
+                table_block = lay
+        content = [table_block]
+        leg = _resolve(m.legend)
+        if leg:
+            lt = Text.from_markup("  " + leg); lt.no_wrap = True; lt.overflow = "ellipsis"
+            content.append(lt)
+        content.append(Text(""))
         if mode == "cell" and m.cell_hint: h = _resolve(m.cell_hint)
         elif mode == "col" and m.col_hint: h = _resolve(m.col_hint)
         else: h = _resolve(m.hint)
         if mode == "row" and pending:
             h = (h or "") + f"     [bold cyan]{pending}…[/]"
-        parts = [main_r]
-        if h: parts.append(Text.from_markup("  " + h))
-        parts.append(_status_line(modes, phase_label, width))
-        return rows, n, avail, Group(*parts)
+        if h:
+            ht = Text.from_markup("  " + h); ht.no_wrap = True; ht.overflow = "ellipsis"
+            content.append(ht)
+        st = _status_line(modes, phase_label, width - 4); st.no_wrap = True; st.overflow = "ellipsis"
+        content.append(st)
+        panel = Panel(Group(*content), title=title, title_align="left",
+                      border_style=m.color, padding=(0, 1), box=box.SQUARE, expand=True)
+        return rows, n, avail, panel
 
     rows, n, avail, renderable = frame()
     with Live(renderable, console=console, screen=True, auto_refresh=False) as live:
@@ -1615,8 +1621,7 @@ def build_mode_main():
         overall = round(sum(r["pct"] for r in rows) / len(rows))
         return (f"[green]✓ {nfull} done[/]   [yellow]◐ {npart} partial[/]   [dim]· {nempty} empty[/]"
                 f"      overall [bold]{overall}%[/]")
-    hint = ("[dim]↑↓[/] navigate clips   [bold]1[/]/[bold]2[/]/[bold]3[/]/[bold]4[/] open a stage   "
-            "[bold]h[/] help   [bold]q[/] quit")
+    hint = "[dim]↑↓[/] navigate clips   [bold]h[/] help   [bold]q[/] quit"
     return Mode("main", "m", CLR_MAIN, glyph="⌂", build_rows=build_rows, columns=columns,
                 legend=legend, hint=hint)
 
