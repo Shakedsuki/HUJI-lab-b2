@@ -129,8 +129,9 @@ def compute_verdict(diag):
     return worst, reasons
 
 
-def render_plots(stem, meta, diag, verdict, reasons, plot_width=80, plot_height=16):
-    """Render structured metrics panel + 2x2 plot grid + per-plot verdicts."""
+def render_plots(stem, meta, diag, verdict, reasons, plot_width=80, plot_height=16, show=True):
+    """Render structured metrics panel + 2x2 plot grid + per-plot verdicts.
+    With show=False, skips console output and returns the plot grid as a string."""
     import plotext as plt
     from rich.console import Console
     from rich.panel import Panel
@@ -182,13 +183,14 @@ def render_plots(stem, meta, diag, verdict, reasons, plot_width=80, plot_height=
         "expected", f"{diag['arm_px_expected']}px",
     )
 
-    con.print(Panel(
-        mt,
-        title=f"[bold {vc}]{verdict}[/]  [bold white]{stem}[/]",
-        border_style=vc,
-        padding=(0, 1),
-    ))
-    con.print()
+    if show:
+        con.print(Panel(
+            mt,
+            title=f"[bold {vc}]{verdict}[/]  [bold white]{stem}[/]",
+            border_style=vc,
+            padding=(0, 1),
+        ))
+        con.print()
 
     # ── 2x2 plotext grid ──
     plt.clf()
@@ -233,6 +235,8 @@ def render_plots(stem, meta, diag, verdict, reasons, plot_width=80, plot_height=
     plt.xlabel("t (s)")
     plt.ylabel("E")
 
+    if not show:
+        return plt.build()
     plt.show()
     con.print()
 
@@ -264,6 +268,17 @@ def check_one(stem, plot_width=80, plot_height=16):
     render_plots(stem, meta, diag, verdict, reasons,
                  plot_width=plot_width, plot_height=plot_height)
     return verdict, reasons
+
+
+def build_one(stem, plot_width=80, plot_height=16):
+    """Build the 2x2 plotext grid for one clip as a string (no console output).
+    Returns (verdict, plot_str)."""
+    clean, meta = load_tracking(stem)
+    diag = compute_diagnostics(clean, stem)
+    verdict, reasons = compute_verdict(diag)
+    plot_str = render_plots(stem, meta, diag, verdict, reasons,
+                            plot_width=plot_width, plot_height=plot_height, show=False)
+    return verdict, plot_str
 
 
 def check_sweep(clips, on_pause=None):

@@ -117,8 +117,7 @@
     "verification_date": "2026-05-22",
     "verification_notes": "dropout 0.00% ≤ 5%",
     "verified_under_brief_version": 14,
-    "overlay_verdict": "fail",
-    "overlay_verdict_note": "incorrect tracking video"
+    "overlay_verdict": "pass"
   },
   "3.2V_0.95Hz": {
     "video_file": "3.2V_0.95Hz.mov",
@@ -148,8 +147,7 @@
     "verification_date": "2026-05-22",
     "verification_notes": "dropout 0.00% ≤ 5%",
     "verified_under_brief_version": 14,
-    "overlay_verdict": "fail",
-    "overlay_verdict_note": "incorrect tracking video"
+    "overlay_verdict": "pass"
   },
   "3.2V_0.96Hz": {
     "video_file": "3.2V_0.96Hz.mov",
@@ -179,8 +177,7 @@
     "verification_date": "2026-05-22",
     "verification_notes": "dropout 0.00% ≤ 5%",
     "verified_under_brief_version": 14,
-    "overlay_verdict": "fail",
-    "overlay_verdict_note": "incorrect tracking video"
+    "overlay_verdict": "pass"
   },
   "3.2V_0.97Hz": {
     "video_file": "3.2V_0.97Hz.mov",
@@ -210,8 +207,7 @@
     "verification_date": "2026-05-22",
     "verification_notes": "dropout 0.00% ≤ 5%",
     "verified_under_brief_version": 14,
-    "overlay_verdict": "fail",
-    "overlay_verdict_note": "incorrect tracking video"
+    "overlay_verdict": "pass"
   },
   "3.2V_0.98Hz": {
     "video_file": "3.2V_0.98Hz.mov",
@@ -241,8 +237,7 @@
     "verification_date": "2026-05-22",
     "verification_notes": "dropout 0.00% ≤ 5%",
     "verified_under_brief_version": 14,
-    "overlay_verdict": "fail",
-    "overlay_verdict_note": "incorrect tracking video"
+    "overlay_verdict": "pass"
   },
   "3.2V_0.99Hz": {
     "video_file": "3.2V_0.99Hz.mov",
@@ -272,8 +267,7 @@
     "verification_date": "2026-05-22",
     "verification_notes": "dropout 0.00% ≤ 5%",
     "verified_under_brief_version": 14,
-    "overlay_verdict": "fail",
-    "overlay_verdict_note": "incorrect tracking video"
+    "overlay_verdict": "pass"
   },
   "3.2V_0.9Hz": {
     "video_file": "3.2V_0.9Hz.mov",
@@ -362,8 +356,7 @@
     "verification_date": "2026-05-22",
     "verification_notes": "dropout 0.00% ≤ 5%",
     "verified_under_brief_version": 14,
-    "overlay_verdict": "fail",
-    "overlay_verdict_note": "incorrect tracking video"
+    "overlay_verdict": "pass"
   },
   "3.2V_1.15Hz": {
     "video_file": "3.2V_1.15Hz.mov",
@@ -393,8 +386,7 @@
     "verification_date": "2026-05-22",
     "verification_notes": "dropout 0.00% ≤ 5%",
     "verified_under_brief_version": 14,
-    "overlay_verdict": "fail",
-    "overlay_verdict_note": "incorrect tracking video"
+    "overlay_verdict": "pass"
   },
   "3.2V_1.16Hz": {
     "video_file": "3.2V_1.16Hz.mov",

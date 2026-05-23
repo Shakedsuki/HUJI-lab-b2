@@ -42,8 +42,8 @@ SCRIPT_LYAPUNOV    = os.path.join(REPO_ROOT, "scripts", "analysis", "lyapunov.py
 SCRIPT_DRIVEN_POIN = os.path.join(REPO_ROOT, "scripts", "analysis", "driven_poincare.py")
 SCRIPT_DRIVEN_BIF  = os.path.join(REPO_ROOT, "scripts", "analysis", "driven_bifurcation.py")
 SCRIPT_ROTATIONS   = os.path.join(REPO_ROOT, "scripts", "analysis", "rotations.py")
+SCRIPT_DIMENSION   = os.path.join(REPO_ROOT, "scripts", "analysis", "dimension.py")
 SCRIPT_OVERLAY     = os.path.join(REPO_ROOT, "scripts", "analysis", "overlay_video.py")
-SCRIPT_REPORT      = os.path.join(REPO_ROOT, "scripts", "utils", "generate_status_report.py")
 
 CLR_TRACK   = "green"
 CLR_ANALYZE = "yellow"
@@ -203,22 +203,21 @@ def render_hub(tracked, pending, expanded=True):
     header = hdr_tbl
 
     if expanded:
-        ct = _card("track", CLR_TRACK, [
-            ("tn","next"),("tp","pick & track"),("tb","bulk"),
-            ("ts","sanity"),("tv","verify"),("tr","re-track")])
-        ca = _card("analyze", CLR_ANALYZE, [("a","analyze"),("aq","quick insights")])
+        ct = _card("track", CLR_TRACK, [("t","track · status")])
+        ca = _card("analyze", CLR_ANALYZE, [
+            ("a","analyze"),("aq","quick insights"),("g","gallery"),
+            ("ai","bifurcation"),("ar","rotations")])
         r1 = Table(box=None, show_header=False, expand=True, padding=(0,1))
         r1.add_column(ratio=1); r1.add_column(ratio=1); r1.add_row(ct, ca)
 
         cf = _card("figures", CLR_FIGURES, [("fi","inventory · render")])
-        cv = _card("videos", CLR_VIDEOS, [("vw","render overlays"),("vr","review overlays"),("vc","1-by-1 pipeline"),("vi","inventory · render")])
+        cv = _card("videos", CLR_VIDEOS, [("vi","render · review")])
         ir = Table(box=None, show_header=False, expand=True, padding=(0,1))
         ir.add_column(ratio=1); ir.add_column(ratio=1); ir.add_row(cf, cv)
         co = Panel(ir, title="[bold]output[/]", border_style=CLR_OUTPUT, padding=(0,0), expand=True)
 
         # Bottom row: info + system + contact
         ic = Text.from_markup(
-            f" [{CLR_INFO} bold]s[/]  status   [{CLR_INFO} bold]e[/] export\n"
             f" [{CLR_INFO} bold]sw[/] switch   [{CLR_INFO} bold]p[/] paths\n"
             f" [{CLR_INFO} bold]c[/]  calibrate")
         sc = Text.from_markup(
@@ -237,38 +236,14 @@ def render_hub(tracked, pending, expanded=True):
         body = Group(header, Text(""), r1, co, r3)
     else:
         actions = Text.from_markup(
-            f"    [{CLR_TRACK} bold]t[/]  track          [dim]\u2192 tn tp tb ts tv tr[/]\n"
+            f"    [{CLR_TRACK} bold]t[/]  track          [dim]\u2192 track \u00b7 status table[/]\n"
             f"    [{CLR_ANALYZE} bold]a[/]  analyze        [dim]\u2192 c p l d r \u00b7 b s \u00b7 explore[/]\n"
-            f"    [{CLR_OUTPUT}]o[/]  output         [dim]\u2192 fi vw vr vc vi[/]\n"
+            f"    [{CLR_OUTPUT}]o[/]  output         [dim]\u2192 fi vi[/]\n"
             f"    [{CLR_INFO} bold]s[/]  info           [dim]\u2192 s e sw p[/]")
         footer = Text.from_markup("  [dim]q quit    h help    + expand[/]")
         body = Group(header, Text(""), actions, Text(""), footer)
 
     console.print(Panel(body, border_style="magenta", padding=(0,2), width=min(console.width, 76)))
-
-def render_status_panels(tracked, pending):
-    for wk, clips in _group_by_week(tracked + pending):
-        meta = WEEK_GROUPS.get(wk, {"label":"clips","desc":"","color":"white"})
-        gt = [c for c in clips if c["status"]!="pending"]
-        gv = [c for c in gt if c.get("quality")=="verified"]
-        gp = [c for c in clips if c["status"]=="pending"]
-        b = _bar(len(gv), len(gt), len(clips), 24)
-        leg = f"[green]{len(gv)} ver[/] [dim]\u00b7[/] [yellow]{len(gt)-len(gv)} trk[/] [dim]\u00b7 {len(gp)} pen[/]"
-        t = Table(box=None, show_header=False, padding=(0,1), expand=True)
-        t.add_column(justify="right",style="dim",width=4); t.add_column(style="white",min_width=18,ratio=1)
-        t.add_column(min_width=10); t.add_column(justify="right",width=7); t.add_column(justify="right",width=9)
-        for i, c in enumerate(clips, 1):
-            q, st = c.get("quality"), c.get("status","pending")
-            sc = "[yellow]pending[/]" if st=="pending" else "[green]verified[/]" if q=="verified" else f"[cyan]{q or 'tracked'}[/]"
-            dp = f"{c['dropout_pct']:.1f}%" if c.get("dropout_pct") is not None else "[dim]\u2014[/]"
-            du = f"{c['duration_s']:.1f}s" if c.get("duration_s") is not None else "[dim]\u2014[/]"
-            t.add_row(str(i), c["stem"], sc, dp, du)
-        ti = f"[bold]{meta['label']}[/]"
-        if meta["desc"]: ti += f" [dim]\u00b7 {meta['desc']}[/]"
-        ti += f" [dim]\u00b7[/] {len(gt)}[dim]/{len(clips)}[/]"
-        console.print(Panel(Group(Text.from_markup(f"  {b}  {leg}"), Text(""), t),
-            title=ti, border_style=meta["color"], padding=(0,1)))
-        console.print()
 
 # ── Pickers ──
 
@@ -342,93 +317,6 @@ def _pick_collapsible(clips, label, extra=None):
 def pick_clip(clips, label="Pick a clip"):
     return _pick_collapsible(clips, label)
 
-def pick_group(clips, label="Select scope", allow_multi=False):
-    """Collapsible scope picker: week groups start collapsed; Enter on a
-    header expands it to reveal 'all <week>' + individual clips. Returns a
-    list of stems, the sentinel ["__multi__"], or None."""
-    if not clips:
-        console.print("  [dim]No clips available.[/]"); return None
-    groups = _group_by_week(clips)
-    named = [wk for wk, _ in groups if WEEK_GROUPS.get(wk)]
-    expanded, default = set(), None
-    while True:
-        ch = [Choice("\u2190 back", value=BACK)]
-        if allow_multi:
-            ch.append(Choice(" \u2611 pick specific clips\u2026", value="__multi__"))
-        if len(named) < 2:
-            for wk, gc in groups:
-                for i, c in enumerate(gc):
-                    br = "\u2570\u2500" if i == len(gc) - 1 else "\u251c\u2500"
-                    ch.append(Choice(f" {br} {c['stem']}", value=c["stem"]))
-        else:
-            for wk, gc in groups:
-                m = WEEK_GROUPS.get(wk, {"label": wk or "clips", "desc": ""})
-                arrow = "\u25be" if wk in expanded else "\u25b8"
-                ch.append(Choice(f" {arrow} {m['label']} \u00b7 {m['desc']} ({len(gc)})",
-                                 value=f"__tg__{wk}"))
-                if wk in expanded:
-                    ch.append(Choice(f"     \u2261 all {m['label']} ({len(gc)})", value=f"__grp__{wk}"))
-                    for i, c in enumerate(gc):
-                        br = "\u2570\u2500" if i == len(gc) - 1 else "\u251c\u2500"
-                        ch.append(Choice(f"     {br} {c['stem']}", value=c["stem"]))
-        if len(clips) > 1:
-            ch.append(Choice(f" \u2261 everything ({len(clips)})", value="__all__"))
-        try:
-            r = questionary.select(label, choices=ch, style=_sty(), use_arrow_keys=True,
-                                   use_jk_keys=True, default=default).ask()
-        except KeyboardInterrupt: return None
-        if r is None or r == BACK: return None
-        if r == "__multi__": return ["__multi__"]
-        if r == "__all__": return [c["stem"] for c in clips]
-        if isinstance(r, str) and r.startswith("__tg__"):
-            wk = r[len("__tg__"):]
-            if wk in expanded: expanded.discard(wk)
-            else: expanded.add(wk)
-            default = r
-            continue
-        if isinstance(r, str) and r.startswith("__grp__"):
-            wk = r[len("__grp__"):]
-            return [c["stem"] for c in clips if c.get("week") == wk]
-        return [r]
-
-def _pick_multi(clips, preselect=None, label="Select clips to re-render (space toggles, enter confirms)"):
-    """Checkbox multi-select; preselect = set of stems to pre-check."""
-    if not clips:
-        console.print("  [dim]No clips available.[/]"); return None
-    preselect = preselect or set()
-    ch = []
-    for wk, gc in _group_by_week(clips):
-        m = WEEK_GROUPS.get(wk)
-        if m: ch.append(Separator(f"── {m['label']} · {m['desc']} ({len(gc)}) ──"))
-        for c in gc:
-            ch.append(Choice(c["stem"], value=c["stem"], checked=c["stem"] in preselect))
-    try:
-        r = questionary.checkbox(label, choices=ch, style=_sty()).ask()
-    except KeyboardInterrupt: return None
-    return r or None
-
-def _pick_render_count(total, has_existing=False):
-    choices = [
-        Choice(" 1  smoke test", value=1),
-        Choice(" n  custom batch", value=-1),
-        Choice(f" a  all {total} unrendered", value=total),
-    ]
-    if has_existing:
-        choices.append(Choice(" f  force re-render all", value=-2))
-    choices.append(Choice(" \u2190 back", value=0))
-    try:
-        r = questionary.select("How many to render?", choices=choices, style=_sty(),
-                               use_arrow_keys=True, use_jk_keys=True).ask()
-    except KeyboardInterrupt: return 0, False
-    if r is None: return 0, False
-    if r == -2: return -2, True  # force flag
-    if r == -1:
-        try:
-            n = int(input(f"  How many? (1-{total}): ").strip())
-            return max(1, min(n, total)), False
-        except (ValueError, EOFError, KeyboardInterrupt): return 0, False
-    return r, False
-
 def pick_or_sweep(clips, label="Sanity check"):
     return _pick_collapsible(clips, label, extra=[Choice("\u2261 sweep all", value=SWEEP)])
 
@@ -488,7 +376,9 @@ class _NavCtx:
 def navigate_table(build_rows, columns, *, title="", border_style="cyan",
                    key_actions=None, legend=None, hint=None,
                    empty_msg="Nothing here.", selected_bg="grey23",
-                   col_targets=None, col_actions=None, col_hint=None):
+                   col_targets=None, col_actions=None, col_hint=None,
+                   cell_targets=None, cell_actions=None, cell_hint=None,
+                   preview_fn=None):
     """Arrow-key navigable Rich table — land on the overview, drill into a row.
 
     Renders through rich.Live on the alternate screen, so arrow-key movement
@@ -513,7 +403,10 @@ def navigate_table(build_rows, columns, *, title="", border_style="cyan",
     Up/Down (k/j), PgUp/PgDn, Home/End, q/Esc are handled internally."""
     key_actions = key_actions or {}
     col_actions = col_actions or {}
+    cell_actions = cell_actions or {}
+    cell_targets = cell_targets or col_targets
     has_cols = bool(col_targets)
+    has_cells = bool(cell_targets)
     idx, cidx, mode = 0, 0, "row"
 
     def frame():
@@ -521,7 +414,8 @@ def navigate_table(build_rows, columns, *, title="", border_style="cyan",
         rows = build_rows()
         n = len(rows)
         idx = max(0, min(idx, n - 1)) if n else 0
-        if has_cols: cidx = max(0, min(cidx, len(col_targets) - 1))
+        _active = cell_targets if mode == "cell" else col_targets
+        if _active: cidx = max(0, min(cidx, len(_active) - 1))
         avail = max(5, console.height - 10)
         if n <= avail:
             lo, hi = 0, n
@@ -529,6 +423,7 @@ def navigate_table(build_rows, columns, *, title="", border_style="cyan",
             lo = max(0, min(idx - avail // 2, n - avail)); hi = lo + avail
         ncol = len(columns)
         sel_col = col_targets[cidx] if (has_cols and mode == "col") else None
+        cell_col = cell_targets[cidx] if (has_cells and mode == "cell") else None
         t = Table(box=box.SIMPLE, show_header=True, padding=(0, 1), expand=False)
         t.add_column(" ", width=2)
         for p, (header, _rf, kw) in enumerate(columns):
@@ -541,7 +436,11 @@ def navigate_table(build_rows, columns, *, title="", border_style="cyan",
             if lo > 0: t.add_row(" ", "[dim]↑…[/]", *[""] * (ncol - 1))
             for i in range(lo, hi):
                 cells = [rf(rows[i]) for _h, rf, _k in columns]
-                if mode == "row" and i == idx:
+                if mode == "cell" and i == idx:
+                    if cell_col is not None:
+                        cells[cell_col] = f"[bold black on bright_cyan]{cells[cell_col]}[/]"
+                    t.add_row("[bold cyan]▸[/]", *cells, style=f"on {selected_bg}")
+                elif mode == "row" and i == idx:
                     t.add_row("[bold cyan]▸[/]", *cells, style=f"on {selected_bg}")
                 else:
                     t.add_row(" ", *cells)
@@ -550,9 +449,21 @@ def navigate_table(build_rows, columns, *, title="", border_style="cyan",
         leg = _resolve(legend)
         if leg: body.append(Text.from_markup("  " + leg))
         panel = Panel(Group(*body), title=f"[bold]{_resolve(title)}[/]",
-                      border_style=border_style, padding=(0, 1))
-        h = _resolve(col_hint if (mode == "col" and col_hint) else hint)
-        renderable = Group(panel, Text.from_markup("  " + h)) if h else panel
+                      border_style=border_style, padding=(0, 1),
+                      expand=(preview_fn is None))
+        main = panel
+        if preview_fn is not None:
+            try: prev = preview_fn(rows[idx] if n else None)
+            except Exception: prev = None
+            if prev is not None:
+                lay = Table(box=None, show_header=False, expand=True, padding=(0, 1))
+                lay.add_column(); lay.add_column(ratio=1)
+                lay.add_row(panel, prev)
+                main = lay
+        if mode == "cell" and cell_hint: h = _resolve(cell_hint)
+        elif mode == "col" and col_hint:  h = _resolve(col_hint)
+        else:                             h = _resolve(hint)
+        renderable = Group(main, Text.from_markup("  " + h)) if h else main
         return rows, n, avail, renderable
 
     rows, n, avail, renderable = frame()
@@ -569,10 +480,19 @@ def navigate_table(build_rows, columns, *, title="", border_style="cyan",
                 elif key in ("right", "l"): cidx += 1
                 elif key in ("up", "k"): idx -= 1
                 elif key in ("down", "j"): idx += 1
-                elif key == "r": mode = "row"
+                elif key in ("r", "c"): mode = "row"
                 else:
                     act = col_actions.get(key)
                     if act and act(cidx, rows, ctx) == "quit": break
+            elif mode == "cell":
+                if key in ("left", "h"): cidx -= 1
+                elif key in ("right", "l"): cidx += 1
+                elif key in ("up", "k"): idx -= 1
+                elif key in ("down", "j"): idx += 1
+                elif key in ("r", "e"): mode = "row"
+                else:
+                    act = cell_actions.get(key)
+                    if act and act(rows[idx] if n else None, cidx, ctx) == "quit": break
             else:
                 if key in ("up", "k"): idx -= 1
                 elif key in ("down", "j"): idx += 1
@@ -580,7 +500,8 @@ def navigate_table(build_rows, columns, *, title="", border_style="cyan",
                 elif key == "end": idx = n - 1
                 elif key == "pageup": idx -= avail
                 elif key == "pagedown": idx += avail
-                elif has_cols and key == "c": mode = "col"
+                elif has_cols and key == "c": mode = "col"; cidx = 0
+                elif has_cells and key == "e": mode = "cell"; cidx = 0
                 elif has_cols and key == "r": pass
                 else:
                     act = key_actions.get(key)
@@ -629,28 +550,17 @@ def _sub(title, actions):
     except (EOFError, KeyboardInterrupt): return None
     return k if k else None
 
-def sub_track(tr, pe):
-    k = _sub("track", [("tn","next","first pending",CLR_TRACK),("tp","pick","arrow-key",CLR_TRACK),
-        ("tb","bulk","batch all",CLR_TRACK),("ts","sanity","check/sweep",CLR_TRACK),
-        ("tv","verify","re-verify",CLR_TRACK),("tr","re-track","force redo",CLR_TRACK)])
-    if not k: return
-    {"tn":lambda:do_tn(pe),"tp":lambda:do_tp(pe),"tb":do_tb,
-     "ts":lambda:do_ts(tr),"tv":lambda:do_tv(tr),"tr":lambda:do_tr(tr)}.get(k[:2],lambda:None)()
-
 def sub_output(tr, pe):
     k = _sub("output", [("fi","figures","inventory · render",CLR_FIGURES),
-        ("vw","render overlays","group",CLR_VIDEOS),("vr","review overlays","verdict table",CLR_VIDEOS),
-        ("vc","1-by-1 pipeline","render + review",CLR_VIDEOS),("vi","videos","inventory · render",CLR_VIDEOS)])
+        ("vi","videos","render · review · inventory",CLR_VIDEOS)])
     if not k: return
-    {"fi":lambda:do_fi(tr),
-     "vw":lambda:do_vw(tr),"vr":lambda:do_vr(tr),"vc":lambda:do_vc(tr),"vi":lambda:do_vi(tr)}.get(k[:2],lambda:None)()
+    {"fi":lambda:do_fi(tr),"vi":lambda:do_vi(tr)}.get(k[:2],lambda:None)()
 
 def sub_info(tr, pe):
-    k = _sub("info", [("s","status","panels",CLR_INFO),("e","export","xlsx",CLR_INFO),
-        ("sw","switch","phase",CLR_INFO),("p","paths","config",CLR_INFO),
-        ("c","calibration","pivot & arm",CLR_INFO)])
+    k = _sub("info", [("sw","switch","phase",CLR_INFO),
+        ("p","paths","config",CLR_INFO),("c","calibration","pivot & arm",CLR_INFO)])
     if not k: return
-    {"s":lambda:do_s(tr,pe),"e":do_e,"sw":do_w,"p":do_p,"c":do_c}.get(k,lambda:None)()
+    {"sw":do_w,"p":do_p,"c":do_c}.get(k,lambda:None)()
 
 # ── Actions ──
 
@@ -662,57 +572,100 @@ def _pause():
     try: questionary.press_any_key_to_continue("press any key to return...").ask()
     except KeyboardInterrupt: pass
 
-# Track
-def do_tn(pe):
-    if not pe: console.print("  [green]Nothing pending.[/]"); _pause(); return
-    s=pe[0]["stem"]; console.print(f"  [bold]Tracking:[/] {s}\n")
-    _run(SCRIPT_TRACK_ONE,"--stem",s); _log_activity(f"tracked {s}"); _pause()
-def do_tp(pe):
-    s=pick_p(pe); 
-    if not s: return
-    console.print(f"  [bold]Tracking:[/] {s}\n"); _run(SCRIPT_TRACK_ONE,"--stem",s); _pause()
-def do_tb(): _run(SCRIPT_BULK); _log_activity("bulk done"); _pause()
-def do_ts(tr):
-    r=pick_or_sweep(tr,"Sanity check")
-    if not r: return
-    sys.path.insert(0,os.path.join(REPO_ROOT,"scripts","analysis"))
-    if r==SWEEP:
-        from sanity_check import check_sweep
-        def on_p(stem,v,reasons):
-            has_vid = _has_overlay(stem)
-            console.print()
-            if has_vid:
-                console.print(f"  [yellow bold]\u2192 overlay video available for inspection[/]")
-                console.print("  [bold]v[/] open overlay   [bold]a[/] accept   [bold]n[/] next   [bold]q[/] quit")
-            else:
-                console.print("  [bold]a[/] accept   [bold]n[/] next   [bold]q[/] quit   [dim](no overlay \u2014 run vw to render)[/]")
-            while True:
-                try: k=input("  \u25b8 ").strip().lower()
-                except: return "q"
-                if not k: return "n"
-                if k[0]=="v" and has_vid:
-                    try: _open_file(_overlay_path(stem))
-                    except: console.print("  [red]Could not open video[/]")
-                    console.print("  [bold]a[/] accept   [bold]n[/] next   [bold]q[/] quit")
-                    continue
-                return k[0]
-        console.print(); res=check_sweep(tr,on_pause=on_p)
-        nc=sum(1 for _,v in res if v=="CLEAN"); nw=sum(1 for _,v in res if v in("WARN","REVIEW"))
-        console.print(); console.print(f"  [green]{nc} clean[/]  [yellow]{nw} flagged[/]  [dim]{len(res)} total[/]")
-        _log_activity(f"sanity: {nc} clean, {nw} flagged")
-    else:
-        from sanity_check import check_one
-        try: check_one(r)
-        except Exception as e: console.print(f"  [red]ERROR:[/] {e}")
-    _pause()
-def do_tv(tr):
-    s=pick_t(tr,"Verify"); 
-    if not s: return
-    _run(SCRIPT_VERIFY,"--stem",s); _log_activity(f"verified {s}"); _pause()
-def do_tr(tr):
-    s=pick_t(tr,"Re-track"); 
-    if not s: return
-    console.print(f"  [bold]Re-tracking:[/] {s}\n"); _run(SCRIPT_TRACK_ONE,"--stem",s,"--force"); _pause()
+# Track + status
+def do_t(tr, pe):
+    """Track + status — one table over all clips. Row keys act on the highlighted
+    clip: t track / re-track, v verify, s sanity, o overlay. b = bulk-track all
+    pending. Filters: 1 all · 2 pending · 3 tracked."""
+    state = {"filter": "all"}
+    def build_rows():
+        tr2, pe2 = get_clips()
+        rows = [{"stem": c["stem"], "status": c["status"],
+                 "dropout": c.get("dropout_pct"), "dur": c.get("duration_s")}
+                for c in (tr2 + pe2)]
+        f = state["filter"]
+        if f == "pending":    rows = [r for r in rows if r["status"] == "pending"]
+        elif f == "tracked":  rows = [r for r in rows if r["status"] != "pending"]
+        elif f == "verified": rows = [r for r in rows if r["status"] == "verified"]
+        for k, r in enumerate(rows, 1): r["_n"] = k
+        return rows
+    def _scell(r):
+        s = r["status"]
+        if s == "pending":  return "[yellow]pending[/]"
+        if s == "verified": return "[green]verified[/]"
+        return f"[cyan]{s}[/]"
+    def _pct(r): return f"{r['dropout']:.1f}%" if r["dropout"] is not None else "[dim]—[/]"
+    def _dur(r): return f"{r['dur']:.1f}s" if r["dur"] is not None else "[dim]—[/]"
+    columns = [
+        ("#",       lambda r: str(r["_n"]), dict(justify="right", width=3, style="dim")),
+        ("clip",    lambda r: r["stem"],    dict(min_width=16, no_wrap=True)),
+        ("status",  _scell,                 dict(width=9)),
+        ("dropout", _pct,                   dict(justify="right", width=8)),
+        ("dur",     _dur,                   dict(justify="right", width=7)),
+    ]
+    def legend():
+        tr2, pe2 = get_clips()
+        nv = sum(1 for c in tr2 if c.get("quality") == "verified")
+        return (f"[green]{nv} verified[/]  [cyan]{len(tr2) - nv} tracked[/]  [yellow]{len(pe2)} pending[/]"
+                f"   [dim]·[/]   filter: [bold]{state['filter']}[/]")
+    hint = ("[dim]↑↓[/] [bold]t[/] track/re-track   [bold]v[/] verify   [bold]s[/] sanity   "
+            "[bold]o[/] overlay   [bold]b[/] bulk-pending   [bold]1[/]/[bold]2[/]/[bold]3[/] filter   [bold]q[/] back")
+    def act_track(row, rows, i, ctx):
+        if not row: return
+        stem = row["stem"]
+        if row["status"] == "pending":
+            _do_suspended(ctx, lambda: _run(SCRIPT_TRACK_ONE, "--stem", stem)); _log_activity(f"tracked {stem}")
+        else:
+            _do_suspended(ctx, lambda: _run(SCRIPT_TRACK_ONE, "--stem", stem, "--force"),
+                          confirm=f"Re-track [bold]{stem}[/]? Overwrites existing tracking.")
+    def act_verify(row, rows, i, ctx):
+        if row and row["status"] != "pending":
+            _do_suspended(ctx, lambda: _run(SCRIPT_VERIFY, "--stem", row["stem"])); _log_activity(f"verified {row['stem']}")
+    def act_sanity(row, rows, i, ctx):
+        if not row: return
+        def work():
+            sys.path.insert(0, os.path.join(REPO_ROOT, "scripts", "analysis"))
+            from sanity_check import check_one
+            try: check_one(row["stem"])
+            except Exception as e: console.print(f"  [red]ERROR:[/] {e}")
+        _do_suspended(ctx, work)
+    def act_open(row, rows, i, ctx):
+        if row and _has_overlay(row["stem"]):
+            try: _open_file(_overlay_path(row["stem"]))
+            except Exception: pass
+    def act_bulk(row, rows, i, ctx):
+        _, pe2 = get_clips()
+        if not pe2:
+            _do_suspended(ctx, lambda: console.print("  [green]Nothing pending.[/]")); return
+        def work(): _run(SCRIPT_BULK); _log_activity("bulk done")
+        _do_suspended(ctx, work, confirm=f"Bulk-track all [bold]{len(pe2)}[/] pending clips?")
+    def mkfilter(val):
+        def _f(row, rows, i, ctx): state["filter"] = val; return "top"
+        return _f
+    pcache = {}
+    def preview(row):
+        if not row: return None
+        stem = row["stem"]
+        if stem not in pcache:
+            ph = max(6, (console.height - 28) // 2)
+            pw = max(44, console.width - 78)
+            try:
+                sys.path.insert(0, os.path.join(REPO_ROOT, "scripts", "analysis"))
+                from sanity_check import build_one
+                verdict, txt = build_one(stem, plot_width=pw, plot_height=ph)
+                pcache[stem] = (verdict, Text.from_ansi(txt))
+            except Exception as e:
+                pcache[stem] = ("?", Text.from_markup(f"[red]sanity unavailable:[/] {e}"))
+        verdict, ptxt = pcache[stem]
+        vc = {"CLEAN": "green", "WARN": "yellow", "REVIEW": "red"}.get(verdict, "dim")
+        return Panel(ptxt, title=f"[bold]sanity[/] [dim]·[/] [{vc}]{verdict}[/]",
+                     border_style=CLR_TRACK, padding=(0, 1))
+    navigate_table(build_rows, columns, title="track · status", border_style=CLR_TRACK,
+                   legend=legend, hint=hint, empty_msg="No clips match this filter.", preview_fn=preview,
+                   key_actions={"t": act_track, "v": act_verify, "s": act_sanity, "o": act_open,
+                                "b": act_bulk,
+                                "1": mkfilter("all"), "2": mkfilter("pending"), "3": mkfilter("tracked")})
+    _log_activity("track/status")
 
 # Analyze
 ANALYZE_TYPES = [
@@ -721,11 +674,13 @@ ANALYZE_TYPES = [
     ("lyapunov",      "lyap",   "lyapunov"),
     ("driven",        "driven", "driven poincar\u00e9"),
     ("rotations",     "rot",    "rotations"),
+    ("dimension",     "dim",    "fractal dimension"),
 ]
 
 def _analyze_exists(tn, stem):
     if tn == "driven":    return os.path.isfile(os.path.join(clip_dir(stem), "driven_poincare.csv"))
     if tn == "rotations": return os.path.isfile(os.path.join(clip_dir(stem), "rotations.json"))
+    if tn == "dimension": return os.path.isfile(os.path.join(clip_dir(stem), "dimension.json"))
     return _fig_exists(tn, stem)
 
 def do_a(tr):
@@ -747,6 +702,8 @@ def do_a(tr):
         if row: _runclip(ctx, SCRIPT_DRIVEN_POIN, "--stem", row["stem"])
     def act_rot(row, rows, i, ctx):
         if row: _runclip(ctx, SCRIPT_ROTATIONS, "--stem", row["stem"]); _log_activity(f"rotations {row['stem']}")
+    def act_dim(row, rows, i, ctx):
+        if row: _runclip(ctx, SCRIPT_DIMENSION, "--stem", row["stem"]); _log_activity(f"dimension {row['stem']}")
     def act_explore(row, rows, i, ctx):
         if not row: return
         sys.path.insert(0, os.path.join(REPO_ROOT, "scripts", "analysis"))
@@ -760,12 +717,12 @@ def do_a(tr):
         _do_suspended(ctx, work, confirm="Run [bold]rotations sweep[/] across the 3.2V family?")
     def toggle_gaps(row, rows, i, ctx):
         fstate["gaps"] = not fstate["gaps"]; return "top"
-    hint = ("[dim]\u2191\u2193[/] run [bold]c[/]haos [bold]p[/]oinc [bold]l[/]yap [bold]d[/]riven [bold]r[/]ot   "
+    hint = ("[dim]\u2191\u2193[/] run [bold]c[/]haos [bold]p[/]oinc [bold]l[/]yap [bold]d[/]riven [bold]r[/]ot [bold]f[/]rac   "
             "[bold]\u21b5[/] explore   [bold]b[/] bif-sweep [bold]s[/] rot-sweep   "
             "[bold]g[/] gaps   [bold]q[/] back")
     _inventory_nav(tr, "analyze", CLR_ANALYZE, ANALYZE_TYPES, _analyze_exists,
                    key_actions={"c": act_chaos, "p": act_poin, "l": act_lyap,
-                                "d": act_driven, "r": act_rot,
+                                "d": act_driven, "r": act_rot, "f": act_dim,
                                 "enter": act_explore, "x": act_explore,
                                 "b": act_bif, "s": act_rotsweep, "g": toggle_gaps},
                    hint=hint, fstate=fstate)
@@ -794,6 +751,115 @@ def do_aq(tr):
                    hint="[dim]↑↓[/] move   [bold]↵[/] explore clip   [bold]q[/] back",
                    key_actions={"enter": act_explore, "x": act_explore})
 
+def do_gallery(tr):
+    """Gallery — clips on the left; the right pane fills with as many
+    quick-insights plots as fit for the highlighted clip."""
+    if not tr:
+        console.print("  [dim]No tracked clips.[/]"); _pause(); return
+    def build_rows():
+        rows = [{"stem": c["stem"]} for c in tr]
+        for k, r in enumerate(rows, 1): r["_n"] = k
+        return rows
+    columns = [
+        ("#",    lambda r: str(r["_n"]), dict(justify="right", width=3, style="dim")),
+        ("clip", lambda r: r["stem"],    dict(min_width=15, no_wrap=True)),
+    ]
+    pcache = {}
+    def preview(row):
+        if not row: return None
+        stem = row["stem"]
+        if stem not in pcache:
+            pw = max(48, console.width - 32)
+            mh = max(12, console.height - 6)
+            try:
+                sys.path.insert(0, os.path.join(REPO_ROOT, "scripts", "analysis"))
+                from quick_insights import build_gallery
+                txt = build_gallery(stem, width=pw - 4, plot_height=10, max_height=mh)
+                pcache[stem] = Text.from_ansi(txt) if txt else Text.from_markup("[dim]no plots[/]")
+            except Exception as e:
+                pcache[stem] = Text.from_markup(f"[red]gallery unavailable:[/] {e}")
+        return Panel(pcache[stem], title=f"[bold]gallery[/] [dim]·[/] {row['stem']}",
+                     border_style=CLR_ANALYZE, padding=(0, 1))
+    navigate_table(build_rows, columns, title="gallery", border_style=CLR_ANALYZE,
+                   legend="[dim]quick-insights plot wall — ↑↓ to change clip[/]",
+                   hint="[dim]↑↓[/] move   [bold]q[/] back", preview_fn=preview)
+    _log_activity("gallery")
+
+def do_ai():
+    """Bifurcation — driven sweep (θ₁ vs drive voltage) across the family."""
+    if not _ask_confirm("Run [bold]bifurcation sweep[/] (vd) across the family?"):
+        return
+    _run(SCRIPT_DRIVEN_BIF, "--sweep", "vd"); _log_activity("bifurcation sweep"); _pause()
+
+def do_ar(tr):
+    """Rotations — per-arm winding metrics across all clips (read from each
+    clip's rotations.json). Row keys: c/↵ compute this clip, o open its figure;
+    a recomputes every clip + the sweep aggregate."""
+    if not tr:
+        console.print("  [dim]No tracked clips.[/]"); _pause(); return
+    state = {"filter": "all"}
+    def _load(stem):
+        p = os.path.join(clip_dir(stem), "rotations.json")
+        if not os.path.isfile(p): return None
+        try:
+            with open(p, encoding="utf-8") as f: return json.load(f)
+        except Exception: return None
+    def build_rows():
+        rows = []
+        for c in tr:
+            r = _load(c["stem"])
+            arms = (r or {}).get("arms", {})
+            susp = any((arms.get(a) or {}).get("suspect") for a in arms)
+            rows.append({"stem": c["stem"], "arms": arms, "has": r is not None, "susp": susp})
+        f = state["filter"]
+        if f == "suspect":   rows = [r for r in rows if r["susp"]]
+        elif f == "missing": rows = [r for r in rows if not r["has"]]
+        for k, r in enumerate(rows, 1): r["_n"] = k
+        return rows
+    def _net(r, arm):
+        m = r["arms"].get(arm); return f"{m['net_turns']:+.2f}" if m else "[dim]—[/]"
+    def _loops(r, arm):
+        m = r["arms"].get(arm); return f"{m['total_turns']:.0f}" if m else "[dim]—[/]"
+    columns = [
+        ("#",       lambda r: str(r["_n"]),         dict(justify="right", width=3, style="dim")),
+        ("clip",    lambda r: r["stem"],            dict(min_width=15, no_wrap=True)),
+        ("θ1 net",  lambda r: _net(r, "upper"),     dict(justify="right")),
+        ("θ1 ↻",    lambda r: _loops(r, "upper"),   dict(justify="right", style="bold")),
+        ("θ2 net",  lambda r: _net(r, "lower_abs"), dict(justify="right")),
+        ("θ2 ↻",    lambda r: _loops(r, "lower_abs"),dict(justify="right", style="bold")),
+        ("rel net", lambda r: _net(r, "lower_rel"), dict(justify="right")),
+        ("rel ↻",   lambda r: _loops(r, "lower_rel"),dict(justify="right")),
+        ("susp",    lambda r: "[yellow]⚠[/]" if r["susp"] else "", dict(justify="center", width=4)),
+    ]
+    def legend():
+        nh = sum(1 for c in tr if _load(c["stem"]))
+        return (f"[dim]{nh}/{len(tr)} computed[/]   [dim]·  ↻ = completed loops[/]"
+                f"   [dim]·[/]   filter: [bold]{state['filter']}[/]")
+    hint = ("[dim]↑↓[/] [bold]c[/]/[bold]↵[/] compute   [bold]o[/] figure   [bold]a[/] recompute all + sweep   "
+            "[bold]1[/]/[bold]2[/]/[bold]3[/] all·suspect·missing   [bold]q[/] back")
+    def act_compute(row, rows, i, ctx):
+        if row:
+            _do_suspended(ctx, lambda: _run(SCRIPT_ROTATIONS, "--stem", row["stem"]))
+            _log_activity(f"rotations {row['stem']}")
+    def act_fig(row, rows, i, ctx):
+        if not row: return
+        from paths import FIGURES_DIR
+        p = os.path.join(FIGURES_DIR, "rotations", f"{row['stem']}_rotations.png")
+        if os.path.isfile(p):
+            try: _open_file(p)
+            except Exception: pass
+    def act_all(row, rows, i, ctx):
+        def work(): _run(SCRIPT_ROTATIONS, "--sweep"); _log_activity("rotations sweep")
+        _do_suspended(ctx, work, confirm=f"Recompute rotations + sweep across all {len(tr)} clips?")
+    def mkfilter(val):
+        def _f(row, rows, i, ctx): state["filter"] = val; return "top"
+        return _f
+    navigate_table(build_rows, columns, title="rotations · winding", border_style=CLR_ANALYZE,
+                   legend=legend, hint=hint, empty_msg="No clips match this filter.",
+                   key_actions={"c": act_compute, "enter": act_compute, "o": act_fig, "a": act_all,
+                                "1": mkfilter("all"), "2": mkfilter("suspect"), "3": mkfilter("missing")})
+    _log_activity("rotations")
+
 # ── Inventory (navigable clip × type matrix) ──
 def _fig_exists(ftype, stem):
     from paths import FIGURES_DIR
@@ -806,11 +872,12 @@ def _vid_exists(vtype, stem):
     return os.path.isfile(os.path.join(ANIMATIONS_DIR, vtype, f"{stem}_{vtype}.mp4"))
 
 def _inventory_nav(tr, title, color, types, exists_fn, *, key_actions, hint, fstate,
-                   on_col=None, on_col_force=None, col_hint=None):
+                   on_col=None, on_col_force=None, col_hint=None,
+                   on_view=None, cell_hint=None):
     """Navigable clip×type matrix. fstate is a mutable {'gaps': bool} filter.
-    Passing on_col(type_tuple, ctx) enables column mode ('c' to enter): ←→ pick a
-    type column, enter batches that type across all clips; on_col_force is the
-    --force variant ('f' in column mode)."""
+    on_col(type_tuple, ctx) enables column mode ('c'): ←→ pick a type column, enter
+    batches it across all clips (on_col_force = 'f'). on_view(stem, type_tuple, ctx)
+    enables cell mode ('e'): ↑↓←→ pick one cell, 'v' views that file."""
     def build_rows():
         rows = []
         for c in tr:
@@ -831,9 +898,10 @@ def _inventory_nav(tr, title, color, types, exists_fn, *, key_actions, hint, fst
                  for tn, short, _d in types]
         flt = "   [dim]·[/]   filter: [bold]gaps[/]" if fstate.get("gaps") else ""
         return "   ".join(parts) + flt
-    col_targets = col_actions = None
-    if on_col:
+    col_targets = col_actions = cell_actions = None
+    if on_col or on_view:
         col_targets = list(range(2, 2 + len(types)))   # the type columns, after #, clip
+    if on_col:
         def col_enter(cpos, rows, ctx): on_col(types[cpos], ctx)
         col_actions = {"enter": col_enter}
         if on_col_force:
@@ -843,10 +911,18 @@ def _inventory_nav(tr, title, color, types, exists_fn, *, key_actions, hint, fst
             col_hint = ("[bold cyan]column mode[/]   [dim]←→[/] pick type   [bold]↵[/] batch all clips"
                         + ("   [bold]f[/] force" if on_col_force else "")
                         + "   [bold]r[/] row mode   [bold]q[/] back")
+    if on_view:
+        def cell_view(row, cpos, ctx):
+            if row: on_view(row["stem"], types[cpos], ctx)
+        cell_actions = {"v": cell_view, "enter": cell_view}
+        if cell_hint is None:
+            cell_hint = ("[bold cyan]cell mode[/]   [dim]↑↓←→[/] pick cell   [bold]↵[/]/[bold]v[/] view file   "
+                         "[bold]e[/]/[bold]r[/] row mode   [bold]q[/] back")
     navigate_table(build_rows, columns, title=title, border_style=color,
                    key_actions=key_actions, legend=legend, hint=hint,
                    empty_msg="No clips match this filter.",
-                   col_targets=col_targets, col_actions=col_actions, col_hint=col_hint)
+                   col_targets=col_targets, col_actions=col_actions, col_hint=col_hint,
+                   cell_actions=cell_actions, cell_hint=cell_hint)
 
 # Figures
 FIG_TYPES = [
@@ -857,6 +933,7 @@ FIG_TYPES = [
     ("lyapunov",            "lyap",   "lyapunov"),
     ("seismograph_v1",      "seis1",  "seismograph v1 (spiral)"),
     ("seismograph_v2",      "seis2",  "seismograph v2 (ripple)"),
+    ("dimension",           "dim",    "fractal dimension"),
 ]
 
 def _pick_figtype(label="Figure type"):
@@ -900,12 +977,20 @@ def do_fi(tr):
     def col_force(t, ctx):
         _do_suspended(ctx, lambda: _run(SCRIPT_BATCH_FIGS, "--types", t[0], "--force"),
             confirm=f"[red]Force re-render[/] [bold]{t[2]}[/] for all {len(tr)} clips?  [dim]overwrites existing[/]")
-    hint = ("[dim]↑↓[/] move   [bold]↵[/] render clip   [bold]c[/] column mode   "
-            "[bold]o[/] one type   [bold]a[/] all   [bold]f[/] force   [bold]g[/] gaps   [bold]q[/] back")
+    def view_fig(stem, t, ctx):
+        from paths import FIGURES_DIR
+        path = os.path.join(FIGURES_DIR, t[0], f"{stem}_{t[0]}.png")
+        if os.path.isfile(path):
+            try: _open_file(path)
+            except Exception: pass
+            _log_activity(f"view {t[1]}/{stem}")
+    hint = ("[dim]↑↓[/] [bold]↵[/] render   [bold]c[/] columns   [bold]e[/] cells   "
+            "[bold]o[/] one-type   [bold]a[/] all   [bold]f[/] force   [bold]g[/] gaps   [bold]q[/] back")
     _inventory_nav(tr, "figures inventory", CLR_FIGURES, FIG_TYPES, _fig_exists,
                    key_actions={"enter": render_clip, "f": force_clip,
                                 "o": one_type, "a": fill_all, "g": toggle_gaps},
-                   hint=hint, fstate=fstate, on_col=col_batch, on_col_force=col_force)
+                   hint=hint, fstate=fstate, on_col=col_batch, on_col_force=col_force,
+                   on_view=view_fig)
 
 # Videos
 VIDEO_TYPES = [
@@ -916,47 +1001,142 @@ VIDEO_TYPES = [
 ]
 
 def do_vi(tr):
-    """Videos inventory — row mode renders a clip's videos; column mode (c)
-    batches a video type across all clips."""
+    """Videos — the one videos table. Row mode renders & reviews the highlighted
+    clip's overlay (o = render-if-missing then open; p/f/x verdict) and combined
+    video (m). Column mode (c) batch-renders a video type across all clips.
+    Filters walk the render→review pipeline: 2 = awaiting review, 3 = no overlay."""
     if not tr:
         console.print("  [dim]No tracked clips.[/]"); _pause(); return
-    fstate = {"gaps": False}
-    def render_overlay(row, rows, i, ctx):
-        if row:
-            _do_suspended(ctx, lambda: _render_overlay(row["stem"]))
-            _log_activity(f"overlay/{row['stem']}")
-    def render_combined(row, rows, i, ctx):
-        if row:
-            _do_suspended(ctx, lambda: _run(SCRIPT_COMBINED, "--stem", row["stem"]))
-    def render_all(row, rows, i, ctx):
-        def work(): _run(SCRIPT_BATCH_FIGS, "--video"); _log_activity("videos: all")
-        _do_suspended(ctx, work, confirm=f"Render [bold]all video types[/] for all {len(tr)} clips?")
-    def force_all(row, rows, i, ctx):
-        _do_suspended(ctx, lambda: _run(SCRIPT_BATCH_FIGS, "--video", "--force"),
-            confirm=f"[red]Force re-render[/] all videos for all {len(tr)} clips?  [dim]overwrites existing[/]")
-    def toggle_gaps(row, rows, i, ctx):
-        fstate["gaps"] = not fstate["gaps"]; return "top"
+    state = {"filter": "all"}
+    COL_TYPES = ["overlay", "combined", "phase_animation", "phase_3d_rotation"]
+    def _note_for(stem, reg):
+        for e in reg.values():
+            if e.get("config_description") == stem:
+                return e.get("overlay_verdict_note")
+        return None
+    def build_rows():
+        reg = load_registry()
+        rows = []
+        for c in tr:
+            s = c["stem"]
+            rows.append({"stem": s, "ov": _has_overlay(s),
+                         "verdict": _get_verdict(s, reg), "note": _note_for(s, reg),
+                         "comb": _vid_exists("combined", s),
+                         "anim": _vid_exists("phase_animation", s),
+                         "rot3d": _vid_exists("phase_3d_rotation", s)})
+        f = state["filter"]
+        if f == "review":     rows = [r for r in rows if r["ov"] and r["verdict"] is None]
+        elif f == "norender": rows = [r for r in rows if not r["ov"]]
+        for k, r in enumerate(rows, 1): r["_n"] = k
+        return rows
+    def _vcell(r):
+        if r["verdict"] == "pass": return "[green]pass[/]"
+        if r["verdict"] == "fail": return "[red]fail[/]"
+        if r["ov"]: return "[yellow]pending[/]"
+        return "[dim]—[/]"
+    def _ck(key): return lambda r: "[green]✓[/]" if r[key] else "[dim]·[/]"
+    columns = [
+        ("#",       lambda r: str(r["_n"]), dict(justify="right", width=3, style="dim")),
+        ("clip",    lambda r: r["stem"],    dict(min_width=16, no_wrap=True)),
+        ("overlay", lambda r: "[green]✓[/]" if r["ov"] else "[dim]—[/]", dict(justify="center")),
+        ("verdict", _vcell,                 dict(width=8)),
+        ("comb",    _ck("comb"),            dict(justify="center")),
+        ("anim",    _ck("anim"),            dict(justify="center")),
+        ("3d-rot",  _ck("rot3d"),           dict(justify="center")),
+        ("note",    lambda r: r["note"] or "", dict(style="dim", no_wrap=True, overflow="ellipsis", max_width=22)),
+    ]
+    col_targets = [2, 4, 5, 6]       # column mode batches renderable types
+    cell_targets = [2, 3, 4, 5, 6]   # cell mode also lands on verdict (enter toggles it)
+    CELL_COLS = ["overlay", "__verdict__", "combined", "phase_animation", "phase_3d_rotation"]
+    def legend():
+        reg = load_registry()
+        ov = [_has_overlay(c["stem"]) for c in tr]
+        vd = [_get_verdict(c["stem"], reg) for c in tr]
+        npa = sum(1 for v in vd if v == "pass"); nfa = sum(1 for v in vd if v == "fail")
+        npe = sum(1 for o, v in zip(ov, vd) if o and v is None); nno = sum(1 for o in ov if not o)
+        return (f"[green]{npa} pass[/]  [red]{nfa} fail[/]  [yellow]{npe} to review[/]  "
+                f"[dim]{nno} no overlay[/]   [dim]·[/]   filter: [bold]{state['filter']}[/]")
+    hint = ("[dim]↑↓[/] [bold]o[/]/[bold]↵[/] review   [green bold]p[/]ass [red bold]f[/]ail [bold]x[/] clear   "
+            "[bold]m[/] combined   [bold]c[/] cols   [bold]e[/] cells   [bold]1[/]/[bold]2[/]/[bold]3[/] filter   [bold]q[/] back")
+    col_hint = ("[bold cyan]column mode[/]   [dim]←→[/] pick type   [bold]↵[/] batch all clips   "
+                "[bold]f[/] force   [bold]r[/] row mode   [bold]q[/] back")
+    def act_review(row, rows, i, ctx):
+        if not row: return
+        def work():
+            if not _has_overlay(row["stem"]):
+                console.print(f"  [dim]rendering overlay for {row['stem']}…[/]")
+                _render_overlay(row["stem"])
+            mp4 = _overlay_path(row["stem"])
+            if os.path.isfile(mp4):
+                try: _open_file(mp4)
+                except Exception: pass
+                console.print(f"  [bold {CLR_VIDEOS}]{row['stem']}[/] — opened; mark [green]p[/]ass / [red]f[/]ail in the table")
+            else:
+                console.print("  [red]overlay render failed[/]")
+        _do_suspended(ctx, work)
+        _log_activity(f"review {row['stem']}")
+    def act_pass(row, rows, i, ctx):
+        if row and row["ov"]: _set_verdict(row["stem"], "pass"); return "advance"
+    def act_fail(row, rows, i, ctx):
+        if not (row and row["ov"]): return
+        def ask():
+            console.print(f"\n  [red]fail[/] {row['stem']} — reason (optional):")
+            try: return input("  ▸ ").strip() or None
+            except (EOFError, KeyboardInterrupt): return None
+        _set_verdict(row["stem"], "fail", ctx.suspend(ask)); return "advance"
+    def act_clear(row, rows, i, ctx):
+        if row: _set_verdict(row["stem"], None)
+    def act_combined(row, rows, i, ctx):
+        if row: _do_suspended(ctx, lambda: _run(SCRIPT_COMBINED, "--stem", row["stem"]))
+    def mkfilter(val):
+        def _f(row, rows, i, ctx): state["filter"] = val; return "top"
+        return _f
     def _col_videos(tn, force):
-        # 'overlay' is rendered per-stem by overlay_video.py (not in batch_figures' suite)
+        # 'overlay' is per-stem via overlay_video.py (not in batch_figures' suite)
         if tn == "overlay":
             tgt = [c["stem"] for c in tr] if force else [c["stem"] for c in tr if not _has_overlay(c["stem"])]
             if not tgt: console.print("  [dim]All overlays already rendered.[/]"); return
             for s in tgt: _render_overlay(s)
         else:
             _run(SCRIPT_BATCH_FIGS, "--video", "--types", tn, *(["--force"] if force else []))
-    def col_batch(t, ctx):
-        def work(): _col_videos(t[0], False); _log_activity(f"videos col {t[1]}")
-        _do_suspended(ctx, work, confirm=f"Create [bold]{t[2]}[/] for all {len(tr)} clips?")
-    def col_force(t, ctx):
-        _do_suspended(ctx, lambda: _col_videos(t[0], True),
-            confirm=f"[red]Force re-render[/] [bold]{t[2]}[/] for all {len(tr)} clips?  [dim]overwrites existing[/]")
-    hint = ("[dim]↑↓[/] move   [bold]↵/o[/] overlay   [bold]m[/] combined   [bold]c[/] column mode   "
-            "[bold]a[/] all videos   [bold]f[/] force   [bold]g[/] gaps   [bold]q[/] back")
-    _inventory_nav(tr, "videos inventory", CLR_VIDEOS, VIDEO_TYPES, _vid_exists,
-                   key_actions={"o": render_overlay, "enter": render_overlay,
-                                "m": render_combined, "a": render_all, "f": force_all,
-                                "g": toggle_gaps},
-                   hint=hint, fstate=fstate, on_col=col_batch, on_col_force=col_force)
+    def col_batch(cpos, rows, ctx):
+        tn = COL_TYPES[cpos]
+        _do_suspended(ctx, lambda: _col_videos(tn, False), confirm=f"Render [bold]{tn}[/] for all {len(tr)} clips?")
+    def col_force(cpos, rows, ctx):
+        tn = COL_TYPES[cpos]
+        _do_suspended(ctx, lambda: _col_videos(tn, True),
+                      confirm=f"[red]Force re-render[/] [bold]{tn}[/] for all {len(tr)} clips?  [dim]overwrites[/]")
+    def view_vid(stem, tn, ctx):
+        if tn == "overlay":
+            path = _overlay_path(stem)
+        else:
+            from paths import ANIMATIONS_DIR
+            path = os.path.join(ANIMATIONS_DIR, tn, f"{stem}_{tn}.mp4")
+        if os.path.isfile(path):
+            try: _open_file(path)
+            except Exception: pass
+            _log_activity(f"view {tn}/{stem}")
+    def cell_enter(row, cpos, ctx):
+        if not row: return
+        col = CELL_COLS[cpos]
+        if col == "__verdict__":
+            if row["ov"]: _set_verdict(row["stem"], "fail" if row["verdict"] == "pass" else "pass")
+        else:
+            view_vid(row["stem"], col, ctx)
+    def cell_view(row, cpos, ctx):
+        if row and CELL_COLS[cpos] != "__verdict__": view_vid(row["stem"], CELL_COLS[cpos], ctx)
+    cell_hint = ("[bold cyan]cell mode[/]   [dim]↑↓←→[/] pick cell   [bold]↵[/] toggle verdict · view   "
+                 "[bold]e[/]/[bold]r[/] row mode   [bold]q[/] back")
+    navigate_table(build_rows, columns, title="videos", border_style=CLR_VIDEOS,
+                   legend=legend, hint=hint, col_hint=col_hint, cell_hint=cell_hint,
+                   empty_msg="No clips match this filter.",
+                   key_actions={"o": act_review, "enter": act_review, "p": act_pass,
+                                "f": act_fail, "x": act_clear, "m": act_combined,
+                                "1": mkfilter("all"), "2": mkfilter("review"), "3": mkfilter("norender")},
+                   col_targets=col_targets, col_actions={"enter": col_batch, "f": col_force},
+                   cell_targets=cell_targets,
+                   cell_actions={"enter": cell_enter, "v": cell_view})
+    _log_activity("videos")
 
 # Overlay render + review
 def _render_overlay(stem):
@@ -966,247 +1146,7 @@ def _render_overlay(stem):
                         cwd=REPO_ROOT).returncode
     return rc == 0
 
-def _verdict_prompt(stem):
-    """Open video and ask for pass/fail. Returns 'p','f','s','q' or None."""
-    mp4 = _overlay_path(stem)
-    if os.path.isfile(mp4):
-        try: _open_file(mp4)
-        except: pass
-    console.print(f"  [bold {CLR_VIDEOS}]{stem}[/] \u2014 video opened")
-    console.print("  [green bold]p[/]ass   [red bold]f[/]ail   [dim bold]s[/]kip   [dim bold]q[/]uit")
-    try: v = input("  \u25b8 ").strip().lower()
-    except (EOFError, KeyboardInterrupt): return "q"
-    if not v: return "p"
-    return v[0]
-
-def _render_batch(batch):
-    """Render (overwrite) overlays for the given stems."""
-    console.print(Panel(f"Rendering {len(batch)} overlay video{'s' if len(batch)>1 else ''}",
-                        title="[bold]batch render[/]", border_style=CLR_VIDEOS, expand=False))
-    rendered, failed = 0, 0
-    for i, stem in enumerate(batch, 1):
-        console.print(Rule(f"[{CLR_VIDEOS}]({i}/{len(batch)})[/]", style="dim"))
-        ok = _render_overlay(stem)
-        if not ok:
-            console.print(f"  [red]\u2717 render failed[/]")
-            failed += 1
-            if i < len(batch):
-                console.print("  [bold]c[/]ontinue   [bold]q[/]uit")
-                try: k = input("  \u25b8 ").strip().lower()
-                except (EOFError, KeyboardInterrupt): break
-                if k.startswith("q"): break
-            continue
-        rendered += 1
-        mp4 = _overlay_path(stem)
-        if os.path.isfile(mp4):
-            try: _open_file(mp4)
-            except: pass
-        console.print(f"  [green]\u2713[/] {stem} \u2014 opened for preview")
-        console.print()
-    summary = Table(box=None, show_header=False, padding=(0,2), expand=False)
-    summary.add_column(style="dim"); summary.add_column()
-    summary.add_row("rendered", f"[green]{rendered}[/]")
-    if failed: summary.add_row("failed", f"[red]{failed}[/]")
-    console.print(Panel(summary, title="[bold]done[/]", border_style="dim", expand=False))
-    _log_activity(f"overlays: {rendered} rendered" + (f", {failed} failed" if failed else ""))
-
-def do_vw(tr):
-    """Render overlay videos: a whole group, or hand-pick a subset to re-render."""
-    stems = pick_group(tr, "Render overlays \u2014 select scope", allow_multi=True)
-    if not stems: return
-    if stems == ["__multi__"]:
-        reg = load_registry()
-        fails = {c["stem"] for c in tr if _get_verdict(c["stem"], reg) == "fail"}
-        sel = _pick_multi(tr, preselect=fails)
-        if not sel: return
-        _render_batch(sel)
-        _pause(); return
-    unrendered = [s for s in stems if not _has_overlay(s)]
-    existing = len(stems) - len(unrendered)
-    if not unrendered and not existing:
-        console.print("  [dim]No clips in scope.[/]")
-        _pause(); return
-    if not unrendered:
-        console.print(f"  [green]\u2713[/] All {len(stems)} clips already have overlay videos.")
-        console.print(f"  [dim]Use force re-render to overwrite.[/]")
-    else:
-        console.print(f"\n  [dim]{len(unrendered)} unrendered, {existing} existing[/]")
-    count, force = _pick_render_count(len(unrendered) if unrendered else len(stems), has_existing=existing > 0)
-    if count == 0: return
-    batch = stems if force else unrendered[:count]
-    _render_batch(batch)
-    _pause()
-
-def do_vr(tr):
-    """Overlay review \u2014 land on the full table, arrow-navigate, act per row."""
-    if not tr:
-        console.print("  [dim]No tracked clips.[/]"); _pause(); return
-    state = {"filter": "all"}
-
-    def _note_for(stem, reg):
-        for e in reg.values():
-            if e.get("config_description") == stem:
-                return e.get("overlay_verdict_note")
-        return None
-
-    def build_rows():
-        reg = load_registry()
-        rows = [{"stem": c["stem"], "has_ov": _has_overlay(c["stem"]),
-                 "verdict": _get_verdict(c["stem"], reg),
-                 "note": _note_for(c["stem"], reg)} for c in tr]
-        f = state["filter"]
-        if f == "fail": rows = [r for r in rows if r["verdict"] == "fail"]
-        elif f == "pending": rows = [r for r in rows if r["has_ov"] and r["verdict"] is None]
-        for k, r in enumerate(rows, 1): r["_n"] = k
-        return rows
-
-    def _vcell(r):
-        if r["verdict"] == "pass": return "[green]pass[/]"
-        if r["verdict"] == "fail": return "[red]fail[/]"
-        if r["has_ov"]: return "[yellow]pending[/]"
-        return "[dim]\u2014[/]"
-
-    columns = [
-        ("#",       lambda r: str(r["_n"]),                              dict(justify="right", width=3, style="dim")),
-        ("stem",    lambda r: r["stem"],                                 dict(min_width=16, no_wrap=True)),
-        ("overlay", lambda r: "[green]\u2713[/]" if r["has_ov"] else "[dim]\u2014[/]", dict(justify="center")),
-        ("verdict", _vcell,                                              dict(width=8)),
-        ("note",    lambda r: r["note"] or "",                          dict(style="dim", no_wrap=True)),
-    ]
-
-    def legend():
-        reg = load_registry()
-        a = [(_has_overlay(c["stem"]), _get_verdict(c["stem"], reg)) for c in tr]
-        npa = sum(1 for ov, v in a if v == "pass")
-        nfa = sum(1 for ov, v in a if v == "fail")
-        npe = sum(1 for ov, v in a if ov and v is None)
-        nno = sum(1 for ov, v in a if not ov)
-        ftag = {"all": "all", "fail": "fails", "pending": "pending"}[state["filter"]]
-        return (f"[green]{npa} pass[/]  [red]{nfa} fail[/]  [yellow]{npe} pending[/]  "
-                f"[dim]{nno} no overlay[/]   [dim]\u00b7[/]   filter: [bold]{ftag}[/]")
-
-    hint = ("[dim]\u2191\u2193[/] move   [bold]o[/]/[bold]\u21b5[/] open   [green bold]p[/] pass   "
-            "[red bold]f[/] fail   [bold]c[/] clear   [dim]\u00b7[/]   "
-            "[bold]1[/] all  [bold]2[/] fails  [bold]3[/] pending   [bold]q[/] back")
-
-    def act_open(row, rows, i, ctx):
-        if row and row["has_ov"]:
-            try: _open_file(_overlay_path(row["stem"]))
-            except Exception: pass
-        return None
-
-    def act_pass(row, rows, i, ctx):
-        if row and row["has_ov"]:
-            _set_verdict(row["stem"], "pass"); return "advance"
-        return None
-
-    def act_fail(row, rows, i, ctx):
-        if not (row and row["has_ov"]): return None
-        def _ask():
-            console.print(f"\n  [red]fail[/] {row['stem']} \u2014 reason (optional):")
-            try: return input("  \u25b8 ").strip() or None
-            except (EOFError, KeyboardInterrupt): return None
-        note = ctx.suspend(_ask)
-        _set_verdict(row["stem"], "fail", note); return "advance"
-
-    def act_clear(row, rows, i, ctx):
-        if row: _set_verdict(row["stem"], None)
-        return None
-
-    def mkfilter(val):
-        def _f(row, rows, i, ctx): state["filter"] = val; return "top"
-        return _f
-
-    navigate_table(build_rows, columns, title="overlay review",
-                   border_style=CLR_VIDEOS, legend=legend, hint=hint,
-                   empty_msg="No clips match this filter.",
-                   key_actions={"o": act_open, "enter": act_open, "p": act_pass,
-                                "f": act_fail, "c": act_clear,
-                                "1": mkfilter("all"), "2": mkfilter("fail"),
-                                "3": mkfilter("pending")})
-    _log_activity("overlay review")
-
-def do_vc(tr):
-    """Combined 1-by-1 pipeline: render if needed, then review."""
-    stems = pick_group(tr, "Render & review \u2014 select scope")
-    if not stems: return
-    reg = load_registry()
-    # Build ordered work queue: pending-review first, then unrendered
-    needs_review = [s for s in stems if _has_overlay(s) and _get_verdict(s, reg) is None]
-    needs_render = [s for s in stems if not _has_overlay(s) and _get_verdict(s, reg) is None]
-    done_count = len(stems) - len(needs_review) - len(needs_render)
-    total_todo = len(needs_review) + len(needs_render)
-    if total_todo == 0:
-        console.print(f"  [green]\u2713[/] All {len(stems)} clips verified.")
-        _pause(); return
-    info = Table(box=None, show_header=False, padding=(0,2), expand=False)
-    info.add_column(style="dim"); info.add_column()
-    info.add_row("ready to review", f"[green]{len(needs_review)}[/]")
-    info.add_row("need rendering", f"[yellow]{len(needs_render)}[/]")
-    info.add_row("already done", f"[dim]{done_count}[/]")
-    console.print(Panel(info, title="[bold]1-by-1 pipeline[/]", border_style=CLR_VIDEOS, expand=False))
-    passed, failed_c, seq = 0, 0, 0
-    # Phase 1: review existing overlays
-    for i, stem in enumerate(needs_review):
-        seq += 1
-        console.print(Rule(f"[{CLR_VIDEOS}]({seq}/{total_todo}) review[/]", style="dim"))
-        v = _verdict_prompt(stem)
-        if v == "q": break
-        elif v == "s": continue
-        elif v == "f":
-            note = None
-            try: note = input("  reason (optional): ").strip() or None
-            except: pass
-            _set_verdict(stem, "fail", note)
-            console.print(f"  [red]\u2717[/] {stem} \u2192 fail"); failed_c += 1
-        else:
-            _set_verdict(stem, "pass")
-            console.print(f"  [green]\u2713[/] {stem} \u2192 pass"); passed += 1
-        console.print()
-    else:
-        # Phase 2: render + review unrendered
-        for i, stem in enumerate(needs_render):
-            seq += 1
-            console.print(Rule(f"[{CLR_VIDEOS}]({seq}/{total_todo}) render + review[/]", style="dim"))
-            ok = _render_overlay(stem)
-            if not ok:
-                console.print(f"  [red]\u2717 render failed[/]")
-                console.print("  [bold]s[/]kip   [bold]q[/]uit")
-                try: k = input("  \u25b8 ").strip().lower()
-                except: break
-                if k.startswith("q"): break
-                continue
-            console.print(f"  [green]\u2713[/] rendered \u2014 opening for review")
-            v = _verdict_prompt(stem)
-            if v == "q": break
-            elif v == "s": continue
-            elif v == "f":
-                note = None
-                try: note = input("  reason (optional): ").strip() or None
-                except: pass
-                _set_verdict(stem, "fail", note)
-                console.print(f"  [red]\u2717[/] {stem} \u2192 fail"); failed_c += 1
-            else:
-                _set_verdict(stem, "pass")
-                console.print(f"  [green]\u2713[/] {stem} \u2192 pass"); passed += 1
-            console.print()
-    # Summary
-    reg = load_registry()
-    total_pass = sum(1 for s in stems if _get_verdict(s, reg) == "pass")
-    total_fail = sum(1 for s in stems if _get_verdict(s, reg) == "fail")
-    total_pend = sum(1 for s in stems if _get_verdict(s, reg) is None)
-    summary = Table(box=None, show_header=False, padding=(0,2), expand=False)
-    summary.add_column(style="dim"); summary.add_column()
-    summary.add_row("pass", f"[green]{total_pass}[/]")
-    summary.add_row("fail", f"[red]{total_fail}[/]")
-    summary.add_row("pending", f"[dim]{total_pend}[/]")
-    console.print(Panel(summary, title="[bold]pipeline summary[/]", border_style="dim", expand=False))
-    _log_activity(f"pipeline: {passed}\u2713 {failed_c}\u2717")
-    _pause()
-
 # Info
-def do_s(tr,pe): console.print(); render_status_panels(tr,pe); _pause()
-def do_e(): _run(SCRIPT_REPORT); _pause()
 def do_w():
     import importlib
     global DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, PHASE, clip_dir
@@ -1276,16 +1216,15 @@ def do_c():
 
 # ── Hub loop ──
 
-TWO_CHAR_KEYS = ("tn","tp","tb","ts","tv","tr","aq","fi","vw","vr","vc","vi","sw")
+TWO_CHAR_KEYS = ("aq","ai","ar","fi","vi","sw")
 
 DISPATCH = {
-    "tn":lambda t,p:do_tn(p), "tp":lambda t,p:do_tp(p), "tb":lambda t,p:do_tb(),
-    "ts":lambda t,p:do_ts(t), "tv":lambda t,p:do_tv(t), "tr":lambda t,p:do_tr(t),
-    "a":lambda t,p:do_a(t),   "aq":lambda t,p:do_aq(t),
+    "t":lambda t,p:do_t(t,p),
+    "a":lambda t,p:do_a(t),   "aq":lambda t,p:do_aq(t),  "g":lambda t,p:do_gallery(t),
+    "ai":lambda t,p:do_ai(),  "ar":lambda t,p:do_ar(t),
     "fi":lambda t,p:do_fi(t),
-    "vw":lambda t,p:do_vw(t), "vr":lambda t,p:do_vr(t), "vc":lambda t,p:do_vc(t),
     "vi":lambda t,p:do_vi(t),
-    "s":lambda t,p:do_s(t,p), "e":lambda t,p:do_e(),
+    "s":lambda t,p:do_t(t,p),
     "sw":lambda t,p:do_w(),   "p":lambda t,p:do_p(),     "h":lambda t,p:do_h(),
 }
 
@@ -1306,7 +1245,7 @@ def hub():
                 if h: h(tr, pe)
                 else: console.print(f"  [dim]Unknown: {key}[/]"); import time; time.sleep(0.5)
             else:
-                {"t":lambda:sub_track(tr,pe),"a":lambda:do_a(tr),
+                {"t":lambda:do_t(tr,pe),"a":lambda:do_a(tr),"g":lambda:do_gallery(tr),
                  "o":lambda:sub_output(tr,pe),"s":lambda:sub_info(tr,pe),
                  "h":do_h}.get(key, lambda:console.print(f"  [dim]Unknown: {key}[/]"))()
     except KeyboardInterrupt: pass

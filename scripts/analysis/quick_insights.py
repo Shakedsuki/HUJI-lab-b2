@@ -95,7 +95,11 @@ def load_clip(stem):
 # PLOT RENDERERS
 # ─────────────────────────────────────────────
 
+_GALLERY_SIZE = None   # (w, h) override used by build_gallery; None = per-plot default
+
 def _setup(plt, title, w=76, h=20):
+    if _GALLERY_SIZE is not None:
+        w, h = _GALLERY_SIZE
     plt.clf()
     plt.plotsize(w, h)
     plt.theme("clear")
@@ -471,6 +475,42 @@ PLOTS = {
     "lock":     ("magenta", "drive-relative phase Δφ(t) (locking)", plot_drive_phase),
     "res":      ("magenta", "resonance curve (θ₁ amp vs f_drive)",  plot_resonance),
 }
+
+
+def build_gallery(stem, width=72, plot_height=11, max_height=40, keys=None):
+    """Render several quick-insights plots compactly, stacked vertically, as many
+    as fit within max_height. Returns an ANSI string (no console output).
+    Uses only plots that route through _setup (so they honor the compact size)."""
+    global _GALLERY_SIZE
+    import io, contextlib
+    d = load_clip(stem)
+    if keys is None:
+        keys = ["tip", "energy", "phase1", "phase2", "config", "spectrum", "return", "rot"]
+    pw = max(40, min(width, 110))
+    parts, used = [], 0
+    _GALLERY_SIZE = (pw, plot_height)
+    try:
+        for k in keys:
+            ent = PLOTS.get(k)
+            if not ent:
+                continue
+            buf = io.StringIO()
+            try:
+                with contextlib.redirect_stdout(buf):
+                    ent[2](d)
+            except Exception:
+                continue
+            s = buf.getvalue().strip("\n")
+            if not s:
+                continue
+            ln = s.count("\n") + 3
+            if used + ln > max_height:
+                break
+            parts.append(s)
+            used += ln
+    finally:
+        _GALLERY_SIZE = None
+    return "\n\n".join(parts)
 
 
 # ─────────────────────────────────────────────
