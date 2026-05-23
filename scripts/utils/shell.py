@@ -47,6 +47,7 @@ SCRIPT_RETURN_MAP  = os.path.join(REPO_ROOT, "scripts", "analysis", "return_map.
 SCRIPT_RECURRENCE  = os.path.join(REPO_ROOT, "scripts", "analysis", "recurrence.py")
 SCRIPT_ATTRACTOR   = os.path.join(REPO_ROOT, "scripts", "analysis", "attractor.py")
 SCRIPT_WINDING_SWEEP = os.path.join(REPO_ROOT, "scripts", "analysis", "winding_sweep.py")
+SCRIPT_PHASE3D_PLOTLY = os.path.join(REPO_ROOT, "scripts", "analysis", "phase_3d_plotly.py")
 SCRIPT_WATERFALL   = os.path.join(REPO_ROOT, "scripts", "analysis", "spectral_waterfall.py")
 SCRIPT_OVERLAY     = os.path.join(REPO_ROOT, "scripts", "analysis", "overlay_video.py")
 
@@ -657,6 +658,7 @@ ANALYZE_TYPES = [
     ("return_map",    "ret",    "return map"),
     ("recurrence",    "rec",    "recurrence plot"),
     ("attractor",     "attr",   "attractor embed"),
+    ("phase_3d_plotly", "i3d",  "interactive 3d"),
 ]
 
 def _analyze_exists(tn, stem):
@@ -664,6 +666,9 @@ def _analyze_exists(tn, stem):
     if tn == "rotations":  return os.path.isfile(os.path.join(clip_dir(stem), "rotations.json"))
     if tn == "dimension":  return os.path.isfile(os.path.join(clip_dir(stem), "dimension.json"))
     if tn == "return_map": return os.path.isfile(os.path.join(clip_dir(stem), "return_map.csv"))
+    if tn == "phase_3d_plotly":
+        from paths import ANIMATIONS_DIR
+        return os.path.isfile(os.path.join(ANIMATIONS_DIR, "phase_3d_plotly", f"{stem}_phase_3d_plotly.html"))
     return _fig_exists(tn, stem)
 
 def _voltage_sweep_ok(clips):
@@ -702,6 +707,18 @@ def build_mode_analyze():
         if row: _runclip(ctx, SCRIPT_RECURRENCE, "--stem", row["stem"]); _log_activity(f"recurrence {row['stem']}")
     def act_attractor(row, rows, i, ctx):
         if row: _runclip(ctx, SCRIPT_ATTRACTOR, "--stem", row["stem"]); _log_activity(f"attractor {row['stem']}")
+    def act_phase3d(row, rows, i, ctx):
+        if not row: return
+        stem = row["stem"]
+        def work():
+            _run(SCRIPT_PHASE3D_PLOTLY, "--stem", stem)
+            from paths import ANIMATIONS_DIR
+            html = os.path.join(ANIMATIONS_DIR, "phase_3d_plotly", f"{stem}_phase_3d_plotly.html")
+            if os.path.isfile(html):
+                try: _open_file(html)
+                except Exception: pass
+            _log_activity(f"phase3d {stem}")
+        _do_suspended(ctx, work)
     def act_explore(row, rows, i, ctx):
         if not row: return
         sys.path.insert(0, os.path.join(REPO_ROOT, "scripts", "analysis"))
@@ -731,7 +748,7 @@ def build_mode_analyze():
         _do_suspended(ctx, work, confirm="Run [bold]winding-number sweep[/] across the 3.2V family?")
     bif_ok = _voltage_sweep_ok(tr)
     fd_ok = _freq_sweep_ok(tr)
-    hint = ("[dim]\u2191\u2193[/] run   [bold]ch[/] chaos   [bold]po[/] poinc   [bold]ly[/] lyap   [bold]dr[/] driven   [bold]ro[/] rot   [bold]fr[/] frac   [bold]rm[/] return   [bold]rc[/] recur   [bold]at[/] attr   "
+    hint = ("[dim]\u2191\u2193[/] run   [bold]ch[/] chaos   [bold]po[/] poinc   [bold]ly[/] lyap   [bold]dr[/] driven   [bold]ro[/] rot   [bold]fr[/] frac   [bold]rm[/] return   [bold]rc[/] recur   [bold]at[/] attr   [bold]p3[/] 3d-web   "
             "[bold]\u21b5[/] explore   "
             + ("[bold]bs[/] bif-sweep   " if bif_ok else "")
             + ("[bold]bf[/] bif-fd   " if fd_ok else "")
@@ -741,7 +758,8 @@ def build_mode_analyze():
             "enter": act_explore,
             "rs": act_rotsweep, "wf": act_waterfall, "ds": act_dim_sweep,
             "ws": act_winding_sweep,
-            "rm": act_returnmap, "rc": act_recurrence, "at": act_attractor}
+            "rm": act_returnmap, "rc": act_recurrence, "at": act_attractor,
+            "p3": act_phase3d}
     if bif_ok: keys["bs"] = act_bif
     if fd_ok: keys["bf"] = act_bif_fd
     return _inventory_mode("analyze", "2", CLR_ANALYZE, ANALYZE_TYPES, _analyze_exists,

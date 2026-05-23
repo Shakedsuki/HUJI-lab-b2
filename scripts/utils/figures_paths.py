@@ -33,8 +33,11 @@ FIGURES_DIR = os.path.join(PHASE_ROOT, "figures")
 ANIMATIONS_DIR = os.path.join(PHASE_ROOT, "animations")
 AGGREGATE   = os.path.join(FIGURES_DIR, "aggregate")
 
-# Animated outputs live under animations/, keeping figures/ static-only.
-VIDEO_OUTPUT_TYPES = {"combined", "phase_animation", "phase_3d_rotation"}
+# Animated / interactive outputs live under animations/, keeping figures/
+# static-only. The plotly HTML viewer is interactive + regenerable (git-
+# ignored), so it belongs here rather than in figures/.
+VIDEO_OUTPUT_TYPES = {"combined", "phase_animation", "phase_3d_rotation",
+                      "phase_3d_plotly"}
 
 
 # Canonical figure type names.  Keep the set deliberately small — adding
