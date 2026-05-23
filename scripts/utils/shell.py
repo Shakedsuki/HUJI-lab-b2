@@ -1672,13 +1672,14 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
             row0 = rows[idx] if n else None
             if insights:
                 stem0 = row0["stem"] if row0 else None
-                tl = Text("  "); tl.append("insights", style="bold"); tl.append("    ")
+                tl = Text("  "); tl.append("insights", style="bold"); tl.append("   ")
                 for j, (iid, label, _qk) in enumerate(m.insights):
-                    if j: tl.append("    ")
+                    if j: tl.append("   ")
                     sel = (j == ins_sel)
                     tl.append(f"{j + 1} ", style=("bold" if sel else "dim"))
                     tl.append("●" if sel else "○", style=("green" if sel else "dim"))
-                    tl.append(f" {label}", style=(None if sel else "dim"))
+                    tl.append(f" {label.split()[0]}", style=(None if sel else "dim"))
+                tl.no_wrap = True; tl.overflow = "crop"   # keep the selector on one line
                 parts = [tl, Text("")]
                 if stem0 and 0 <= ins_sel < len(m.insights):
                     iid, label, qk = m.insights[ins_sel]
