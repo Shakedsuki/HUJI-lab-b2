@@ -5,8 +5,8 @@ Poincare section for a tracked double-pendulum clip.
 
 Cross-section:
     theta2_abs = 0,   d(theta2_abs)/dt > 0
-i.e. every time the lower bob's absolute angle (theta1 + theta2) passes
-through zero on its way up, we record a point (theta1, omega1).
+i.e. every time the lower bob's absolute angle theta2 (already lab-frame)
+passes through zero on its way up, we record a point (theta1, omega1).
 
 For the 4D phase space (theta1, theta2, omega1, omega2) constrained to
 the energy surface, this 1D section yields a 2D Poincare map. The
@@ -59,6 +59,9 @@ def parse_args():
     p.add_argument("--no-plot", action="store_true")
     p.add_argument("--no-csv", action="store_true",
                    help="Skip writing poincare.csv")
+    p.add_argument("--transient", type=float, default=None,
+                   help="seconds to discard at the start "
+                        "(default: 5.0 for driven clips, 0 for free-swing)")
     return p.parse_args()
 
 def resolve_io(args):
@@ -76,6 +79,16 @@ def resolve_io(args):
     if not os.path.exists(csv_path):
         raise SystemExit(f"CSV not found: {csv_path}")
     return csv_path, out_dir, label
+
+def _is_driven(label):
+    """True for a driven V/f clip (e.g. '3.2V_1.17Hz'); False for free-swing.
+    Uses the same stem parser as the rest of the driven pipeline."""
+    try:
+        from driven_helpers import parse_stem
+        parse_stem(label)
+        return True
+    except Exception:
+        return False
 
 def load_clean(csv_path):
     """Load the moving rows (free-swing or driven). Returns
@@ -180,7 +193,7 @@ def poincare_points(t, th1, th2, om1, om2):
             np.array(om1_cross))
 
 def make_figure(t, th1, th2, om1, om2,
-                t_p, th1_p, om1_p, label, out_path):
+                t_p, th1_p, om1_p, label, out_path, driven=False):
     fig = plt.figure(figsize=(15, 10))
     gs  = fig.add_gridspec(2, 2, hspace=0.3, wspace=0.28,
                            left=0.07, right=0.97, top=0.95, bottom=0.07)
@@ -199,7 +212,7 @@ def make_figure(t, th1, th2, om1, om2,
     ax_main.set_xlabel("theta1 (deg)  [at section]")
     ax_main.set_ylabel("omega1 (deg/s)  [at section]")
     ax_main.set_title(
-        f"Poincare section:  theta1+theta2 = 0,  d/dt > 0   (n={len(t_p)})")
+        f"Poincaré section:  θ₂ = 0° (lower arm vertical),  dθ₂/dt > 0   (n={len(t_p)})")
     ax_main.grid(True, alpha=0.3)
 
     # Top right: theta1 of section points vs time (orbit-by-orbit drift).
@@ -226,7 +239,12 @@ def make_figure(t, th1, th2, om1, om2,
     if len(t_p) > 0:
         ax_full.legend(loc="upper right", fontsize=9)
 
-    fig.suptitle(f"Poincare section — {label}", fontsize=14, y=0.995)
+    fig.suptitle(f"Poincaré section — {label}", fontsize=14, y=0.995)
+    if driven:
+        fig.text(0.5, 0.005,
+                 "Note: geometric section on a driven system — the stroboscopic "
+                 "section (driven_poincare) is more appropriate.",
+                 ha="center", fontsize=9, style="italic", color="gray")
     fig.savefig(out_path, dpi=130)
     mirror_to_ready(out_path)
     plt.close(fig)
@@ -240,6 +258,14 @@ def main():
         f"[cyan]{label}[/]  [dim]{len(t)} rows, "
         f"t_max = {t[-1]:.2f} s[/]"
     )
+
+    driven = _is_driven(label)
+    transient_s = args.transient if args.transient is not None else (5.0 if driven else 0.0)
+    if transient_s > 0:
+        mask = t >= transient_s
+        if mask.sum() > 50:
+            t, th1, th2, om1, om2 = t[mask], th1[mask], th2[mask], om1[mask], om2[mask]
+            console.print(f"  [dim]discarded {transient_s:g}s transient → {len(t)} rows[/]")
 
     t_p, th1_p, om1_p = poincare_points(t, th1, th2, om1, om2)
     console.print(
@@ -259,7 +285,7 @@ def main():
     if not args.no_plot:
         out_png = figure_path("poincare", label)
         make_figure(t, th1, th2, om1, om2,
-                    t_p, th1_p, om1_p, label, out_png)
+                    t_p, th1_p, om1_p, label, out_png, driven=driven)
         console.print(f"[dim]plot → {out_png}[/]")
 
 if __name__ == "__main__":

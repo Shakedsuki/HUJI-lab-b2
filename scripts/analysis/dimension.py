@@ -159,9 +159,11 @@ def correlation_dimension(X, theiler, n_pairs=300000, seed=0):
             "fit_lo": float(rs[mask].min()), "fit_hi": float(rs[mask].max())}
 
 
-def box_counting_dimension(pts):
+def box_counting_dimension(pts, grid_offset=0.0):
     """Box-counting on a normalized point cloud: N(ε) occupied cells at
-    grid size 2^k; D_box = slope of log N vs log(1/ε) before saturation."""
+    grid size 2^k; D_box = slope of log N vs log(1/ε) before saturation.
+    grid_offset (sub-cell, in [0,1)) shifts the grid origin — used to bootstrap
+    a D_box uncertainty (box-counting is otherwise deterministic)."""
     mn, mx = pts.min(0), pts.max(0)
     span = np.where(mx > mn, mx - mn, 1.0)
     p = (pts - mn) / span
@@ -169,7 +171,7 @@ def box_counting_dimension(pts):
     sizes, Ns = [], []
     for k in range(1, 10):
         nb = 2 ** k
-        cells = np.floor(p * nb).astype(np.int64)
+        cells = np.floor((p + grid_offset) * nb).astype(np.int64)
         cells = np.clip(cells, 0, nb - 1)
         n_occ = len(np.unique(cells[:, 0] * nb + cells[:, 1]))
         sizes.append(1.0 / nb)
@@ -184,6 +186,41 @@ def box_counting_dimension(pts):
             "inv_eps": inv_eps, "mask": mask}
 
 
+def correlation_dimension_with_ci(X, theiler, n_pairs=300000, n_bootstrap=10):
+    """correlation_dimension over n_bootstrap pair-sampling seeds. Returns the
+    last valid result dict with D2 set to the bootstrap MEAN and an added
+    'D2_sigma' (std across seeds); None if no seed produced a valid estimate."""
+    D2s, last = [], None
+    for seed in range(n_bootstrap):
+        res = correlation_dimension(X, theiler, n_pairs=n_pairs, seed=seed)
+        if res is not None and np.isfinite(res["D2"]):
+            D2s.append(res["D2"]); last = res
+    if last is None:
+        return None
+    last = dict(last)
+    last["D2_sigma"] = float(np.std(D2s)) if len(D2s) > 1 else float("nan")
+    last["D2"] = float(np.mean(D2s))
+    return last
+
+
+def box_counting_with_ci(pts, n_offsets=10):
+    """Box-counting over n_offsets perturbed grid origins. Returns the
+    zero-offset result dict with Dbox set to the offset MEAN and an added
+    'Dbox_sigma' (std across offsets)."""
+    base = box_counting_dimension(pts, grid_offset=0.0)
+    Dboxes = []
+    for i in range(n_offsets):
+        off = float(np.random.default_rng(i).uniform(0.0, 1.0))
+        res = box_counting_dimension(pts, grid_offset=off)
+        if np.isfinite(res["Dbox"]):
+            Dboxes.append(res["Dbox"])
+    base = dict(base)
+    base["Dbox_sigma"] = float(np.std(Dboxes)) if len(Dboxes) > 1 else float("nan")
+    if Dboxes:
+        base["Dbox"] = float(np.mean(Dboxes))
+    return base
+
+
 # ─────────────────────────────────────────────
 # RENDER
 # ─────────────────────────────────────────────
@@ -194,10 +231,12 @@ def print_table(stem, m, tau, corr, box):
     t.add_column("estimator"); t.add_column("dimension", justify="right")
     t.add_column("R²", justify="right"); t.add_column("notes", style="dim")
     if corr:
-        t.add_row("D₂ correlation", f"{corr['D2']:.2f}", f"{corr['r2']:.3f}",
-                  f"GP, embed m={m} τ={tau}")
-    t.add_row("D_box box-count", f"{box['Dbox']:.2f}", f"{box['r2']:.3f}",
-              "(θ₂, ω₂) 2-D projection, ≤2")
+        d2 = (f"{corr['D2']:.2f} ± {corr['D2_sigma']:.2f}"
+              if np.isfinite(corr.get('D2_sigma', float('nan'))) else f"{corr['D2']:.2f}")
+        t.add_row("D₂ correlation", d2, f"{corr['r2']:.3f}", f"GP, embed m={m} τ={tau}")
+    db = (f"{box['Dbox']:.2f} ± {box['Dbox_sigma']:.2f}"
+          if np.isfinite(box.get('Dbox_sigma', float('nan'))) else f"{box['Dbox']:.2f}")
+    t.add_row("D_box box-count", db, f"{box['r2']:.3f}", "(θ₂, ω₂) 2-D projection, ≤2")
     console.print(t)
     console.print("  [dim]≈1 ⇒ limit cycle (periodic);  fractional ⇒ strange "
                   "attractor (chaos)[/]")
@@ -206,6 +245,11 @@ def print_table(stem, m, tau, corr, box):
 def make_figure(stem, t, th2, om2, m, tau, corr, box, out_path):
     fig, ((a, b), (c, d)) = plt.subplots(2, 2, figsize=(13, 11))
     tc = t - t[0]
+    d2_lbl = (f"D₂ = {corr['D2']:.2f} ± {corr['D2_sigma']:.2f}"
+              if corr and np.isfinite(corr.get('D2_sigma', float('nan')))
+              else (f"D₂ = {corr['D2']:.2f}" if corr else "D₂ = —"))
+    db_lbl = (f"D_box = {box['Dbox']:.2f} ± {box['Dbox_sigma']:.2f}"
+              if np.isfinite(box.get('Dbox_sigma', float('nan'))) else f"D_box = {box['Dbox']:.2f}")
 
     # (a) reconstructed attractor — delay embedding ω₂(t) vs ω₂(t+τ)
     #     (ω₂ is the observable used for D₂: stationary under circulation)
@@ -230,7 +274,7 @@ def make_figure(stem, t, th2, om2, m, tau, corr, box, out_path):
         if len(rr):
             Cfit = corr["C"][fitmask][0] * (rr / rr[0]) ** corr["D2"]
             c.loglog(rr, Cfit, "-", color="tab:red", lw=2,
-                     label=f"D₂ = {corr['D2']:.2f}  (R²={corr['r2']:.3f})")
+                     label=f"{d2_lbl}  (R²={corr['r2']:.3f})")
         c.legend(fontsize=9)
     c.set_xlabel("r"); c.set_ylabel("C(r)")
     c.set_title("correlation integral (Grassberger–Procaccia)")
@@ -243,15 +287,14 @@ def make_figure(stem, t, th2, om2, m, tau, corr, box, out_path):
     if len(ie):
         Nfit = box["Ns"][mfit][0] * (ie / ie[0]) ** box["Dbox"]
         d.loglog(ie, Nfit, "-", color="tab:red", lw=2,
-                 label=f"D_box = {box['Dbox']:.2f}  (R²={box['r2']:.3f})")
+                 label=f"{db_lbl}  (R²={box['r2']:.3f})")
         d.legend(fontsize=9)
     d.set_xlabel("1/ε"); d.set_ylabel("N(ε) occupied boxes")
     d.set_title("box-counting (θ₂, ω₂ projection)")
     d.grid(True, which="both", alpha=0.2)
 
-    cap = f"D₂={corr['D2']:.2f}" if corr else "D₂=—"
-    fig.suptitle(f"Attractor dimension — {stem}   ({cap}, "
-                 f"D_box={box['Dbox']:.2f})", fontsize=13, y=0.99)
+    fig.suptitle(f"Attractor dimension — {stem}   ({d2_lbl}, {db_lbl})",
+                 fontsize=13, y=0.99)
     fig.tight_layout(rect=[0, 0, 1, 0.97])
     fig.savefig(out_path, dpi=140, bbox_inches="tight")
     plt.close(fig)
@@ -284,8 +327,8 @@ def compute(stem, m, tau_arg, transient_s, seed=0):
     X = embed(om2, m, tau)
     dt = float(np.median(np.diff(t)))
     theiler = max(tau, int(round(0.5 / dt)) if dt > 0 else tau)  # ~0.5 s
-    corr = correlation_dimension(X, theiler, seed=seed)
-    box = box_counting_dimension(np.column_stack([th2, om2]))
+    corr = correlation_dimension_with_ci(X, theiler)
+    box = box_counting_with_ci(np.column_stack([th2, om2]))
     return t, th2, om2, m, tau, corr, box
 
 
@@ -312,8 +355,10 @@ def main():
         "stem": stem, "embedding_m": m, "delay_tau": tau,
         "n_points": int(len(th2)),
         "D2_correlation": (corr["D2"] if corr else None),
+        "D2_sigma": (corr.get("D2_sigma") if corr else None),
         "D2_r2": (corr["r2"] if corr else None),
-        "D_box": box["Dbox"], "D_box_r2": box["r2"],
+        "D_box": box["Dbox"], "D_box_sigma": box.get("Dbox_sigma"),
+        "D_box_r2": box["r2"],
     }
     out_json = os.path.join(clip_dir(stem), "dimension.json")
     with open(out_json, "w", encoding="utf-8") as f:

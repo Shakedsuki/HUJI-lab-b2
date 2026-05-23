@@ -43,6 +43,7 @@ except (AttributeError, OSError):
 
 import numpy as np
 import pandas as pd
+from scipy.signal import welch
 
 import matplotlib
 matplotlib.use("Agg")
@@ -180,21 +181,26 @@ def compute_topological(data):
 # TIER 2 — STATISTICAL MEASURES
 # ─────────────────────────────────────────────
 
-def k01_test(x, c_values=None, n_c=50):
+def k01_test(x, c_values=None, n_c=50, return_spread=False):
     """
     0-1 test for chaos (Gottwald & Melbourne 2004).
 
     Returns median K over n_c random c values drawn from [π/5, 4π/5].
-    K → 1 means chaos; K → 0 means regular.
+    K → 1 means chaos; K → 0 means regular. With return_spread=True returns a
+    dict {K, K_iqr, K_values} instead — the spread of K_c across c-values is
+    diagnostic (tight cluster = converged, wide spread = inconclusive).
 
     Uses FFT-based mean-square-displacement computation so the inner
     lag loop is O(N log N) per c value rather than O(N²/10).
     """
+    def _nan():
+        return ({"K": float("nan"), "K_iqr": float("nan"), "K_values": []}
+                if return_spread else float("nan"))
     x = np.asarray(x, dtype=float)
     x = x - x.mean()
     N = len(x)
     if N < 20:
-        return float("nan")
+        return _nan()
 
     if c_values is None:
         rng      = np.random.default_rng(42)
@@ -202,7 +208,7 @@ def k01_test(x, c_values=None, n_c=50):
 
     n_cut = N // 10
     if n_cut < 3:
-        return float("nan")
+        return _nan()
 
     t   = np.arange(n_cut, dtype=float)
     ns  = np.arange(1, n_cut)
@@ -246,7 +252,14 @@ def k01_test(x, c_values=None, n_c=50):
             if not np.isnan(K):
                 Ks.append(K)
 
-    return float(np.median(Ks)) if Ks else float("nan")
+    if not Ks:
+        return _nan()
+    if return_spread:
+        K_arr = np.array(Ks)
+        return {"K": float(np.median(K_arr)),
+                "K_iqr": float(np.percentile(K_arr, 75) - np.percentile(K_arr, 25)),
+                "K_values": K_arr.tolist()}
+    return float(np.median(Ks))
 
 def spectral_entropy_norm(x):
     """
@@ -257,7 +270,8 @@ def spectral_entropy_norm(x):
     N = len(x)
     if N < 4:
         return float("nan")
-    spec = np.abs(np.fft.rfft(x - x.mean())) ** 2
+    nperseg = min(N, 1024)
+    _f, spec = welch(x - x.mean(), fs=1.0, nperseg=nperseg)
     spec = spec[1:]   # drop DC
     s    = spec.sum()
     if s == 0.0:
@@ -266,18 +280,37 @@ def spectral_entropy_norm(x):
     H    = -float(np.sum(spec * np.log2(spec + 1e-12)))
     return H / np.log2(len(spec))
 
-def compute_statistical(topo, n_c=50):
+def compute_statistical(topo, n_c=100):
     """Return dict of Tier-2 statistical measures."""
     th1        = topo["th1"]
     th2        = topo["th2"]
     theta2_abs = topo["theta2_abs"]
 
-    K_th1    = k01_test(th1,        n_c=n_c)
-    K_th2    = k01_test(th2,        n_c=n_c)
-    K_th2abs = k01_test(theta2_abs, n_c=n_c)
+    # The 0-1 test assumes the series is NOT heavily oversampled (Gottwald &
+    # Melbourne): subsample to ~5 points per characteristic period before K.
+    # Capped so a spurious (chaotic) period estimate can't decimate the series
+    # below what the test needs (~200 samples retained).
+    sub = 1
+    tarr = topo.get("time_s")
+    if tarr is not None and len(tarr) > 1 and float(np.mean(np.diff(tarr))) > 0:
+        try:
+            from lyapunov import estimate_period_frames
+            period_frames = estimate_period_frames(tarr, th1)
+            sub = max(1, period_frames // 5)
+            sub = min(sub, max(1, len(th1) // 200))
+        except Exception:
+            sub = 1
+    th1_s, th2_s, th2abs_s = th1[::sub], th2[::sub], theta2_abs[::sub]
 
-    Ks      = [k for k in (K_th1, K_th2, K_th2abs) if not np.isnan(k)]
-    K_chaos = float(np.median(Ks)) if Ks else float("nan")
+    r_th1    = k01_test(th1_s,    n_c=n_c, return_spread=True)
+    r_th2    = k01_test(th2_s,    n_c=n_c, return_spread=True)
+    r_th2abs = k01_test(th2abs_s, n_c=n_c, return_spread=True)
+    K_th1, K_th2, K_th2abs = r_th1["K"], r_th2["K"], r_th2abs["K"]
+
+    Ks   = [k for k in (K_th1, K_th2, K_th2abs) if not np.isnan(k)]
+    iqrs = [r["K_iqr"] for r in (r_th1, r_th2, r_th2abs) if not np.isnan(r["K"])]
+    K_chaos     = float(np.median(Ks)) if Ks else float("nan")
+    K_chaos_iqr = float(np.median(iqrs)) if iqrs else float("nan")
 
     H_th1 = spectral_entropy_norm(th1)
     H_th2 = spectral_entropy_norm(th2)
@@ -286,7 +319,12 @@ def compute_statistical(topo, n_c=50):
         "K_theta1":                  K_th1,
         "K_theta2":                  K_th2,
         "K_theta2_abs":              K_th2abs,
+        "K_theta1_iqr":              r_th1["K_iqr"],
+        "K_theta2_iqr":              r_th2["K_iqr"],
+        "K_theta2_abs_iqr":          r_th2abs["K_iqr"],
         "K_chaos":                   K_chaos,
+        "K_chaos_iqr":               K_chaos_iqr,
+        "K_subsample":               int(sub),
         "spectral_entropy_th1_norm": H_th1,
         "spectral_entropy_th2_norm": H_th2,
     }
@@ -390,7 +428,10 @@ def print_card(stem, topo, stat, verdict, reasons):
     stat_t.add_row("K (0-1 test, θ₁)",      _fmt(stat['K_theta1']))
     stat_t.add_row("K (0-1 test, θ₂)",      _fmt(stat['K_theta2']))
     stat_t.add_row("K (0-1 test, θ₂_abs)",  _fmt(stat['K_theta2_abs']))
-    stat_t.add_row("K_chaos (median)",    _fmt(stat['K_chaos']))
+    _kiqr = stat.get('K_chaos_iqr', float('nan'))
+    _kdisp = (f"{_fmt(stat['K_chaos'])} ± {_fmt(_kiqr)}"
+              if not (isinstance(_kiqr, float) and np.isnan(_kiqr)) else _fmt(stat['K_chaos']))
+    stat_t.add_row("K_chaos (median)",    _kdisp)
     stat_t.add_row("spectral entropy θ₁",    _fmt(stat['spectral_entropy_th1_norm']))
     stat_t.add_row("spectral entropy θ₂",    _fmt(stat['spectral_entropy_th2_norm']))
 
@@ -459,8 +500,9 @@ def make_plot(stem, topo, stat, out_path):
     N  = len(th2)
     if N > 1:
         dt   = float(np.median(np.diff(topo["time_s"])))
-        freq = np.fft.rfftfreq(N, d=max(dt, 1e-6))
-        spec = np.abs(np.fft.rfft(th2 - th2.mean())) ** 2
+        nperseg = min(N, 1024)
+        freq, spec = welch(th2 - th2.mean(), fs=1.0 / max(dt, 1e-6),
+                           nperseg=nperseg, noverlap=nperseg // 2, window="hann")
         mask = (freq > 0) & (spec > 0)
         if mask.any():
             ax.loglog(freq[mask], spec[mask],
@@ -490,9 +532,9 @@ def parse_args():
                    help="config_description, e.g. th1_p180_th2_m179")
     p.add_argument("--no-plot", action="store_true",
                    help="skip writing measurements/<stem>/chaos_analyze.png")
-    p.add_argument("--n-c", type=int, default=50, metavar="N",
+    p.add_argument("--n-c", type=int, default=100, metavar="N",
                    help="random c values for the 0-1 test "
-                        "(default 50; fewer = faster, more = more robust)")
+                        "(default 100; fewer = faster, more = more robust)")
     return p.parse_args()
 
 def main():
