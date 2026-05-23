@@ -472,7 +472,9 @@ def plot_waterfall(d):
     rows = d.get("_wf_cache")
     if rows is None or d.get("_wf_cache_v") != voltage:
         print(f"  sweeping {voltage:g}V family…")
-        rows = collect(voltage, 5.0, 400, 5.0)
+        import io, contextlib
+        with contextlib.redirect_stdout(io.StringIO()):   # hush per-clip chatter
+            rows = collect(voltage, 5.0, 400, 5.0)
         d["_wf_cache"], d["_wf_cache_v"] = rows, voltage
     if len(rows) < 3:
         print(f"  too few clips at {voltage:g}V for a waterfall")
