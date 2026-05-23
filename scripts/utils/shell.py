@@ -550,19 +550,33 @@ def navigate_table(build_rows, columns, *, title="", border_style="cyan",
             live.update(renderable, refresh=True)
 
 def _ask_confirm(question, default=False):
-    """Single-keypress y/n confirm on the current (suspended) screen → bool.
-    y = yes, enter = the default, anything else (n/esc/q) = no."""
-    console.print()
-    console.print(Panel(Text.from_markup(question), title="[bold yellow]confirm[/]",
-                        border_style="yellow", padding=(0, 1), expand=False))
-    console.print(f"  [green bold]y[/]es   [bold]n[/]o   [dim](enter = {'yes' if default else 'no'}, esc cancels)[/]")
-    try:
-        k = _read_key()
-    except KeyboardInterrupt:
-        return False
-    if k == "y": return True
-    if k == "enter": return default
-    return False
+    """Navigable y/n confirm on the current (suspended) screen → bool.
+    ←→ / h l / tab move the highlight; enter confirms the highlighted choice;
+    y/n act directly; esc (or Ctrl-C) cancels. Initial highlight = default."""
+    sel = bool(default)   # True = yes highlighted, False = no highlighted
+    def render():
+        q = Panel(Text.from_markup(question), title="[bold yellow]confirm[/]",
+                  border_style="yellow", padding=(0, 1), expand=False)
+        opt = Text("  ")
+        opt.append("  yes  ", style=("bold black on green" if sel else "green"))
+        opt.append("   ")
+        opt.append("  no  ", style=("dim" if sel else "bold black on red"))
+        opt.append("      ")
+        opt.append("←→ choose · enter confirm · y/n direct · esc cancel", style="dim")
+        return Group(Text(""), q, opt)
+    with Live(render(), console=console, auto_refresh=False) as live:
+        while True:
+            try:
+                k = _read_key()
+            except KeyboardInterrupt:
+                return False
+            if k == "y": return True
+            if k in ("n", "esc"): return False
+            if k == "enter": return sel
+            if k in ("left", "h"): sel = True
+            elif k in ("right", "l"): sel = False
+            elif k == "\t": sel = not sel
+            live.update(render(), refresh=True)
 
 def _do_suspended(ctx, work, pause=True, confirm=None, confirm_default=False):
     """Pause the live table, run work() on the normal terminal, optionally wait
