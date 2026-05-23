@@ -729,8 +729,8 @@ def build_mode_analyze():
     def run_cell(stem, t, ctx):
         fn = _RUN.get(t[1])
         if fn: fn({"stem": stem}, None, None, ctx)
-    hint = ("[dim]\u2191\u2193[/] [bold]\u21b5[/] explore   [bold]e[/] run an analysis on a cell   "
-            "[bold]h[/] help  [bold]q[/] quit")
+    hint = ("[dim]\u2191\u2193[/] [bold]\u21b5[/] explore   [bold]e[/] entry mode   "
+            "[bold]h[/] help   [bold]q[/] quit")
     cell_hint = ("[bold cyan]entry mode[/]   [dim]\u2191\u2193\u2190\u2192[/] pick a cell   [bold]\u21b5[/] run that analysis   "
                  "[bold]e[/]/[bold]r[/] row mode   [bold]q[/] quit")
     keys = {"enter": act_explore}
@@ -1052,8 +1052,8 @@ def build_mode_figures():
     def create_fig(stem, t, ctx):
         _do_suspended(ctx, lambda: _run(SCRIPT_BATCH_FIGS, "--stem", stem, "--types", t[0], "--force", "--all-quality"))
         _log_activity(f"create {t[1]}/{stem}")
-    hint = ("[dim]↑↓[/] [bold]↵[/] render   [bold]c[/] column mode   [bold]e[/] entry mode   "
-            "[bold]a[/] all   [bold]h[/] help   [bold]q[/] quit")
+    hint = ("[dim]↑↓[/] [bold]↵[/] render   [bold]a[/] all   [bold]c[/] column mode   [bold]e[/] entry mode   "
+            "[bold]h[/] help   [bold]q[/] quit")
     return _inventory_mode("figures", "3", CLR_FIGURES, FIG_TYPES, _fig_exists,
                            key_actions={"enter": render_clip, "a": fill_all},
                            hint=hint, on_col=col_batch,
@@ -1652,7 +1652,7 @@ def build_mode_main():
                 f"      overall [bold]{overall}%[/]")
     def dive(row, cpos, ctx):
         return "mode:" + ("1", "2", "3", "4")[cpos] if cpos < 4 else None
-    hint = "[dim]↑↓[/] navigate   [bold]e[/] dive into a stage   [bold]h[/] help   [bold]q[/] quit"
+    hint = "[dim]↑↓[/] [bold]e[/] entry mode   [bold]h[/] help   [bold]q[/] quit"
     cell_hint = ("[bold cyan]entry mode[/]   [dim]←→[/] pick a stage   [bold]↵[/] open that stage   "
                  "[bold]e[/]/[bold]r[/] row mode   [bold]q[/] quit")
     return Mode("main", "m", CLR_MAIN, glyph="⌂", build_rows=build_rows, columns=columns,
