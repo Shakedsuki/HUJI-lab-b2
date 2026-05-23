@@ -36,7 +36,6 @@ SCRIPT_BULK        = os.path.join(REPO_ROOT, "scripts", "utils", "bulk_track.py"
 SCRIPT_VERIFY      = os.path.join(REPO_ROOT, "scripts", "processing", "verify_tracking.py")
 SCRIPT_BATCH_FIGS  = os.path.join(REPO_ROOT, "scripts", "utils", "batch_figures.py")
 SCRIPT_ANALYZE     = os.path.join(REPO_ROOT, "scripts", "analysis", "chaos_analyze.py")
-SCRIPT_COMBINED    = os.path.join(REPO_ROOT, "scripts", "analysis", "combined_video.py")
 SCRIPT_POINCARE    = os.path.join(REPO_ROOT, "scripts", "analysis", "poincare.py")
 SCRIPT_LYAPUNOV    = os.path.join(REPO_ROOT, "scripts", "analysis", "lyapunov.py")
 SCRIPT_DRIVEN_POIN = os.path.join(REPO_ROOT, "scripts", "analysis", "driven_poincare.py")
@@ -880,12 +879,12 @@ def _vid_exists(vtype, stem):
     return os.path.isfile(os.path.join(ANIMATIONS_DIR, vtype, f"{stem}_{vtype}.mp4"))
 
 def _inventory_nav(tr, title, color, types, exists_fn, *, key_actions, hint,
-                   on_col=None, on_col_force=None, col_hint=None,
+                   on_col=None, col_hint=None,
                    on_view=None, on_create=None, cell_hint=None):
     """Navigable clip×type matrix.
     on_col(type_tuple, ctx) enables column mode ('c'): ←→ pick a type column, enter
-    batches it across all clips (on_col_force = 'f'). on_view / on_create
-    (stem, type_tuple, ctx) enable cell mode ('e'): ↑↓←→ pick one cell, 'o' opens
+    batches it across all clips. on_view / on_create
+    (stem, type_tuple, ctx) enable entry mode ('e'): ↑↓←→ pick one cell, 'o' opens
     that file, '+' creates it."""
     def build_rows():
         rows = []
@@ -910,12 +909,8 @@ def _inventory_nav(tr, title, color, types, exists_fn, *, key_actions, hint,
     if on_col:
         def col_enter(cpos, rows, ctx): on_col(types[cpos], ctx)
         col_actions = {"enter": col_enter}
-        if on_col_force:
-            def col_force(cpos, rows, ctx): on_col_force(types[cpos], ctx)
-            col_actions["f"] = col_force
         if col_hint is None:
             col_hint = ("[bold cyan]column mode[/]   [dim]←→[/] pick type   [bold]↵[/] batch all clips"
-                        + ("   [bold]f[/] force" if on_col_force else "")
                         + "   [bold]r[/] row mode   [bold]q[/] back")
     if on_view or on_create:
         cell_actions = {}
@@ -928,7 +923,7 @@ def _inventory_nav(tr, title, color, types, exists_fn, *, key_actions, hint,
                 if row: on_create(row["stem"], types[cpos], ctx)
             cell_actions["+"] = cell_create
         if cell_hint is None:
-            cell_hint = ("[bold cyan]cell mode[/]   [dim]↑↓←→[/] pick cell"
+            cell_hint = ("[bold cyan]entry mode[/]   [dim]↑↓←→[/] pick cell"
                          + ("   [bold]↵[/]/[bold]o[/] open" if on_view else "")
                          + ("   [bold]+[/] create" if on_create else "")
                          + "   [bold]e[/]/[bold]r[/] row mode   [bold]q[/] back")
@@ -959,9 +954,6 @@ def do_fi(tr):
         if row:
             _do_suspended(ctx, lambda: _run(SCRIPT_BATCH_FIGS, "--stem", row["stem"]))
             _log_activity(f"figures/{row['stem']}")
-    def force_clip(row, rows, i, ctx):
-        if row:
-            _do_suspended(ctx, lambda: _run(SCRIPT_BATCH_FIGS, "--stem", row["stem"], "--force"))
     def fill_all(row, rows, i, ctx):
         def work(): _run(SCRIPT_BATCH_FIGS); _log_activity("figures: all")
         _do_suspended(ctx, work,
@@ -977,9 +969,6 @@ def do_fi(tr):
         def work(): _run(SCRIPT_BATCH_FIGS, "--types", t[0]); _log_activity(f"figures col {t[1]}")
         _do_suspended(ctx, work,
             confirm=f"Create [bold]{t[2]}[/] for all {len(tr)} clips?  [dim](QA-passed only)[/]")
-    def col_force(t, ctx):
-        _do_suspended(ctx, lambda: _run(SCRIPT_BATCH_FIGS, "--types", t[0], "--force"),
-            confirm=f"[red]Force re-render[/] [bold]{t[2]}[/] for all {len(tr)} clips?  [dim]overwrites existing[/]")
     def view_fig(stem, t, ctx):
         from paths import FIGURES_DIR
         path = os.path.join(FIGURES_DIR, t[0], f"{stem}_{t[0]}.png")
@@ -990,12 +979,11 @@ def do_fi(tr):
     def create_fig(stem, t, ctx):
         _do_suspended(ctx, lambda: _run(SCRIPT_BATCH_FIGS, "--stem", stem, "--types", t[0], "--force", "--all-quality"))
         _log_activity(f"create {t[1]}/{stem}")
-    hint = ("[dim]↑↓[/] [bold]↵[/] render   [bold]c[/] columns   [bold]e[/] cells   "
-            "[bold]a[/] all   [bold]w[/] waterfall   [bold]f[/] force   [bold]q[/] back")
+    hint = ("[dim]↑↓[/] [bold]↵[/] render   [bold]c[/] columns   [bold]e[/] entry   "
+            "[bold]a[/] all   [bold]w[/] waterfall   [bold]q[/] back")
     _inventory_nav(tr, "figures inventory", CLR_FIGURES, FIG_TYPES, _fig_exists,
-                   key_actions={"enter": render_clip, "f": force_clip,
-                                "a": fill_all, "w": fig_waterfall},
-                   hint=hint, on_col=col_batch, on_col_force=col_force,
+                   key_actions={"enter": render_clip, "a": fill_all, "w": fig_waterfall},
+                   hint=hint, on_col=col_batch,
                    on_view=view_fig, on_create=create_fig)
 
 # Videos
@@ -1048,7 +1036,7 @@ def do_vi(tr):
         ("note",    lambda r: r["note"] or "", dict(style="dim", no_wrap=True, overflow="ellipsis", max_width=22)),
     ]
     col_targets = [2, 4, 5, 6]       # column mode batches renderable types
-    cell_targets = [2, 3, 4, 5, 6]   # cell mode also lands on verdict (enter toggles it)
+    cell_targets = [2, 3, 4, 5, 6]   # entry mode also lands on verdict (enter toggles it)
     CELL_COLS = ["overlay", "__verdict__", "combined", "phase_animation", "phase_3d_rotation"]
     def legend():
         reg = load_registry()
@@ -1059,9 +1047,9 @@ def do_vi(tr):
         return (f"[green]{npa} pass[/]  [red]{nfa} fail[/]  [yellow]{npe} to review[/]  "
                 f"[dim]{nno} no overlay[/]")
     hint = ("[dim]↑↓[/] [bold]o[/]/[bold]↵[/] open   [green bold]p[/]ass [red bold]f[/]ail [bold]x[/] clear   "
-            "[bold]m[/] combined   [bold]c[/] columns   [bold]e[/] cells   [bold]q[/] back")
+            "[bold]c[/] columns   [bold]e[/] entry   [bold]q[/] back")
     col_hint = ("[bold cyan]column mode[/]   [dim]←→[/] pick type   [bold]↵[/] batch all clips   "
-                "[bold]f[/] force   [bold]r[/] row mode   [bold]q[/] back")
+                "[bold]r[/] row mode   [bold]q[/] back")
     def act_review(row, rows, i, ctx):
         if not row: return
         def work():
@@ -1088,8 +1076,6 @@ def do_vi(tr):
         _set_verdict(row["stem"], "fail", ctx.suspend(ask)); return "advance"
     def act_clear(row, rows, i, ctx):
         if row: _set_verdict(row["stem"], None)
-    def act_combined(row, rows, i, ctx):
-        if row: _do_suspended(ctx, lambda: _run(SCRIPT_COMBINED, "--stem", row["stem"]))
     def _col_videos(tn, force):
         # 'overlay' is per-stem via overlay_video.py (not in batch_figures' suite)
         if tn == "overlay":
@@ -1101,10 +1087,6 @@ def do_vi(tr):
     def col_batch(cpos, rows, ctx):
         tn = COL_TYPES[cpos]
         _do_suspended(ctx, lambda: _col_videos(tn, False), confirm=f"Render [bold]{tn}[/] for all {len(tr)} clips?")
-    def col_force(cpos, rows, ctx):
-        tn = COL_TYPES[cpos]
-        _do_suspended(ctx, lambda: _col_videos(tn, True),
-                      confirm=f"[red]Force re-render[/] [bold]{tn}[/] for all {len(tr)} clips?  [dim]overwrites[/]")
     def view_vid(stem, tn, ctx):
         if tn == "overlay":
             path = _overlay_path(stem)
@@ -1132,14 +1114,14 @@ def do_vi(tr):
             if col == "overlay": _render_overlay(row["stem"])
             else: _run(SCRIPT_BATCH_FIGS, "--video", "--types", col, "--stem", row["stem"], "--force", "--all-quality")
         _do_suspended(ctx, work); _log_activity(f"create {col}/{row['stem']}")
-    cell_hint = ("[bold cyan]cell mode[/]   [dim]↑↓←→[/] pick cell   [bold]↵[/]/[bold]o[/] open · toggle verdict   "
+    cell_hint = ("[bold cyan]entry mode[/]   [dim]↑↓←→[/] pick cell   [bold]↵[/]/[bold]o[/] open · toggle verdict   "
                  "[bold]+[/] create   [bold]e[/]/[bold]r[/] row mode   [bold]q[/] back")
     navigate_table(build_rows, columns, title="videos", border_style=CLR_VIDEOS,
                    legend=legend, hint=hint, col_hint=col_hint, cell_hint=cell_hint,
                    empty_msg="No clips.",
                    key_actions={"o": act_review, "enter": act_review, "p": act_pass,
-                                "f": act_fail, "x": act_clear, "m": act_combined},
-                   col_targets=col_targets, col_actions={"enter": col_batch, "f": col_force},
+                                "f": act_fail, "x": act_clear},
+                   col_targets=col_targets, col_actions={"enter": col_batch},
                    cell_targets=cell_targets,
                    cell_actions={"enter": cell_enter, "o": cell_view, "+": cell_create})
     _log_activity("videos")
