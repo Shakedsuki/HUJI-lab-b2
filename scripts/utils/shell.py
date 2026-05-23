@@ -542,6 +542,28 @@ def _pause():
     except KeyboardInterrupt: pass
 
 # Track + status
+def _sanity_preview():
+    """Return a preview_fn rendering the highlighted clip's sanity-card panel."""
+    pcache = {}
+    def preview(row):
+        if not row: return None
+        stem = row["stem"]
+        if stem not in pcache:
+            ph = max(6, (console.height - 28) // 2)
+            pw = max(44, console.width - 78)
+            try:
+                sys.path.insert(0, os.path.join(REPO_ROOT, "scripts", "analysis"))
+                from sanity_check import build_one
+                verdict, txt = build_one(stem, plot_width=pw, plot_height=ph)
+                pcache[stem] = (verdict, Text.from_ansi(txt))
+            except Exception as e:
+                pcache[stem] = ("?", Text.from_markup(f"[red]sanity unavailable:[/] {e}"))
+        verdict, ptxt = pcache[stem]
+        vc = {"CLEAN": "green", "WARN": "yellow", "REVIEW": "red"}.get(verdict, "dim")
+        return Panel(ptxt, title=f"[bold]sanity[/] [dim]·[/] [{vc}]{verdict}[/]",
+                     border_style=CLR_TRACK, padding=(0, 1))
+    return preview
+
 def build_mode_track():
     """Track mode — one table over all clips; row keys act on the highlighted clip
     (t track/re-track, v verify, s sanity, o open, a bulk); column mode re-tracks
@@ -616,26 +638,8 @@ def build_mode_track():
         _do_suspended(ctx, work,
             confirm=f"[red]Re-track[/] all [bold]{len(stems)}[/] clip(s) in view? "
                     f"Overwrites existing tracking.")
-    pcache = {}
-    def preview(row):
-        if not row: return None
-        stem = row["stem"]
-        if stem not in pcache:
-            ph = max(6, (console.height - 28) // 2)
-            pw = max(44, console.width - 78)
-            try:
-                sys.path.insert(0, os.path.join(REPO_ROOT, "scripts", "analysis"))
-                from sanity_check import build_one
-                verdict, txt = build_one(stem, plot_width=pw, plot_height=ph)
-                pcache[stem] = (verdict, Text.from_ansi(txt))
-            except Exception as e:
-                pcache[stem] = ("?", Text.from_markup(f"[red]sanity unavailable:[/] {e}"))
-        verdict, ptxt = pcache[stem]
-        vc = {"CLEAN": "green", "WARN": "yellow", "REVIEW": "red"}.get(verdict, "dim")
-        return Panel(ptxt, title=f"[bold]sanity[/] [dim]·[/] [{vc}]{verdict}[/]",
-                     border_style=CLR_TRACK, padding=(0, 1))
     return Mode(name="track", key="1", color=CLR_TRACK, build_rows=build_rows, columns=columns,
-                legend=legend, hint=hint, preview_fn=preview,
+                legend=legend, hint=hint, preview_fn=_sanity_preview(),
                 key_actions={"t": act_track, "v": act_verify, "s": act_sanity, "o": act_open,
                              "a": act_bulk},
                 col_targets=[2], col_actions={"enter": col_retrack_all}, col_hint=col_hint)
@@ -1372,7 +1376,7 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
             if eh: hp.append(Text.from_markup("  [bold]entry[/]    " + eh))
         hp.append(Text.from_markup("  [dim]— any key to close —[/]"))
         return Panel(Group(*hp), title=_ring_title(modes, midx), title_align="left",
-                     border_style=CLR_MAIN, padding=(1, 2), box=box.SQUARE)
+                     border_style=m.color, padding=(1, 2), box=box.SQUARE)
 
     def frame():
         nonlocal idx, cidx
@@ -1438,18 +1442,19 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
         body = [t]
         leg = _resolve(m.legend)
         if leg: body.append(Text.from_markup("  " + leg))
-        panel = Panel(Group(*body), title=title, title_align="left",
-                      subtitle=right_info, subtitle_align="right",
-                      border_style=CLR_MAIN, padding=(0, 1), box=box.SQUARE,
-                      expand=(m.preview_fn is None))
-        main_r = panel
+        inner = Group(*body)
         if m.preview_fn is not None:
             try: prev = m.preview_fn(rows[idx] if n else None)
             except Exception: prev = None
             if prev is not None:
                 lay = Table(box=None, show_header=False, expand=True, padding=(0, 1))
-                lay.add_column(); lay.add_column(ratio=1)
-                lay.add_row(panel, prev); main_r = lay
+                lay.add_column(ratio=2); lay.add_column(ratio=1)
+                lay.add_row(Group(*body), prev)
+                inner = lay
+        panel = Panel(inner, title=title, title_align="left",
+                      subtitle=right_info, subtitle_align="right",
+                      border_style=m.color, padding=(0, 1), box=box.SQUARE, expand=True)
+        main_r = panel
         if mode == "cell" and m.cell_hint: h = _resolve(m.cell_hint)
         elif mode == "col" and m.col_hint: h = _resolve(m.col_hint)
         else: h = _resolve(m.hint)
@@ -1552,15 +1557,23 @@ def main():
     def _main_stub():
         def rows():
             tr, _pe = get_clips()
-            return [{"stem": c["stem"], "_n": i} for i, c in enumerate(tr, 1)]
+            return [{"stem": c["stem"], "status": c.get("status", "?"), "_n": i}
+                    for i, c in enumerate(tr, 1)]
+        def _scell(r):
+            s = r["status"]
+            if s == "verified": return "[green]verified[/]"
+            if s == "pending":  return "[yellow]pending[/]"
+            return f"[cyan]{s}[/]"
         return Mode("main", "m", CLR_MAIN, glyph="⌂", build_rows=rows,
                     columns=[("#", lambda r: str(r["_n"]), dict(justify="right", width=3, style="dim")),
-                             ("clip", lambda r: r["stem"], dict(min_width=16, no_wrap=True))],
+                             ("clip", lambda r: r["stem"], dict(min_width=16, no_wrap=True)),
+                             ("status", _scell, dict(width=9))],
                     legend="[dim]pipeline overview — coming next; press 1-4 to open a stage[/]",
-                    hint="[dim]↑↓[/] navigate   [bold]1-4[/] open a stage   [bold]h[/] help   [bold]q[/] quit")
+                    hint="[dim]↑↓[/] navigate   [bold]1-4[/] open a stage   [bold]h[/] help   [bold]q[/] quit",
+                    preview_fn=_sanity_preview())
     modes = [_main_stub(), build_mode_track(), build_mode_analyze(),
              build_mode_figures(), build_mode_videos()]
-    run_modes(modes, start=1, overall_fn=_overall_pct)
+    run_modes(modes, start=0, overall_fn=_overall_pct)
 
 # ── Hub loop ──
 
