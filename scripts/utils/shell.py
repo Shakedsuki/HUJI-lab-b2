@@ -50,6 +50,7 @@ SCRIPT_WINDING_SWEEP = os.path.join(REPO_ROOT, "scripts", "analysis", "winding_s
 SCRIPT_PHASE3D_PLOTLY = os.path.join(REPO_ROOT, "scripts", "analysis", "phase_3d_plotly.py")
 SCRIPT_WATERFALL   = os.path.join(REPO_ROOT, "scripts", "analysis", "spectral_waterfall.py")
 SCRIPT_FTLE_WINDOWS = os.path.join(REPO_ROOT, "scripts", "analysis", "ftle_windows.py")
+SCRIPT_CHAOS_WINDOWS = os.path.join(REPO_ROOT, "scripts", "analysis", "chaos_windows.py")
 SCRIPT_OVERLAY     = os.path.join(REPO_ROOT, "scripts", "analysis", "overlay_video.py")
 
 CLR_TRACK   = "#4ade80"
@@ -123,11 +124,11 @@ def get_clips():
                 info["status"] = "pending"; pending.append(info)
     return tracked, pending
 
-# ── FTLE chaos sparkline + glyph ──
-# Reads measurements/<stem>/ftle_windows.json (written separately by
-# ftle_windows.py). Missing file -> graceful dots, never an error. Cached per
-# stem; cleared on mode switch and after any suspended action that may have
-# regenerated the file.
+# ── FTLE windows (optional lambda1 diagnostic) ──
+# Reads measurements/<stem>/ftle_windows.json (ftle_windows.py). NOTE: the glyph
+# and sparkline source of truth moved to the chaos verdict (chaos_windows.json,
+# below); this lambda1 data is kept for the /ftle palette + analyze ftle cell.
+# Missing file -> graceful dots. Cached; cleared on mode switch / suspended action.
 _ftle_cache = {}
 _ftle_range = None   # auto-scaled (floor, ceil) for sparkline blocks; see _ftle_lambda_range
 
@@ -190,29 +191,59 @@ def _block_color(lam):
     if lam > -0.02: return "#fbbf24"    # edge
     return "#55ff55"                    # periodic
 
-def _render_sparkline(stem):
-    """8-char time-resolved FTLE bar; dim dots until the json exists."""
-    windows = (_get_ftle(stem) or {}).get("windows", [])
-    if len(windows) < 8:
-        return "[dim]········[/]"
-    floor, ceil = _ftle_lambda_range()
-    span = (ceil - floor) or 1.0
-    out = []
-    for w in windows[:8]:
-        lam = w.get("lambda1")
-        if lam is None or lam != lam:        # missing or NaN
-            out.append("[dim]·[/]"); continue
-        frac = (lam - floor) / span
-        out.append(f"[{_block_color(lam)}]{_BLOCKS[max(0, min(7, int(frac * 8)))]}[/]")
-    return "".join(out)
+# ── Chaos verdict windows (the glyph + sparkline source of truth) ──
+# measurements/<stem>/chaos_windows.json (chaos_windows.py): the SAME verdict the
+# i-insights chaos card shows + per-window theta2 spectral entropy. Glyph = verdict,
+# sparkline = entropy (coloured by the verdict) → card / glyph / sparkline can never
+# disagree. Missing file -> dots. Cached; cleared on mode switch / suspended action.
+_cw_cache = {}
 
-_GLYPHS = {"chaotic": "[#ff5555]●[/]", "regular": "[#55ff55]○[/]", "edge": "[#fbbf24]◎[/]"}
+def _load_chaos_windows(stem):
+    path = os.path.join(clip_dir(stem), "chaos_windows.json")
+    if not os.path.isfile(path):
+        return None
+    try:
+        with open(path, encoding="utf-8") as f:
+            return json.load(f)
+    except (json.JSONDecodeError, OSError):
+        return None
+
+def _get_chaos_windows(stem):
+    if stem not in _cw_cache:
+        _cw_cache[stem] = _load_chaos_windows(stem)
+    return _cw_cache[stem]
+
+def _invalidate_chaos_windows_cache():
+    _cw_cache.clear()
+
+# verdict -> (glyph markup, colour), matching the chaos card's colour scheme
+_VERDICT_GLYPH = {"REGULAR":    ("[#55ff55]○[/]", "#55ff55"),
+                  "BORDERLINE": ("[#fbbf24]◎[/]", "#fbbf24"),
+                  "CHAOTIC":    ("[#ff5555]●[/]", "#ff5555")}
 _GLYPH_NONE = "[dim]·[/]"
 
+def _render_sparkline(stem):
+    """8-char time-resolved chaos bar — per-window theta2 spectral entropy [0,1]
+    from chaos_windows.json, coloured by the whole-clip verdict so it agrees with
+    the glyph + card (low/short = periodic, tall = broadband). Dots until computed."""
+    cw = _get_chaos_windows(stem)
+    ent = (cw or {}).get("window_entropy") or []
+    if len(ent) < 8:
+        return "[dim]········[/]"
+    color = _VERDICT_GLYPH.get((cw or {}).get("verdict"), (None, "dim"))[1]
+    out = []
+    for e in ent[:8]:
+        if e is None or e != e:              # missing or NaN
+            out.append("[dim]·[/]"); continue
+        lvl = max(0, min(7, int(max(0.0, min(1.0, e)) * 8 - 1e-9)))
+        out.append(f"[{color}]{_BLOCKS[lvl]}[/]")
+    return "".join(out)
+
 def _render_glyph_clip(stem):
-    """'glyph stem' for the clip column — a chaos-class marker shown in every mode."""
-    ftle = _get_ftle(stem)
-    glyph = _GLYPH_NONE if ftle is None else _GLYPHS.get(ftle.get("classification", "edge"), _GLYPH_NONE)
+    """'glyph stem' for the clip column — the chaos verdict marker (○ regular ·
+    ◎ borderline · ● chaotic), the same verdict the i-insights card shows."""
+    cw = _get_chaos_windows(stem)
+    glyph = _GLYPH_NONE if not cw else _VERDICT_GLYPH.get(cw.get("verdict"), (_GLYPH_NONE, "dim"))[0]
     return f"{glyph} {stem}"
 
 # ── Overlay helpers ──
@@ -608,6 +639,7 @@ def _do_suspended(ctx, work, pause=True, confirm=None, confirm_default=False):
             return
         work()
         _invalidate_ftle_cache()   # the action may have (re)generated ftle_windows.json
+        _invalidate_chaos_windows_cache()
         if pause: _pause()
     ctx.suspend(go)
 
@@ -1657,6 +1689,17 @@ def _palette_ftle():
         console.print(Rule(f"[bold][{j}/{len(tr)}] {c['stem']}[/]", style="dim"))
         _run(SCRIPT_FTLE_WINDOWS, "--stem", c["stem"])
     _invalidate_ftle_cache(); _log_activity("ftle (all clips)"); _pause()
+def _palette_chaoswin():
+    # chaos_windows.py is per-clip; batch by looping the family. Cheap (no Rosenstein) —
+    # recomputes the verdict + sparkline source of truth behind the glyph/sparkline.
+    tr, _pe = get_clips()
+    if not tr:
+        console.print("  [dim]No tracked clips.[/]"); _pause(); return
+    if not _ask_confirm(f"Recompute [bold]chaos verdict + sparkline[/] for all {len(tr)} clips?"): return
+    for j, c in enumerate(tr, 1):
+        console.print(Rule(f"[bold][{j}/{len(tr)}] {c['stem']}[/]", style="dim"))
+        _run(SCRIPT_CHAOS_WINDOWS, "--stem", c["stem"])
+    _invalidate_chaos_windows_cache(); _log_activity("chaos windows (all)"); _pause()
 
 def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn=None):
     """Shell v2 driver — one persistent table; 0-4 swap modes, cursor persists.
@@ -1679,7 +1722,8 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
     ins_sel = 0
     shell_cmds = {"sw": do_w, "pa": do_p, "cal": do_c,
                   "wf": _palette_waterfall, "bif": _palette_bif, "rs": _palette_rotsweep,
-                  "ds": _palette_dimsweep, "ws": _palette_windsweep, "ftle": _palette_ftle}
+                  "ds": _palette_dimsweep, "ws": _palette_windsweep, "ftle": _palette_ftle,
+                  "cw": _palette_chaoswin}
 
     def cur():
         return modes[midx]
@@ -1688,7 +1732,7 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
         hp = [Text.from_markup("  [dim]move[/]  ↑↓ / k j   Home/End   PgUp/PgDn   [dim]·[/]   q/Esc quit"),
               Text.from_markup("  [dim]switch[/]  m/1/2/3/4/5 mode   [bold]tab[/] cycle"),
               Text.from_markup("  [dim]palette[/]  [bold cyan]/[/]  sw switch · pa paths · cal calibrate · "
-                               "wf waterfall · bif bifurcation · rs rot · ds dim · ws wind · ftle windows")]
+                               "wf waterfall · bif bifurcation · rs rot · ds dim · ws wind · ftle windows · cw verdict")]
         rh = _resolve(m.hint)
         if rh: hp.append(Text.from_markup("  [bold]row[/]      " + rh))
         if m.col_targets:
@@ -1815,7 +1859,7 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
                 table_block = lay
         content = [table_block]
         if cmd is not None:
-            cl = Text.from_markup(f"  [bold cyan]/[/] {cmd}▌   [dim]sw switch · pa paths · cal calibrate   ·   wf waterfall · bif bifurcation · rs rot · ds dim · ws wind · ftle windows   · esc cancel[/]")
+            cl = Text.from_markup(f"  [bold cyan]/[/] {cmd}▌   [dim]sw switch · pa paths · cal calibrate   ·   wf waterfall · bif bifurcation · rs rot · ds dim · ws wind · ftle windows · cw verdict   · esc cancel[/]")
             cl.no_wrap = True; cl.overflow = "ellipsis"
             content.append(cl)
         else:
@@ -1882,11 +1926,11 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
                 rows, n, avail, renderable = frame(); live.update(renderable, refresh=True); continue
             if key == "\t":
                 midx = (midx + 1) % len(modes); mode = "row"; cidx = 0; pending = ""; show_preview = False
-                _invalidate_ftle_cache()
+                _invalidate_ftle_cache(); _invalidate_chaos_windows_cache()
                 rows, n, avail, renderable = frame(); live.update(renderable, refresh=True); continue
             if key in by_key:
                 midx = by_key[key]; mode = "row"; cidx = 0; pending = ""; show_preview = False
-                _invalidate_ftle_cache()
+                _invalidate_ftle_cache(); _invalidate_chaos_windows_cache()
                 rows, n, avail, renderable = frame(); live.update(renderable, refresh=True); continue
             m = cur()
             has_cols = bool(m.col_actions) and bool(m.col_targets)
@@ -1996,11 +2040,11 @@ def build_mode_main():
         rows = _last.get("rows") or build_rows()
         if not rows: return "[dim]no tracked clips[/]"
         overall = round(sum(r["pct"] for r in rows) / len(rows))
-        ftles = [_get_ftle(r["stem"]) for r in rows]
-        n_reg   = sum(1 for f in ftles if f and f.get("classification") == "regular")
-        n_edge  = sum(1 for f in ftles if f and f.get("classification") == "edge")
-        n_chaos = sum(1 for f in ftles if f and f.get("classification") == "chaotic")
-        n_none  = sum(1 for f in ftles if f is None)
+        cws = [_get_chaos_windows(r["stem"]) for r in rows]
+        n_reg   = sum(1 for f in cws if f and f.get("verdict") == "REGULAR")
+        n_edge  = sum(1 for f in cws if f and f.get("verdict") == "BORDERLINE")
+        n_chaos = sum(1 for f in cws if f and f.get("verdict") == "CHAOTIC")
+        n_none  = sum(1 for f in cws if f is None)
         spark = f"[#55ff55]○[/] {n_reg}  [#fbbf24]◎[/] {n_edge}  [#ff5555]●[/] {n_chaos}"
         if n_none: spark += f"  [dim]· {n_none} pending[/]"
         return f"{spark}      overall [bold]{overall}%[/]"
