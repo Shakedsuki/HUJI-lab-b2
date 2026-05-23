@@ -303,6 +303,9 @@ class _NavCtx:
         finally:
             if self._live is not None: self._live.start(refresh=False)
 
+_SPECIAL_KEYS = frozenset({"enter", "esc", "tab", "backspace", "up", "down",
+                           "left", "right", "home", "end", "pageup", "pagedown"})
+
 def navigate_table(build_rows, columns, *, title="", border_style="cyan",
                    key_actions=None, legend=None, hint=None,
                    empty_msg="Nothing here.", selected_bg="grey23",
@@ -467,7 +470,7 @@ def navigate_table(build_rows, columns, *, title="", border_style="cyan",
                         elif res == "top": idx = 0
                 elif len(key) == 1 and key.isprintable():
                     cand = pending + key
-                    prefixed = any(len(k) > len(cand) and k.startswith(cand) for k in key_actions)
+                    prefixed = any(len(k) > len(cand) and k.startswith(cand) and k not in _SPECIAL_KEYS for k in key_actions)
                     if cand in key_actions and not prefixed:
                         pending = ""
                         res = key_actions[cand](rows[idx] if n else None, rows, idx, ctx)
@@ -1556,7 +1559,7 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
                         elif res == "top": idx = 0
                 elif len(key) == 1 and key.isprintable():
                     cand = pending + key
-                    prefixed = any(len(k) > len(cand) and k.startswith(cand) for k in ka)
+                    prefixed = any(len(k) > len(cand) and k.startswith(cand) and k not in _SPECIAL_KEYS for k in ka)
                     if cand in ka and not prefixed:
                         pending = ""
                         res = ka[cand](rows[idx] if n else None, rows, idx, ctx)
