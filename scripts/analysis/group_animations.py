@@ -149,8 +149,8 @@ def pendulum_xy(th1_deg, th2_deg):
     th2 = np.radians(th2_deg)
     pivot  = np.array([0.0, 0.0])
     elbow  = pivot + ARM_LEN * np.array([np.sin(th1), -np.cos(th1)])
-    bob    = elbow + ARM_LEN * np.array([np.sin(th1 + th2),
-                                          -np.cos(th1 + th2)])
+    bob    = elbow + ARM_LEN * np.array([np.sin(th2),
+                                          -np.cos(th2)])
     return pivot, elbow, bob
 
 # ─────────────────────────────────────────────

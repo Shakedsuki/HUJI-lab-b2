@@ -100,10 +100,10 @@ def load_clip(stem):
             free["omega2_deg_s"].to_numpy())
 
 def find_crossings_upward(t, th1, th2, w1, w2):
-    """Find all upward crossings of θ₁+θ₂=0 (i.e. d/dt(θ₁+θ₂) > 0).
+    """Find all upward crossings of θ₂=0 (d/dt(θ₂) > 0; θ₂ is absolute).
     Returns list of dicts: {idx, frac, t_cross, th1, th2, w1, w2}."""
-    c = th1 + th2
-    dc = w1 + w2  # velocity of the section coordinate
+    c = th2
+    dc = w2  # velocity of the section coordinate
     out = []
     for i in range(len(c) - 1):
         if c[i] == 0.0 and dc[i] > 0:

@@ -72,10 +72,10 @@ E_INVERSION = 4.0 * _G * _L   # ≈ 13.72 J/kg per unit mass
 
 def E_per_frame(th1_deg, th2_deg, om1_dps, om2_dps):
     th1_r     = np.radians(th1_deg)
-    th2_abs_r = np.radians(th1_deg + th2_deg)
-    th2_rel_r = np.radians(th2_deg)
+    th2_abs_r = np.radians(th2_deg)              # θ₂ is already lab-frame absolute
+    th2_rel_r = np.radians(th2_deg - th1_deg)    # relative angle for the KE coupling
     w1_r      = np.radians(om1_dps)
-    w2_abs_r  = np.radians(om1_dps + om2_dps)
+    w2_abs_r  = np.radians(om2_dps)              # ω of the absolute lower angle
     PE = (_G * (3.0 * _L / 2.0) * (1.0 - np.cos(th1_r))
         + _G * (_L / 2.0)       * (1.0 - np.cos(th2_abs_r)))
     KE = _L**2 * (
@@ -136,7 +136,7 @@ def compute_topological(data):
     om2 = data["om2"]
     t   = data["time_s"]
 
-    theta2_abs = th1 + th2
+    theta2_abs = th2          # θ₂ is already the lower arm's absolute lab-frame angle
 
     max_theta2_abs = float(np.max(np.abs(theta2_abs)))
     frac_inverted  = float(np.mean(np.abs(theta2_abs) > 90.0))

@@ -72,10 +72,10 @@ def compute_diagnostics(df, stem):
                       float(np.percentile(arm2_dev_pct, 99)))
 
     th1_r = np.radians(th1)
-    th2_abs_r = np.radians(th1 + th2)
-    th2_rel_r = np.radians(th2)
+    th2_abs_r = np.radians(th2)            # θ₂ already lab-frame absolute
+    th2_rel_r = np.radians(th2 - th1)      # relative angle for the KE coupling
     w1_r = np.radians(om1)
-    w2_abs_r = np.radians(om1 + om2)
+    w2_abs_r = np.radians(om2)             # ω of the absolute lower angle
     PE = (_G * (3 * _L / 2) * (1 - np.cos(th1_r))
         + _G * (_L / 2) * (1 - np.cos(th2_abs_r)))
     KE = _L**2 * ((2/3) * w1_r**2

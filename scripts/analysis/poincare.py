@@ -124,13 +124,13 @@ def lerp_at_crossing(s_prev, s_next, x_prev, x_next):
 
 def poincare_points(t, th1, th2, om1, om2):
     """
-    Section: theta2_abs == 0  (i.e. theta1 + theta2 == 0),
-             with the section crossed in the +theta2_abs direction
-             (omega1 + omega2 > 0).
+    Section: theta2 == 0  (theta2 is already the lower arm's absolute
+             lab-frame angle), crossed in the +theta2 direction
+             (omega2 > 0).
 
     Returns (t_cross, th1_cross, om1_cross) arrays.
     """
-    th2_abs = th1 + th2
+    th2_abs = th2          # θ₂ is already the lower arm's absolute angle
     # Wrap to (-180, 180] so the absolute angle is well defined.
     th2_abs_unwrap = np.degrees(np.unwrap(np.radians(th2_abs)))
     # Pick the same wrapping for theta1 — interpolation is straightforward
@@ -140,7 +140,7 @@ def poincare_points(t, th1, th2, om1, om2):
     # Use the non-unwrapped (modulo 360) section to find crossings
     # near the rest position. We look for sign changes of
     # ((th1+th2) wrapped to (-180,180]).
-    th2_abs_wrapped = ((th1 + th2 + 180) % 360) - 180
+    th2_abs_wrapped = ((th2 + 180) % 360) - 180
 
     idx = upward_zero_crossings(th2_abs_wrapped)
     # Filter spurious crossings produced by the wrap discontinuity:
@@ -162,8 +162,8 @@ def poincare_points(t, th1, th2, om1, om2):
     om1_cross = []
     for i in idx:
         s0, s1 = th2_abs_wrapped[i], th2_abs_wrapped[i + 1]
-        # Direction filter: omega2_abs = om1 + om2 > 0 at the crossing.
-        if (om1[i] + om2[i]) <= 0 and (om1[i + 1] + om2[i + 1]) <= 0:
+        # Direction filter: omega2 > 0 at the crossing (θ₂ absolute).
+        if om2[i] <= 0 and om2[i + 1] <= 0:
             continue
         frac  = -s0 / (s1 - s0) if (s1 - s0) != 0 else 0.0
         tc    = t[i]   + frac * (t[i + 1]   - t[i])
