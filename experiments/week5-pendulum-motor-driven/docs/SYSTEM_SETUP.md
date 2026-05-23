@@ -141,18 +141,18 @@ The two parameters form a **2D control space**. Fixed `f_drive` sweeps in `V_dri
 
 - **Red markers** along Arm 2 (lower arm) — primary tracking targets.
 - **Green marker** at or near Pivot β — joint reference.
-- Same HSV color segmentation pipeline as Phase 1.
+- Detected by BGR colour-threshold segmentation (N. Cohen's logic, `scripts/processing/bgr_tracker.py`) — the driven clips use the BGR tracker, not the older HSV pipeline used for the free-swing weeks.
 
 ### 4.3 Clip Naming Convention
 
 Phase 2 clips are keyed by control parameters:
 
 ```
-fd_<freq_hz>_vd_<voltage_v>
+<V_drill>V_<f_drive>Hz
 ```
 
-Examples: `fd_1p5_vd_4v0`, `fd_2p0_vd_5v5`.  
-Use `p` for the decimal point and no unit suffix on digits (consistent with Phase 1 angle convention).
+Examples: `3.2V_1.20Hz`, `3V_1Hz`, `4V_2Hz`.  
+Decimal points are literal (e.g. `1.20`); the leading value is the drill voltage (V), the trailing value the drive frequency (Hz).
 
 ### 4.4 Degrees of Freedom
 
@@ -205,7 +205,7 @@ See `scripts/analysis/` for the shared pendulum analysis scripts.
 
 ## 7. Circuit Diagram
 
-File: `experiments/week5-6-pendulum-motor-driven/docs/driven_pendulum_circuit.html`  
+File: `experiments/week5-pendulum-motor-driven/docs/driven_pendulum_circuit.html` *(planned — not yet created)*  
 HTML/CSS annotated diagram with:
 - Three input blocks (function generator, Ch1 relay power, Ch2 drill power)
 - DPDT relay switching logic

@@ -2,7 +2,7 @@
 
 **Scope:** Figures and visualizations uniquely enabled by the motor-driven (Phase 2) setup.  
 **Audience:** Architect / Claude Code sessions preparing data pipelines, tracking foundations, and analysis scripts.  
-**Status:** Pre-data. Recording has not started. All scripts are to be designed against the planned data format.
+**Status:** Original design spec (written pre-data). Recording is now complete — week 5 (broad V/f survey) and week 6 (3.2 V resonance sweep) — and the driven analysis scripts under `scripts/analysis/` are in use. Treat this as the original design intent: where its proposed naming, registry schema, or open questions differ from what shipped, the code, the README, and `scripts/utils/thresholds.py` are authoritative.
 
 ---
 
@@ -30,13 +30,13 @@ Before any figure script can run, the following must be in place.
 Every Phase 2 clip stem encodes its control parameters:
 
 ```
-fd_<freq>_vd_<volt>
+<V_drill>V_<f_drive>Hz
 ```
 
-Examples: `fd_1p5_vd_4v0`, `fd_2p0_vd_6v0`.  
-Rules: `p` replaces the decimal point (consistent with Phase 1 angle convention). Frequency in Hz, voltage in V.
+Examples: `3.2V_1.20Hz`, `3V_1Hz`, `4V_2Hz`.  
+Decimal points are literal (e.g. `1.20`); the leading value is the drill voltage (V), the trailing the drive frequency (Hz).
 
-A `parse_stem()` utility (see §5) must extract `(f_drive_hz, v_drill_v)` from any such stem.
+A `parse_stem()` helper extracts the drive voltage and frequency from a stem.
 
 ### 0.2 `verification.csv` Column for Driven Clips
 
@@ -48,7 +48,7 @@ Proposal: `"driven"` — and all driven-aware loaders accept a `--phase-filter d
 
 ### 0.3 `experiments.json` for Phase 2
 
-Located at `experiments/week5-6-pendulum-motor-driven/data/experiments.json`. Each entry:
+Located at `experiments/week5-pendulum-motor-driven/data/experiments.json`. Each entry:
 
 ```json
 {
@@ -262,7 +262,7 @@ def winding_number(t, th1, f_drive: float, max_denom: int = 6) -> float:
 | `verify_tracking.py` | No change | |
 | `poincare.py` | No change | Phase 1 only; driven clips use `driven_poincare.py` |
 | `lyapunov.py` | Minor: accept `--phase-filter driven` | Reuse unchanged for λ₁ computation; arnold_tongue.py reads its CSV output |
-| `paths.py` | No change | `CHAOS_PHASE=week5-6-pendulum-motor-driven` already works (legacy `phase2-motor-driven` and `week4-pendulum-motor-driven` aliased) |
+| `paths.py` | No change | Phases are `week5-pendulum-motor-driven` and `week6-pendulum-motor-driven`; the combined `week5-6-pendulum-motor-driven` and legacy `phase2-motor-driven` / `week4-pendulum-motor-driven` all alias to week 6 |
 | `chaos.py` | Register new subcommands | `chaos driven-poincare`, `chaos bifurcation`, `chaos arnold-tongue` |
 
 ---
