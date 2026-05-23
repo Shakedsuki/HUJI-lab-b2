@@ -1269,7 +1269,6 @@ class Mode:
     cell_actions: object = None
     cell_hint: object = None
     preview_fn: object = None
-    banner: object = None        # optional orientation/progress block under the title
 
 def _ring_title(modes, active):
     t = Text()
@@ -1278,7 +1277,7 @@ def _ring_title(modes, active):
     for i, m in enumerate(modes):
         if i: t.append("  ")
         t.append(f"{m.glyph or m.key} {m.name}",
-                 style=(f"bold {m.color}" if i == active else "dim"))
+                 style=(f"bold {m.color}" if i == active else m.color))
     return t
 
 def _status_line(modes, phase_label, width):
@@ -1296,7 +1295,7 @@ def _status_line(modes, phase_label, width):
     pad = max(3, width - left.cell_len - right.cell_len - 2)
     return left + Text(" " * pad) + right
 
-def run_modes(modes, start=0, phase_label=None, selected_bg="grey23"):
+def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn=None):
     """Shell v2 driver — one persistent table; 0-4 swap modes, cursor persists.
     Rigid frame (title ring + bordered table + hint + status line); only the
     clip-row band scrolls. Reuses the row/column/entry + type-ahead + help
@@ -1340,18 +1339,24 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23"):
         _active = cell_tgts if mode == "cell" else m.col_targets
         if _active: cidx = max(0, min(cidx, len(_active) - 1))
         width = console.width
-        try:
-            banner = _resolve(m.banner) if m.banner else None
-        except Exception:
-            banner = None
-        banner_lines = (banner.count("\n") + 1) if banner else 0
-        avail = max(5, min(23 - banner_lines, console.height - 10 - banner_lines))
+        avail = max(5, min(23, console.height - 10))
         try:
             tr2, pe2 = get_clips()
             nver = sum(1 for c in tr2 if c.get("quality") == "verified")
             right_info = f"{nver}/{len(tr2) + len(pe2)}"
         except Exception:
             right_info = None
+        try:
+            overall_pct = overall_fn() if overall_fn else None
+        except Exception:
+            overall_pct = None
+        title = _ring_title(modes, midx)
+        if overall_pct is not None:
+            filled = max(0, min(10, round(overall_pct / 10)))
+            title.append("    ")
+            title.append("█" * filled, style=CLR_TRACK)
+            title.append("░" * (10 - filled), style="dim")
+            title.append(f" {overall_pct}%", style="dim")
         if show_help:
             return rows, n, avail, Group(_help_panel(m), _status_line(modes, phase_label, width))
         cols = m.columns
@@ -1383,12 +1388,10 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23"):
                 else:
                     t.add_row(" ", *cells)
             if hi < n: t.add_row(" ", "[dim]↓…[/]", *[""] * (ncol - 1))
-        body = []
-        if banner: body.append(Text.from_markup(banner))
-        body.append(t)
+        body = [t]
         leg = _resolve(m.legend)
         if leg: body.append(Text.from_markup("  " + leg))
-        panel = Panel(Group(*body), title=_ring_title(modes, midx), title_align="left",
+        panel = Panel(Group(*body), title=title, title_align="left",
                       subtitle=right_info, subtitle_align="right",
                       border_style=CLR_MAIN, padding=(0, 1), box=box.SQUARE,
                       expand=(m.preview_fn is None))
@@ -1498,23 +1501,18 @@ def _v2_demo():
     cols = [("#",      lambda r: str(r["_n"]), dict(justify="right", width=3, style="dim")),
             ("clip",   lambda r: r["stem"],    dict(min_width=16, no_wrap=True)),
             ("status", lambda r: r["status"],  dict(width=10))]
-    def _overall():
+    def _overall_pct():
         tr, pe = get_clips()
         total = len(tr) + len(pe)
         nver = sum(1 for c in tr if c.get("quality") == "verified")
-        pct = round(100 * nver / total) if total else 0
-        filled = round(pct / 10)
-        bar = f"[{CLR_TRACK}]" + "█" * filled + f"[/][{CLR_ANALYZE}]" + "░" * (10 - filled) + "[/]"
-        return ("  [bold]Pipeline overview[/] [dim]— one row per clip; columns show how far each stage has progressed.[/]\n"
-                f"  [dim]Press[/] [bold]1–4[/] [dim]to open a stage  ·  [/][bold]+/-[/][dim] expand a clip  ·  [/][bold]h[/][dim] help[/]"
-                f"      overall {bar} [bold]{pct}%[/]")
-    def mk(name, key, clr, glyph="", banner=None):
-        return Mode(name, key, clr, glyph=glyph, build_rows=rows, columns=cols, banner=banner,
+        return round(100 * nver / total) if total else 0
+    def mk(name, key, clr, glyph=""):
+        return Mode(name, key, clr, glyph=glyph, build_rows=rows, columns=cols,
                     legend=f"demo · {name}",
                     hint=f"[dim]↑↓[/] navigate   [bold]h[/] help   [bold]q[/] quit   [dim](stub: {name})[/]")
-    run_modes([mk("main", "0", CLR_MAIN, glyph="⌂", banner=_overall), mk("track", "1", CLR_TRACK),
+    run_modes([mk("main", "0", CLR_MAIN, glyph="⌂"), mk("track", "1", CLR_TRACK),
                mk("analyze", "2", CLR_ANALYZE), mk("figures", "3", CLR_FIGURES),
-               mk("videos", "4", CLR_VIDEOS)], start=0)
+               mk("videos", "4", CLR_VIDEOS)], start=0, overall_fn=_overall_pct)
 
 # ── Hub loop ──
 
