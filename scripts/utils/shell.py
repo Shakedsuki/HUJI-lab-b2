@@ -671,12 +671,10 @@ def _freq_sweep_ok(clips):
     freqs = {c.get("drive_freq_hz") for c in clips if c.get("drive_freq_hz") is not None}
     return len(freqs) >= 2
 
-def do_a(tr):
-    """Analyze \u2014 navigate clips; row keys run a per-clip analysis on the
-    highlighted clip; the \u2713/\u00b7 columns show what's already been computed.
-    Aggregate sweeps (bifurcation, rotations) act on the whole family."""
-    if not tr:
-        console.print("  [dim]No tracked clips.[/]"); _pause(); return
+def build_mode_analyze():
+    """Analyze mode \u2014 per-clip analysis matrix; two-letter row keys (ch/po/ly/dr/
+    ro/fr) run one analysis, enter explores, aggregate sweeps act on the family."""
+    tr, _pe = get_clips()
     def _runclip(ctx, *args):
         _do_suspended(ctx, lambda: _run(*args))
     def act_chaos(row, rows, i, ctx):
@@ -725,8 +723,11 @@ def do_a(tr):
             "rs": act_rotsweep, "wf": act_waterfall}
     if bif_ok: keys["bs"] = act_bif
     if fd_ok: keys["bf"] = act_bif_fd
-    _inventory_nav(tr, "analyze", CLR_ANALYZE, ANALYZE_TYPES, _analyze_exists,
-                   key_actions=keys, hint=hint)
+    return _inventory_mode("analyze", "2", CLR_ANALYZE, ANALYZE_TYPES, _analyze_exists,
+                           key_actions=keys, hint=hint)
+
+def do_a(tr):
+    _run_one_mode(build_mode_analyze())
     _log_activity("analyze")
 
 _QI_CATS = [
@@ -943,9 +944,9 @@ def _vid_exists(vtype, stem):
     from paths import ANIMATIONS_DIR
     return os.path.isfile(os.path.join(ANIMATIONS_DIR, vtype, f"{stem}_{vtype}.mp4"))
 
-def _inventory_nav(tr, title, color, types, exists_fn, *, key_actions, hint,
-                   on_col=None, col_hint=None,
-                   on_view=None, on_create=None, cell_hint=None):
+def _inventory_mode(name, key, color, types, exists_fn, *, key_actions, hint, glyph="",
+                    on_col=None, col_hint=None,
+                    on_view=None, on_create=None, cell_hint=None):
     """Navigable clip×type matrix.
     on_col(type_tuple, ctx) enables column mode ('c'): ←→ pick a type column, enter
     batches it across all clips. on_view / on_create
@@ -953,7 +954,7 @@ def _inventory_nav(tr, title, color, types, exists_fn, *, key_actions, hint,
     that file, '+' creates it."""
     def build_rows():
         rows = []
-        for c in tr:
+        for c in get_clips()[0]:
             cells = {tn: exists_fn(tn, c["stem"]) for tn, _s, _d in types}
             rows.append({"stem": c["stem"], "cells": cells, "ndone": sum(cells.values())})
         for k, r in enumerate(rows, 1): r["_n"] = k
@@ -965,6 +966,7 @@ def _inventory_nav(tr, title, color, types, exists_fn, *, key_actions, hint,
             (lambda t: lambda r: "[green]✓[/]" if r["cells"][t] else "[dim]·[/]")(tn),
             dict(justify="center")))
     def legend():
+        tr, _pe = get_clips()
         parts = [f"[bold]{short}[/] [dim]{sum(1 for c in tr if exists_fn(tn, c['stem']))}/{len(tr)}[/]"
                  for tn, short, _d in types]
         return "   ".join(parts)
@@ -992,11 +994,10 @@ def _inventory_nav(tr, title, color, types, exists_fn, *, key_actions, hint,
                          + ("   [bold]↵[/]/[bold]o[/] open" if on_view else "")
                          + ("   [bold]+[/] create" if on_create else "")
                          + "   [bold]e[/]/[bold]r[/] row mode   [bold]q[/] back")
-    navigate_table(build_rows, columns, title=title, border_style=color,
-                   key_actions=key_actions, legend=legend, hint=hint,
-                   empty_msg="No clips match this filter.",
-                   col_targets=col_targets, col_actions=col_actions, col_hint=col_hint,
-                   cell_actions=cell_actions, cell_hint=cell_hint)
+    return Mode(name=name, key=key, color=color, glyph=glyph, build_rows=build_rows,
+                columns=columns, key_actions=key_actions, legend=legend, hint=hint,
+                col_targets=col_targets, col_actions=col_actions, col_hint=col_hint,
+                cell_targets=col_targets, cell_actions=cell_actions, cell_hint=cell_hint)
 
 # Figures
 FIG_TYPES = [
@@ -1011,11 +1012,10 @@ FIG_TYPES = [
     ("driven_poincare",     "drpoinc","driven poincaré"),
 ]
 
-def do_fi(tr):
-    """Figures inventory — row mode renders a clip's figures; column mode (c)
-    batches a figure type across all clips."""
-    if not tr:
-        console.print("  [dim]No tracked clips.[/]"); _pause(); return
+def build_mode_figures():
+    """Figures mode — per-clip figure matrix; enter renders a clip's figures,
+    column mode batches a type across clips, entry mode opens/creates one cell."""
+    tr, _pe = get_clips()
     def render_clip(row, rows, i, ctx):
         if row:
             _do_suspended(ctx, lambda: _run(SCRIPT_BATCH_FIGS, "--stem", row["stem"]))
@@ -1056,10 +1056,13 @@ def do_fi(tr):
         _log_activity(f"create {t[1]}/{stem}")
     hint = ("[dim]↑↓[/] [bold]↵[/] render   [bold]c[/] column mode   [bold]e[/] entry mode   "
             "[bold]a[/] all   [bold]w[/] waterfall   [bold]b[/] bifurcation   [bold]h[/] help   [bold]q[/] back")
-    _inventory_nav(tr, "figures inventory", CLR_FIGURES, FIG_TYPES, _fig_exists,
-                   key_actions={"enter": render_clip, "a": fill_all, "w": fig_waterfall, "b": fig_bif},
-                   hint=hint, on_col=col_batch,
-                   on_view=view_fig, on_create=create_fig)
+    return _inventory_mode("figures", "3", CLR_FIGURES, FIG_TYPES, _fig_exists,
+                           key_actions={"enter": render_clip, "a": fill_all, "w": fig_waterfall, "b": fig_bif},
+                           hint=hint, on_col=col_batch,
+                           on_view=view_fig, on_create=create_fig)
+
+def do_fi(tr):
+    _run_one_mode(build_mode_figures())
 
 # Videos
 VIDEO_TYPES = [
@@ -1069,13 +1072,11 @@ VIDEO_TYPES = [
     ("phase_3d_rotation","3d-rot",  "3D rotation"),
 ]
 
-def do_vi(tr):
-    """Videos — the one videos table. Row mode renders & reviews the highlighted
-    clip's overlay (o = render-if-missing then open; p/f/x verdict) and combined
-    video (m). Column mode (c) batch-renders a video type across all clips.
-    Filters walk the render→review pipeline: 2 = awaiting review, 3 = no overlay."""
-    if not tr:
-        console.print("  [dim]No tracked clips.[/]"); _pause(); return
+def build_mode_videos():
+    """Videos mode — overlay/verdict/comb/anim/3d-rot matrix. o/enter render+review
+    the overlay, p/f/x set verdict; column mode batches a type, entry mode
+    opens/toggles one cell."""
+    tr, _pe = get_clips()
     COL_TYPES = ["overlay", "combined", "phase_animation", "phase_3d_rotation"]
     def _note_for(stem, reg):
         for e in reg.values():
@@ -1085,7 +1086,7 @@ def do_vi(tr):
     def build_rows():
         reg = load_registry()
         rows = []
-        for c in tr:
+        for c in get_clips()[0]:
             s = c["stem"]
             rows.append({"stem": s, "ov": _has_overlay(s),
                          "verdict": _get_verdict(s, reg), "note": _note_for(s, reg),
@@ -1191,14 +1192,16 @@ def do_vi(tr):
         _do_suspended(ctx, work); _log_activity(f"create {col}/{row['stem']}")
     cell_hint = ("[bold cyan]entry mode[/]   [dim]↑↓←→[/] pick cell   [bold]↵[/]/[bold]o[/] open · toggle verdict   "
                  "[bold]+[/] create   [bold]e[/]/[bold]r[/] row mode   [bold]q[/] back")
-    navigate_table(build_rows, columns, title="videos", border_style=CLR_VIDEOS,
-                   legend=legend, hint=hint, col_hint=col_hint, cell_hint=cell_hint,
-                   empty_msg="No clips.",
-                   key_actions={"o": act_review, "enter": act_review, "p": act_pass,
-                                "f": act_fail, "x": act_clear},
-                   col_targets=col_targets, col_actions={"enter": col_batch},
-                   cell_targets=cell_targets,
-                   cell_actions={"enter": cell_enter, "o": cell_view, "+": cell_create})
+    return Mode(name="videos", key="4", color=CLR_VIDEOS, build_rows=build_rows, columns=columns,
+                legend=legend, hint=hint, col_hint=col_hint, cell_hint=cell_hint,
+                key_actions={"o": act_review, "enter": act_review, "p": act_pass,
+                             "f": act_fail, "x": act_clear},
+                col_targets=col_targets, col_actions={"enter": col_batch},
+                cell_targets=cell_targets,
+                cell_actions={"enter": cell_enter, "o": cell_view, "+": cell_create})
+
+def do_vi(tr):
+    _run_one_mode(build_mode_videos())
     _log_activity("videos")
 
 # Overlay render + review
@@ -1534,29 +1537,26 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
             rows, n, avail, renderable = frame(); live.update(renderable, refresh=True)
 
 def main():
-    """Shell v2 — mode-ring entry point. Track is ported; analyze/figures/videos
-    are stubs until their build_mode_*() lands.
-    Launch:  python -c "import sys;sys.path.insert(0,'scripts/utils');import shell;shell.main()" """
+    """Shell v2 — mode-ring entry point (launched by bare `chaos`). Track / analyze
+    / figures / videos are live; the main overview is a placeholder until Phase 3,
+    so we land on track for now."""
     def _overall_pct():
         tr, pe = get_clips()
         total = len(tr) + len(pe)
         nver = sum(1 for c in tr if c.get("quality") == "verified")
         return round(100 * nver / total) if total else 0
-    def _stub(name, key, clr, glyph=""):
+    def _main_stub():
         def rows():
             tr, _pe = get_clips()
             return [{"stem": c["stem"], "_n": i} for i, c in enumerate(tr, 1)]
-        return Mode(name, key, clr, glyph=glyph, build_rows=rows,
+        return Mode("main", "m", CLR_MAIN, glyph="⌂", build_rows=rows,
                     columns=[("#", lambda r: str(r["_n"]), dict(justify="right", width=3, style="dim")),
                              ("clip", lambda r: r["stem"], dict(min_width=16, no_wrap=True))],
-                    legend=f"[dim]{name} — not ported yet[/]",
-                    hint=f"[dim]↑↓[/] navigate   [bold]h[/] help   [bold]q[/] quit   [dim](stub)[/]")
-    modes = [_stub("main", "m", CLR_MAIN, glyph="⌂"),
-             build_mode_track(),
-             _stub("analyze", "2", CLR_ANALYZE),
-             _stub("figures", "3", CLR_FIGURES),
-             _stub("videos", "4", CLR_VIDEOS)]
-    run_modes(modes, start=0, overall_fn=_overall_pct)
+                    legend="[dim]pipeline overview — coming next; press 1-4 to open a stage[/]",
+                    hint="[dim]↑↓[/] navigate   [bold]1-4[/] open a stage   [bold]h[/] help   [bold]q[/] quit")
+    modes = [_main_stub(), build_mode_track(), build_mode_analyze(),
+             build_mode_figures(), build_mode_videos()]
+    run_modes(modes, start=1, overall_fn=_overall_pct)
 
 # ── Hub loop ──
 

@@ -710,13 +710,13 @@ def main():
     parser = build_parser()
     args = parser.parse_args()
     if not args.command:
-        # Bare `chaos` → launch interactive shell
+        # Bare `chaos` → launch interactive shell (v2 mode ring)
         try:
-            from scripts.utils.shell import hub
+            from scripts.utils.shell import main as shell_main
         except ImportError:
             sys.path.insert(0, os.path.join(ROOT, "scripts", "utils"))
-            from shell import hub
-        hub()
+            from shell import main as shell_main
+        shell_main()
         return 0
     handler = HANDLERS.get(args.command)
     if not handler:
