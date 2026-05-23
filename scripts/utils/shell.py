@@ -1254,7 +1254,6 @@ def build_mode_videos():
     the overlay, p/f/x set verdict; column mode batches a type, entry mode
     opens/toggles one cell."""
     tr, _pe = get_clips()
-    COL_TYPES = ["overlay", "combined", "phase_animation", "phase_3d_rotation"]
     def _note_for(stem, reg):
         for e in reg.values():
             if e.get("config_description") == stem:
@@ -1288,8 +1287,8 @@ def build_mode_videos():
         ("3d-rot",  _ck("rot3d"),           dict(justify="center")),
         ("note",    lambda r: r["note"] or "", dict(style="dim", no_wrap=True, overflow="ellipsis", max_width=22)),
     ]
-    col_targets = [2, 4, 5, 6]       # column mode batches renderable types
-    cell_targets = [2, 3, 4, 5, 6]   # entry mode also lands on verdict (enter toggles it)
+    # column + entry mode both land on every actionable column incl. verdict (idx 3)
+    col_targets = cell_targets = [2, 3, 4, 5, 6]
     CELL_COLS = ["overlay", "__verdict__", "combined", "phase_animation", "phase_3d_rotation"]
     def legend():
         reg = load_registry()
@@ -1301,7 +1300,8 @@ def build_mode_videos():
                 f"[dim]{nno} no overlay[/]")
     hint = ("[dim]↑↓[/] [bold]o[/]/[bold]↵[/] open   [green bold]p[/]ass [red bold]f[/]ail [bold]x[/] clear   "
             "[bold]c[/] column mode   [bold]e[/] entry mode   [bold]h[/] help   [bold]q[/] quit")
-    col_hint = ("[bold cyan]column mode[/]   [dim]←→[/] pick type   [bold]↵[/] batch all clips   "
+    col_hint = ("[bold cyan]column mode[/]   [dim]←→[/] pick column   [bold]↵[/] batch render   "
+                "[green bold]p[/]ass [red bold]f[/]ail [bold]x[/] clear [dim]verdict[/]   "
                 "[bold]r[/] row mode   [bold]q[/] quit")
     def act_review(row, rows, i, ctx):
         if not row: return
@@ -1337,9 +1337,35 @@ def build_mode_videos():
             for s in tgt: _render_overlay(s)
         else:
             _run(SCRIPT_BATCH_FIGS, "--video", "--types", tn, *(["--force"] if force else []))
+    def _col_verdict(verdict, rows, ctx):
+        """Batch-set the overlay verdict across the whole verdict column.
+        pass/fail apply to clips that have an overlay (mirrors row-mode p/f);
+        clear applies to every clip. Confirmed, then instant (no pause)."""
+        if verdict is None:
+            tgt = [r["stem"] for r in rows]
+            if not tgt: return
+            msg = f"Clear overlay verdict for all [bold]{len(tgt)}[/] clip(s)?"
+        else:
+            tgt = [r["stem"] for r in rows if r["ov"]]
+            if not tgt: return
+            color = "green" if verdict == "pass" else "red"
+            msg = f"Mark all [bold]{len(tgt)}[/] reviewed clip(s) [{color} bold]{verdict}[/]?"
+        def work():
+            for s in tgt: _set_verdict(s, verdict)
+            _log_activity(f"verdict column → {verdict}")
+        _do_suspended(ctx, work, pause=False, confirm=msg)
     def col_batch(cpos, rows, ctx):
-        tn = COL_TYPES[cpos]
-        _do_suspended(ctx, lambda: _col_videos(tn, False), confirm=f"Render [bold]{tn}[/] for all {len(tr)} clips?")
+        col = CELL_COLS[cpos]
+        if col == "__verdict__":          # enter on the verdict column = batch pass (clears the figures QA gate)
+            _col_verdict("pass", rows, ctx)
+        else:
+            _do_suspended(ctx, lambda: _col_videos(col, False), confirm=f"Render [bold]{col}[/] for all {len(tr)} clips?")
+    def col_pass(cpos, rows, ctx):
+        if CELL_COLS[cpos] == "__verdict__": _col_verdict("pass", rows, ctx)
+    def col_fail(cpos, rows, ctx):
+        if CELL_COLS[cpos] == "__verdict__": _col_verdict("fail", rows, ctx)
+    def col_clear(cpos, rows, ctx):
+        if CELL_COLS[cpos] == "__verdict__": _col_verdict(None, rows, ctx)
     def view_vid(stem, tn, ctx):
         if tn == "overlay":
             path = _overlay_path(stem)
@@ -1373,7 +1399,8 @@ def build_mode_videos():
                 legend=legend, hint=hint, col_hint=col_hint, cell_hint=cell_hint,
                 key_actions={"o": act_review, "enter": act_review, "p": act_pass,
                              "f": act_fail, "x": act_clear},
-                col_targets=col_targets, col_actions={"enter": col_batch},
+                col_targets=col_targets,
+                col_actions={"enter": col_batch, "p": col_pass, "f": col_fail, "x": col_clear},
                 cell_targets=cell_targets,
                 cell_actions={"enter": cell_enter, "o": cell_view, "+": cell_create})
 
