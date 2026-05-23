@@ -1208,17 +1208,26 @@ def build_mode_interactive():
     def render_open(row, rows, i, ctx):
         if not row: return
         stem = row["stem"]
-        def work():
-            for itype, _s, _d in INTERACTIVE_TYPES:
-                script = SCRIPT_INTERACTIVE.get(itype)
-                if script and not _interactive_exists(itype, stem):
-                    _run(script, "--stem", stem)
-                p = _interactive_path(itype, stem)
-                if os.path.isfile(p):
-                    try: _open_file(p)
-                    except Exception: pass
-            _log_activity(f"interactive {stem}")
-        _do_suspended(ctx, work)
+        missing = [(it, s, d) for (it, s, d) in INTERACTIVE_TYPES
+                   if SCRIPT_INTERACTIVE.get(it) and not _interactive_exists(it, stem)]
+        if missing:  # rendering shells out (prints) — suspend, but auto-return (no pause)
+            def work():
+                for it, _s, _d in missing:
+                    _run(SCRIPT_INTERACTIVE[it], "--stem", stem)
+            _do_suspended(ctx, work, pause=False)
+        opened = None
+        for it, _s, _d in INTERACTIVE_TYPES:
+            p = _interactive_path(it, stem)
+            if os.path.isfile(p):
+                try: _open_file(p); opened = p
+                except Exception: pass
+        if not opened:
+            return "flash:[red]render failed — see console[/]"
+        _log_activity(f"interactive {stem}")
+        from pathlib import Path as _Path
+        verb = "rendered + opened" if missing else "opened in browser"
+        return (f"flash:[link={_Path(opened).as_uri()}]{verb} ↗[/]  ·  "
+                "drag rotate · scroll zoom · right-drag pan")
     def col_render(t, ctx):
         itype = t[0]; script = SCRIPT_INTERACTIVE.get(itype)
         def work():
@@ -1423,6 +1432,7 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
     show_help = False
     show_preview = False
     cmd = None
+    flash = None
     shell_cmds = {"sw": do_w, "pa": do_p, "cal": do_c,
                   "wf": _palette_waterfall, "bif": _palette_bif, "rs": _palette_rotsweep,
                   "ds": _palette_dimsweep, "ws": _palette_windsweep}
@@ -1490,6 +1500,8 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
             return rows, n, avail, Group(_help_panel(m), _status_line(modes, phase_label, width))
         cols = m.columns
         ncol = len(cols)
+        flash_on = bool(flash) and mode == "row"
+        extra = 1 if flash_on else 0
         sel_col = m.col_targets[cidx] if (has_cols and mode == "col") else None
         cell_col = cell_tgts[cidx] if (has_cells and mode == "cell") else None
         if n <= avail:
@@ -1502,12 +1514,16 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
             if p == sel_col:
                 kw = {**kw, "style": f"on {selected_bg}", "header_style": f"bold on {selected_bg}"}
             t.add_column(header, **kw)
+        if flash_on:
+            t.add_column("", no_wrap=True, overflow="ellipsis")
         if n == 0:
-            t.add_row(" ", "[dim]No clips.[/]", *[""] * (ncol - 1))
+            t.add_row(" ", "[dim]No clips.[/]", *[""] * (ncol - 1 + extra))
         else:
-            if lo > 0: t.add_row(" ", "[dim]↑…[/]", *[""] * (ncol - 1))
+            if lo > 0: t.add_row(" ", "[dim]↑…[/]", *[""] * (ncol - 1 + extra))
             for i in range(lo, hi):
                 cells = [rf(rows[i]) for _h, rf, _k in cols]
+                if flash_on:
+                    cells = cells + [f"  [{m.color}]{flash}[/]" if i == idx else ""]
                 if mode == "cell" and i == idx:
                     if cell_col is not None:
                         cells[cell_col] = f"[bold black on bright_cyan]{cells[cell_col]}[/]"
@@ -1516,7 +1532,7 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
                     t.add_row("[bold cyan]▸[/]", *cells, style=f"on {selected_bg}")
                 else:
                     t.add_row(" ", *cells)
-            if hi < n: t.add_row(" ", "[dim]↓…[/]", *[""] * (ncol - 1))
+            if hi < n: t.add_row(" ", "[dim]↓…[/]", *[""] * (ncol - 1 + extra))
         table_block = t
         if show_preview and m.preview_fn is not None:
             try: prev = m.preview_fn(rows[idx] if n else None)
@@ -1554,6 +1570,7 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
                 key = _read_key()
             except KeyboardInterrupt:
                 break
+            flash = None
             if show_help:
                 show_help = False
                 rows, n, avail, renderable = frame(); live.update(renderable, refresh=True); continue
@@ -1626,6 +1643,7 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
                         if res == "quit": break
                         elif res == "advance": idx += 1
                         elif res == "top": idx = 0
+                        elif isinstance(res, str) and res.startswith("flash:"): flash = res[6:]
                 elif len(key) == 1 and key.isprintable():
                     cand = pending + key
                     prefixed = any(len(k) > len(cand) and k.startswith(cand) and k not in _SPECIAL_KEYS for k in ka)
@@ -1635,6 +1653,7 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
                         if res == "quit": break
                         elif res == "advance": idx += 1
                         elif res == "top": idx = 0
+                        elif isinstance(res, str) and res.startswith("flash:"): flash = res[6:]
                     elif prefixed:
                         pending = cand
                     elif pending:
