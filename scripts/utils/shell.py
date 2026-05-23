@@ -602,9 +602,9 @@ def build_mode_track():
         nv = sum(1 for c in tr2 if c.get("quality") == "verified")
         return (f"[green]{nv} verified[/]  [cyan]{len(tr2) - nv} tracked[/]  [yellow]{len(pe2)} pending[/]")
     hint = ("[dim]↑↓[/] [bold]t[/] track/re-track   [bold]v[/] verify   [bold]s[/] sanity   "
-            "[bold]o[/] open   [bold]a[/] all   [bold]c[/] column mode   [bold]h[/] help   [bold]q[/] back")
+            "[bold]o[/] open   [bold]a[/] all   [bold]c[/] column mode   [bold]h[/] help   [bold]q[/] quit")
     col_hint = ("[bold cyan]column mode[/]   [bold]↵[/] re-track every clip in view   "
-                "[bold]r[/] row mode   [bold]q[/] back")
+                "[bold]r[/] row mode   [bold]q[/] quit")
     def act_track(row, rows, i, ctx):
         if not row: return
         stem = row["stem"]
@@ -685,8 +685,7 @@ def _freq_sweep_ok(clips):
 
 def build_mode_analyze():
     """Analyze mode \u2014 per-clip analysis matrix; two-letter row keys (ch/po/ly/dr/
-    ro/fr) run one analysis, enter explores, aggregate sweeps act on the family."""
-    tr, _pe = get_clips()
+    ro/fr) run one analysis, enter explores; aggregate sweeps live in the / palette."""
     def _runclip(ctx, *args):
         _do_suspended(ctx, lambda: _run(*args))
     def act_chaos(row, rows, i, ctx):
@@ -724,46 +723,17 @@ def build_mode_analyze():
         sys.path.insert(0, os.path.join(REPO_ROOT, "scripts", "analysis"))
         from quick_insights import explore
         _do_suspended(ctx, lambda: explore(row["stem"]), pause=False)
-    def act_bif(row, rows, i, ctx):
-        def work(): _run(SCRIPT_DRIVEN_BIF, "--sweep", "vd"); _log_activity("bifurcation sweep")
-        _do_suspended(ctx, work, confirm="Run [bold]bifurcation sweep[/] (vd) across the family?")
-    def act_bif_fd(row, rows, i, ctx):
-        def work(): _run(SCRIPT_DRIVEN_BIF, "--sweep", "fd", "--fixed-vd", "3.2"); _log_activity("bifurcation fd sweep")
-        _do_suspended(ctx, work, confirm="Run [bold]bifurcation sweep[/] (fd) across the 3.2V family?")
-    def act_rotsweep(row, rows, i, ctx):
-        def work(): _run(SCRIPT_ROTATIONS, "--sweep"); _log_activity("rotations sweep")
-        _do_suspended(ctx, work, confirm="Run [bold]rotations sweep[/] across the 3.2V family?")
-    def act_waterfall(row, rows, i, ctx):
-        try: vf = float(row.get("drive_voltage_v")) if row else None
-        except (TypeError, ValueError): vf = None
-        args = ["--voltage", f"{vf:g}"] if vf else []
-        vlab = f"{vf:g}V" if vf else "3.2V"
-        def work(): _run(SCRIPT_WATERFALL, *args); _log_activity("spectral waterfall")
-        _do_suspended(ctx, work, confirm=f"Run [bold]spectral waterfall[/] across the {vlab} family?")
-    def act_dim_sweep(row, rows, i, ctx):
-        def work(): _run(SCRIPT_DIM_SWEEP); _log_activity("dimension sweep")
-        _do_suspended(ctx, work, confirm="Run [bold]dimension sweep[/] across the 3.2V family?")
-    def act_winding_sweep(row, rows, i, ctx):
-        def work(): _run(SCRIPT_WINDING_SWEEP); _log_activity("winding sweep")
-        _do_suspended(ctx, work, confirm="Run [bold]winding-number sweep[/] across the 3.2V family?")
-    bif_ok = _voltage_sweep_ok(tr)
-    fd_ok = _freq_sweep_ok(tr)
     _RUN = {"chaos": act_chaos, "poinc": act_poin, "lyap": act_lyap, "driven": act_driven,
             "rot": act_rot, "dim": act_dim, "ret": act_returnmap, "rec": act_recurrence,
             "attr": act_attractor, "i3d": act_phase3d}
     def run_cell(stem, t, ctx):
         fn = _RUN.get(t[1])
         if fn: fn({"stem": stem}, None, None, ctx)
-    hint = ("[dim]\u2191\u2193[/] [bold]\u21b5[/] explore   [bold]e[/] run an analysis on a cell   [dim]\u00b7[/]   "
-            + ("[bold]bs[/] bif " if bif_ok else "")
-            + ("[bold]bf[/] bif-fd " if fd_ok else "")
-            + "[bold]rs[/] rot-sweep  [bold]wf[/] waterfall  [bold]ds[/] dim-sweep  [bold]ws[/] wind-sweep   [bold]h[/] help  [bold]q[/] quit")
+    hint = ("[dim]\u2191\u2193[/] [bold]\u21b5[/] explore   [bold]e[/] run an analysis on a cell   "
+            "[bold]h[/] help  [bold]q[/] quit")
     cell_hint = ("[bold cyan]entry mode[/]   [dim]\u2191\u2193\u2190\u2192[/] pick a cell   [bold]\u21b5[/] run that analysis   "
-                 "[bold]e[/]/[bold]r[/] back")
-    keys = {"enter": act_explore, "rs": act_rotsweep, "wf": act_waterfall,
-            "ds": act_dim_sweep, "ws": act_winding_sweep}
-    if bif_ok: keys["bs"] = act_bif
-    if fd_ok: keys["bf"] = act_bif_fd
+                 "[bold]e[/]/[bold]r[/] row mode   [bold]q[/] quit")
+    keys = {"enter": act_explore}
     return _inventory_mode("analyze", "2", CLR_ANALYZE, ANALYZE_TYPES, _analyze_exists,
                            key_actions=keys, hint=hint, on_view=run_cell, cell_hint=cell_hint)
 
@@ -954,7 +924,7 @@ def do_ar(tr):
         sweep = _sweep_map()
         nh = sum(1 for c in tr if _load(c["stem"]) or sweep.get(c["stem"]))
         return (f"[dim]{nh}/{len(tr)} computed[/]   [dim]·  ↻ = completed loops[/]")
-    hint = ("[dim]↑↓[/] [bold]↵[/] compute   [bold]o[/] open   [bold]a[/] all + sweep   [bold]h[/] help   [bold]q[/] back")
+    hint = ("[dim]↑↓[/] [bold]↵[/] compute   [bold]o[/] open   [bold]a[/] all + sweep   [bold]h[/] help   [bold]q[/] quit")
     def act_compute(row, rows, i, ctx):
         if row:
             _do_suspended(ctx, lambda: _run(SCRIPT_ROTATIONS, "--stem", row["stem"]))
@@ -1019,7 +989,7 @@ def _inventory_mode(name, key, color, types, exists_fn, *, key_actions, hint, gl
         col_actions = {"enter": col_enter}
         if col_hint is None:
             col_hint = ("[bold cyan]column mode[/]   [dim]←→[/] pick type   [bold]↵[/] batch all clips"
-                        + "   [bold]r[/] row mode   [bold]q[/] back")
+                        + "   [bold]r[/] row mode   [bold]q[/] quit")
     if on_view or on_create:
         cell_actions = {}
         if on_view:
@@ -1034,7 +1004,7 @@ def _inventory_mode(name, key, color, types, exists_fn, *, key_actions, hint, gl
             cell_hint = ("[bold cyan]entry mode[/]   [dim]↑↓←→[/] pick cell"
                          + ("   [bold]↵[/]/[bold]o[/] open" if on_view else "")
                          + ("   [bold]+[/] create" if on_create else "")
-                         + "   [bold]e[/]/[bold]r[/] row mode   [bold]q[/] back")
+                         + "   [bold]e[/]/[bold]r[/] row mode   [bold]q[/] quit")
     return Mode(name=name, key=key, color=color, glyph=glyph, build_rows=build_rows,
                 columns=columns, key_actions=key_actions, legend=legend, hint=hint,
                 col_targets=col_targets, col_actions=col_actions, col_hint=col_hint,
@@ -1068,22 +1038,6 @@ def build_mode_figures():
         def work(): _run(SCRIPT_BATCH_FIGS); _log_activity("figures: all")
         _do_suspended(ctx, work,
             confirm=f"Render [bold]all figure types[/] for all {len(tr)} clips?  [dim](QA-passed only)[/]")
-    def fig_waterfall(row, rows, i, ctx):
-        try: vf = float(row.get("drive_voltage_v")) if row else None
-        except (TypeError, ValueError): vf = None
-        args = ["--voltage", f"{vf:g}"] if vf else []
-        vlab = f"{vf:g}V" if vf else "3.2V"
-        def work(): _run(SCRIPT_WATERFALL, *args); _log_activity("spectral waterfall")
-        _do_suspended(ctx, work, confirm=f"Render [bold]spectral waterfall[/] (aggregate) for the {vlab} family?")
-    def fig_bif(row, rows, i, ctx):
-        if _voltage_sweep_ok(tr):
-            def work(): _run(SCRIPT_DRIVEN_BIF, "--sweep", "vd"); _log_activity("bifurcation sweep")
-            _do_suspended(ctx, work, confirm="Render [bold]bifurcation[/] (vd sweep, aggregate) for the family?")
-        elif _freq_sweep_ok(tr):
-            def work(): _run(SCRIPT_DRIVEN_BIF, "--sweep", "fd", "--fixed-vd", "3.2"); _log_activity("bifurcation fd sweep")
-            _do_suspended(ctx, work, confirm="Render [bold]bifurcation[/] (fd sweep, 3.2V, aggregate) for the family?")
-        else:
-            _do_suspended(ctx, lambda: console.print("  [yellow]No sweep available for bifurcation.[/]"))
     def col_batch(t, ctx):
         def work(): _run(SCRIPT_BATCH_FIGS, "--types", t[0]); _log_activity(f"figures col {t[1]}")
         _do_suspended(ctx, work,
@@ -1099,9 +1053,9 @@ def build_mode_figures():
         _do_suspended(ctx, lambda: _run(SCRIPT_BATCH_FIGS, "--stem", stem, "--types", t[0], "--force", "--all-quality"))
         _log_activity(f"create {t[1]}/{stem}")
     hint = ("[dim]↑↓[/] [bold]↵[/] render   [bold]c[/] column mode   [bold]e[/] entry mode   "
-            "[bold]a[/] all   [bold]w[/] waterfall   [bold]b[/] bifurcation   [bold]h[/] help   [bold]q[/] back")
+            "[bold]a[/] all   [bold]h[/] help   [bold]q[/] quit")
     return _inventory_mode("figures", "3", CLR_FIGURES, FIG_TYPES, _fig_exists,
-                           key_actions={"enter": render_clip, "a": fill_all, "w": fig_waterfall, "b": fig_bif},
+                           key_actions={"enter": render_clip, "a": fill_all},
                            hint=hint, on_col=col_batch,
                            on_view=view_fig, on_create=create_fig)
 
@@ -1167,9 +1121,9 @@ def build_mode_videos():
         return (f"[green]{npa} pass[/]  [red]{nfa} fail[/]  [yellow]{npe} to review[/]  "
                 f"[dim]{nno} no overlay[/]")
     hint = ("[dim]↑↓[/] [bold]o[/]/[bold]↵[/] open   [green bold]p[/]ass [red bold]f[/]ail [bold]x[/] clear   "
-            "[bold]c[/] column mode   [bold]e[/] entry mode   [bold]h[/] help   [bold]q[/] back")
+            "[bold]c[/] column mode   [bold]e[/] entry mode   [bold]h[/] help   [bold]q[/] quit")
     col_hint = ("[bold cyan]column mode[/]   [dim]←→[/] pick type   [bold]↵[/] batch all clips   "
-                "[bold]r[/] row mode   [bold]q[/] back")
+                "[bold]r[/] row mode   [bold]q[/] quit")
     def act_review(row, rows, i, ctx):
         if not row: return
         def work():
@@ -1235,7 +1189,7 @@ def build_mode_videos():
             else: _run(SCRIPT_BATCH_FIGS, "--video", "--types", col, "--stem", row["stem"], "--force", "--all-quality")
         _do_suspended(ctx, work); _log_activity(f"create {col}/{row['stem']}")
     cell_hint = ("[bold cyan]entry mode[/]   [dim]↑↓←→[/] pick cell   [bold]↵[/]/[bold]o[/] open · toggle verdict   "
-                 "[bold]+[/] create   [bold]e[/]/[bold]r[/] row mode   [bold]q[/] back")
+                 "[bold]+[/] create   [bold]e[/]/[bold]r[/] row mode   [bold]q[/] quit")
     return Mode(name="videos", key="4", color=CLR_VIDEOS, build_rows=build_rows, columns=columns,
                 legend=legend, hint=hint, col_hint=col_hint, cell_hint=cell_hint,
                 key_actions={"o": act_review, "enter": act_review, "p": act_pass,
@@ -1384,6 +1338,33 @@ def _run_one_mode(m):
                    cell_targets=m.cell_targets, cell_actions=m.cell_actions, cell_hint=m.cell_hint,
                    preview_fn=m.preview_fn)
 
+# ── Palette commands (family-aggregate sweeps via the `/` palette) ──
+# These act on a whole drive family, not one clip, so they live in the command
+# palette rather than the per-clip mode hint bars.
+def _palette_waterfall():
+    if not _ask_confirm("Run [bold]spectral waterfall[/] across the 3.2V family?"): return
+    _run(SCRIPT_WATERFALL); _log_activity("spectral waterfall"); _pause()
+def _palette_bif():
+    tr, _pe = get_clips()
+    if _voltage_sweep_ok(tr):
+        if not _ask_confirm("Run [bold]bifurcation sweep[/] (vd) across the family?"): return
+        _run(SCRIPT_DRIVEN_BIF, "--sweep", "vd"); _log_activity("bifurcation sweep")
+    elif _freq_sweep_ok(tr):
+        if not _ask_confirm("Run [bold]bifurcation sweep[/] (fd) across the 3.2V family?"): return
+        _run(SCRIPT_DRIVEN_BIF, "--sweep", "fd", "--fixed-vd", "3.2"); _log_activity("bifurcation fd sweep")
+    else:
+        console.print("  [yellow]No sweep available — single drive voltage and frequency.[/]")
+    _pause()
+def _palette_rotsweep():
+    if not _ask_confirm("Run [bold]rotations sweep[/] across the 3.2V family?"): return
+    _run(SCRIPT_ROTATIONS, "--sweep"); _log_activity("rotations sweep"); _pause()
+def _palette_dimsweep():
+    if not _ask_confirm("Run [bold]dimension sweep[/] across the 3.2V family?"): return
+    _run(SCRIPT_DIM_SWEEP); _log_activity("dimension sweep"); _pause()
+def _palette_windsweep():
+    if not _ask_confirm("Run [bold]winding-number sweep[/] across the 3.2V family?"): return
+    _run(SCRIPT_WINDING_SWEEP); _log_activity("winding sweep"); _pause()
+
 def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn=None):
     """Shell v2 driver — one persistent table; 0-4 swap modes, cursor persists.
     Rigid frame (title ring + bordered table + hint + status line); only the
@@ -1399,14 +1380,18 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
     show_help = False
     show_preview = False
     cmd = None
-    shell_cmds = {"sw": do_w, "pa": do_p, "cal": do_c}
+    shell_cmds = {"sw": do_w, "pa": do_p, "cal": do_c,
+                  "wf": _palette_waterfall, "bif": _palette_bif, "rs": _palette_rotsweep,
+                  "ds": _palette_dimsweep, "ws": _palette_windsweep}
 
     def cur():
         return modes[midx]
 
     def _help_panel(m):
         hp = [Text.from_markup("  [dim]move[/]  ↑↓ / k j   Home/End   PgUp/PgDn   [dim]·[/]   q/Esc quit"),
-              Text.from_markup("  [dim]switch[/]  m/1/2/3/4 mode   [bold]tab[/] cycle")]
+              Text.from_markup("  [dim]switch[/]  m/1/2/3/4 mode   [bold]tab[/] cycle"),
+              Text.from_markup("  [dim]palette[/]  [bold cyan]/[/]  sw switch · pa paths · cal calibrate · "
+                               "wf waterfall · bif bifurcation · rs rot · ds dim · ws wind")]
         rh = _resolve(m.hint)
         if rh: hp.append(Text.from_markup("  [bold]row[/]      " + rh))
         if m.col_targets:
@@ -1500,7 +1485,7 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
                 table_block = lay
         content = [table_block]
         if cmd is not None:
-            cl = Text.from_markup(f"  [bold cyan]/[/] {cmd}▌   [dim]sw switch · pa paths · cal calibrate · esc cancel[/]")
+            cl = Text.from_markup(f"  [bold cyan]/[/] {cmd}▌   [dim]sw switch · pa paths · cal calibrate   ·   wf waterfall · bif bifurcation · rs rot · ds dim · ws wind   · esc cancel[/]")
             cl.no_wrap = True; cl.overflow = "ellipsis"
             content.append(cl)
         else:
@@ -1669,7 +1654,7 @@ def build_mode_main():
         return "mode:" + ("1", "2", "3", "4")[cpos] if cpos < 4 else None
     hint = "[dim]↑↓[/] navigate   [bold]e[/] dive into a stage   [bold]h[/] help   [bold]q[/] quit"
     cell_hint = ("[bold cyan]entry mode[/]   [dim]←→[/] pick a stage   [bold]↵[/] open that stage   "
-                 "[bold]e[/]/[bold]r[/] back")
+                 "[bold]e[/]/[bold]r[/] row mode   [bold]q[/] quit")
     return Mode("main", "m", CLR_MAIN, glyph="⌂", build_rows=build_rows, columns=columns,
                 legend=legend, hint=hint,
                 cell_targets=[2, 3, 4, 5], cell_actions={"enter": dive, "o": dive}, cell_hint=cell_hint)
