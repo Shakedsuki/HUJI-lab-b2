@@ -503,16 +503,11 @@ def do_t(tr, pe):
     clip: t track / re-track, v verify, s sanity, o open. a = bulk-track all
     pending. Column mode (c) re-tracks every clip in the current view.
     Filters: 1 all · 2 pending · 3 tracked."""
-    state = {"filter": "all"}
     def build_rows():
         tr2, pe2 = get_clips()
         rows = [{"stem": c["stem"], "status": c["status"],
                  "dropout": c.get("dropout_pct"), "dur": c.get("duration_s")}
                 for c in (tr2 + pe2)]
-        f = state["filter"]
-        if f == "pending":    rows = [r for r in rows if r["status"] == "pending"]
-        elif f == "tracked":  rows = [r for r in rows if r["status"] != "pending"]
-        elif f == "verified": rows = [r for r in rows if r["status"] == "verified"]
         for k, r in enumerate(rows, 1): r["_n"] = k
         return rows
     def _scell(r):
@@ -532,11 +527,9 @@ def do_t(tr, pe):
     def legend():
         tr2, pe2 = get_clips()
         nv = sum(1 for c in tr2 if c.get("quality") == "verified")
-        return (f"[green]{nv} verified[/]  [cyan]{len(tr2) - nv} tracked[/]  [yellow]{len(pe2)} pending[/]"
-                f"   [dim]·[/]   filter: [bold]{state['filter']}[/]")
+        return (f"[green]{nv} verified[/]  [cyan]{len(tr2) - nv} tracked[/]  [yellow]{len(pe2)} pending[/]")
     hint = ("[dim]↑↓[/] [bold]t[/] track/re-track   [bold]v[/] verify   [bold]s[/] sanity   "
-            "[bold]o[/] open   [bold]a[/] all   [bold]c[/] columns   "
-            "[bold]1[/]/[bold]2[/]/[bold]3[/] filter   [bold]q[/] back")
+            "[bold]o[/] open   [bold]a[/] all   [bold]c[/] columns   [bold]q[/] back")
     col_hint = ("[bold cyan]column mode[/]   [bold]↵[/] re-track every clip in view   "
                 "[bold]r[/] row mode   [bold]q[/] back")
     def act_track(row, rows, i, ctx):
@@ -580,9 +573,6 @@ def do_t(tr, pe):
         _do_suspended(ctx, work,
             confirm=f"[red]Re-track[/] all [bold]{len(stems)}[/] clip(s) in view? "
                     f"Overwrites existing tracking.")
-    def mkfilter(val):
-        def _f(row, rows, i, ctx): state["filter"] = val; return "top"
-        return _f
     pcache = {}
     def preview(row):
         if not row: return None
@@ -602,10 +592,9 @@ def do_t(tr, pe):
         return Panel(ptxt, title=f"[bold]sanity[/] [dim]·[/] [{vc}]{verdict}[/]",
                      border_style=CLR_TRACK, padding=(0, 1))
     navigate_table(build_rows, columns, title="track · status", border_style=CLR_TRACK,
-                   legend=legend, hint=hint, empty_msg="No clips match this filter.", preview_fn=preview,
+                   legend=legend, hint=hint, empty_msg="No clips.", preview_fn=preview,
                    key_actions={"t": act_track, "v": act_verify, "s": act_sanity, "o": act_open,
-                                "a": act_bulk,
-                                "1": mkfilter("all"), "2": mkfilter("pending"), "3": mkfilter("tracked")},
+                                "a": act_bulk},
                    col_targets=[2], col_actions={"enter": col_retrack_all}, col_hint=col_hint)
     _log_activity("track/status")
 
@@ -803,7 +792,6 @@ def do_ar(tr):
     a recomputes every clip + the sweep aggregate."""
     if not tr:
         console.print("  [dim]No tracked clips.[/]"); _pause(); return
-    state = {"filter": "all"}
     def _load(stem):
         p = os.path.join(clip_dir(stem), "rotations.json")
         if not os.path.isfile(p): return None
@@ -839,9 +827,6 @@ def do_ar(tr):
             arms = (r or {}).get("arms") or sweep.get(c["stem"], {})
             susp = any((arms.get(a) or {}).get("suspect") for a in arms)
             rows.append({"stem": c["stem"], "arms": arms, "has": bool(arms), "susp": susp})
-        f = state["filter"]
-        if f == "suspect":   rows = [r for r in rows if r["susp"]]
-        elif f == "missing": rows = [r for r in rows if not r["has"]]
         for k, r in enumerate(rows, 1): r["_n"] = k
         return rows
     def _net(r, arm):
@@ -862,10 +847,8 @@ def do_ar(tr):
     def legend():
         sweep = _sweep_map()
         nh = sum(1 for c in tr if _load(c["stem"]) or sweep.get(c["stem"]))
-        return (f"[dim]{nh}/{len(tr)} computed[/]   [dim]·  ↻ = completed loops[/]"
-                f"   [dim]·[/]   filter: [bold]{state['filter']}[/]")
-    hint = ("[dim]↑↓[/] [bold]↵[/] compute   [bold]o[/] open   [bold]a[/] all + sweep   "
-            "[bold]1[/]/[bold]2[/]/[bold]3[/] all·suspect·missing   [bold]q[/] back")
+        return (f"[dim]{nh}/{len(tr)} computed[/]   [dim]·  ↻ = completed loops[/]")
+    hint = ("[dim]↑↓[/] [bold]↵[/] compute   [bold]o[/] open   [bold]a[/] all + sweep   [bold]q[/] back")
     def act_compute(row, rows, i, ctx):
         if row:
             _do_suspended(ctx, lambda: _run(SCRIPT_ROTATIONS, "--stem", row["stem"]))
@@ -880,13 +863,9 @@ def do_ar(tr):
     def act_all(row, rows, i, ctx):
         def work(): _run(SCRIPT_ROTATIONS, "--sweep"); _log_activity("rotations sweep")
         _do_suspended(ctx, work, confirm=f"Recompute rotations + sweep across all {len(tr)} clips?")
-    def mkfilter(val):
-        def _f(row, rows, i, ctx): state["filter"] = val; return "top"
-        return _f
     navigate_table(build_rows, columns, title="rotations · winding", border_style=CLR_ANALYZE,
-                   legend=legend, hint=hint, empty_msg="No clips match this filter.",
-                   key_actions={"enter": act_compute, "o": act_fig, "a": act_all,
-                                "1": mkfilter("all"), "2": mkfilter("suspect"), "3": mkfilter("missing")})
+                   legend=legend, hint=hint, empty_msg="No clips.",
+                   key_actions={"enter": act_compute, "o": act_fig, "a": act_all})
     _log_activity("rotations")
 
 # ── Inventory (navigable clip × type matrix) ──
@@ -1034,7 +1013,6 @@ def do_vi(tr):
     Filters walk the render→review pipeline: 2 = awaiting review, 3 = no overlay."""
     if not tr:
         console.print("  [dim]No tracked clips.[/]"); _pause(); return
-    state = {"filter": "all"}
     COL_TYPES = ["overlay", "combined", "phase_animation", "phase_3d_rotation"]
     def _note_for(stem, reg):
         for e in reg.values():
@@ -1051,9 +1029,6 @@ def do_vi(tr):
                          "comb": _vid_exists("combined", s),
                          "anim": _vid_exists("phase_animation", s),
                          "rot3d": _vid_exists("phase_3d_rotation", s)})
-        f = state["filter"]
-        if f == "review":     rows = [r for r in rows if r["ov"] and r["verdict"] is None]
-        elif f == "norender": rows = [r for r in rows if not r["ov"]]
         for k, r in enumerate(rows, 1): r["_n"] = k
         return rows
     def _vcell(r):
@@ -1082,9 +1057,9 @@ def do_vi(tr):
         npa = sum(1 for v in vd if v == "pass"); nfa = sum(1 for v in vd if v == "fail")
         npe = sum(1 for o, v in zip(ov, vd) if o and v is None); nno = sum(1 for o in ov if not o)
         return (f"[green]{npa} pass[/]  [red]{nfa} fail[/]  [yellow]{npe} to review[/]  "
-                f"[dim]{nno} no overlay[/]   [dim]·[/]   filter: [bold]{state['filter']}[/]")
+                f"[dim]{nno} no overlay[/]")
     hint = ("[dim]↑↓[/] [bold]o[/]/[bold]↵[/] open   [green bold]p[/]ass [red bold]f[/]ail [bold]x[/] clear   "
-            "[bold]m[/] combined   [bold]c[/] columns   [bold]e[/] cells   [bold]1[/]/[bold]2[/]/[bold]3[/] filter   [bold]q[/] back")
+            "[bold]m[/] combined   [bold]c[/] columns   [bold]e[/] cells   [bold]q[/] back")
     col_hint = ("[bold cyan]column mode[/]   [dim]←→[/] pick type   [bold]↵[/] batch all clips   "
                 "[bold]f[/] force   [bold]r[/] row mode   [bold]q[/] back")
     def act_review(row, rows, i, ctx):
@@ -1115,9 +1090,6 @@ def do_vi(tr):
         if row: _set_verdict(row["stem"], None)
     def act_combined(row, rows, i, ctx):
         if row: _do_suspended(ctx, lambda: _run(SCRIPT_COMBINED, "--stem", row["stem"]))
-    def mkfilter(val):
-        def _f(row, rows, i, ctx): state["filter"] = val; return "top"
-        return _f
     def _col_videos(tn, force):
         # 'overlay' is per-stem via overlay_video.py (not in batch_figures' suite)
         if tn == "overlay":
@@ -1164,10 +1136,9 @@ def do_vi(tr):
                  "[bold]+[/] create   [bold]e[/]/[bold]r[/] row mode   [bold]q[/] back")
     navigate_table(build_rows, columns, title="videos", border_style=CLR_VIDEOS,
                    legend=legend, hint=hint, col_hint=col_hint, cell_hint=cell_hint,
-                   empty_msg="No clips match this filter.",
+                   empty_msg="No clips.",
                    key_actions={"o": act_review, "enter": act_review, "p": act_pass,
-                                "f": act_fail, "x": act_clear, "m": act_combined,
-                                "1": mkfilter("all"), "2": mkfilter("review"), "3": mkfilter("norender")},
+                                "f": act_fail, "x": act_clear, "m": act_combined},
                    col_targets=col_targets, col_actions={"enter": col_batch, "f": col_force},
                    cell_targets=cell_targets,
                    cell_actions={"enter": cell_enter, "o": cell_view, "+": cell_create})
