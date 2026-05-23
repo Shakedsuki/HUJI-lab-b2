@@ -1431,7 +1431,7 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
         _active = cell_tgts if mode == "cell" else m.col_targets
         if _active: cidx = max(0, min(cidx, len(_active) - 1))
         width = console.width
-        avail = max(5, min(25, console.height - 8))
+        avail = max(5, min(25, console.height - 10))
         try:
             tr2, pe2 = get_clips()
             nver = sum(1 for c in tr2 if c.get("quality") == "verified")
