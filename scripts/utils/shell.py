@@ -500,7 +500,7 @@ def _pause():
 # Track + status
 def do_t(tr, pe):
     """Track + status — one table over all clips. Row keys act on the highlighted
-    clip: t track / re-track, v verify, s sanity, o overlay. b = bulk-track all
+    clip: t track / re-track, v verify, s sanity, o open. a = bulk-track all
     pending. Column mode (c) re-tracks every clip in the current view.
     Filters: 1 all · 2 pending · 3 tracked."""
     state = {"filter": "all"}
@@ -535,7 +535,7 @@ def do_t(tr, pe):
         return (f"[green]{nv} verified[/]  [cyan]{len(tr2) - nv} tracked[/]  [yellow]{len(pe2)} pending[/]"
                 f"   [dim]·[/]   filter: [bold]{state['filter']}[/]")
     hint = ("[dim]↑↓[/] [bold]t[/] track/re-track   [bold]v[/] verify   [bold]s[/] sanity   "
-            "[bold]o[/] overlay   [bold]b[/] bulk-pending   [bold]c[/] re-track all   "
+            "[bold]o[/] open   [bold]a[/] all   [bold]c[/] columns   "
             "[bold]1[/]/[bold]2[/]/[bold]3[/] filter   [bold]q[/] back")
     col_hint = ("[bold cyan]column mode[/]   [bold]↵[/] re-track every clip in view   "
                 "[bold]r[/] row mode   [bold]q[/] back")
@@ -604,7 +604,7 @@ def do_t(tr, pe):
     navigate_table(build_rows, columns, title="track · status", border_style=CLR_TRACK,
                    legend=legend, hint=hint, empty_msg="No clips match this filter.", preview_fn=preview,
                    key_actions={"t": act_track, "v": act_verify, "s": act_sanity, "o": act_open,
-                                "b": act_bulk,
+                                "a": act_bulk,
                                 "1": mkfilter("all"), "2": mkfilter("pending"), "3": mkfilter("tracked")},
                    col_targets=[2], col_actions={"enter": col_retrack_all}, col_hint=col_hint)
     _log_activity("track/status")
@@ -637,7 +637,6 @@ def do_a(tr):
     Aggregate sweeps (bifurcation, rotations) act on the whole family."""
     if not tr:
         console.print("  [dim]No tracked clips.[/]"); _pause(); return
-    fstate = {"gaps": False}
     def _runclip(ctx, *args):
         _do_suspended(ctx, lambda: _run(*args))
     def act_chaos(row, rows, i, ctx):
@@ -670,20 +669,18 @@ def do_a(tr):
         vlab = f"{vf:g}V" if vf else "3.2V"
         def work(): _run(SCRIPT_WATERFALL, *args); _log_activity("spectral waterfall")
         _do_suspended(ctx, work, confirm=f"Run [bold]spectral waterfall[/] across the {vlab} family?")
-    def toggle_gaps(row, rows, i, ctx):
-        fstate["gaps"] = not fstate["gaps"]; return "top"
     bif_ok = _voltage_sweep_ok(tr)
-    hint = ("[dim]\u2191\u2193[/] run [bold]c[/]haos [bold]p[/]oinc [bold]l[/]yap [bold]d[/]riven [bold]r[/]ot [bold]f[/]rac   "
+    hint = ("[dim]\u2191\u2193[/] run   [bold]h[/] chaos   [bold]i[/] poinc   [bold]l[/] lyap   [bold]d[/] driven   [bold]t[/] rot   [bold]f[/] frac   "
             "[bold]\u21b5[/] explore   "
-            + ("[bold]b[/] bif-sweep " if bif_ok else "")
-            + "[bold]s[/] rot-sweep   [bold]w[/] waterfall   [bold]g[/] gaps   [bold]q[/] back")
-    keys = {"c": act_chaos, "p": act_poin, "l": act_lyap,
-            "d": act_driven, "r": act_rot, "f": act_dim,
+            + ("[bold]b[/] bif-sweep   " if bif_ok else "")
+            + "[bold]m[/] rot-sweep   [bold]w[/] waterfall   [bold]q[/] back")
+    keys = {"h": act_chaos, "i": act_poin, "l": act_lyap,
+            "d": act_driven, "t": act_rot, "f": act_dim,
             "enter": act_explore, "x": act_explore,
-            "s": act_rotsweep, "w": act_waterfall, "g": toggle_gaps}
+            "m": act_rotsweep, "w": act_waterfall}
     if bif_ok: keys["b"] = act_bif
     _inventory_nav(tr, "analyze", CLR_ANALYZE, ANALYZE_TYPES, _analyze_exists,
-                   key_actions=keys, hint=hint, fstate=fstate)
+                   key_actions=keys, hint=hint)
     _log_activity("analyze")
 
 _QI_CATS = [
@@ -802,7 +799,7 @@ def do_ai(tr):
 
 def do_ar(tr):
     """Rotations — per-arm winding metrics across all clips (read from each
-    clip's rotations.json). Row keys: c/↵ compute this clip, o open its figure;
+    clip's rotations.json). Row keys: ↵ compute this clip, o open its figure;
     a recomputes every clip + the sweep aggregate."""
     if not tr:
         console.print("  [dim]No tracked clips.[/]"); _pause(); return
@@ -867,7 +864,7 @@ def do_ar(tr):
         nh = sum(1 for c in tr if _load(c["stem"]) or sweep.get(c["stem"]))
         return (f"[dim]{nh}/{len(tr)} computed[/]   [dim]·  ↻ = completed loops[/]"
                 f"   [dim]·[/]   filter: [bold]{state['filter']}[/]")
-    hint = ("[dim]↑↓[/] [bold]c[/]/[bold]↵[/] compute   [bold]o[/] figure   [bold]a[/] recompute all + sweep   "
+    hint = ("[dim]↑↓[/] [bold]↵[/] compute   [bold]o[/] open   [bold]a[/] all + sweep   "
             "[bold]1[/]/[bold]2[/]/[bold]3[/] all·suspect·missing   [bold]q[/] back")
     def act_compute(row, rows, i, ctx):
         if row:
@@ -888,7 +885,7 @@ def do_ar(tr):
         return _f
     navigate_table(build_rows, columns, title="rotations · winding", border_style=CLR_ANALYZE,
                    legend=legend, hint=hint, empty_msg="No clips match this filter.",
-                   key_actions={"c": act_compute, "enter": act_compute, "o": act_fig, "a": act_all,
+                   key_actions={"enter": act_compute, "o": act_fig, "a": act_all,
                                 "1": mkfilter("all"), "2": mkfilter("suspect"), "3": mkfilter("missing")})
     _log_activity("rotations")
 
@@ -903,21 +900,19 @@ def _vid_exists(vtype, stem):
     from paths import ANIMATIONS_DIR
     return os.path.isfile(os.path.join(ANIMATIONS_DIR, vtype, f"{stem}_{vtype}.mp4"))
 
-def _inventory_nav(tr, title, color, types, exists_fn, *, key_actions, hint, fstate,
+def _inventory_nav(tr, title, color, types, exists_fn, *, key_actions, hint,
                    on_col=None, on_col_force=None, col_hint=None,
                    on_view=None, on_create=None, cell_hint=None):
-    """Navigable clip×type matrix. fstate is a mutable {'gaps': bool} filter.
+    """Navigable clip×type matrix.
     on_col(type_tuple, ctx) enables column mode ('c'): ←→ pick a type column, enter
     batches it across all clips (on_col_force = 'f'). on_view / on_create
-    (stem, type_tuple, ctx) enable cell mode ('e'): ↑↓←→ pick one cell, 'v' views
+    (stem, type_tuple, ctx) enable cell mode ('e'): ↑↓←→ pick one cell, 'o' opens
     that file, '+' creates it."""
     def build_rows():
         rows = []
         for c in tr:
             cells = {tn: exists_fn(tn, c["stem"]) for tn, _s, _d in types}
             rows.append({"stem": c["stem"], "cells": cells, "ndone": sum(cells.values())})
-        if fstate.get("gaps"):
-            rows = [r for r in rows if r["ndone"] < len(types)]
         for k, r in enumerate(rows, 1): r["_n"] = k
         return rows
     columns = [("#", lambda r: str(r["_n"]), dict(justify="right", width=3, style="dim")),
@@ -929,8 +924,7 @@ def _inventory_nav(tr, title, color, types, exists_fn, *, key_actions, hint, fst
     def legend():
         parts = [f"[bold]{short}[/] [dim]{sum(1 for c in tr if exists_fn(tn, c['stem']))}/{len(tr)}[/]"
                  for tn, short, _d in types]
-        flt = "   [dim]·[/]   filter: [bold]gaps[/]" if fstate.get("gaps") else ""
-        return "   ".join(parts) + flt
+        return "   ".join(parts)
     col_targets = col_actions = cell_actions = None
     if on_col or on_view or on_create:
         col_targets = list(range(2, 2 + len(types)))   # the type columns, after #, clip
@@ -949,14 +943,14 @@ def _inventory_nav(tr, title, color, types, exists_fn, *, key_actions, hint, fst
         if on_view:
             def cell_view(row, cpos, ctx):
                 if row: on_view(row["stem"], types[cpos], ctx)
-            cell_actions["v"] = cell_view; cell_actions["enter"] = cell_view
+            cell_actions["o"] = cell_view; cell_actions["enter"] = cell_view
         if on_create:
             def cell_create(row, cpos, ctx):
                 if row: on_create(row["stem"], types[cpos], ctx)
             cell_actions["+"] = cell_create
         if cell_hint is None:
             cell_hint = ("[bold cyan]cell mode[/]   [dim]↑↓←→[/] pick cell"
-                         + ("   [bold]↵[/]/[bold]v[/] view" if on_view else "")
+                         + ("   [bold]↵[/]/[bold]o[/] open" if on_view else "")
                          + ("   [bold]+[/] create" if on_create else "")
                          + "   [bold]e[/]/[bold]r[/] row mode   [bold]q[/] back")
     navigate_table(build_rows, columns, title=title, border_style=color,
@@ -977,21 +971,11 @@ FIG_TYPES = [
     ("dimension",           "dim",    "fractal dimension"),
 ]
 
-def _pick_figtype(label="Figure type"):
-    ch = [Choice("← back", value=BACK)]
-    for tn, short, desc in FIG_TYPES:
-        ch.append(Choice(f"  {tn}  ({desc})", value=tn))
-    try:
-        r = questionary.select(label, choices=ch, style=_sty(), use_arrow_keys=True, use_jk_keys=True).ask()
-    except KeyboardInterrupt: return None
-    return None if r is None or r == BACK else r
-
 def do_fi(tr):
     """Figures inventory — row mode renders a clip's figures; column mode (c)
     batches a figure type across all clips."""
     if not tr:
         console.print("  [dim]No tracked clips.[/]"); _pause(); return
-    fstate = {"gaps": False}
     def render_clip(row, rows, i, ctx):
         if row:
             _do_suspended(ctx, lambda: _run(SCRIPT_BATCH_FIGS, "--stem", row["stem"]))
@@ -999,12 +983,6 @@ def do_fi(tr):
     def force_clip(row, rows, i, ctx):
         if row:
             _do_suspended(ctx, lambda: _run(SCRIPT_BATCH_FIGS, "--stem", row["stem"], "--force"))
-    def one_type(row, rows, i, ctx):
-        if not row: return
-        def work():
-            ft = _pick_figtype(f"Render one type · {row['stem']}")
-            if ft: _run(SCRIPT_BATCH_FIGS, "--stem", row["stem"], "--types", ft, "--force"); _pause()
-        ctx.suspend(work)
     def fill_all(row, rows, i, ctx):
         def work(): _run(SCRIPT_BATCH_FIGS); _log_activity("figures: all")
         _do_suspended(ctx, work,
@@ -1016,8 +994,6 @@ def do_fi(tr):
         vlab = f"{vf:g}V" if vf else "3.2V"
         def work(): _run(SCRIPT_WATERFALL, *args); _log_activity("spectral waterfall")
         _do_suspended(ctx, work, confirm=f"Render [bold]spectral waterfall[/] (aggregate) for the {vlab} family?")
-    def toggle_gaps(row, rows, i, ctx):
-        fstate["gaps"] = not fstate["gaps"]; return "top"
     def col_batch(t, ctx):
         def work(): _run(SCRIPT_BATCH_FIGS, "--types", t[0]); _log_activity(f"figures col {t[1]}")
         _do_suspended(ctx, work,
@@ -1036,11 +1012,11 @@ def do_fi(tr):
         _do_suspended(ctx, lambda: _run(SCRIPT_BATCH_FIGS, "--stem", stem, "--types", t[0], "--force", "--all-quality"))
         _log_activity(f"create {t[1]}/{stem}")
     hint = ("[dim]↑↓[/] [bold]↵[/] render   [bold]c[/] columns   [bold]e[/] cells   "
-            "[bold]o[/] one-type   [bold]a[/] all   [bold]w[/] waterfall   [bold]f[/] force   [bold]g[/] gaps   [bold]q[/] back")
+            "[bold]a[/] all   [bold]w[/] waterfall   [bold]f[/] force   [bold]q[/] back")
     _inventory_nav(tr, "figures inventory", CLR_FIGURES, FIG_TYPES, _fig_exists,
                    key_actions={"enter": render_clip, "f": force_clip,
-                                "o": one_type, "a": fill_all, "w": fig_waterfall, "g": toggle_gaps},
-                   hint=hint, fstate=fstate, on_col=col_batch, on_col_force=col_force,
+                                "a": fill_all, "w": fig_waterfall},
+                   hint=hint, on_col=col_batch, on_col_force=col_force,
                    on_view=view_fig, on_create=create_fig)
 
 # Videos
@@ -1107,8 +1083,8 @@ def do_vi(tr):
         npe = sum(1 for o, v in zip(ov, vd) if o and v is None); nno = sum(1 for o in ov if not o)
         return (f"[green]{npa} pass[/]  [red]{nfa} fail[/]  [yellow]{npe} to review[/]  "
                 f"[dim]{nno} no overlay[/]   [dim]·[/]   filter: [bold]{state['filter']}[/]")
-    hint = ("[dim]↑↓[/] [bold]o[/]/[bold]↵[/] review   [green bold]p[/]ass [red bold]f[/]ail [bold]x[/] clear   "
-            "[bold]m[/] combined   [bold]c[/] cols   [bold]e[/] cells   [bold]1[/]/[bold]2[/]/[bold]3[/] filter   [bold]q[/] back")
+    hint = ("[dim]↑↓[/] [bold]o[/]/[bold]↵[/] open   [green bold]p[/]ass [red bold]f[/]ail [bold]x[/] clear   "
+            "[bold]m[/] combined   [bold]c[/] columns   [bold]e[/] cells   [bold]1[/]/[bold]2[/]/[bold]3[/] filter   [bold]q[/] back")
     col_hint = ("[bold cyan]column mode[/]   [dim]←→[/] pick type   [bold]↵[/] batch all clips   "
                 "[bold]f[/] force   [bold]r[/] row mode   [bold]q[/] back")
     def act_review(row, rows, i, ctx):
@@ -1184,7 +1160,7 @@ def do_vi(tr):
             if col == "overlay": _render_overlay(row["stem"])
             else: _run(SCRIPT_BATCH_FIGS, "--video", "--types", col, "--stem", row["stem"], "--force", "--all-quality")
         _do_suspended(ctx, work); _log_activity(f"create {col}/{row['stem']}")
-    cell_hint = ("[bold cyan]cell mode[/]   [dim]↑↓←→[/] pick cell   [bold]↵[/] toggle verdict · view   "
+    cell_hint = ("[bold cyan]cell mode[/]   [dim]↑↓←→[/] pick cell   [bold]↵[/]/[bold]o[/] open · toggle verdict   "
                  "[bold]+[/] create   [bold]e[/]/[bold]r[/] row mode   [bold]q[/] back")
     navigate_table(build_rows, columns, title="videos", border_style=CLR_VIDEOS,
                    legend=legend, hint=hint, col_hint=col_hint, cell_hint=cell_hint,
@@ -1194,7 +1170,7 @@ def do_vi(tr):
                                 "1": mkfilter("all"), "2": mkfilter("review"), "3": mkfilter("norender")},
                    col_targets=col_targets, col_actions={"enter": col_batch, "f": col_force},
                    cell_targets=cell_targets,
-                   cell_actions={"enter": cell_enter, "v": cell_view, "+": cell_create})
+                   cell_actions={"enter": cell_enter, "o": cell_view, "+": cell_create})
     _log_activity("videos")
 
 # Overlay render + review
