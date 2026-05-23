@@ -45,6 +45,7 @@ SCRIPT_DIMENSION   = os.path.join(REPO_ROOT, "scripts", "analysis", "dimension.p
 SCRIPT_DIM_SWEEP   = os.path.join(REPO_ROOT, "scripts", "analysis", "dimension_sweep.py")
 SCRIPT_RETURN_MAP  = os.path.join(REPO_ROOT, "scripts", "analysis", "return_map.py")
 SCRIPT_RECURRENCE  = os.path.join(REPO_ROOT, "scripts", "analysis", "recurrence.py")
+SCRIPT_ATTRACTOR   = os.path.join(REPO_ROOT, "scripts", "analysis", "attractor.py")
 SCRIPT_WATERFALL   = os.path.join(REPO_ROOT, "scripts", "analysis", "spectral_waterfall.py")
 SCRIPT_OVERLAY     = os.path.join(REPO_ROOT, "scripts", "analysis", "overlay_video.py")
 
@@ -651,6 +652,7 @@ ANALYZE_TYPES = [
     ("dimension",     "dim",    "fractal dimension"),
     ("return_map",    "ret",    "return map"),
     ("recurrence",    "rec",    "recurrence plot"),
+    ("attractor",     "attr",   "attractor embed"),
 ]
 
 def _analyze_exists(tn, stem):
@@ -694,6 +696,8 @@ def build_mode_analyze():
         if row: _runclip(ctx, SCRIPT_RETURN_MAP, "--stem", row["stem"]); _log_activity(f"return map {row['stem']}")
     def act_recurrence(row, rows, i, ctx):
         if row: _runclip(ctx, SCRIPT_RECURRENCE, "--stem", row["stem"]); _log_activity(f"recurrence {row['stem']}")
+    def act_attractor(row, rows, i, ctx):
+        if row: _runclip(ctx, SCRIPT_ATTRACTOR, "--stem", row["stem"]); _log_activity(f"attractor {row['stem']}")
     def act_explore(row, rows, i, ctx):
         if not row: return
         sys.path.insert(0, os.path.join(REPO_ROOT, "scripts", "analysis"))
@@ -720,7 +724,7 @@ def build_mode_analyze():
         _do_suspended(ctx, work, confirm="Run [bold]dimension sweep[/] across the 3.2V family?")
     bif_ok = _voltage_sweep_ok(tr)
     fd_ok = _freq_sweep_ok(tr)
-    hint = ("[dim]\u2191\u2193[/] run   [bold]ch[/] chaos   [bold]po[/] poinc   [bold]ly[/] lyap   [bold]dr[/] driven   [bold]ro[/] rot   [bold]fr[/] frac   [bold]rm[/] return   [bold]rc[/] recur   "
+    hint = ("[dim]\u2191\u2193[/] run   [bold]ch[/] chaos   [bold]po[/] poinc   [bold]ly[/] lyap   [bold]dr[/] driven   [bold]ro[/] rot   [bold]fr[/] frac   [bold]rm[/] return   [bold]rc[/] recur   [bold]at[/] attr   "
             "[bold]\u21b5[/] explore   "
             + ("[bold]bs[/] bif-sweep   " if bif_ok else "")
             + ("[bold]bf[/] bif-fd   " if fd_ok else "")
@@ -729,7 +733,7 @@ def build_mode_analyze():
             "dr": act_driven, "ro": act_rot, "fr": act_dim,
             "enter": act_explore,
             "rs": act_rotsweep, "wf": act_waterfall, "ds": act_dim_sweep,
-            "rm": act_returnmap, "rc": act_recurrence}
+            "rm": act_returnmap, "rc": act_recurrence, "at": act_attractor}
     if bif_ok: keys["bs"] = act_bif
     if fd_ok: keys["bf"] = act_bif_fd
     return _inventory_mode("analyze", "2", CLR_ANALYZE, ANALYZE_TYPES, _analyze_exists,
@@ -1021,6 +1025,7 @@ FIG_TYPES = [
     ("driven_poincare",     "drpoinc","driven poincaré"),
     ("return_map",          "ret",    "return map"),
     ("recurrence",          "rec",    "recurrence plot"),
+    ("attractor",           "attr",   "attractor embed"),
 ]
 
 def build_mode_figures():
@@ -1558,10 +1563,61 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
                     pending = ""
             rows, n, avail, renderable = frame(); live.update(renderable, refresh=True)
 
+def build_mode_main():
+    """Main mode — per-clip pipeline overview: track / analyze / figures / videos
+    completeness plus a per-clip progress bar. 1-4 dive into a stage (the cursor
+    persists across modes). Landing screen."""
+    AN_N, FI_N, VI_N = len(ANALYZE_TYPES), len(FIG_TYPES), len(VIDEO_TYPES)
+    TOTAL = 1 + AN_N + FI_N + VI_N
+    _last = {}
+    def build_rows():
+        tr, _pe = get_clips()
+        rows = []
+        for c in tr:
+            stem = c["stem"]
+            verified = c.get("quality") == "verified" or c.get("status") == "verified"
+            an = sum(1 for tn, _s, _d in ANALYZE_TYPES if _analyze_exists(tn, stem))
+            fi = sum(1 for tn, _s, _d in FIG_TYPES if _fig_exists(tn, stem))
+            vi = sum(1 for tn, _s, _d in VIDEO_TYPES if _vid_exists(tn, stem))
+            done = (1 if verified else 0) + an + fi + vi
+            rows.append({"_n": 0, "stem": stem, "verified": verified,
+                         "an": an, "fi": fi, "vi": vi, "pct": round(100 * done / TOTAL)})
+        for k, r in enumerate(rows, 1): r["_n"] = k
+        _last["rows"] = rows
+        return rows
+    def _stage(done, total):
+        if done >= total: return "[green]✓[/]"
+        if done > 0:      return f"[yellow]◐[/] [dim]{done}/{total}[/]"
+        return "[dim]·[/]"
+    def _bar(r):
+        f = max(0, min(10, round(r["pct"] / 10)))
+        return f"[{CLR_TRACK}]" + "█" * f + "[/][dim]" + "░" * (10 - f) + "[/]"
+    columns = [
+        ("#",    lambda r: str(r["_n"]), dict(justify="right", width=3, style="dim")),
+        ("clip", lambda r: r["stem"],    dict(min_width=16, no_wrap=True)),
+        (f"[{CLR_TRACK}]track[/]",    lambda r: "[green]✓[/]" if r["verified"] else "[dim]·[/]", dict(justify="center", width=7)),
+        (f"[{CLR_ANALYZE}]analyze[/]", lambda r: _stage(r["an"], AN_N), dict(justify="center", width=9)),
+        (f"[{CLR_FIGURES}]figures[/]", lambda r: _stage(r["fi"], FI_N), dict(justify="center", width=9)),
+        (f"[{CLR_VIDEOS}]videos[/]",  lambda r: _stage(r["vi"], VI_N), dict(justify="center", width=9)),
+        ("pipeline", _bar, dict(width=12)),
+    ]
+    def legend():
+        rows = _last.get("rows") or build_rows()
+        if not rows: return "[dim]no tracked clips[/]"
+        nfull = sum(1 for r in rows if r["pct"] >= 100)
+        nempty = sum(1 for r in rows if r["pct"] == 0)
+        npart = len(rows) - nfull - nempty
+        overall = round(sum(r["pct"] for r in rows) / len(rows))
+        return (f"[green]✓ {nfull} done[/]   [yellow]◐ {npart} partial[/]   [dim]· {nempty} empty[/]"
+                f"      overall [bold]{overall}%[/]")
+    hint = ("[dim]↑↓[/] navigate clips   [bold]1[/]/[bold]2[/]/[bold]3[/]/[bold]4[/] open a stage   "
+            "[bold]h[/] help   [bold]q[/] quit")
+    return Mode("main", "m", CLR_MAIN, glyph="⌂", build_rows=build_rows, columns=columns,
+                legend=legend, hint=hint)
+
 def main():
-    """Shell v2 — mode-ring entry point (launched by bare `chaos`). Track / analyze
-    / figures / videos are live; the main overview is a placeholder until Phase 3,
-    so we land on track for now."""
+    """Shell v2 — mode-ring entry point (launched by bare `chaos`). Opens on the
+    main pipeline overview; 1-4 open the stage modes (cursor persists)."""
     def _overall():
         tr, pe = get_clips()
         nver = sum(1 for c in tr if c.get("quality") == "verified")

@@ -54,6 +54,7 @@ STATIC_SUITE = [
     ("driven_poincare",   "png", True,  "driven_poincare.py",[]),
     ("return_map",        "png", True,  "return_map.py",     []),
     ("recurrence",        "png", True,  "recurrence.py",     []),
+    ("attractor",         "png", True,  "attractor.py",      []),
 ]
 
 VIDEO_SUITE = [
