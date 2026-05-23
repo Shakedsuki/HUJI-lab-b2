@@ -45,11 +45,12 @@ SCRIPT_DIMENSION   = os.path.join(REPO_ROOT, "scripts", "analysis", "dimension.p
 SCRIPT_WATERFALL   = os.path.join(REPO_ROOT, "scripts", "analysis", "spectral_waterfall.py")
 SCRIPT_OVERLAY     = os.path.join(REPO_ROOT, "scripts", "analysis", "overlay_video.py")
 
-CLR_TRACK   = "green"
-CLR_ANALYZE = "yellow"
+CLR_TRACK   = "#4ade80"
+CLR_ANALYZE = "#fbbf24"
 CLR_OUTPUT  = "#FF6B35"
 CLR_FIGURES = "#FF3D6B"
 CLR_VIDEOS  = "#38BDF8"
+CLR_MAIN    = "#c084fc"
 CLR_INFO    = "cyan"
 CLR_SYSTEM  = "dim"
 
@@ -1244,6 +1245,255 @@ def do_c():
     console.print("\n  [dim]Calibration is set in scripts/utils/thresholds.py[/]")
     console.print("  [dim]Routing logic: get_pivot_arm(stem) — stems starting with 3.2V_ use week 6 calibration[/]")
     _pause()
+
+# ── Mode ring (shell v2 engine) ──
+from dataclasses import dataclass, field
+
+@dataclass
+class Mode:
+    """Per-mode config consumed by run_modes(). Mirrors navigate_table's kwargs,
+    so a mode is just a bundle of (rows, columns, handlers, hints)."""
+    name: str
+    key: str
+    color: str
+    glyph: str = ""
+    build_rows: object = None
+    columns: list = field(default_factory=list)
+    key_actions: dict = field(default_factory=dict)
+    legend: object = ""
+    hint: object = ""
+    col_targets: object = None
+    col_actions: object = None
+    col_hint: object = None
+    cell_targets: object = None
+    cell_actions: object = None
+    cell_hint: object = None
+    preview_fn: object = None
+
+def _ring_title(modes, active):
+    t = Text()
+    t.append("CHAOS", style=f"bold {CLR_MAIN}")
+    t.append("   ", style="dim")
+    for i, m in enumerate(modes):
+        if i: t.append("  ")
+        t.append(f"{m.glyph or m.key} {m.name}",
+                 style=(f"bold {m.color}" if i == active else "dim"))
+    return t
+
+def _status_line(modes, phase_label):
+    t = Text("  ")
+    t.append(phase_label, style="dim")
+    t.append("    ")
+    for i, m in enumerate(modes):
+        if i: t.append("/", style="dim")
+        t.append(m.glyph or m.key, style=f"bold {m.color}")
+    t.append(" mode", style="dim")
+    t.append("        ")
+    for lbl, act in (("sw", "switch"), ("p", "paths"), ("c", "cal")):
+        t.append(lbl, style="dim"); t.append(f" {act}   ", style="dim")
+    return t
+
+def run_modes(modes, start=0, phase_label=None, selected_bg="grey23"):
+    """Shell v2 driver — one persistent table; 0-4 swap modes, cursor persists.
+    Rigid frame (title ring + bordered table + hint + status line); only the
+    clip-row band scrolls. Reuses the row/column/entry + type-ahead + help
+    interaction model from navigate_table."""
+    if phase_label is None:
+        phase_label = PHASE.replace("pendulum-", "").replace("week", "w")
+    by_key = {m.key: i for i, m in enumerate(modes)}
+    midx = start
+    idx = cidx = 0
+    mode = "row"
+    pending = ""
+    show_help = False
+
+    def cur():
+        return modes[midx]
+
+    def _help_panel(m):
+        hp = [Text.from_markup("  [dim]move[/]  ↑↓ / k j   Home/End   PgUp/PgDn   [dim]·[/]   q/Esc quit"),
+              Text.from_markup("  [dim]switch[/]  0–4 mode")]
+        rh = _resolve(m.hint)
+        if rh: hp.append(Text.from_markup("  [bold]row[/]      " + rh))
+        if m.col_targets:
+            ch = _resolve(m.col_hint)
+            if ch: hp.append(Text.from_markup("  [bold]column[/]   " + ch))
+        if m.cell_actions:
+            eh = _resolve(m.cell_hint)
+            if eh: hp.append(Text.from_markup("  [bold]entry[/]    " + eh))
+        hp.append(Text.from_markup("  [dim]— any key to close —[/]"))
+        return Panel(Group(*hp), title=_ring_title(modes, midx), title_align="left",
+                     border_style=CLR_MAIN, padding=(1, 2), box=box.SQUARE)
+
+    def frame():
+        nonlocal idx, cidx
+        m = cur()
+        has_cols = bool(m.col_targets)
+        cell_tgts = m.cell_targets or m.col_targets
+        has_cells = bool(cell_tgts) and bool(m.cell_actions)
+        rows = m.build_rows() if m.build_rows else []
+        n = len(rows)
+        idx = max(0, min(idx, n - 1)) if n else 0
+        _active = cell_tgts if mode == "cell" else m.col_targets
+        if _active: cidx = max(0, min(cidx, len(_active) - 1))
+        avail = max(5, min(23, console.height - 10))
+        try:
+            tr2, pe2 = get_clips()
+            nver = sum(1 for c in tr2 if c.get("quality") == "verified")
+            right_info = f"{nver}/{len(tr2) + len(pe2)}"
+        except Exception:
+            right_info = None
+        if show_help:
+            return rows, n, avail, Group(_help_panel(m), _status_line(modes, phase_label))
+        cols = m.columns
+        ncol = len(cols)
+        sel_col = m.col_targets[cidx] if (has_cols and mode == "col") else None
+        cell_col = cell_tgts[cidx] if (has_cells and mode == "cell") else None
+        if n <= avail:
+            lo, hi = 0, n
+        else:
+            lo = max(0, min(idx - avail // 2, n - avail)); hi = lo + avail
+        t = Table(box=box.SIMPLE, show_header=True, padding=(0, 1), expand=False)
+        t.add_column(" ", width=2)
+        for p, (header, _rf, kw) in enumerate(cols):
+            if p == sel_col:
+                kw = {**kw, "style": f"on {selected_bg}", "header_style": f"bold on {selected_bg}"}
+            t.add_column(header, **kw)
+        if n == 0:
+            t.add_row(" ", "[dim]No clips.[/]", *[""] * (ncol - 1))
+        else:
+            if lo > 0: t.add_row(" ", "[dim]↑…[/]", *[""] * (ncol - 1))
+            for i in range(lo, hi):
+                cells = [rf(rows[i]) for _h, rf, _k in cols]
+                if mode == "cell" and i == idx:
+                    if cell_col is not None:
+                        cells[cell_col] = f"[bold black on bright_cyan]{cells[cell_col]}[/]"
+                    t.add_row("[bold cyan]▸[/]", *cells, style=f"on {selected_bg}")
+                elif mode == "row" and i == idx:
+                    t.add_row("[bold cyan]▸[/]", *cells, style=f"on {selected_bg}")
+                else:
+                    t.add_row(" ", *cells)
+            if hi < n: t.add_row(" ", "[dim]↓…[/]", *[""] * (ncol - 1))
+        body = [t]
+        leg = _resolve(m.legend)
+        if leg: body.append(Text.from_markup("  " + leg))
+        panel = Panel(Group(*body), title=_ring_title(modes, midx), title_align="left",
+                      subtitle=right_info, subtitle_align="right",
+                      border_style=CLR_MAIN, padding=(0, 1), box=box.SQUARE,
+                      expand=(m.preview_fn is None))
+        main_r = panel
+        if m.preview_fn is not None:
+            try: prev = m.preview_fn(rows[idx] if n else None)
+            except Exception: prev = None
+            if prev is not None:
+                lay = Table(box=None, show_header=False, expand=True, padding=(0, 1))
+                lay.add_column(); lay.add_column(ratio=1)
+                lay.add_row(panel, prev); main_r = lay
+        if mode == "cell" and m.cell_hint: h = _resolve(m.cell_hint)
+        elif mode == "col" and m.col_hint: h = _resolve(m.col_hint)
+        else: h = _resolve(m.hint)
+        if mode == "row" and pending:
+            h = (h or "") + f"     [bold cyan]{pending}…[/]"
+        parts = [main_r]
+        if h: parts.append(Text.from_markup("  " + h))
+        parts.append(_status_line(modes, phase_label))
+        return rows, n, avail, Group(*parts)
+
+    rows, n, avail, renderable = frame()
+    with Live(renderable, console=console, screen=True, auto_refresh=False) as live:
+        ctx = _NavCtx(live)
+        while True:
+            try:
+                key = _read_key()
+            except KeyboardInterrupt:
+                break
+            if show_help:
+                show_help = False
+                rows, n, avail, renderable = frame(); live.update(renderable, refresh=True); continue
+            if key == "esc" and pending:
+                pending = ""
+                rows, n, avail, renderable = frame(); live.update(renderable, refresh=True); continue
+            if key in ("q", "esc"): break
+            if key in by_key:
+                midx = by_key[key]; mode = "row"; cidx = 0; pending = ""
+                rows, n, avail, renderable = frame(); live.update(renderable, refresh=True); continue
+            m = cur()
+            has_cols = bool(m.col_targets)
+            cell_tgts = m.cell_targets or m.col_targets
+            has_cells = bool(cell_tgts) and bool(m.cell_actions)
+            if mode == "col":
+                if key in ("left", "h"): cidx -= 1
+                elif key in ("right", "l"): cidx += 1
+                elif key in ("up", "k"): idx -= 1
+                elif key in ("down", "j"): idx += 1
+                elif key in ("r", "c"): mode = "row"
+                else:
+                    act = (m.col_actions or {}).get(key)
+                    if act and act(cidx, rows, ctx) == "quit": break
+            elif mode == "cell":
+                if key in ("left", "h"): cidx -= 1
+                elif key in ("right", "l"): cidx += 1
+                elif key in ("up", "k"): idx -= 1
+                elif key in ("down", "j"): idx += 1
+                elif key in ("r", "e"): mode = "row"
+                else:
+                    act = (m.cell_actions or {}).get(key)
+                    if act and act(rows[idx] if n else None, cidx, ctx) == "quit": break
+            else:
+                ka = m.key_actions or {}
+                if key in ("up", "k"): idx -= 1; pending = ""
+                elif key in ("down", "j"): idx += 1; pending = ""
+                elif key == "home": idx = 0; pending = ""
+                elif key == "end": idx = n - 1; pending = ""
+                elif key == "pageup": idx -= avail; pending = ""
+                elif key == "pagedown": idx += avail; pending = ""
+                elif key in ("backspace", "\x08", "\x7f"): pending = pending[:-1]
+                elif key == "enter":
+                    pending = ""
+                    act = ka.get("enter")
+                    if act:
+                        res = act(rows[idx] if n else None, rows, idx, ctx)
+                        if res == "quit": break
+                        elif res == "advance": idx += 1
+                        elif res == "top": idx = 0
+                elif len(key) == 1 and key.isprintable():
+                    cand = pending + key
+                    prefixed = any(len(k) > len(cand) and k.startswith(cand) for k in ka)
+                    if cand in ka and not prefixed:
+                        pending = ""
+                        res = ka[cand](rows[idx] if n else None, rows, idx, ctx)
+                        if res == "quit": break
+                        elif res == "advance": idx += 1
+                        elif res == "top": idx = 0
+                    elif prefixed:
+                        pending = cand
+                    elif pending:
+                        pending = ""
+                    elif key == "h": show_help = True
+                    elif has_cols and key == "c": mode = "col"; cidx = 0
+                    elif has_cells and key == "e": mode = "cell"; cidx = 0
+                else:
+                    pending = ""
+            rows, n, avail, renderable = frame(); live.update(renderable, refresh=True)
+
+def _v2_demo():
+    """Throwaway Phase-1 smoke test of the mode ring (5 stub modes, real clips).
+    Launch:  python -c "import sys;sys.path.insert(0,'scripts/utils');import shell;shell._v2_demo()" """
+    def rows():
+        tr, pe = get_clips()
+        out = [{"stem": c["stem"], "status": c.get("status", "?")} for c in (tr + pe)]
+        for i, r in enumerate(out, 1): r["_n"] = i
+        return out
+    cols = [("#",      lambda r: str(r["_n"]), dict(justify="right", width=3, style="dim")),
+            ("clip",   lambda r: r["stem"],    dict(min_width=16, no_wrap=True)),
+            ("status", lambda r: r["status"],  dict(width=10))]
+    def mk(name, key, clr, glyph=""):
+        return Mode(name, key, clr, glyph=glyph, build_rows=rows, columns=cols,
+                    legend=f"demo · {name}",
+                    hint=f"[dim]↑↓[/] navigate   [bold]h[/] help   [bold]q[/] quit   [dim](stub: {name})[/]")
+    run_modes([mk("main", "0", CLR_MAIN, glyph="⌂"), mk("track", "1", CLR_TRACK),
+               mk("analyze", "2", CLR_ANALYZE), mk("figures", "3", CLR_FIGURES),
+               mk("videos", "4", CLR_VIDEOS)], start=0)
 
 # ── Hub loop ──
 
