@@ -50,6 +50,7 @@ STATIC_SUITE = [
     ("lyapunov",          "png", True,  "lyapunov.py",       []),
     ("seismograph_v1",    "png", False, "seismograph.py",    ["--mode", "v1"]),
     ("seismograph_v2",    "png", False, "seismograph.py",    ["--mode", "v2"]),
+    ("dimension",         "png", False, "dimension.py",      []),
 ]
 
 VIDEO_SUITE = [

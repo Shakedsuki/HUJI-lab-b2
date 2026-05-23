@@ -424,6 +424,32 @@ def plot_rotations(d):
         print("    " + line)
 
 
+def plot_dimension(d):
+    """Fractal dimension of the attractor: correlation-integral scaling
+    (slope = D₂) with D₂ and D_box printed. Reuses dimension.py. First
+    call loads + embeds, so it takes a moment."""
+    import plotext as plt
+    from dimension import compute
+    try:
+        _t, _th2, _om2, m, tau, corr, box = compute(d["stem"], 5, None, 5.0)
+    except Exception as e:
+        print(f"  dimension failed: {e}")
+        return
+    if corr is None:
+        print("  too few points for the correlation dimension")
+        return
+    rs, C = corr["rs"], corr["C"]
+    ok = C > 0
+    _setup(plt, f"correlation integral  (D₂={corr['D2']:.2f} · D_box={box['Dbox']:.2f})")
+    plt.plot(np.log10(rs[ok]), np.log10(C[ok]), color="magenta", marker="dot")
+    plt.xlabel("log₁₀ r")
+    plt.ylabel("log₁₀ C(r)   (slope = D₂)")
+    plt.show()
+    print(f"    D₂ (correlation) = {corr['D2']:.2f} (R²={corr['r2']:.3f})   "
+          f"D_box = {box['Dbox']:.2f} (R²={box['r2']:.3f})")
+    print("    [≈1 ⇒ periodic loop · fractional ⇒ strange attractor]")
+
+
 PLOTS = {
     "both":     ("green",   "\u03b8\u2081(t) + \u03b8\u2082(t) overlay",         plot_both),
     "omega":    ("green",   "\u03c9\u2081(t) + \u03c9\u2082(t)",                  plot_omega),
@@ -438,6 +464,7 @@ PLOTS = {
     "trace":    ("blue",    "tip trajectory in pixel space",                        plot_trace),
     "spectrum": ("red",     "power spectrum of \u03b8\u2082",                      plot_spectrum),
     "return":   ("red",     "\u03b8\u2082(n) vs \u03b8\u2082(n+1) return map",    plot_return),
+    "dim":      ("red",     "fractal dimension (D₂ corr + D_box)",  plot_dimension),
     "seis1":    ("yellow",  "seismograph v1 spiral (θ_tip=θ₂)",  lambda d: plot_seismograph(d, "v1")),
     "seis2":    ("yellow",  "seismograph v2 ripple (θ_tip=θ₂)",  lambda d: plot_seismograph(d, "v2")),
     "cyc":      ("magenta", "cyclic phase ψ(t) per arm",            plot_cyclic_phase),
@@ -460,7 +487,7 @@ def _print_menu(con):
         ("green",   "time series", ["both", "omega", "tip", "energy", "rot"]),
         ("yellow",  "phase space", ["phase1", "phase2", "config", "full", "seis1", "seis2"]),
         ("blue",    "physical",    ["xy", "trace"]),
-        ("red",     "chaos",       ["spectrum", "return"]),
+        ("red",     "chaos",       ["spectrum", "return", "dim"]),
         ("magenta", "driven",      ["cyc", "lock", "res"]),
     ]
     panels = []
