@@ -53,6 +53,7 @@ STATIC_SUITE = [
     ("dimension",         "png", False, "dimension.py",      []),
     ("driven_poincare",   "png", True,  "driven_poincare.py",[]),
     ("return_map",        "png", True,  "return_map.py",     []),
+    ("recurrence",        "png", True,  "recurrence.py",     []),
 ]
 
 VIDEO_SUITE = [
