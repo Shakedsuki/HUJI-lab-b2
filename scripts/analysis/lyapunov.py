@@ -76,8 +76,13 @@ def parse_args():
                    help="Theiler window in frames; auto = ~1 period")
     p.add_argument("--fit-range", type=str, default=None,
                    help="frames over which to fit the slope, e.g. '5-40'")
-    p.add_argument("--use-omega", action="store_true",
-                   help="embed omega1 instead of theta1")
+    p.add_argument("--observable", choices=["theta1", "omega1", "omega2"],
+                   default="omega2",
+                   help="time series to embed (default omega2 — consistent with "
+                        "the dimension / spectral / FTLE diagnostics)")
+    p.add_argument("--use-theta1", action="store_true",
+                   help="legacy: embed theta1 (unwrapped angle) instead of omega2")
+    p.add_argument("--use-omega", action="store_true", help=argparse.SUPPRESS)
     p.add_argument("--no-plot", action="store_true")
     return p.parse_args()
 
@@ -90,7 +95,16 @@ def resolve_io(args):
         return args.csv, out_dir, os.path.basename(out_dir)
     raise SystemExit("Need --stem or a CSV path.")
 
-def load_series(csv_path, use_omega=False):
+def load_series(csv_path, observable="omega2", use_omega=None):
+    """Load one analysis time series. observable in {theta1, omega1, omega2};
+    default omega2 — the lower arm's angular velocity, consistent with the
+    dimension / spectral / FTLE diagnostics. theta1 is unwrapped (it is an
+    angle); the omegas are already bounded. The legacy `use_omega` kwarg is
+    still honoured (True -> omega1, False -> theta1) for backward compatibility."""
+    if use_omega is True:
+        observable = "omega1"
+    elif use_omega is False:
+        observable = "theta1"
     rows = []
     with open(csv_path, newline="", encoding="utf-8") as f:
         for r in csv.DictReader(f):
@@ -101,6 +115,7 @@ def load_series(csv_path, use_omega=False):
                     float(r["time_s"]),
                     float(r["theta1_deg"]),
                     float(r["omega1_deg_s"]),
+                    float(r["omega2_deg_s"]),
                 ))
             except (ValueError, KeyError):
                 continue
@@ -108,10 +123,13 @@ def load_series(csv_path, use_omega=False):
         raise SystemExit(f"Too few analysis rows ({len(rows)}).")
     arr = np.array(rows, dtype=float)
     t   = arr[:, 0] - arr[0, 0]
-    th  = arr[:, 1]
-    om  = arr[:, 2]
-    th  = np.degrees(np.unwrap(np.radians(th)))
-    return t, om if use_omega else th
+    if observable == "theta1":
+        series = np.degrees(np.unwrap(np.radians(arr[:, 1])))
+    elif observable == "omega1":
+        series = arr[:, 2]
+    else:                                  # omega2 (default)
+        series = arr[:, 3]
+    return t, series
 
 def autocorr_first_drop(x, threshold=1.0 / np.e, lag_max=None):
     """First lag at which the (normalised) autocorrelation drops below
@@ -191,17 +209,33 @@ def rosenstein(emb, theiler, k_max):
             S[k] = np.mean(log_dists)
     return S
 
-def linear_fit_slope(x, y, lo, hi):
+def linear_fit_slope(x, y, lo, hi, want_sigma=False):
+    """Least-squares slope of y vs x over the index window [lo, hi]. With
+    want_sigma=True also returns the standard error of the slope (sqrt of the
+    polyfit covariance) so lambda_1 can carry a confidence interval. Falls back
+    to NaN sigma on a degenerate fit."""
     mask = np.arange(len(y))
     sel  = (mask >= lo) & (mask <= hi) & np.isfinite(y)
     if sel.sum() < 5:
-        return float("nan"), float("nan"), float("nan")
-    coef = np.polyfit(x[sel], y[sel], 1)
+        return (float("nan"),) * (4 if want_sigma else 3)
+    sigma = float("nan")
+    if want_sigma:
+        try:
+            coef, cov = np.polyfit(x[sel], y[sel], 1, cov=True)
+            sigma = float(np.sqrt(cov[0, 0]))
+            if not np.isfinite(sigma):
+                sigma = float("nan")
+        except (np.linalg.LinAlgError, ValueError):
+            coef = np.polyfit(x[sel], y[sel], 1)
+    else:
+        coef = np.polyfit(x[sel], y[sel], 1)
     slope, intercept = coef
     yhat = np.polyval(coef, x[sel])
     ss_res = np.sum((y[sel] - yhat) ** 2)
     ss_tot = np.sum((y[sel] - y[sel].mean()) ** 2)
     r2 = 1.0 - ss_res / ss_tot if ss_tot > 0 else float("nan")
+    if want_sigma:
+        return slope, intercept, r2, sigma
     return slope, intercept, r2
 
 def auto_fit_range(S, k_max):
@@ -239,7 +273,8 @@ def fit_divergence_slope(S, dt, fit_range=None):
                 linear regime with auto_fit_range().
 
     Returns (slope, r2, fit_lo, fit_hi). slope is lambda_1 in units of 1/s.
-    Shared by ftle_windows.py so per-window FTLE uses the identical fit logic.
+    Convenience wrapper over auto_fit_range + linear_fit_slope, used by
+    ftle_windows.py so per-window FTLE shares the identical fit logic.
     """
     S = np.asarray(S, dtype=float)
     if fit_range is None:
@@ -252,7 +287,10 @@ def fit_divergence_slope(S, dt, fit_range=None):
 
 def make_figure(t, x, S, dt, tau, m, theiler,
                 slope, intercept, r2, fit_lo, fit_hi,
-                label, out_path):
+                label, out_path, sigma=float("nan"), observable="omega2"):
+    obs_label = {"theta1": "θ₁ unwrapped (deg)", "omega1": "ω₁ (deg/s)",
+                 "omega2": "ω₂ (deg/s)"}.get(observable, observable)
+    obs_short = {"theta1": "θ₁", "omega1": "ω₁", "omega2": "ω₂"}.get(observable, observable)
     fig = plt.figure(figsize=(15, 9))
     gs = fig.add_gridspec(2, 2, hspace=0.32, wspace=0.28,
                           left=0.07, right=0.97, top=0.93, bottom=0.07)
@@ -264,8 +302,8 @@ def make_figure(t, x, S, dt, tau, m, theiler,
     # Time series.
     ax_ts.plot(t, x, lw=0.7, color="tab:blue")
     ax_ts.set_xlabel("t (s)")
-    ax_ts.set_ylabel("theta1 unwrapped (deg)")
-    ax_ts.set_title("Free-swing time series")
+    ax_ts.set_ylabel(obs_label)
+    ax_ts.set_title(f"Analysis time series ({obs_short})")
     ax_ts.grid(True, alpha=0.3)
 
     # Divergence curve.
@@ -300,7 +338,9 @@ def make_figure(t, x, S, dt, tau, m, theiler,
         f"Embedding tau   : {tau} frames  ({tau*dt*1000:.1f} ms)",
         f"Theiler window  : {theiler} frames",
         f"Fit range       : k = {fit_lo}..{fit_hi}",
-        f"slope (lambda_1): {slope:+.4f} /s     R^2 = {r2:.3f}",
+        (f"slope (lambda_1): {slope:+.4f} ± {sigma:.4f} /s     R^2 = {r2:.3f}"
+         if np.isfinite(sigma) else
+         f"slope (lambda_1): {slope:+.4f} /s     R^2 = {r2:.3f}"),
         f"Lyap. timescale : {1/slope:.2f} s" if (
             np.isfinite(slope) and slope > 0) else "Lyap. timescale : n/a",
         "",
@@ -312,7 +352,7 @@ def make_figure(t, x, S, dt, tau, m, theiler,
     ax_meta.text(0.0, 0.95, "\n".join(lines),
                  family="monospace", fontsize=11, va="top")
 
-    fig.suptitle(f"Largest Lyapunov exponent (Rosenstein) — {label}",
+    fig.suptitle(f"Largest Lyapunov exponent (Rosenstein) — {label} — observable: {obs_short}",
                  fontsize=14, y=0.98)
     fig.savefig(out_path, dpi=130)
     mirror_to_ready(out_path)
@@ -329,7 +369,12 @@ def main():
     args = parse_args()
     csv_path, out_dir, label = resolve_io(args)
     _con.print(f"[dim]reading {csv_path} ...[/]")
-    t, x = load_series(csv_path, use_omega=args.use_omega)
+    observable = args.observable
+    if args.use_theta1:
+        observable = "theta1"
+    elif args.use_omega:
+        observable = "omega1"
+    t, x = load_series(csv_path, observable=observable)
     dt = float(np.mean(np.diff(t)))
     _con.print(
         f"[cyan]{label}[/]  [dim]{len(x)} samples, "
@@ -369,14 +414,14 @@ def main():
     _con.print("  [dim]computing nearest-neighbor divergence ...[/]")
     S = rosenstein(emb, theiler=theiler, k_max=args.k_max)
 
-    fit_range = None
     if args.fit_range:
         lo_s, hi_s = args.fit_range.split("-")
-        fit_range = (int(lo_s), int(hi_s))
-    slope, r2, fit_lo, fit_hi = fit_divergence_slope(S, dt, fit_range)
-    # intercept is only needed to draw the fitted line on the figure
+        fit_lo, fit_hi = int(lo_s), int(hi_s)
+    else:
+        fit_lo, fit_hi = auto_fit_range(S, args.k_max)
+
     k = np.arange(len(S))
-    _, intercept, _ = linear_fit_slope(k * dt, S, fit_lo, fit_hi)
+    slope, intercept, r2, sigma = linear_fit_slope(k * dt, S, fit_lo, fit_hi, want_sigma=True)
 
     # ── Result card ──────────────────────────────────────────────────────
     # λ₁ colour: positive (chaotic) → red, near-zero/negative → green
@@ -390,7 +435,8 @@ def main():
         else:
             lam_color = "yellow"
             lam_label = "BORDERLINE"
-        lam_str = f"[bold {lam_color}]{slope:+.4f} /s[/]"
+        sig_str = f" ± {sigma:.4f}" if np.isfinite(sigma) else ""
+        lam_str = f"[bold {lam_color}]{slope:+.4f}{sig_str} /s[/]"
         timescale_str = (f"{1/slope:.2f} s" if slope > 0
                          else "n/a (non-positive)")
     else:
@@ -435,7 +481,9 @@ def main():
     lyap_json = {
         "stem":        label,
         "lambda1":     _jsonable(float(slope)),
+        "lambda1_sigma": _jsonable(float(sigma)),
         "lambda1_r2":  _jsonable(float(r2)),
+        "observable":  observable,
         "regime":      lam_label,
         "tau":         int(tau),
         "emb_dim":     int(m),
@@ -453,7 +501,7 @@ def main():
         out_png = figure_path("lyapunov", label)
         make_figure(t, x, S, dt, tau, m, theiler,
                     slope, intercept, r2, fit_lo, fit_hi,
-                    label, out_png)
+                    label, out_png, sigma=sigma, observable=observable)
         _con.print(f"[dim]plot → {out_png}[/]")
 
 if __name__ == "__main__":
