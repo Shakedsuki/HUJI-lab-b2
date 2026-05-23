@@ -1,0 +1,22 @@
+{
+  "stem": "4V_1.6Hz",
+  "verdict": "BORDERLINE",
+  "reasons": [
+    "below inversion threshold but K > 0.3 (max |θ₂_abs| = 100.3°, K = 0.35)",
+    "spectral entropy in transitional band (θ₂ norm. entropy = 0.21)"
+  ],
+  "K_chaos": 0.3537,
+  "K_chaos_iqr": 0.6129,
+  "spectral_entropy_th2": 0.2052,
+  "n_windows": 8,
+  "window_entropy": [
+    0.4166,
+    0.2559,
+    0.2026,
+    0.2023,
+    0.2013,
+    0.2029,
+    0.1985,
+    0.2067
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "stem": "2.5V_1Hz",
+  "verdict": "CHAOTIC",
+  "reasons": [
+    "full arm-2 inversions (max |θ₂_abs| = 180.0°) with K = 0.94 > 0.5",
+    "1 full arm-2 rotation(s) with K = 0.94 > 0.4"
+  ],
+  "K_chaos": 0.9414,
+  "K_chaos_iqr": 0.0513,
+  "spectral_entropy_th2": 0.4064,
+  "n_windows": 8,
+  "window_entropy": [
+    0.5341,
+    0.2597,
+    0.5898,
+    0.1881,
+    0.2369,
+    0.209,
+    0.1847,
+    0.2473
+  ]
+}

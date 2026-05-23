@@ -1,0 +1,21 @@
+{
+  "stem": "2.4V_1Hz_2",
+  "verdict": "REGULAR",
+  "reasons": [
+    "K = 0.20 < 0.3 and spectral entropy = 0.19 < 0.4"
+  ],
+  "K_chaos": 0.1976,
+  "K_chaos_iqr": 0.652,
+  "spectral_entropy_th2": 0.1892,
+  "n_windows": 8,
+  "window_entropy": [
+    0.341,
+    0.1885,
+    0.1861,
+    0.1804,
+    0.1853,
+    0.1875,
+    0.1889,
+    0.182
+  ]
+}
