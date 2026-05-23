@@ -573,6 +573,55 @@ def _sanity_preview():
                      border_style=CLR_TRACK, padding=(0, 1))
     return preview
 
+def _chaos_panel(stem, topo, stat, verdict, reasons):
+    """Build the chaos verdict card as a compact in-pane panel (shell-native)."""
+    import math
+    def _f(v, fmt=".3f"):
+        return format(v, fmt) if not (isinstance(v, float) and math.isnan(v)) else "n/a"
+    vc = {"CHAOTIC": "red", "BORDERLINE": "yellow", "REGULAR": "green"}.get(verdict, "white")
+    topo_t = Table(box=None, show_header=False, padding=(0, 1), expand=False)
+    topo_t.add_column(style="dim"); topo_t.add_column(justify="right")
+    topo_t.add_row("max |θ₂_abs|", f"{topo['max_theta2_abs']:.1f}°")
+    topo_t.add_row("arm-2 rotations", f"{topo['n_arm2_rotations']}")
+    topo_t.add_row("fraction inverted", f"{topo['frac_inverted']*100:.1f}%")
+    topo_t.add_row("E_peak / E_inv", _f(topo['E_ratio_peak'], '.2f'))
+    stat_t = Table(box=None, show_header=False, padding=(0, 1), expand=False)
+    stat_t.add_column(style="dim"); stat_t.add_column(justify="right")
+    stat_t.add_row("K_chaos (median)", _f(stat['K_chaos']))
+    stat_t.add_row("spectral entropy θ₁", _f(stat['spectral_entropy_th1_norm']))
+    stat_t.add_row("spectral entropy θ₂", _f(stat['spectral_entropy_th2_norm']))
+    rt = Text()
+    for i, r in enumerate(reasons):
+        if i: rt.append("\n")
+        rt.append(f"• {r}", style=vc)
+    return Panel(Group(Rule("topological", style="dim"), topo_t,
+                       Rule("statistical", style="dim"), stat_t,
+                       Rule("verdict", style="dim"), rt),
+                 title=f"[bold {vc}]{verdict}[/]  [dim]{stem}[/]",
+                 border_style=vc, padding=(0, 1), expand=False)
+
+def _chaos_preview():
+    """preview_fn rendering the highlighted clip's chaos card, computed in-process
+    (reuses chaos_analyze's compute_* — no subprocess, no png). Cached per stem."""
+    pcache = {}
+    def preview(row):
+        if not row: return None
+        stem = row["stem"]
+        if stem not in pcache:
+            try:
+                sys.path.insert(0, os.path.join(REPO_ROOT, "scripts", "analysis"))
+                import chaos_analyze as ca
+                data = ca.load_free_swing(os.path.join(clip_dir(stem), "verification.csv"))
+                topo = ca.compute_topological(data)
+                stat = ca.compute_statistical(topo)
+                verdict, reasons = ca.compute_verdict(topo, stat)
+                pcache[stem] = _chaos_panel(stem, topo, stat, verdict, reasons)
+            except Exception as e:
+                pcache[stem] = Panel(Text.from_markup(f"[red]chaos card unavailable:[/] {e}"),
+                                     title="[bold]chaos[/]", border_style=CLR_ANALYZE, padding=(0, 1))
+        return pcache[stem]
+    return preview
+
 def build_mode_track():
     """Track mode — one table over all clips; row keys act on the highlighted clip
     (t track/re-track, v verify, s sanity, o open, a bulk); column mode re-tracks
@@ -714,13 +763,14 @@ def build_mode_analyze():
     def run_cell(stem, t, ctx):
         fn = _RUN.get(t[1])
         if fn: fn({"stem": stem}, None, None, ctx)
-    hint = ("[dim]\u2191\u2193[/] [bold]\u21b5[/] explore   [bold]e[/] entry mode   "
+    hint = ("[dim]\u2191\u2193[/] [bold]\u21b5[/] explore   [bold]s[/] chaos card   [bold]e[/] entry mode   "
             "[bold]h[/] help   [bold]q[/] quit")
     cell_hint = ("[bold cyan]entry mode[/]   [dim]\u2191\u2193\u2190\u2192[/] pick a cell   [bold]\u21b5[/] run that analysis   "
                  "[bold]e[/]/[bold]r[/] row mode   [bold]q[/] quit")
     keys = {"enter": act_explore}
     return _inventory_mode("analyze", "2", CLR_ANALYZE, ANALYZE_TYPES, _analyze_exists,
-                           key_actions=keys, hint=hint, on_view=run_cell, cell_hint=cell_hint)
+                           key_actions=keys, hint=hint, on_view=run_cell, cell_hint=cell_hint,
+                           preview_fn=_chaos_preview(), preview_key="s")
 
 def do_a(tr):
     _run_one_mode(build_mode_analyze())
@@ -942,7 +992,8 @@ def _vid_exists(vtype, stem):
 
 def _inventory_mode(name, key, color, types, exists_fn, *, key_actions, hint, glyph="",
                     on_col=None, col_hint=None,
-                    on_view=None, on_create=None, cell_hint=None):
+                    on_view=None, on_create=None, cell_hint=None,
+                    preview_fn=None, preview_key=None):
     """Navigable clip×type matrix.
     on_col(type_tuple, ctx) enables column mode ('c'): ←→ pick a type column, enter
     batches it across all clips. on_view / on_create
@@ -993,7 +1044,8 @@ def _inventory_mode(name, key, color, types, exists_fn, *, key_actions, hint, gl
     return Mode(name=name, key=key, color=color, glyph=glyph, build_rows=build_rows,
                 columns=columns, key_actions=key_actions, legend=legend, hint=hint,
                 col_targets=col_targets, col_actions=col_actions, col_hint=col_hint,
-                cell_targets=col_targets, cell_actions=cell_actions, cell_hint=cell_hint)
+                cell_targets=col_targets, cell_actions=cell_actions, cell_hint=cell_hint,
+                preview_fn=preview_fn, preview_key=preview_key)
 
 # Figures
 FIG_TYPES = [
@@ -1498,9 +1550,10 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
             title.append_text(prog)
         if show_help:
             return rows, n, avail, Group(_help_panel(m), _status_line(modes, phase_label, width))
-        cols = m.columns
+        preview_on = show_preview and m.preview_fn is not None and mode == "row"
+        cols = m.columns[:2] if preview_on else m.columns
         ncol = len(cols)
-        flash_on = bool(flash) and mode == "row"
+        flash_on = bool(flash) and mode == "row" and not preview_on
         extra = 1 if flash_on else 0
         sel_col = m.col_targets[cidx] if (has_cols and mode == "col") else None
         cell_col = cell_tgts[cidx] if (has_cells and mode == "cell") else None
@@ -1534,12 +1587,12 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
                     t.add_row(" ", *cells)
             if hi < n: t.add_row(" ", "[dim]↓…[/]", *[""] * (ncol - 1 + extra))
         table_block = t
-        if show_preview and m.preview_fn is not None:
+        if preview_on:
             try: prev = m.preview_fn(rows[idx] if n else None)
             except Exception: prev = None
             if prev is not None:
                 lay = Table(box=None, show_header=False, expand=True, padding=(0, 1))
-                lay.add_column(ratio=2); lay.add_column(ratio=1)
+                lay.add_column(); lay.add_column(ratio=1)
                 lay.add_row(t, prev)
                 table_block = lay
         content = [table_block]
@@ -1659,8 +1712,8 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
                     elif pending:
                         pending = ""
                     elif key == "h": show_help = True
-                    elif has_cols and key == "c": mode = "col"; cidx = 0
-                    elif has_cells and key == "e": mode = "cell"; cidx = 0
+                    elif has_cols and key == "c": mode = "col"; cidx = 0; show_preview = False
+                    elif has_cells and key == "e": mode = "cell"; cidx = 0; show_preview = False
                 else:
                     pending = ""
             rows, n, avail, renderable = frame(); live.update(renderable, refresh=True)
