@@ -541,11 +541,10 @@ def _pause():
     except KeyboardInterrupt: pass
 
 # Track + status
-def do_t(tr, pe):
-    """Track + status — one table over all clips. Row keys act on the highlighted
-    clip: t track / re-track, v verify, s sanity, o open. a = bulk-track all
-    pending. Column mode (c) re-tracks every clip in the current view.
-    Filters: 1 all · 2 pending · 3 tracked."""
+def build_mode_track():
+    """Track mode — one table over all clips; row keys act on the highlighted clip
+    (t track/re-track, v verify, s sanity, o open, a bulk); column mode re-tracks
+    every clip in view. Preview pane shows the sanity card."""
     def build_rows():
         tr2, pe2 = get_clips()
         rows = [{"stem": c["stem"], "status": c["status"],
@@ -634,11 +633,14 @@ def do_t(tr, pe):
         vc = {"CLEAN": "green", "WARN": "yellow", "REVIEW": "red"}.get(verdict, "dim")
         return Panel(ptxt, title=f"[bold]sanity[/] [dim]·[/] [{vc}]{verdict}[/]",
                      border_style=CLR_TRACK, padding=(0, 1))
-    navigate_table(build_rows, columns, title="track · status", border_style=CLR_TRACK,
-                   legend=legend, hint=hint, empty_msg="No clips.", preview_fn=preview,
-                   key_actions={"t": act_track, "v": act_verify, "s": act_sanity, "o": act_open,
-                                "a": act_bulk},
-                   col_targets=[2], col_actions={"enter": col_retrack_all}, col_hint=col_hint)
+    return Mode(name="track", key="1", color=CLR_TRACK, build_rows=build_rows, columns=columns,
+                legend=legend, hint=hint, preview_fn=preview,
+                key_actions={"t": act_track, "v": act_verify, "s": act_sanity, "o": act_open,
+                             "a": act_bulk},
+                col_targets=[2], col_actions={"enter": col_retrack_all}, col_hint=col_hint)
+
+def do_t(tr, pe):
+    _run_one_mode(build_mode_track())
     _log_activity("track/status")
 
 # Analyze
@@ -987,6 +989,7 @@ FIG_TYPES = [
     ("seismograph_v1",      "seis1",  "seismograph v1 (spiral)"),
     ("seismograph_v2",      "seis2",  "seismograph v2 (ripple)"),
     ("dimension",           "dim",    "fractal dimension"),
+    ("driven_poincare",     "drpoinc","driven poincaré"),
 ]
 
 def do_fi(tr):
@@ -1296,6 +1299,14 @@ def _status_line(modes, phase_label, width):
     pad = max(3, width - left.cell_len - right.cell_len - 2)
     return left + Text(" " * pad) + right
 
+def _run_one_mode(m):
+    """Run a single Mode through the legacy navigate_table frame (hub fallback)."""
+    navigate_table(m.build_rows, m.columns, title=m.name, border_style=m.color,
+                   key_actions=m.key_actions, legend=m.legend, hint=m.hint, empty_msg="No clips.",
+                   col_targets=m.col_targets, col_actions=m.col_actions, col_hint=m.col_hint,
+                   cell_targets=m.cell_targets, cell_actions=m.cell_actions, cell_hint=m.cell_hint,
+                   preview_fn=m.preview_fn)
+
 def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn=None):
     """Shell v2 driver — one persistent table; 0-4 swap modes, cursor persists.
     Rigid frame (title ring + bordered table + hint + status line); only the
@@ -1494,29 +1505,30 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
                     pending = ""
             rows, n, avail, renderable = frame(); live.update(renderable, refresh=True)
 
-def _v2_demo():
-    """Throwaway Phase-1 smoke test of the mode ring (5 stub modes, real clips).
-    Launch:  python -c "import sys;sys.path.insert(0,'scripts/utils');import shell;shell._v2_demo()" """
-    def rows():
-        tr, pe = get_clips()
-        out = [{"stem": c["stem"], "status": c.get("status", "?")} for c in (tr + pe)]
-        for i, r in enumerate(out, 1): r["_n"] = i
-        return out
-    cols = [("#",      lambda r: str(r["_n"]), dict(justify="right", width=3, style="dim")),
-            ("clip",   lambda r: r["stem"],    dict(min_width=16, no_wrap=True)),
-            ("status", lambda r: r["status"],  dict(width=10))]
+def main():
+    """Shell v2 — mode-ring entry point. Track is ported; analyze/figures/videos
+    are stubs until their build_mode_*() lands.
+    Launch:  python -c "import sys;sys.path.insert(0,'scripts/utils');import shell;shell.main()" """
     def _overall_pct():
         tr, pe = get_clips()
         total = len(tr) + len(pe)
         nver = sum(1 for c in tr if c.get("quality") == "verified")
         return round(100 * nver / total) if total else 0
-    def mk(name, key, clr, glyph=""):
-        return Mode(name, key, clr, glyph=glyph, build_rows=rows, columns=cols,
-                    legend=f"demo · {name}",
-                    hint=f"[dim]↑↓[/] navigate   [bold]h[/] help   [bold]q[/] quit   [dim](stub: {name})[/]")
-    run_modes([mk("main", "`", CLR_MAIN, glyph="⌂"), mk("track", "1", CLR_TRACK),
-               mk("analyze", "2", CLR_ANALYZE), mk("figures", "3", CLR_FIGURES),
-               mk("videos", "4", CLR_VIDEOS)], start=0, overall_fn=_overall_pct)
+    def _stub(name, key, clr, glyph=""):
+        def rows():
+            tr, _pe = get_clips()
+            return [{"stem": c["stem"], "_n": i} for i, c in enumerate(tr, 1)]
+        return Mode(name, key, clr, glyph=glyph, build_rows=rows,
+                    columns=[("#", lambda r: str(r["_n"]), dict(justify="right", width=3, style="dim")),
+                             ("clip", lambda r: r["stem"], dict(min_width=16, no_wrap=True))],
+                    legend=f"[dim]{name} — not ported yet[/]",
+                    hint=f"[dim]↑↓[/] navigate   [bold]h[/] help   [bold]q[/] quit   [dim](stub)[/]")
+    modes = [_stub("main", "`", CLR_MAIN, glyph="⌂"),
+             build_mode_track(),
+             _stub("analyze", "2", CLR_ANALYZE),
+             _stub("figures", "3", CLR_FIGURES),
+             _stub("videos", "4", CLR_VIDEOS)]
+    run_modes(modes, start=0, overall_fn=_overall_pct)
 
 # ── Hub loop ──
 
