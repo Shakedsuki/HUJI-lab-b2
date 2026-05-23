@@ -877,6 +877,8 @@ def build_mode_analyze():
         if row: _runclip(ctx, SCRIPT_POINCARE, "--stem", row["stem"])
     def act_lyap(row, rows, i, ctx):
         if row: _runclip(ctx, SCRIPT_LYAPUNOV, "--stem", row["stem"])
+    def act_ftle(row, rows, i, ctx):
+        if row: _runclip(ctx, SCRIPT_FTLE_WINDOWS, "--stem", row["stem"]); _log_activity(f"ftle {row['stem']}")
     def act_driven(row, rows, i, ctx):
         if row: _runclip(ctx, SCRIPT_DRIVEN_POIN, "--stem", row["stem"])
     def act_rot(row, rows, i, ctx):
@@ -894,9 +896,9 @@ def build_mode_analyze():
         sys.path.insert(0, os.path.join(REPO_ROOT, "scripts", "analysis"))
         from quick_insights import explore
         _do_suspended(ctx, lambda: explore(row["stem"]), pause=False)
-    _RUN = {"chaos": act_chaos, "poinc": act_poin, "lyap": act_lyap, "driven": act_driven,
-            "rot": act_rot, "dim": act_dim, "ret": act_returnmap, "rec": act_recurrence,
-            "attr": act_attractor}
+    _RUN = {"chaos": act_chaos, "poinc": act_poin, "lyap": act_lyap, "ftle": act_ftle,
+            "driven": act_driven, "rot": act_rot, "dim": act_dim, "ret": act_returnmap,
+            "rec": act_recurrence, "attr": act_attractor}
     def run_cell(stem, t, ctx):
         fn = _RUN.get(t[1])
         if fn: fn({"stem": stem}, None, None, ctx)
