@@ -40,6 +40,7 @@ largest Lyapunov exponents from small data sets. Physica D, 65, 117-134.
 
 import argparse
 import csv
+import json
 import os
 import sys
 
@@ -405,6 +406,27 @@ def main():
         padding=(1, 2),
     )
     _con.print(panel)
+
+    # Persist the headline scalars so aggregators (chaos_sweep, lambda_sweep)
+    # read the canonical per-clip λ₁ instead of recomputing it.
+    def _jsonable(v):
+        return None if (isinstance(v, float) and not np.isfinite(v)) else v
+    lyap_json = {
+        "stem":        label,
+        "lambda1":     _jsonable(float(slope)),
+        "lambda1_r2":  _jsonable(float(r2)),
+        "regime":      lam_label,
+        "tau":         int(tau),
+        "emb_dim":     int(m),
+        "theiler":     int(theiler),
+        "fit_lo":      int(fit_lo),
+        "fit_hi":      int(fit_hi),
+        "dt_s":        _jsonable(float(dt)),
+    }
+    json_path = os.path.join(out_dir, "lyapunov.json")
+    with open(json_path, "w", encoding="utf-8") as jf:
+        json.dump(lyap_json, jf, indent=2)
+    _con.print(f"[dim]json → {json_path}[/]")
 
     if not args.no_plot:
         out_png = figure_path("lyapunov", label)

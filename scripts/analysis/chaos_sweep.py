@@ -29,6 +29,7 @@ Usage:
 
 import argparse
 import csv
+import json
 import os
 import sys
 
@@ -64,6 +65,20 @@ def _f(x):
     try:
         return float(x)
     except (TypeError, ValueError):
+        return np.nan
+
+
+def read_lyap_json(cdir):
+    """λ₁ from a clip's lyapunov.json (the canonical per-clip value written by
+    lyapunov.py), or NaN if the file is missing/unreadable."""
+    path = os.path.join(cdir, "lyapunov.json")
+    if not os.path.exists(path):
+        return np.nan
+    try:
+        with open(path, encoding="utf-8") as f:
+            v = json.load(f).get("lambda1")
+        return float(v) if v is not None else np.nan
+    except (ValueError, OSError):
         return np.nan
 
 
@@ -116,16 +131,9 @@ def clip_metrics(t, th1, th2, f_drive, transient_s, with_lyap):
     corr = correlation_dimension(embed(om2, 5, tau), theiler, n_pairs=150000)
     d2 = corr["D2"] if corr else np.nan
 
+    # λ₁ is read from each clip's lyapunov.json in collect() (the canonical
+    # per-clip value from lyapunov.py); never recomputed here.
     lam = np.nan
-    if with_lyap:
-        try:
-            from lyapunov import embed as lembed, rosenstein, auto_fit_range, linear_fit_slope
-            emb = lembed(om2, m=5, tau=tau)
-            div, _ = rosenstein(emb, theiler=theiler)
-            lo, hi = auto_fit_range(div)
-            lam = linear_fit_slope(div, lo, hi) / dt
-        except Exception:
-            lam = np.nan
 
     return {
         "loops":       wm["total_turns"],
@@ -159,6 +167,7 @@ def collect(voltage, transient_s, with_lyap):
         except (ValueError, SystemExit) as e:
             console.print(f"  [yellow]skip {stem}: {e}[/]")
             continue
+        m["lambda1"] = read_lyap_json(cdir)
         console.print(f"  [dim]{stem:<16} D2={m['D2']:.2f} loops={m['loops']:.0f} "
                       f"ratio={m['freq_ratio']:.2f}[/]")
         rows.append((meta["f_drive_hz"], stem, m))
@@ -173,7 +182,8 @@ def make_figure(rows, voltage, with_lyap, out_path):
               ("loops", "lower-arm loops", "tab:red", None),
               ("theta1_rms", "upper-arm θ₁ RMS (deg)", "tab:blue", None),
               ("freq_ratio", "f_resp / f_drive (θ₁)", "tab:green", 1.0)]
-    if with_lyap:
+    lam_arr = np.array([r[2].get("lambda1", np.nan) for r in rows], dtype=float)
+    if np.isfinite(lam_arr).any():
         panels.append(("lambda1", "λ₁ (1/s)", "tab:orange", 0.0))
     n = len(panels)
     fig, axes = plt.subplots(n, 1, figsize=(12, 2.4 * n), sharex=True)
