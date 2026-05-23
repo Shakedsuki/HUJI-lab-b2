@@ -61,14 +61,14 @@ def load_clip(stem):
     om1 = np.concatenate([[0], np.diff(th1) / dt])
     om2 = np.concatenate([[0], np.diff(th2) / dt])
 
-    th2_abs = th1 + th2
-    om2_abs = om1 + om2
+    th2_abs = th2          # θ₂ is already the lower arm's absolute lab-frame angle
+    om2_abs = om2          # ω of that absolute angle
 
     pivot, arm_px = get_pivot_arm(stem)
 
     th1_r = np.radians(th1)
     th2_abs_r = np.radians(th2_abs)
-    th2_rel_r = np.radians(th2)
+    th2_rel_r = np.radians(th2 - th1)      # relative angle for the KE coupling
     w1_r = np.radians(om1)
     w2_abs_r = np.radians(om2_abs)
     PE = (_G * (3 * _L / 2) * (1 - np.cos(th1_r))
@@ -168,7 +168,7 @@ def plot_omega(d):
 def plot_tip(d):
     import plotext as plt
     s = _sub(d)
-    _setup(plt, "\u03b8\u2082_abs(t) = \u03b8\u2081 + \u03b8\u2082")
+    _setup(plt, "\u03b8\u2082(t)   (lower arm, absolute)")
     plt.plot(d["t"][::s], d["th2_abs"][::s], color="orange")
     plt.hline(180, color="red")
     plt.hline(-180, color="red")
@@ -457,7 +457,7 @@ def plot_dimension(d):
 PLOTS = {
     "both":     ("green",   "\u03b8\u2081(t) + \u03b8\u2082(t) overlay",         plot_both),
     "omega":    ("green",   "\u03c9\u2081(t) + \u03c9\u2082(t)",                  plot_omega),
-    "tip":      ("green",   "\u03b8\u2082_abs(t) = \u03b8\u2081+\u03b8\u2082",    plot_tip),
+    "tip":      ("green",   "\u03b8\u2082(t) lower arm (abs)",    plot_tip),
     "energy":   ("green",   "E(t) = KE + PE",                                      plot_energy),
     "rot":      ("green",   "accumulated angle / loops per arm",  plot_rotations),
     "phase1":   ("yellow",  "\u03b8\u2081 vs \u03c9\u2081 phase portrait",        plot_phase1),
