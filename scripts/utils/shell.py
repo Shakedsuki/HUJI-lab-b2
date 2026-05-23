@@ -1367,8 +1367,9 @@ def _status_line(modes, phase_label, width):
     left.append(" mode", style="dim")
     left.append("   ⇥ cycle", style="dim")
     right = Text()
+    right.append("/ ", style="bold cyan")
     for j, (k, act) in enumerate((("sw", "switch"), ("pa", "paths"), ("cal", "calibrate"))):
-        if j: right.append("   ")
+        if j: right.append("  ", style="dim")
         right.append(k, style="dim"); right.append(f" {act}", style="dim")
     pad = max(3, width - left.cell_len - right.cell_len - 2)
     return left + Text(" " * pad) + right
@@ -1395,6 +1396,8 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
     pending = ""
     show_help = False
     show_preview = False
+    cmd = None
+    shell_cmds = {"sw": do_w, "pa": do_p, "cal": do_c}
 
     def cur():
         return modes[midx]
@@ -1499,14 +1502,19 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
             lt = Text.from_markup("  " + leg); lt.no_wrap = True; lt.overflow = "ellipsis"
             content.append(lt)
         content.append(Text(""))
-        if mode == "cell" and m.cell_hint: h = _resolve(m.cell_hint)
-        elif mode == "col" and m.col_hint: h = _resolve(m.col_hint)
-        else: h = _resolve(m.hint)
-        if mode == "row" and pending:
-            h = (h or "") + f"     [bold cyan]{pending}…[/]"
-        if h:
-            ht = Text.from_markup("  " + h); ht.no_wrap = True; ht.overflow = "ellipsis"
-            content.append(ht)
+        if cmd is not None:
+            cl = Text.from_markup(f"  [bold cyan]/[/] {cmd}▌   [dim]sw switch · pa paths · cal calibrate · esc cancel[/]")
+            cl.no_wrap = True; cl.overflow = "ellipsis"
+            content.append(cl)
+        else:
+            if mode == "cell" and m.cell_hint: h = _resolve(m.cell_hint)
+            elif mode == "col" and m.col_hint: h = _resolve(m.col_hint)
+            else: h = _resolve(m.hint)
+            if mode == "row" and pending:
+                h = (h or "") + f"     [bold cyan]{pending}…[/]"
+            if h:
+                ht = Text.from_markup("  " + h); ht.no_wrap = True; ht.overflow = "ellipsis"
+                content.append(ht)
         st = _status_line(modes, phase_label, width - 4); st.no_wrap = True; st.overflow = "ellipsis"
         content.append(st)
         panel = Panel(Group(*content), title=title, title_align="left",
@@ -1524,10 +1532,24 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
             if show_help:
                 show_help = False
                 rows, n, avail, renderable = frame(); live.update(renderable, refresh=True); continue
+            if cmd is not None:
+                if key == "enter":
+                    c = cmd.strip().lower(); cmd = None
+                    fn = shell_cmds.get(c)
+                    if fn:
+                        try: ctx.suspend(fn)
+                        except Exception: pass
+                elif key == "esc": cmd = None
+                elif key in ("backspace", "\x08", "\x7f"): cmd = cmd[:-1]
+                elif len(key) == 1 and key.isprintable(): cmd += key
+                rows, n, avail, renderable = frame(); live.update(renderable, refresh=True); continue
             if key == "esc" and pending:
                 pending = ""
                 rows, n, avail, renderable = frame(); live.update(renderable, refresh=True); continue
             if key in ("q", "esc"): break
+            if key == "/":
+                cmd = ""
+                rows, n, avail, renderable = frame(); live.update(renderable, refresh=True); continue
             if key == "\t":
                 midx = (midx + 1) % len(modes); mode = "row"; cidx = 0; pending = ""; show_preview = False
                 rows, n, avail, renderable = frame(); live.update(renderable, refresh=True); continue
@@ -1555,7 +1577,11 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
                 elif key in ("r", "e"): mode = "row"
                 else:
                     act = (m.cell_actions or {}).get(key)
-                    if act and act(rows[idx] if n else None, cidx, ctx) == "quit": break
+                    if act:
+                        res = act(rows[idx] if n else None, cidx, ctx)
+                        if res == "quit": break
+                        elif isinstance(res, str) and res.startswith("mode:"):
+                            midx = by_key.get(res[5:], midx); mode = "row"; cidx = 0; pending = ""; show_preview = False
             else:
                 ka = m.key_actions or {}
                 if key in ("up", "k"): idx -= 1; pending = ""
@@ -1642,9 +1668,14 @@ def build_mode_main():
         overall = round(sum(r["pct"] for r in rows) / len(rows))
         return (f"[green]✓ {nfull} done[/]   [yellow]◐ {npart} partial[/]   [dim]· {nempty} empty[/]"
                 f"      overall [bold]{overall}%[/]")
-    hint = "[dim]↑↓[/] navigate clips   [bold]h[/] help   [bold]q[/] quit"
+    def dive(row, cpos, ctx):
+        return "mode:" + ("1", "2", "3", "4")[cpos] if cpos < 4 else None
+    hint = "[dim]↑↓[/] navigate   [bold]e[/] dive into a stage   [bold]h[/] help   [bold]q[/] quit"
+    cell_hint = ("[bold cyan]entry mode[/]   [dim]←→[/] pick a stage   [bold]↵[/] open that stage   "
+                 "[bold]e[/]/[bold]r[/] back")
     return Mode("main", "m", CLR_MAIN, glyph="⌂", build_rows=build_rows, columns=columns,
-                legend=legend, hint=hint)
+                legend=legend, hint=hint,
+                cell_targets=[2, 3, 4, 5], cell_actions={"enter": dive, "o": dive}, cell_hint=cell_hint)
 
 def main():
     """Shell v2 — mode-ring entry point (launched by bare `chaos`). Opens on the
