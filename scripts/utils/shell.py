@@ -568,6 +568,7 @@ def _sanity_preview():
             except Exception as e:
                 pcache[stem] = ("?", Text.from_markup(f"[red]sanity unavailable:[/] {e}"))
         verdict, ptxt = pcache[stem]
+        ptxt.no_wrap = True; ptxt.overflow = "crop"   # plotext renders at TTY width; crop to the pane, don't wrap
         vc = {"CLEAN": "green", "WARN": "yellow", "REVIEW": "red"}.get(verdict, "dim")
         return Panel(ptxt, title=f"[bold]sanity[/] [dim]·[/] [{vc}]{verdict}[/]",
                      border_style=CLR_TRACK, padding=(0, 1))
@@ -1593,7 +1594,9 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
             if prev is not None:
                 lay = Table(box=None, show_header=False, expand=True, padding=(0, 1))
                 lay.add_column(); lay.add_column(ratio=1)
-                lay.add_row(t, prev)
+                # blank line drops the pane's border to the table's header row
+                # (box.SIMPLE has a blank top line, so an un-padded pane floats 1 line high)
+                lay.add_row(t, Group(Text(""), prev))
                 table_block = lay
         content = [table_block]
         if cmd is not None:
