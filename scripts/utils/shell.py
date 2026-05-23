@@ -748,22 +748,24 @@ def build_mode_analyze():
         _do_suspended(ctx, work, confirm="Run [bold]winding-number sweep[/] across the 3.2V family?")
     bif_ok = _voltage_sweep_ok(tr)
     fd_ok = _freq_sweep_ok(tr)
-    hint = ("[dim]\u2191\u2193[/] run   [bold]ch[/] chaos   [bold]po[/] poinc   [bold]ly[/] lyap   [bold]dr[/] driven   [bold]ro[/] rot   [bold]fr[/] frac   [bold]rm[/] return   [bold]rc[/] recur   [bold]at[/] attr   [bold]p3[/] 3d-web   "
-            "[bold]\u21b5[/] explore   "
-            + ("[bold]bs[/] bif-sweep   " if bif_ok else "")
-            + ("[bold]bf[/] bif-fd   " if fd_ok else "")
-            + "[bold]rs[/] rot-sweep   [bold]wf[/] waterfall   [bold]ds[/] dim-sweep   [bold]ws[/] wind-sweep   [bold]h[/] help   [bold]q[/] back")
-    keys = {"ch": act_chaos, "po": act_poin, "ly": act_lyap,
-            "dr": act_driven, "ro": act_rot, "fr": act_dim,
-            "enter": act_explore,
-            "rs": act_rotsweep, "wf": act_waterfall, "ds": act_dim_sweep,
-            "ws": act_winding_sweep,
-            "rm": act_returnmap, "rc": act_recurrence, "at": act_attractor,
-            "p3": act_phase3d}
+    _RUN = {"chaos": act_chaos, "poinc": act_poin, "lyap": act_lyap, "driven": act_driven,
+            "rot": act_rot, "dim": act_dim, "ret": act_returnmap, "rec": act_recurrence,
+            "attr": act_attractor, "i3d": act_phase3d}
+    def run_cell(stem, t, ctx):
+        fn = _RUN.get(t[1])
+        if fn: fn({"stem": stem}, None, None, ctx)
+    hint = ("[dim]\u2191\u2193[/] [bold]\u21b5[/] explore   [bold]e[/] run an analysis on a cell   [dim]\u00b7[/]   "
+            + ("[bold]bs[/] bif " if bif_ok else "")
+            + ("[bold]bf[/] bif-fd " if fd_ok else "")
+            + "[bold]rs[/] rot-sweep  [bold]wf[/] waterfall  [bold]ds[/] dim-sweep  [bold]ws[/] wind-sweep   [bold]h[/] help  [bold]q[/] quit")
+    cell_hint = ("[bold cyan]entry mode[/]   [dim]\u2191\u2193\u2190\u2192[/] pick a cell   [bold]\u21b5[/] run that analysis   "
+                 "[bold]e[/]/[bold]r[/] back")
+    keys = {"enter": act_explore, "rs": act_rotsweep, "wf": act_waterfall,
+            "ds": act_dim_sweep, "ws": act_winding_sweep}
     if bif_ok: keys["bs"] = act_bif
     if fd_ok: keys["bf"] = act_bif_fd
     return _inventory_mode("analyze", "2", CLR_ANALYZE, ANALYZE_TYPES, _analyze_exists,
-                           key_actions=keys, hint=hint)
+                           key_actions=keys, hint=hint, on_view=run_cell, cell_hint=cell_hint)
 
 def do_a(tr):
     _run_one_mode(build_mode_analyze())
@@ -1420,7 +1422,7 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
     def frame():
         nonlocal idx, cidx
         m = cur()
-        has_cols = bool(m.col_targets)
+        has_cols = bool(m.col_actions) and bool(m.col_targets)
         cell_tgts = m.cell_targets or m.col_targets
         has_cells = bool(cell_tgts) and bool(m.cell_actions)
         rows = m.build_rows() if m.build_rows else []
@@ -1429,7 +1431,7 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
         _active = cell_tgts if mode == "cell" else m.col_targets
         if _active: cidx = max(0, min(cidx, len(_active) - 1))
         width = console.width
-        avail = max(5, min(23, console.height - 12))
+        avail = max(5, min(25, console.height - 8))
         try:
             tr2, pe2 = get_clips()
             nver = sum(1 for c in tr2 if c.get("quality") == "verified")
@@ -1497,11 +1499,6 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
                 lay.add_row(t, prev)
                 table_block = lay
         content = [table_block]
-        leg = _resolve(m.legend)
-        if leg:
-            lt = Text.from_markup("  " + leg); lt.no_wrap = True; lt.overflow = "ellipsis"
-            content.append(lt)
-        content.append(Text(""))
         if cmd is not None:
             cl = Text.from_markup(f"  [bold cyan]/[/] {cmd}▌   [dim]sw switch · pa paths · cal calibrate · esc cancel[/]")
             cl.no_wrap = True; cl.overflow = "ellipsis"
@@ -1557,7 +1554,7 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
                 midx = by_key[key]; mode = "row"; cidx = 0; pending = ""; show_preview = False
                 rows, n, avail, renderable = frame(); live.update(renderable, refresh=True); continue
             m = cur()
-            has_cols = bool(m.col_targets)
+            has_cols = bool(m.col_actions) and bool(m.col_targets)
             cell_tgts = m.cell_targets or m.col_targets
             has_cells = bool(cell_tgts) and bool(m.cell_actions)
             if mode == "col":
