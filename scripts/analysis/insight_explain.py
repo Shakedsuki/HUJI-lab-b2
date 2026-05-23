@@ -42,3 +42,29 @@ def explain_chaos(topo, stat, verdict, reasons):
         f"(low = periodic · high = chaotic). Here [bold]≈ {_fmt(H)}[/]: {hread}.",
         f"[bold]bottom line →[/] [bold {vc}]{verdict}[/] — {tail}",
     ])
+
+
+# Plot captions — static "what it shows + how to read it" (tune the voice freely).
+
+def explain_poincare(*_a):
+    return ("[dim]Poincaré section[/] — the state sampled once every drive period (a strobe of "
+            "the motion).\n[green]A single dot or a few[/] = a periodic, phase-locked response; "
+            "[red]a scattered cloud or fractal curve[/] = chaos.")
+
+
+def explain_spectrum(*_a):
+    return ("[dim]Power spectrum[/] — how the motion's energy is split across frequencies.\n"
+            "[green]Sharp, isolated peaks[/] = periodic; [red]broadband “grass”[/] = chaotic. "
+            "The tallest peak is the dominant response.")
+
+
+def explain_phase(*_a):
+    return ("[dim]Phase portrait[/] — θ vs ω for one arm (position vs velocity).\n"
+            "[green]A closed loop[/] = a clean periodic orbit; [red]a filled, tangled band[/] = "
+            "chaotic wandering that never repeats.")
+
+
+def explain_return(*_a):
+    return ("[dim]Return map[/] — successive crossings, θ(n) vs θ(n+1).\n"
+            "[green]Points on a clean curve[/] = deterministic low-dimensional structure; "
+            "[red]a formless scatter[/] = noise or high-dimensional chaos.")
