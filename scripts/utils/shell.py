@@ -49,6 +49,7 @@ SCRIPT_ATTRACTOR   = os.path.join(REPO_ROOT, "scripts", "analysis", "attractor.p
 SCRIPT_WINDING_SWEEP = os.path.join(REPO_ROOT, "scripts", "analysis", "winding_sweep.py")
 SCRIPT_PHASE3D_PLOTLY = os.path.join(REPO_ROOT, "scripts", "analysis", "phase_3d_plotly.py")
 SCRIPT_WATERFALL   = os.path.join(REPO_ROOT, "scripts", "analysis", "spectral_waterfall.py")
+SCRIPT_FTLE_WINDOWS = os.path.join(REPO_ROOT, "scripts", "analysis", "ftle_windows.py")
 SCRIPT_OVERLAY     = os.path.join(REPO_ROOT, "scripts", "analysis", "overlay_video.py")
 
 CLR_TRACK   = "#4ade80"
@@ -121,6 +122,64 @@ def get_clips():
             else:
                 info["status"] = "pending"; pending.append(info)
     return tracked, pending
+
+# ── FTLE chaos sparkline + glyph ──
+# Reads measurements/<stem>/ftle_windows.json (written separately by
+# ftle_windows.py). Missing file -> graceful dots, never an error. Cached per
+# stem; cleared on mode switch and after any suspended action that may have
+# regenerated the file.
+_ftle_cache = {}
+
+def _load_ftle(stem):
+    path = os.path.join(clip_dir(stem), "ftle_windows.json")
+    if not os.path.isfile(path):
+        return None
+    try:
+        with open(path, encoding="utf-8") as f:
+            return json.load(f)
+    except (json.JSONDecodeError, OSError):
+        return None
+
+def _get_ftle(stem):
+    if stem not in _ftle_cache:
+        _ftle_cache[stem] = _load_ftle(stem)
+    return _ftle_cache[stem]
+
+def _invalidate_ftle_cache():
+    _ftle_cache.clear()
+
+_BLOCKS = "▁▂▃▄▅▆▇█"
+_LAMBDA_FLOOR = -0.15   # lambda1 <= floor -> lowest block
+_LAMBDA_CEIL  =  0.35   # lambda1 >= ceil  -> highest block
+
+def _block_color(lam):
+    """Per-window colour from the sign of lambda1 (one bar can mix colours)."""
+    if lam > 0.05:  return "#ff5555"    # chaotic
+    if lam > -0.02: return "#fbbf24"    # edge
+    return "#55ff55"                    # periodic
+
+def _render_sparkline(stem):
+    """8-char time-resolved FTLE bar; dim dots until the json exists."""
+    windows = (_get_ftle(stem) or {}).get("windows", [])
+    if len(windows) < 8:
+        return "[dim]········[/]"
+    out = []
+    for w in windows[:8]:
+        lam = w.get("lambda1")
+        if lam is None or lam != lam:        # missing or NaN
+            out.append("[dim]·[/]"); continue
+        frac = (lam - _LAMBDA_FLOOR) / (_LAMBDA_CEIL - _LAMBDA_FLOOR)
+        out.append(f"[{_block_color(lam)}]{_BLOCKS[max(0, min(7, int(frac * 8)))]}[/]")
+    return "".join(out)
+
+_GLYPHS = {"chaotic": "[#ff5555]●[/]", "regular": "[#55ff55]○[/]", "edge": "[#fbbf24]◎[/]"}
+_GLYPH_NONE = "[dim]·[/]"
+
+def _render_glyph_clip(stem):
+    """'glyph stem' for the clip column — a chaos-class marker shown in every mode."""
+    ftle = _get_ftle(stem)
+    glyph = _GLYPH_NONE if ftle is None else _GLYPHS.get(ftle.get("classification", "edge"), _GLYPH_NONE)
+    return f"{glyph} {stem}"
 
 # ── Overlay helpers ──
 
@@ -514,6 +573,7 @@ def _do_suspended(ctx, work, pause=True, confirm=None, confirm_default=False):
         if confirm and not _ask_confirm(confirm, default=confirm_default):
             return
         work()
+        _invalidate_ftle_cache()   # the action may have (re)generated ftle_windows.json
         if pause: _pause()
     ctx.suspend(go)
 
@@ -717,7 +777,7 @@ def build_mode_track():
     def _dur(r): return f"{r['dur']:.1f}s" if r["dur"] is not None else "[dim]—[/]"
     columns = [
         ("#",       lambda r: str(r["_n"]), dict(justify="right", width=3, style="dim")),
-        ("clip",    lambda r: r["stem"],    dict(min_width=16, no_wrap=True)),
+        ("clip",    lambda r: _render_glyph_clip(r["stem"]), dict(min_width=18, no_wrap=True)),
         ("status",  _scell,                 dict(width=9)),
         ("dropout", _pct,                   dict(justify="right", width=8)),
         ("dur",     _dur,                   dict(justify="right", width=7)),
@@ -783,6 +843,7 @@ ANALYZE_TYPES = [
     ("return_map",    "ret",    "return map"),
     ("recurrence",    "rec",    "recurrence plot"),
     ("attractor",     "attr",   "attractor embed"),
+    ("ftle_windows",  "ftle",   "FTLE windows"),
 ]
 
 def _analyze_exists(tn, stem):
@@ -790,6 +851,7 @@ def _analyze_exists(tn, stem):
     if tn == "rotations":  return os.path.isfile(os.path.join(clip_dir(stem), "rotations.json"))
     if tn == "dimension":  return os.path.isfile(os.path.join(clip_dir(stem), "dimension.json"))
     if tn == "return_map": return os.path.isfile(os.path.join(clip_dir(stem), "return_map.csv"))
+    if tn == "ftle_windows": return os.path.isfile(os.path.join(clip_dir(stem), "ftle_windows.json"))
     return _fig_exists(tn, stem)
 
 def _voltage_sweep_ok(clips):
@@ -1022,7 +1084,7 @@ def do_ar(tr):
         m = r["arms"].get(arm); return f"{m['total_turns']:.0f}" if m else "[dim]—[/]"
     columns = [
         ("#",       lambda r: str(r["_n"]),         dict(justify="right", width=3, style="dim")),
-        ("clip",    lambda r: r["stem"],            dict(min_width=15, no_wrap=True)),
+        ("clip",    lambda r: _render_glyph_clip(r["stem"]), dict(min_width=17, no_wrap=True)),
         ("θ1 net",  lambda r: _net(r, "upper"),     dict(justify="right")),
         ("θ1 ↻",    lambda r: _loops(r, "upper"),   dict(justify="right", style="bold")),
         ("θ2 net",  lambda r: _net(r, "lower_abs"), dict(justify="right")),
@@ -1083,7 +1145,7 @@ def _inventory_mode(name, key, color, types, exists_fn, *, key_actions, hint, gl
         for k, r in enumerate(rows, 1): r["_n"] = k
         return rows
     columns = [("#", lambda r: str(r["_n"]), dict(justify="right", width=3, style="dim")),
-               ("clip", lambda r: r["stem"], dict(min_width=16, no_wrap=True))]
+               ("clip", lambda r: _render_glyph_clip(r["stem"]), dict(min_width=18, no_wrap=True))]
     for tn, short, _d in types:
         columns.append((short,
             (lambda t: lambda r: "[green]✓[/]" if r["cells"][t] else "[dim]·[/]")(tn),
@@ -1214,7 +1276,7 @@ def build_mode_videos():
     def _ck(key): return lambda r: "[green]✓[/]" if r[key] else "[dim]·[/]"
     columns = [
         ("#",       lambda r: str(r["_n"]), dict(justify="right", width=3, style="dim")),
-        ("clip",    lambda r: r["stem"],    dict(min_width=16, no_wrap=True)),
+        ("clip",    lambda r: _render_glyph_clip(r["stem"]), dict(min_width=18, no_wrap=True)),
         ("overlay", lambda r: "[green]✓[/]" if r["ov"] else "[dim]—[/]", dict(justify="center")),
         ("verdict", _vcell,                 dict(width=8)),
         ("comb",    _ck("comb"),            dict(justify="center")),
@@ -1632,7 +1694,10 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
         if show_help:
             return rows, n, avail, Group(_help_panel(m), _status_line(modes, phase_label, width))
         preview_on = ((show_preview and m.preview_fn is not None) or (insights and m.insights)) and mode == "row"
-        cols = m.columns[:2] if preview_on else m.columns
+        # collapse to identity cols for the preview/insights pane; main's leading
+        # sparkline (empty header) keeps 3 (spark+#+clip), others keep 2 (#+clip)
+        n_id = 3 if (m.columns and m.columns[0][0] == "") else 2
+        cols = m.columns[:n_id] if preview_on else m.columns
         ncol = len(cols)
         flash_on = bool(flash) and mode == "row" and not preview_on
         extra = 1 if flash_on else 0
@@ -1768,9 +1833,11 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
                 rows, n, avail, renderable = frame(); live.update(renderable, refresh=True); continue
             if key == "\t":
                 midx = (midx + 1) % len(modes); mode = "row"; cidx = 0; pending = ""; show_preview = False
+                _invalidate_ftle_cache()
                 rows, n, avail, renderable = frame(); live.update(renderable, refresh=True); continue
             if key in by_key:
                 midx = by_key[key]; mode = "row"; cidx = 0; pending = ""; show_preview = False
+                _invalidate_ftle_cache()
                 rows, n, avail, renderable = frame(); live.update(renderable, refresh=True); continue
             m = cur()
             has_cols = bool(m.col_actions) and bool(m.col_targets)
@@ -1867,27 +1934,27 @@ def build_mode_main():
         if done >= total: return "[green]✓[/]"
         if done > 0:      return f"[yellow]◐[/] [dim]{done}/{total}[/]"
         return "[dim]·[/]"
-    def _bar(r):
-        f = max(0, min(10, round(r["pct"] / 10)))
-        return f"[{CLR_TRACK}]" + "█" * f + "[/][dim]" + "░" * (10 - f) + "[/]"
     columns = [
+        ("", lambda r: _render_sparkline(r["stem"]), dict(width=8, no_wrap=True)),
         ("#",    lambda r: str(r["_n"]), dict(justify="right", width=3, style="dim")),
-        ("clip", lambda r: r["stem"],    dict(min_width=16, no_wrap=True)),
+        ("clip", lambda r: _render_glyph_clip(r["stem"]), dict(min_width=18, no_wrap=True)),
         (f"[{CLR_TRACK}]track[/]",    lambda r: "[green]✓[/]" if r["verified"] else "[dim]·[/]", dict(justify="center", width=7)),
         (f"[{CLR_ANALYZE}]analyze[/]", lambda r: _stage(r["an"], AN_N), dict(justify="center", width=9)),
         (f"[{CLR_FIGURES}]figures[/]", lambda r: _stage(r["fi"], FI_N), dict(justify="center", width=9)),
         (f"[{CLR_VIDEOS}]videos[/]",  lambda r: _stage(r["vi"], VI_N), dict(justify="center", width=9)),
-        ("pipeline", _bar, dict(width=12)),
     ]
     def legend():
         rows = _last.get("rows") or build_rows()
         if not rows: return "[dim]no tracked clips[/]"
-        nfull = sum(1 for r in rows if r["pct"] >= 100)
-        nempty = sum(1 for r in rows if r["pct"] == 0)
-        npart = len(rows) - nfull - nempty
         overall = round(sum(r["pct"] for r in rows) / len(rows))
-        return (f"[green]✓ {nfull} done[/]   [yellow]◐ {npart} partial[/]   [dim]· {nempty} empty[/]"
-                f"      overall [bold]{overall}%[/]")
+        ftles = [_get_ftle(r["stem"]) for r in rows]
+        n_reg   = sum(1 for f in ftles if f and f.get("classification") == "regular")
+        n_edge  = sum(1 for f in ftles if f and f.get("classification") == "edge")
+        n_chaos = sum(1 for f in ftles if f and f.get("classification") == "chaotic")
+        n_none  = sum(1 for f in ftles if f is None)
+        spark = f"[#55ff55]○[/] {n_reg}  [#fbbf24]◎[/] {n_edge}  [#ff5555]●[/] {n_chaos}"
+        if n_none: spark += f"  [dim]· {n_none} pending[/]"
+        return f"{spark}      overall [bold]{overall}%[/]"
     def dive(row, cpos, ctx):
         return "mode:" + ("1", "2", "3", "4")[cpos] if cpos < 4 else None
     hint = "[dim]↑↓[/] [bold]e[/] entry mode   [bold]h[/] help   [bold]q[/] quit"
@@ -1895,7 +1962,7 @@ def build_mode_main():
                  "[bold]e[/]/[bold]r[/] row mode   [bold]q[/] quit")
     return Mode("main", "m", CLR_MAIN, glyph="⌂", build_rows=build_rows, columns=columns,
                 legend=legend, hint=hint,
-                cell_targets=[2, 3, 4, 5], cell_actions={"enter": dive, "o": dive}, cell_hint=cell_hint)
+                cell_targets=[3, 4, 5, 6], cell_actions={"enter": dive, "o": dive}, cell_hint=cell_hint)
 
 def main():
     """Shell v2 — mode-ring entry point (launched by bare `chaos`). Opens on the
