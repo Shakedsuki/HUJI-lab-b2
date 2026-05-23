@@ -665,6 +665,12 @@ def _voltage_sweep_ok(clips):
     volts = {c.get("drive_voltage_v") for c in clips if c.get("drive_voltage_v") is not None}
     return len(volts) >= 2
 
+def _freq_sweep_ok(clips):
+    """A frequency bifurcation needs >=2 distinct drive frequencies. Week6 (the
+    3.2V sweep across f_drive) -> True, so the fd bifurcation applies there."""
+    freqs = {c.get("drive_freq_hz") for c in clips if c.get("drive_freq_hz") is not None}
+    return len(freqs) >= 2
+
 def do_a(tr):
     """Analyze \u2014 navigate clips; row keys run a per-clip analysis on the
     highlighted clip; the \u2713/\u00b7 columns show what's already been computed.
@@ -693,6 +699,9 @@ def do_a(tr):
     def act_bif(row, rows, i, ctx):
         def work(): _run(SCRIPT_DRIVEN_BIF, "--sweep", "vd"); _log_activity("bifurcation sweep")
         _do_suspended(ctx, work, confirm="Run [bold]bifurcation sweep[/] (vd) across the family?")
+    def act_bif_fd(row, rows, i, ctx):
+        def work(): _run(SCRIPT_DRIVEN_BIF, "--sweep", "fd", "--fixed-vd", "3.2"); _log_activity("bifurcation fd sweep")
+        _do_suspended(ctx, work, confirm="Run [bold]bifurcation sweep[/] (fd) across the 3.2V family?")
     def act_rotsweep(row, rows, i, ctx):
         def work(): _run(SCRIPT_ROTATIONS, "--sweep"); _log_activity("rotations sweep")
         _do_suspended(ctx, work, confirm="Run [bold]rotations sweep[/] across the 3.2V family?")
@@ -704,15 +713,18 @@ def do_a(tr):
         def work(): _run(SCRIPT_WATERFALL, *args); _log_activity("spectral waterfall")
         _do_suspended(ctx, work, confirm=f"Run [bold]spectral waterfall[/] across the {vlab} family?")
     bif_ok = _voltage_sweep_ok(tr)
+    fd_ok = _freq_sweep_ok(tr)
     hint = ("[dim]\u2191\u2193[/] run   [bold]ch[/] chaos   [bold]po[/] poinc   [bold]ly[/] lyap   [bold]dr[/] driven   [bold]ro[/] rot   [bold]fr[/] frac   "
             "[bold]\u21b5[/] explore   "
             + ("[bold]bs[/] bif-sweep   " if bif_ok else "")
+            + ("[bold]bf[/] bif-fd   " if fd_ok else "")
             + "[bold]rs[/] rot-sweep   [bold]wf[/] waterfall   [bold]h[/] help   [bold]q[/] back")
     keys = {"ch": act_chaos, "po": act_poin, "ly": act_lyap,
             "dr": act_driven, "ro": act_rot, "fr": act_dim,
             "enter": act_explore,
             "rs": act_rotsweep, "wf": act_waterfall}
     if bif_ok: keys["bs"] = act_bif
+    if fd_ok: keys["bf"] = act_bif_fd
     _inventory_nav(tr, "analyze", CLR_ANALYZE, ANALYZE_TYPES, _analyze_exists,
                    key_actions=keys, hint=hint)
     _log_activity("analyze")
@@ -820,16 +832,23 @@ def do_aq(tr):
     _log_activity("quick insights")
 
 def do_ai(tr):
-    """Bifurcation — driven voltage sweep (θ₁ vs drive voltage). Needs ≥2 drive
-    voltages, so it only applies to multi-voltage phases (e.g. week5), not the
-    single-voltage week6 frequency sweep."""
-    if not _voltage_sweep_ok(tr):
-        console.print("  [yellow]Bifurcation needs a voltage sweep[/] — this phase has a single "
-                      "drive voltage (a frequency sweep), so it doesn't apply here.")
-        _pause(); return
-    if not _ask_confirm("Run [bold]bifurcation sweep[/] (vd) across the family?"):
-        return
-    _run(SCRIPT_DRIVEN_BIF, "--sweep", "vd"); _log_activity("bifurcation sweep"); _pause()
+    """Bifurcation — driven sweep of θ₁ at strobe vs the swept parameter. Uses a
+    voltage sweep (vd) when ≥2 drive voltages are present (e.g. week5); otherwise
+    falls back to a frequency sweep (fd, fixed 3.2V) when ≥2 drive frequencies are
+    present (the week6 resonance sweep)."""
+    if _voltage_sweep_ok(tr):
+        if not _ask_confirm("Run [bold]bifurcation sweep[/] (vd) across the family?"):
+            return
+        _run(SCRIPT_DRIVEN_BIF, "--sweep", "vd"); _log_activity("bifurcation sweep"); _pause()
+    elif _freq_sweep_ok(tr):
+        if not _ask_confirm("Run [bold]bifurcation sweep[/] (fd) across the 3.2V family?"):
+            return
+        _run(SCRIPT_DRIVEN_BIF, "--sweep", "fd", "--fixed-vd", "3.2")
+        _log_activity("bifurcation fd sweep"); _pause()
+    else:
+        console.print("  [yellow]Bifurcation needs a sweep[/] — this phase has a single drive "
+                      "voltage and a single drive frequency, so neither sweep applies here.")
+        _pause()
 
 def do_ar(tr):
     """Rotations — per-arm winding metrics across all clips (read from each
@@ -1012,6 +1031,15 @@ def do_fi(tr):
         vlab = f"{vf:g}V" if vf else "3.2V"
         def work(): _run(SCRIPT_WATERFALL, *args); _log_activity("spectral waterfall")
         _do_suspended(ctx, work, confirm=f"Render [bold]spectral waterfall[/] (aggregate) for the {vlab} family?")
+    def fig_bif(row, rows, i, ctx):
+        if _voltage_sweep_ok(tr):
+            def work(): _run(SCRIPT_DRIVEN_BIF, "--sweep", "vd"); _log_activity("bifurcation sweep")
+            _do_suspended(ctx, work, confirm="Render [bold]bifurcation[/] (vd sweep, aggregate) for the family?")
+        elif _freq_sweep_ok(tr):
+            def work(): _run(SCRIPT_DRIVEN_BIF, "--sweep", "fd", "--fixed-vd", "3.2"); _log_activity("bifurcation fd sweep")
+            _do_suspended(ctx, work, confirm="Render [bold]bifurcation[/] (fd sweep, 3.2V, aggregate) for the family?")
+        else:
+            _do_suspended(ctx, lambda: console.print("  [yellow]No sweep available for bifurcation.[/]"))
     def col_batch(t, ctx):
         def work(): _run(SCRIPT_BATCH_FIGS, "--types", t[0]); _log_activity(f"figures col {t[1]}")
         _do_suspended(ctx, work,
@@ -1027,9 +1055,9 @@ def do_fi(tr):
         _do_suspended(ctx, lambda: _run(SCRIPT_BATCH_FIGS, "--stem", stem, "--types", t[0], "--force", "--all-quality"))
         _log_activity(f"create {t[1]}/{stem}")
     hint = ("[dim]↑↓[/] [bold]↵[/] render   [bold]c[/] column mode   [bold]e[/] entry mode   "
-            "[bold]a[/] all   [bold]w[/] waterfall   [bold]h[/] help   [bold]q[/] back")
+            "[bold]a[/] all   [bold]w[/] waterfall   [bold]b[/] bifurcation   [bold]h[/] help   [bold]q[/] back")
     _inventory_nav(tr, "figures inventory", CLR_FIGURES, FIG_TYPES, _fig_exists,
-                   key_actions={"enter": render_clip, "a": fill_all, "w": fig_waterfall},
+                   key_actions={"enter": render_clip, "a": fill_all, "w": fig_waterfall, "b": fig_bif},
                    hint=hint, on_col=col_batch,
                    on_view=view_fig, on_create=create_fig)
 
