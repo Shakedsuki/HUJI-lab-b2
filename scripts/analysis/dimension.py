@@ -8,8 +8,11 @@ dimension. Two estimates, both from the measured trajectory:
 
   D2    correlation dimension (Grassberger–Procaccia): slope of the
         correlation integral  log C(r) vs log r  on a delay embedding of
-        θ₂(t) (the chaotic lower arm). Robust from finite data — the
-        headline number; estimates the full attractor dimension.
+        ω₂(t), the lower-arm angular velocity. ω₂ stays stationary even
+        when the arm circulates, so D2 is well-defined whether the arm
+        librates or rotates — embedding the unbounded angle would be
+        drift-dominated and inflate the slope past the embedding
+        dimension. The headline number; estimates the full attractor dim.
   D_box box-counting (Minkowski) dimension on the 2-D (θ₂, ω₂) attractor
         projection:  log N(ε) vs log(1/ε).  The method named in the lab
         guide; capped at 2 (it is a 2-D projection).
@@ -204,12 +207,13 @@ def make_figure(stem, t, th2, om2, m, tau, corr, box, out_path):
     fig, ((a, b), (c, d)) = plt.subplots(2, 2, figsize=(13, 11))
     tc = t - t[0]
 
-    # (a) reconstructed attractor — delay embedding θ₂(t) vs θ₂(t+τ)
-    x0, x1 = th2[:-tau], th2[tau:]
+    # (a) reconstructed attractor — delay embedding ω₂(t) vs ω₂(t+τ)
+    #     (ω₂ is the observable used for D₂: stationary under circulation)
+    x0, x1 = om2[:-tau], om2[tau:]
     a.scatter(x0, x1, c=tc[:len(x0)], cmap="viridis", s=2, alpha=0.4,
               edgecolors="none")
-    a.set_xlabel("θ₂(t) (deg)"); a.set_ylabel(f"θ₂(t+τ)  (τ={tau})")
-    a.set_title("reconstructed attractor (delay embedding)")
+    a.set_xlabel("ω₂(t) (deg/s)"); a.set_ylabel(f"ω₂(t+τ)  (τ={tau})")
+    a.set_title("reconstructed attractor (ω₂ delay embedding)")
     a.grid(True, alpha=0.2)
 
     # (b) physical attractor — θ₂ vs ω₂
@@ -269,11 +273,15 @@ def compute(stem, m, tau_arg, transient_s, seed=0):
     if keep.sum() > 200:
         t, th2 = t[keep], th2[keep]
 
-    phi = np.degrees(np.unwrap(np.radians(th2)))   # continuous, for ω + embed
+    phi = np.degrees(np.unwrap(np.radians(th2)))   # continuous angle, for ω
     om2 = np.gradient(phi, t)
-    tau = tau_arg or autocorr_tau(phi)
+    # Embed the angular VELOCITY ω₂, not the angle: ω₂ is stationary even
+    # when the lower arm circulates, whereas the unwrapped angle drifts
+    # without bound and makes the delay-embedding drift-dominated (which
+    # inflates the GP slope past the embedding dimension on rotating clips).
+    tau = tau_arg or autocorr_tau(om2)
 
-    X = embed(phi, m, tau)
+    X = embed(om2, m, tau)
     dt = float(np.median(np.diff(t)))
     theiler = max(tau, int(round(0.5 / dt)) if dt > 0 else tau)  # ~0.5 s
     corr = correlation_dimension(X, theiler, seed=seed)
