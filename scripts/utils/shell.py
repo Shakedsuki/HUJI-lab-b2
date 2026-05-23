@@ -640,6 +640,43 @@ def _chaos_explain(row):
     return Panel(Text.from_markup(explain_chaos(*d)),
                  title="[bold]explain[/] [dim]·[/] chaos", border_style=CLR_ANALYZE, padding=(0, 1), width=76)
 
+# ── Insight registry (cards shown in `i` insights mode) ──
+# (id, label, quick_insights key). chaos = the compact metric card; the rest are
+# sized plotext plots via quick_insights.build_gallery (which honors plotsize).
+ANALYZE_INSIGHTS = [
+    ("chaos",    "chaos card",     None),
+    ("poincare", "poincaré",       "ret"),
+    ("spectrum", "spectrum",       "spectrum"),
+    ("phase",    "phase portrait", "phase1"),
+    ("return",   "return map",     "return"),
+]
+_INSIGHT_CACHE = {}
+def _insight_card(iid, qi_key, label, stem):
+    """Render one insight for a clip as (panel, height); cached per (stem, id).
+    All cards are width 76 so they stack uniformly."""
+    ck = (stem, iid)
+    if ck not in _INSIGHT_CACHE:
+        if iid == "chaos":
+            d = _chaos_data(stem)
+            panel = (_chaos_panel(stem, *d) if not isinstance(d, Exception)
+                     else Panel(Text.from_markup(f"[red]chaos unavailable:[/] {d}"),
+                                title="[bold]chaos[/]", border_style=CLR_ANALYZE, padding=(0, 1), width=76))
+        else:
+            try:
+                sys.path.insert(0, os.path.join(REPO_ROOT, "scripts", "analysis"))
+                from quick_insights import build_gallery
+                txt = build_gallery(stem, width=72, plot_height=9, keys=[qi_key])
+                body = Text.from_ansi(txt) if txt.strip() else Text.from_markup("[dim](no data for this clip)[/]")
+                body.no_wrap = True; body.overflow = "crop"
+                panel = Panel(body, title=f"[bold]{label}[/]", border_style=CLR_ANALYZE, padding=(0, 1), width=76)
+            except Exception as e:
+                panel = Panel(Text.from_markup(f"[red]{label} unavailable:[/] {e}"),
+                              title=f"[bold]{label}[/]", border_style=CLR_ANALYZE, padding=(0, 1), width=76)
+        _mc = Console(width=80)
+        with _mc.capture() as _cap: _mc.print(panel)
+        _INSIGHT_CACHE[ck] = (panel, len(_cap.get().splitlines()))
+    return _INSIGHT_CACHE[ck]
+
 def build_mode_track():
     """Track mode — one table over all clips; row keys act on the highlighted clip
     (t track/re-track, v verify, s sanity, o open, a bulk); column mode re-tracks
@@ -788,7 +825,8 @@ def build_mode_analyze():
     keys = {"enter": act_explore}
     return _inventory_mode("analyze", "2", CLR_ANALYZE, ANALYZE_TYPES, _analyze_exists,
                            key_actions=keys, hint=hint, on_view=run_cell, cell_hint=cell_hint,
-                           preview_fn=_chaos_preview(), explain_fn=_chaos_explain)
+                           preview_fn=_chaos_preview(), explain_fn=_chaos_explain,
+                           insights=ANALYZE_INSIGHTS)
 
 def do_a(tr):
     _run_one_mode(build_mode_analyze())
@@ -1011,7 +1049,7 @@ def _vid_exists(vtype, stem):
 def _inventory_mode(name, key, color, types, exists_fn, *, key_actions, hint, glyph="",
                     on_col=None, col_hint=None,
                     on_view=None, on_create=None, cell_hint=None,
-                    preview_fn=None, preview_key=None, explain_fn=None):
+                    preview_fn=None, preview_key=None, explain_fn=None, insights=None):
     """Navigable clip×type matrix.
     on_col(type_tuple, ctx) enables column mode ('c'): ←→ pick a type column, enter
     batches it across all clips. on_view / on_create
@@ -1063,7 +1101,7 @@ def _inventory_mode(name, key, color, types, exists_fn, *, key_actions, hint, gl
                 columns=columns, key_actions=key_actions, legend=legend, hint=hint,
                 col_targets=col_targets, col_actions=col_actions, col_hint=col_hint,
                 cell_targets=col_targets, cell_actions=cell_actions, cell_hint=cell_hint,
-                preview_fn=preview_fn, preview_key=preview_key, explain_fn=explain_fn)
+                preview_fn=preview_fn, preview_key=preview_key, explain_fn=explain_fn, insights=insights)
 
 # Figures
 FIG_TYPES = [
@@ -1424,7 +1462,8 @@ class Mode:
     cell_hint: object = None
     preview_fn: object = None
     preview_key: object = None   # key that toggles the preview panel (track: "s")
-    explain_fn: object = None    # row -> explanation panel; enables `i` insights + `x` explain
+    explain_fn: object = None    # row -> explanation panel; enables `x` explain
+    insights: object = None      # [(id, label, qi_key)] for `i` insights mode; enables `i`
 
 def _ring_title(modes, active):
     t = Text()
@@ -1506,6 +1545,7 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
     flash = None
     insights = False
     ins_explain = False
+    ins_active = []
     shell_cmds = {"sw": do_w, "pa": do_p, "cal": do_c,
                   "wf": _palette_waterfall, "bif": _palette_bif, "rs": _palette_rotsweep,
                   "ds": _palette_dimsweep, "ws": _palette_windsweep}
@@ -1571,7 +1611,7 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
             title.append_text(prog)
         if show_help:
             return rows, n, avail, Group(_help_panel(m), _status_line(modes, phase_label, width))
-        preview_on = (show_preview or insights) and m.preview_fn is not None and mode == "row"
+        preview_on = ((show_preview and m.preview_fn is not None) or (insights and m.insights)) and mode == "row"
         cols = m.columns[:2] if preview_on else m.columns
         ncol = len(cols)
         flash_on = bool(flash) and mode == "row" and not preview_on
@@ -1611,14 +1651,31 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
         if preview_on:
             row0 = rows[idx] if n else None
             if insights:
-                toggle = Text.from_markup("  [bold]insights[/]   [bold green]●[/] chaos card   [dim]· more soon[/]")
-                try:
-                    parts = [toggle, Text(""), m.preview_fn(row0)]
-                    if ins_explain and m.explain_fn:
+                stem0 = row0["stem"] if row0 else None
+                tl = Text("  "); tl.append("insights", style="bold"); tl.append("    ")
+                for j, (iid, label, _qk) in enumerate(m.insights, 1):
+                    if j > 1: tl.append("   ")
+                    on = iid in ins_active
+                    tl.append(f"{j} ", style=("bold" if on else "dim"))
+                    tl.append("●" if on else "○", style=("green" if on else "dim"))
+                    tl.append(f" {label}", style=(None if on else "dim"))
+                parts = [tl, Text("")]
+                if not ins_active:
+                    parts.append(Text.from_markup(f"  [dim]no insight selected — press 1–{len(m.insights)}[/]"))
+                elif stem0:
+                    budget = max(8, console.height - 14)   # pane can use full height, not the capped row band
+                    used, shown, only = 2, 0, None
+                    for (iid, label, qk) in m.insights:
+                        if iid not in ins_active: continue
+                        card, ch = _insight_card(iid, qk, label, stem0)
+                        if shown and used + ch > budget:
+                            parts.append(Text.from_markup("  [dim]…more selected than fits — toggle some off[/]")); break
+                        parts.append(card); parts.append(Text(""))
+                        used += ch + 1; shown += 1; only = iid
+                    if shown == 1 and only == "chaos" and ins_explain and m.explain_fn:
                         ex = m.explain_fn(row0)
-                        if ex is not None: parts += [Text(""), ex]
-                    prev = Group(*parts)
-                except Exception: prev = None
+                        if ex is not None: parts.append(ex)
+                prev = Group(*parts)
             else:
                 try: prev = m.preview_fn(row0)
                 except Exception: prev = None
@@ -1636,7 +1693,8 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
             content.append(cl)
         else:
             if insights:
-                h = ("[dim]↑↓[/] clip   [bold]x[/] " + ("hide explain" if ins_explain else "explain")
+                h = (f"[dim]↑↓[/] clip   [bold]1–{len(m.insights)}[/] toggle   [bold]x[/] "
+                     + ("hide explain" if ins_explain else "explain")
                      + "   [bold]i[/]/[bold]q[/] back")
             elif mode == "cell" and m.cell_hint: h = _resolve(m.cell_hint)
             elif mode == "col" and m.col_hint: h = _resolve(m.col_hint)
@@ -1665,6 +1723,7 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
                 show_help = False
                 rows, n, avail, renderable = frame(); live.update(renderable, refresh=True); continue
             if insights:
+                mi = cur().insights or []
                 if key in ("q", "esc", "i"): insights = False; ins_explain = False
                 elif key in ("up", "k"): idx -= 1
                 elif key in ("down", "j"): idx += 1
@@ -1673,6 +1732,10 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
                 elif key == "pageup": idx -= avail
                 elif key == "pagedown": idx += avail
                 elif key == "x": ins_explain = not ins_explain
+                elif key.isdigit() and key != "0" and int(key) <= len(mi):
+                    iid = mi[int(key) - 1][0]
+                    if iid in ins_active: ins_active.remove(iid)
+                    else: ins_active.append(iid)
                 rows, n, avail, renderable = frame(); live.update(renderable, refresh=True); continue
             if cmd is not None:
                 if key == "enter":
@@ -1759,7 +1822,9 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
                     elif pending:
                         pending = ""
                     elif key == "h": show_help = True
-                    elif m.explain_fn and key == "i": insights = True; ins_explain = False; show_preview = False
+                    elif m.insights and key == "i":
+                        insights = True; ins_explain = False; show_preview = False
+                        ins_active = [m.insights[0][0]]
                     elif has_cols and key == "c": mode = "col"; cidx = 0; show_preview = False
                     elif has_cells and key == "e": mode = "cell"; cidx = 0; show_preview = False
                 else:
