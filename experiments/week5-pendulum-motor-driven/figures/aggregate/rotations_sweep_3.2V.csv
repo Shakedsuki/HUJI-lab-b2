@@ -1,0 +1,4 @@
+stem,f_drive_hz,v_drill_v,arm,net_turns,total_turns,turns_pos,turns_neg,net_angle_deg,peak_abs_angle_deg,path_turns,omega_net_turns,cross_check_diff_turns,suspect
+3.2V_1Hz,1,3.2,upper,0.1079,0,0,0,38.84,102.44,33.7868,0.1076,0.0002,0
+3.2V_1Hz,1,3.2,lower_abs,7.5413,25,16,9,2714.87,2714.87,58.9668,7.5425,0.0011,0
+3.2V_1Hz,1,3.2,lower_rel,7.4334,25,16,9,2676.04,2676.04,61.2518,7.4348,0.0014,0
