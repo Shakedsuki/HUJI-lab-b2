@@ -1286,8 +1286,9 @@ def _status_line(modes, phase_label, width):
     left.append("    ")
     for i, m in enumerate(modes):
         if i: left.append("/", style="dim")
-        left.append(m.glyph or m.key, style=f"bold {m.color}")
+        left.append(m.key, style=f"bold {m.color}")
     left.append(" mode", style="dim")
+    left.append("   ⇥ cycle", style="dim")
     right = Text()
     for j, (k, act) in enumerate((("sw", "switch"), ("pa", "paths"), ("cal", "calibrate"))):
         if j: right.append("   ")
@@ -1314,7 +1315,7 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
 
     def _help_panel(m):
         hp = [Text.from_markup("  [dim]move[/]  ↑↓ / k j   Home/End   PgUp/PgDn   [dim]·[/]   q/Esc quit"),
-              Text.from_markup("  [dim]switch[/]  0–4 mode")]
+              Text.from_markup("  [dim]switch[/]  `/1/2/3/4 mode   [bold]tab[/] cycle")]
         rh = _resolve(m.hint)
         if rh: hp.append(Text.from_markup("  [bold]row[/]      " + rh))
         if m.col_targets:
@@ -1428,6 +1429,9 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
                 pending = ""
                 rows, n, avail, renderable = frame(); live.update(renderable, refresh=True); continue
             if key in ("q", "esc"): break
+            if key == "\t":
+                midx = (midx + 1) % len(modes); mode = "row"; cidx = 0; pending = ""
+                rows, n, avail, renderable = frame(); live.update(renderable, refresh=True); continue
             if key in by_key:
                 midx = by_key[key]; mode = "row"; cidx = 0; pending = ""
                 rows, n, avail, renderable = frame(); live.update(renderable, refresh=True); continue
@@ -1510,7 +1514,7 @@ def _v2_demo():
         return Mode(name, key, clr, glyph=glyph, build_rows=rows, columns=cols,
                     legend=f"demo · {name}",
                     hint=f"[dim]↑↓[/] navigate   [bold]h[/] help   [bold]q[/] quit   [dim](stub: {name})[/]")
-    run_modes([mk("main", "0", CLR_MAIN, glyph="⌂"), mk("track", "1", CLR_TRACK),
+    run_modes([mk("main", "`", CLR_MAIN, glyph="⌂"), mk("track", "1", CLR_TRACK),
                mk("analyze", "2", CLR_ANALYZE), mk("figures", "3", CLR_FIGURES),
                mk("videos", "4", CLR_VIDEOS)], start=0, overall_fn=_overall_pct)
 
