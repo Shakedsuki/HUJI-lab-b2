@@ -599,7 +599,7 @@ def _chaos_panel(stem, topo, stat, verdict, reasons):
                        Rule("statistical", style="dim"), stat_t,
                        Rule("verdict", style="dim"), rt),
                  title=f"[bold {vc}]{verdict}[/]  [dim]{stem}[/]",
-                 border_style=vc, padding=(0, 1), expand=False)
+                 border_style=vc, padding=(0, 1), width=76)
 
 _CHAOS_CACHE = {}
 def _chaos_data(stem):
@@ -638,7 +638,7 @@ def _chaos_explain(row):
     sys.path.insert(0, os.path.join(REPO_ROOT, "scripts", "analysis"))
     from insight_explain import explain_chaos
     return Panel(Text.from_markup(explain_chaos(*d)),
-                 title="[bold]explain[/] [dim]·[/] chaos", border_style=CLR_ANALYZE, padding=(0, 1))
+                 title="[bold]explain[/] [dim]·[/] chaos", border_style=CLR_ANALYZE, padding=(0, 1), width=76)
 
 def build_mode_track():
     """Track mode — one table over all clips; row keys act on the highlighted clip
@@ -1613,9 +1613,12 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
             if insights:
                 toggle = Text.from_markup("  [bold]insights[/]   [bold green]●[/] chaos card   [dim]· more soon[/]")
                 try:
-                    body = m.explain_fn(row0) if (ins_explain and m.explain_fn) else m.preview_fn(row0)
-                except Exception: body = None
-                prev = Group(toggle, Text(""), body) if body is not None else None
+                    parts = [toggle, Text(""), m.preview_fn(row0)]
+                    if ins_explain and m.explain_fn:
+                        ex = m.explain_fn(row0)
+                        if ex is not None: parts += [Text(""), ex]
+                    prev = Group(*parts)
+                except Exception: prev = None
             else:
                 try: prev = m.preview_fn(row0)
                 except Exception: prev = None
