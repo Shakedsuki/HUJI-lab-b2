@@ -1326,7 +1326,7 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
 
     def _help_panel(m):
         hp = [Text.from_markup("  [dim]move[/]  ↑↓ / k j   Home/End   PgUp/PgDn   [dim]·[/]   q/Esc quit"),
-              Text.from_markup("  [dim]switch[/]  `/1/2/3/4 mode   [bold]tab[/] cycle")]
+              Text.from_markup("  [dim]switch[/]  m/1/2/3/4 mode   [bold]tab[/] cycle")]
         rh = _resolve(m.hint)
         if rh: hp.append(Text.from_markup("  [bold]row[/]      " + rh))
         if m.col_targets:
@@ -1523,7 +1523,7 @@ def main():
                              ("clip", lambda r: r["stem"], dict(min_width=16, no_wrap=True))],
                     legend=f"[dim]{name} — not ported yet[/]",
                     hint=f"[dim]↑↓[/] navigate   [bold]h[/] help   [bold]q[/] quit   [dim](stub)[/]")
-    modes = [_stub("main", "`", CLR_MAIN, glyph="⌂"),
+    modes = [_stub("main", "m", CLR_MAIN, glyph="⌂"),
              build_mode_track(),
              _stub("analyze", "2", CLR_ANALYZE),
              _stub("figures", "3", CLR_FIGURES),
