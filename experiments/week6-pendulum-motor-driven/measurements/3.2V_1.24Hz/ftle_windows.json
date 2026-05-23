@@ -1,0 +1,64 @@
+{
+  "stem": "3.2V_1.24Hz",
+  "observable": "omega2",
+  "n_windows": 8,
+  "transient_s": 5.0,
+  "window_duration_s": 10.18,
+  "embedding_dim": 5,
+  "tau_frames": 10,
+  "theiler_frames": 47,
+  "dt_s": 0.01668,
+  "windows": [
+    {
+      "t_start": 5.0,
+      "t_end": 15.17,
+      "lambda1": 0.9548,
+      "r2": 0.905
+    },
+    {
+      "t_start": 15.18,
+      "t_end": 25.34,
+      "lambda1": 0.9491,
+      "r2": 0.956
+    },
+    {
+      "t_start": 25.36,
+      "t_end": 35.52,
+      "lambda1": 0.9302,
+      "r2": 0.969
+    },
+    {
+      "t_start": 35.54,
+      "t_end": 45.7,
+      "lambda1": 1.1713,
+      "r2": 0.971
+    },
+    {
+      "t_start": 45.71,
+      "t_end": 55.87,
+      "lambda1": 0.7951,
+      "r2": 0.953
+    },
+    {
+      "t_start": 55.89,
+      "t_end": 66.05,
+      "lambda1": 1.1968,
+      "r2": 0.97
+    },
+    {
+      "t_start": 66.07,
+      "t_end": 76.23,
+      "lambda1": 0.954,
+      "r2": 0.961
+    },
+    {
+      "t_start": 76.24,
+      "t_end": 86.4,
+      "lambda1": 0.6187,
+      "r2": 0.951
+    }
+  ],
+  "lambda1_global": 0.9462,
+  "lambda1_std": 0.1746,
+  "classification": "chaotic"
+}

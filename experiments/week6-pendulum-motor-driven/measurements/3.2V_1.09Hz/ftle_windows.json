@@ -1,0 +1,64 @@
+{
+  "stem": "3.2V_1.09Hz",
+  "observable": "omega2",
+  "n_windows": 8,
+  "transient_s": 5.0,
+  "window_duration_s": 5.21,
+  "embedding_dim": 5,
+  "tau_frames": 16,
+  "theiler_frames": 200,
+  "dt_s": 0.01668,
+  "windows": [
+    {
+      "t_start": 5.0,
+      "t_end": 10.19,
+      "lambda1": null,
+      "r2": null
+    },
+    {
+      "t_start": 10.21,
+      "t_end": 15.4,
+      "lambda1": null,
+      "r2": null
+    },
+    {
+      "t_start": 15.42,
+      "t_end": 20.6,
+      "lambda1": null,
+      "r2": null
+    },
+    {
+      "t_start": 20.62,
+      "t_end": 25.81,
+      "lambda1": null,
+      "r2": null
+    },
+    {
+      "t_start": 25.83,
+      "t_end": 31.01,
+      "lambda1": null,
+      "r2": null
+    },
+    {
+      "t_start": 31.03,
+      "t_end": 36.22,
+      "lambda1": null,
+      "r2": null
+    },
+    {
+      "t_start": 36.24,
+      "t_end": 41.42,
+      "lambda1": null,
+      "r2": null
+    },
+    {
+      "t_start": 41.44,
+      "t_end": 46.63,
+      "lambda1": null,
+      "r2": null
+    }
+  ],
+  "lambda1_global": null,
+  "lambda1_std": null,
+  "classification": "edge"
+}

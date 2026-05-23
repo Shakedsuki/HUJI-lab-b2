@@ -129,6 +129,7 @@ def get_clips():
 # stem; cleared on mode switch and after any suspended action that may have
 # regenerated the file.
 _ftle_cache = {}
+_ftle_range = None   # auto-scaled (floor, ceil) for sparkline blocks; see _ftle_lambda_range
 
 def _load_ftle(stem):
     path = os.path.join(clip_dir(stem), "ftle_windows.json")
@@ -146,11 +147,42 @@ def _get_ftle(stem):
     return _ftle_cache[stem]
 
 def _invalidate_ftle_cache():
+    global _ftle_range
     _ftle_cache.clear()
+    _ftle_range = None
 
 _BLOCKS = "▁▂▃▄▅▆▇█"
-_LAMBDA_FLOOR = -0.15   # lambda1 <= floor -> lowest block
-_LAMBDA_CEIL  =  0.35   # lambda1 >= ceil  -> highest block
+# Block height scales lambda1 onto [floor, ceil]; the range auto-scales to the
+# loaded family (see _ftle_lambda_range). Fallbacks apply only when no json exists
+# (driven runs hotter, lambda1 ~0.7-1.2, than free-swing).
+_LAMBDA_FALLBACK_DRIVEN = (-0.3, 1.2)
+_LAMBDA_FALLBACK_FREE   = (-0.15, 0.35)
+
+def _ftle_lambda_range():
+    """(floor, ceil) for sparkline block scaling — global min/max window lambda1
+    across every computed clip in the phase, padded 10%, so the bars span the full
+    dynamic range of the loaded dataset. Phase-aware fallback when <2 values exist.
+    Cached; reset by _invalidate_ftle_cache()."""
+    global _ftle_range
+    if _ftle_range is not None:
+        return _ftle_range
+    from paths import iter_clip_dirs, PHASE_FREE
+    vals = []
+    for stem, _d in iter_clip_dirs():
+        data = _get_ftle(stem)
+        if not data:
+            continue
+        for w in data.get("windows", []):
+            lam = w.get("lambda1")
+            if lam is not None and lam == lam:
+                vals.append(lam)
+    if len(vals) >= 2:
+        lo, hi = min(vals), max(vals)
+        pad = 0.1 * (hi - lo) if hi > lo else 0.1
+        _ftle_range = (lo - pad, hi + pad)
+    else:
+        _ftle_range = _LAMBDA_FALLBACK_FREE if PHASE == PHASE_FREE else _LAMBDA_FALLBACK_DRIVEN
+    return _ftle_range
 
 def _block_color(lam):
     """Per-window colour from the sign of lambda1 (one bar can mix colours)."""
@@ -163,12 +195,14 @@ def _render_sparkline(stem):
     windows = (_get_ftle(stem) or {}).get("windows", [])
     if len(windows) < 8:
         return "[dim]········[/]"
+    floor, ceil = _ftle_lambda_range()
+    span = (ceil - floor) or 1.0
     out = []
     for w in windows[:8]:
         lam = w.get("lambda1")
         if lam is None or lam != lam:        # missing or NaN
             out.append("[dim]·[/]"); continue
-        frac = (lam - _LAMBDA_FLOOR) / (_LAMBDA_CEIL - _LAMBDA_FLOOR)
+        frac = (lam - floor) / span
         out.append(f"[{_block_color(lam)}]{_BLOCKS[max(0, min(7, int(frac * 8)))]}[/]")
     return "".join(out)
 
@@ -1613,6 +1647,16 @@ def _palette_dimsweep():
 def _palette_windsweep():
     if not _ask_confirm("Run [bold]winding-number sweep[/] across the 3.2V family?"): return
     _run(SCRIPT_WINDING_SWEEP); _log_activity("winding sweep"); _pause()
+def _palette_ftle():
+    # ftle_windows.py is per-clip (no --sweep), so batch by looping over the family.
+    tr, _pe = get_clips()
+    if not tr:
+        console.print("  [dim]No tracked clips.[/]"); _pause(); return
+    if not _ask_confirm(f"Compute [bold]FTLE windows[/] for all {len(tr)} clips?  [dim](~5 min)[/]"): return
+    for j, c in enumerate(tr, 1):
+        console.print(Rule(f"[bold][{j}/{len(tr)}] {c['stem']}[/]", style="dim"))
+        _run(SCRIPT_FTLE_WINDOWS, "--stem", c["stem"])
+    _invalidate_ftle_cache(); _log_activity("ftle (all clips)"); _pause()
 
 def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn=None):
     """Shell v2 driver — one persistent table; 0-4 swap modes, cursor persists.
@@ -1635,7 +1679,7 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
     ins_sel = 0
     shell_cmds = {"sw": do_w, "pa": do_p, "cal": do_c,
                   "wf": _palette_waterfall, "bif": _palette_bif, "rs": _palette_rotsweep,
-                  "ds": _palette_dimsweep, "ws": _palette_windsweep}
+                  "ds": _palette_dimsweep, "ws": _palette_windsweep, "ftle": _palette_ftle}
 
     def cur():
         return modes[midx]
@@ -1644,7 +1688,7 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
         hp = [Text.from_markup("  [dim]move[/]  ↑↓ / k j   Home/End   PgUp/PgDn   [dim]·[/]   q/Esc quit"),
               Text.from_markup("  [dim]switch[/]  m/1/2/3/4/5 mode   [bold]tab[/] cycle"),
               Text.from_markup("  [dim]palette[/]  [bold cyan]/[/]  sw switch · pa paths · cal calibrate · "
-                               "wf waterfall · bif bifurcation · rs rot · ds dim · ws wind")]
+                               "wf waterfall · bif bifurcation · rs rot · ds dim · ws wind · ftle windows")]
         rh = _resolve(m.hint)
         if rh: hp.append(Text.from_markup("  [bold]row[/]      " + rh))
         if m.col_targets:
@@ -1771,7 +1815,7 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
                 table_block = lay
         content = [table_block]
         if cmd is not None:
-            cl = Text.from_markup(f"  [bold cyan]/[/] {cmd}▌   [dim]sw switch · pa paths · cal calibrate   ·   wf waterfall · bif bifurcation · rs rot · ds dim · ws wind   · esc cancel[/]")
+            cl = Text.from_markup(f"  [bold cyan]/[/] {cmd}▌   [dim]sw switch · pa paths · cal calibrate   ·   wf waterfall · bif bifurcation · rs rot · ds dim · ws wind · ftle windows   · esc cancel[/]")
             cl.no_wrap = True; cl.overflow = "ellipsis"
             content.append(cl)
         else:
