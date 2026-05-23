@@ -43,6 +43,7 @@ SCRIPT_DRIVEN_POIN = os.path.join(REPO_ROOT, "scripts", "analysis", "driven_poin
 SCRIPT_DRIVEN_BIF  = os.path.join(REPO_ROOT, "scripts", "analysis", "driven_bifurcation.py")
 SCRIPT_ROTATIONS   = os.path.join(REPO_ROOT, "scripts", "analysis", "rotations.py")
 SCRIPT_DIMENSION   = os.path.join(REPO_ROOT, "scripts", "analysis", "dimension.py")
+SCRIPT_WATERFALL   = os.path.join(REPO_ROOT, "scripts", "analysis", "spectral_waterfall.py")
 SCRIPT_OVERLAY     = os.path.join(REPO_ROOT, "scripts", "analysis", "overlay_video.py")
 
 CLR_TRACK   = "green"
@@ -645,17 +646,24 @@ def do_a(tr):
     def act_rotsweep(row, rows, i, ctx):
         def work(): _run(SCRIPT_ROTATIONS, "--sweep"); _log_activity("rotations sweep")
         _do_suspended(ctx, work, confirm="Run [bold]rotations sweep[/] across the 3.2V family?")
+    def act_waterfall(row, rows, i, ctx):
+        try: vf = float(row.get("drive_voltage_v")) if row else None
+        except (TypeError, ValueError): vf = None
+        args = ["--voltage", f"{vf:g}"] if vf else []
+        vlab = f"{vf:g}V" if vf else "3.2V"
+        def work(): _run(SCRIPT_WATERFALL, *args); _log_activity("spectral waterfall")
+        _do_suspended(ctx, work, confirm=f"Run [bold]spectral waterfall[/] across the {vlab} family?")
     def toggle_gaps(row, rows, i, ctx):
         fstate["gaps"] = not fstate["gaps"]; return "top"
     bif_ok = _voltage_sweep_ok(tr)
     hint = ("[dim]\u2191\u2193[/] run [bold]c[/]haos [bold]p[/]oinc [bold]l[/]yap [bold]d[/]riven [bold]r[/]ot [bold]f[/]rac   "
             "[bold]\u21b5[/] explore   "
             + ("[bold]b[/] bif-sweep " if bif_ok else "")
-            + "[bold]s[/] rot-sweep   [bold]g[/] gaps   [bold]q[/] back")
+            + "[bold]s[/] rot-sweep   [bold]w[/] waterfall   [bold]g[/] gaps   [bold]q[/] back")
     keys = {"c": act_chaos, "p": act_poin, "l": act_lyap,
             "d": act_driven, "r": act_rot, "f": act_dim,
             "enter": act_explore, "x": act_explore,
-            "s": act_rotsweep, "g": toggle_gaps}
+            "s": act_rotsweep, "w": act_waterfall, "g": toggle_gaps}
     if bif_ok: keys["b"] = act_bif
     _inventory_nav(tr, "analyze", CLR_ANALYZE, ANALYZE_TYPES, _analyze_exists,
                    key_actions=keys, hint=hint, fstate=fstate)
@@ -665,7 +673,7 @@ _QI_CATS = [
     ("green",   "time series", ["both", "omega", "tip", "energy", "rot"]),
     ("yellow",  "phase space", ["phase1", "phase2", "config", "full", "seis1", "seis2"]),
     ("blue",    "physical",    ["xy", "trace"]),
-    ("red",     "chaos",       ["spectrum", "return", "dim"]),
+    ("red",     "chaos",       ["spectrum", "return", "dim", "wfall"]),
     ("magenta", "driven",      ["cyc", "lock", "res"]),
 ]
 
@@ -984,6 +992,13 @@ def do_fi(tr):
         def work(): _run(SCRIPT_BATCH_FIGS); _log_activity("figures: all")
         _do_suspended(ctx, work,
             confirm=f"Render [bold]all figure types[/] for all {len(tr)} clips?  [dim](QA-passed only)[/]")
+    def fig_waterfall(row, rows, i, ctx):
+        try: vf = float(row.get("drive_voltage_v")) if row else None
+        except (TypeError, ValueError): vf = None
+        args = ["--voltage", f"{vf:g}"] if vf else []
+        vlab = f"{vf:g}V" if vf else "3.2V"
+        def work(): _run(SCRIPT_WATERFALL, *args); _log_activity("spectral waterfall")
+        _do_suspended(ctx, work, confirm=f"Render [bold]spectral waterfall[/] (aggregate) for the {vlab} family?")
     def toggle_gaps(row, rows, i, ctx):
         fstate["gaps"] = not fstate["gaps"]; return "top"
     def col_batch(t, ctx):
@@ -1004,10 +1019,10 @@ def do_fi(tr):
         _do_suspended(ctx, lambda: _run(SCRIPT_BATCH_FIGS, "--stem", stem, "--types", t[0], "--force", "--all-quality"))
         _log_activity(f"create {t[1]}/{stem}")
     hint = ("[dim]↑↓[/] [bold]↵[/] render   [bold]c[/] columns   [bold]e[/] cells   "
-            "[bold]o[/] one-type   [bold]a[/] all   [bold]f[/] force   [bold]g[/] gaps   [bold]q[/] back")
+            "[bold]o[/] one-type   [bold]a[/] all   [bold]w[/] waterfall   [bold]f[/] force   [bold]g[/] gaps   [bold]q[/] back")
     _inventory_nav(tr, "figures inventory", CLR_FIGURES, FIG_TYPES, _fig_exists,
                    key_actions={"enter": render_clip, "f": force_clip,
-                                "o": one_type, "a": fill_all, "g": toggle_gaps},
+                                "o": one_type, "a": fill_all, "w": fig_waterfall, "g": toggle_gaps},
                    hint=hint, fstate=fstate, on_col=col_batch, on_col_force=col_force,
                    on_view=view_fig, on_create=create_fig)
 

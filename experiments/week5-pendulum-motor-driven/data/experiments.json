@@ -26,7 +26,8 @@
     "n_frames": 2307,
     "verification_notes": "dropout 0.00% ≤ 5%",
     "verified_under_brief_version": 14,
-    "verification_date": "2026-05-22"
+    "verification_date": "2026-05-22",
+    "overlay_verdict": "pass"
   },
   "2.4V_1Hz_1": {
     "video_file": "2.4V_1Hz_1.mov",

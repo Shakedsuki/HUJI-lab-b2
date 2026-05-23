@@ -454,6 +454,42 @@ def plot_dimension(d):
     print("    [≈1 ⇒ periodic loop · fractional ⇒ strange attractor]")
 
 
+def plot_waterfall(d):
+    """Spectral broadband-ness across this clip's voltage family: per-clip
+    spectral entropy of ω₂ vs f_drive (0 ⇒ sharp tone / periodic, 1 ⇒ white
+    noise / chaos) — the 1-D summary of the spectral waterfall. Reuses
+    spectral_waterfall.py; the full 2-D image is the aggregate figure. First
+    call sweeps the family, so it takes a moment; cached for the session."""
+    import plotext as plt
+    from driven_helpers import parse_stem
+    from spectral_waterfall import collect
+    try:
+        meta = parse_stem(d["stem"])
+    except ValueError:
+        print("  waterfall needs a driven clip (V/f stem)")
+        return
+    voltage, fd = meta["v_drill_v"], meta["f_drive_hz"]
+    rows = d.get("_wf_cache")
+    if rows is None or d.get("_wf_cache_v") != voltage:
+        print(f"  sweeping {voltage:g}V family…")
+        rows = collect(voltage, 5.0, 400, 5.0)
+        d["_wf_cache"], d["_wf_cache_v"] = rows, voltage
+    if len(rows) < 3:
+        print(f"  too few clips at {voltage:g}V for a waterfall")
+        return
+    f   = [r[0] for r in rows]
+    ent = [r[4] for r in rows]
+    cur = min(range(len(f)), key=lambda i: abs(f[i] - fd))
+    _setup(plt, f"spectral broadband-ness {voltage:g}V — entropy vs f_drive")
+    plt.plot(f, ent, color="red", marker="dot")
+    plt.scatter([f[cur]], [ent[cur]], color="green", marker="dot")
+    plt.xlabel("f_drive (Hz)")
+    plt.ylabel("spectral entropy")
+    plt.show()
+    print(f"    sweep (red) · this clip = {fd:g}Hz (green)   "
+          f"[~0 sharp/periodic · ~1 broadband/chaos]")
+
+
 PLOTS = {
     "both":     ("green",   "\u03b8\u2081(t) + \u03b8\u2082(t) overlay",         plot_both),
     "omega":    ("green",   "\u03c9\u2081(t) + \u03c9\u2082(t)",                  plot_omega),
@@ -469,6 +505,7 @@ PLOTS = {
     "spectrum": ("red",     "power spectrum of \u03b8\u2082",                      plot_spectrum),
     "return":   ("red",     "\u03b8\u2082(n) vs \u03b8\u2082(n+1) return map",    plot_return),
     "dim":      ("red",     "fractal dimension (D₂ corr + D_box)",  plot_dimension),
+    "wfall":    ("red",     "spectral broadband-ness vs f_drive (waterfall)", plot_waterfall),
     "seis1":    ("yellow",  "seismograph v1 spiral (θ_tip=θ₂)",  lambda d: plot_seismograph(d, "v1")),
     "seis2":    ("yellow",  "seismograph v2 ripple (θ_tip=θ₂)",  lambda d: plot_seismograph(d, "v2")),
     "cyc":      ("magenta", "cyclic phase ψ(t) per arm",            plot_cyclic_phase),
@@ -527,7 +564,7 @@ def _print_menu(con):
         ("green",   "time series", ["both", "omega", "tip", "energy", "rot"]),
         ("yellow",  "phase space", ["phase1", "phase2", "config", "full", "seis1", "seis2"]),
         ("blue",    "physical",    ["xy", "trace"]),
-        ("red",     "chaos",       ["spectrum", "return", "dim"]),
+        ("red",     "chaos",       ["spectrum", "return", "dim", "wfall"]),
         ("magenta", "driven",      ["cyc", "lock", "res"]),
     ]
     panels = []
