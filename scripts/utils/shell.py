@@ -736,6 +736,18 @@ def _run_batch(thunks, noun, ctx):
     ctx.suspend(run)
     return result["r"]
 
+def _apply_sort(rows, key_fn, direction):
+    """Return rows sorted by key_fn (direction 1 asc / -1 desc). None keys sort
+    last regardless of direction; mixed/uncomparable types fall back to str."""
+    keyed = [(key_fn(r), r) for r in rows]
+    present = [(k, r) for k, r in keyed if k is not None]
+    absent = [r for k, r in keyed if k is None]
+    try:
+        present.sort(key=lambda kr: kr[0], reverse=(direction < 0))
+    except TypeError:
+        present.sort(key=lambda kr: str(kr[0]), reverse=(direction < 0))
+    return [r for _, r in present] + absent
+
 # ── Submenus (collapsed) ──
 
 def _sub(title, actions):
@@ -949,7 +961,8 @@ def build_mode_track():
         nv = sum(1 for c in tr2 if c.get("quality") == "verified")
         return (f"[green]{nv} verified[/]  [cyan]{len(tr2) - nv} tracked[/]  [yellow]{len(pe2)} pending[/]")
     hint = ("[dim]↑↓[/] [bold]t[/] track/re-track   [bold]v[/] verify   [bold]s[/] sanity   "
-            "[bold]o[/] open   [bold]a[/] all   [bold]c[/] column mode   [bold]h[/] help   [bold]q[/] quit")
+            "[bold]o[/] open   [bold]a[/] all   [bold]c[/] column mode   [bold]e[/] sort   "
+            "[bold]h[/] help   [bold]q[/] quit")
     col_hint = ("[bold cyan]column mode[/]   [bold]↵[/] re-track every clip in view   "
                 "[bold]r[/] row mode   [bold]q[/] quit")
     def act_track(row, rows, i, ctx):
@@ -988,7 +1001,9 @@ def build_mode_track():
     return Mode(name="track", key="1", color=CLR_TRACK, build_rows=build_rows, columns=columns,
                 legend=legend, hint=hint, preview_fn=_sanity_preview(), preview_key="s",
                 key_actions={"t": act_track, "v": act_verify, "o": act_open, "a": act_bulk},
-                col_targets=[2], col_actions={"enter": col_retrack_all}, col_hint=col_hint)
+                col_targets=[2], col_actions={"enter": col_retrack_all}, col_hint=col_hint,
+                sort_keys=[lambda r: r["_n"], lambda r: r["stem"], lambda r: r["status"],
+                           lambda r: r["dropout"], lambda r: r["dur"]])
 
 def do_t(tr, pe):
     _run_one_mode(build_mode_track())
@@ -1082,7 +1097,7 @@ def build_mode_analyze():
     hint = ("[dim]\u2191\u2193[/] [bold]\u21b5[/] explore   [bold]i[/] insights   [bold]c[/] column mode   "
             "[bold]e[/] entry mode   [bold]h[/] help   [bold]q[/] quit")
     cell_hint = ("[bold cyan]entry mode[/]   [dim]\u2191\u2193\u2190\u2192[/] pick a cell   [bold]\u21b5[/] run that analysis   "
-                 "[bold]e[/]/[bold]r[/] row mode   [bold]q[/] quit")
+                 "[bold]\u2191[/] sort   [bold]e[/]/[bold]r[/] row mode   [bold]q[/] quit")
     keys = {"enter": act_explore}
     return _inventory_mode("analyze", "2", CLR_ANALYZE, ANALYZE_TYPES, _analyze_exists,
                            key_actions=keys, hint=hint, on_col=col_batch,
@@ -1330,6 +1345,9 @@ def _inventory_mode(name, key, color, types, exists_fn, *, key_actions, hint, gl
         columns.append((short,
             (lambda t: lambda r: "[green]✓[/]" if r["cells"][t] else "[dim]·[/]")(tn),
             dict(justify="center")))
+    sort_keys = [lambda r: r["_n"], lambda r: r["stem"]]
+    for tn, _short, _d in types:
+        sort_keys.append((lambda t: lambda r: r["cells"][t])(tn))
     def legend():
         tr, _pe = get_clips()
         parts = [f"[bold]{short}[/] [dim]{sum(1 for c in tr if exists_fn(tn, c['stem']))}/{len(tr)}[/]"
@@ -1359,12 +1377,13 @@ def _inventory_mode(name, key, color, types, exists_fn, *, key_actions, hint, gl
             cell_hint = ("[bold cyan]entry mode[/]   [dim]↑↓←→[/] pick cell   [bold]⇧[/]+move select"
                          + ("   [bold]↵[/]/[bold]o[/] open" if on_view else "")
                          + ("   [bold]+[/] create" if on_create else "")
-                         + "   [bold]e[/]/[bold]r[/] row mode   [bold]q[/] quit")
+                         + "   [bold]↑[/] sort   [bold]e[/]/[bold]r[/] row mode   [bold]q[/] quit")
     return Mode(name=name, key=key, color=color, glyph=glyph, build_rows=build_rows,
                 columns=columns, key_actions=key_actions, legend=legend, hint=hint,
                 col_targets=col_targets, col_actions=col_actions, col_hint=col_hint,
                 cell_targets=col_targets, cell_actions=cell_actions, cell_hint=cell_hint,
-                preview_fn=preview_fn, preview_key=preview_key, explain_fn=explain_fn, insights=insights)
+                preview_fn=preview_fn, preview_key=preview_key, explain_fn=explain_fn,
+                insights=insights, sort_keys=sort_keys)
 
 # Figures
 FIG_TYPES = [
@@ -1573,7 +1592,7 @@ def build_mode_videos():
             else: _run(SCRIPT_BATCH_FIGS, "--video", "--types", col, "--stem", row["stem"], "--force", "--all-quality")
         _do_suspended(ctx, work); _log_activity(f"create {col}/{row['stem']}")
     cell_hint = ("[bold cyan]entry mode[/]   [dim]↑↓←→[/] pick cell   [bold]↵[/]/[bold]o[/] open · toggle verdict   "
-                 "[bold]+[/] create   [bold]e[/]/[bold]r[/] row mode   [bold]q[/] quit")
+                 "[bold]+[/] create   [bold]↑[/] sort   [bold]e[/]/[bold]r[/] row mode   [bold]q[/] quit")
     return Mode(name="videos", key="4", color=CLR_VIDEOS, build_rows=build_rows, columns=columns,
                 legend=legend, hint=hint, col_hint=col_hint, cell_hint=cell_hint,
                 key_actions={"o": act_review, "enter": act_review, "p": act_pass,
@@ -1581,7 +1600,10 @@ def build_mode_videos():
                 col_targets=col_targets,
                 col_actions={"enter": col_batch, "p": col_pass, "f": col_fail, "x": col_clear},
                 cell_targets=cell_targets,
-                cell_actions={"enter": cell_enter, "o": cell_view, "+": cell_create})
+                cell_actions={"enter": cell_enter, "o": cell_view, "+": cell_create},
+                sort_keys=[lambda r: r["_n"], lambda r: r["stem"], lambda r: r["ov"],
+                           lambda r: r["verdict"], lambda r: r["comb"], lambda r: r["anim"],
+                           lambda r: r["rot3d"], lambda r: r["note"]])
 
 def do_vi(tr):
     _run_one_mode(build_mode_videos())
@@ -1848,6 +1870,7 @@ class Mode:
     preview_key: object = None   # key that toggles the preview panel (track: "s")
     explain_fn: object = None    # row -> explanation panel; enables `x` explain
     insights: object = None      # [(id, label, qi_key)] for `i` insights mode; enables `i`
+    sort_keys: object = None     # per-column fn(row)->value (or None); enables header-sort in entry mode
 
 def _ring_title(modes, active):
     t = Text()
@@ -1948,6 +1971,7 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
     flash = None
     sel_anchor = None     # col/row multi-select anchor; shift+nav extends a range from here
     cell_anchor = None    # entry-mode rectangle anchor (idx, cidx)
+    sort_state = {}        # {mode_key: (col_idx, dir)} — header-sort, persisted per mode
     insights = False
     ins_explain = True
     ins_sel = 0
@@ -1974,6 +1998,9 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
         if m.cell_actions:
             eh = _resolve(m.cell_hint)
             if eh: hp.append(Text.from_markup("  [bold]entry[/]    " + eh))
+        if m.sort_keys and any(m.sort_keys):
+            hp.append(Text.from_markup("  [bold]sort[/]     [bold]e[/] entry mode → "
+                                       "[dim]↑[/] onto headers → [dim]←→[/] column → [bold]↵[/] asc · again desc"))
         hp.append(Text.from_markup("  [dim]— any key to close —[/]"))
         return Panel(Group(*hp), title=_ring_title(modes, midx), title_align="left",
                      border_style=m.color, padding=(1, 2), box=box.SQUARE)
@@ -1986,11 +2013,18 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
         has_cols = bool(m.col_actions) and bool(m.col_targets)
         cell_tgts = m.cell_targets or m.col_targets
         has_cells = bool(cell_tgts) and bool(m.cell_actions)
+        sort_tgts = [i for i, k in enumerate(m.sort_keys or []) if k]   # sortable column positions
         rows = m.build_rows() if m.build_rows else []
+        scol, sdir = sort_state.get(m.key, (None, 1))   # active sort column + direction
+        if scol is not None and scol < len(m.sort_keys or []) and m.sort_keys[scol]:
+            rows = _apply_sort(rows, m.sort_keys[scol], sdir)
         n = len(rows)
-        idx = max(0, min(idx, n - 1)) if n else 0
-        _active = cell_tgts if mode == "cell" else m.col_targets
+        lo_idx = -1 if (mode == "cell" and sort_tgts) else 0   # idx -1 = on the sort-header band
+        idx = max(lo_idx, min(idx, n - 1)) if n else lo_idx
+        on_header = (mode == "cell" and idx == -1)
+        _active = sort_tgts if on_header else (cell_tgts if mode == "cell" else m.col_targets)
         if _active: cidx = max(0, min(cidx, len(_active) - 1))
+        hcol = sort_tgts[cidx] if (on_header and sort_tgts) else None   # header-cursor column pos
         width = console.width
         avail = max(5, min(25, console.height - 10))
         try:
@@ -2044,7 +2078,7 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
                 a, b = sorted((sel_anchor, idx)); sel_rows = set(range(a, b + 1))
             else:
                 sel_rows = {idx}
-        elif mode == "cell" and has_cells and n:
+        elif mode == "cell" and has_cells and n and idx >= 0:
             if cell_anchor is not None:
                 ai, aci = cell_anchor
                 r0, r1 = sorted((ai, idx)); c0, c1 = sorted((aci, cidx)); ccs = range(c0, c1 + 1)
@@ -2059,9 +2093,12 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
         t = Table(box=box.SIMPLE, show_header=True, padding=(0, 1), expand=False)
         t.add_column(" ", width=2)
         for p, (header, _rf, kw) in enumerate(cols):
+            hdr = f"{header} {'▲' if sdir > 0 else '▼'}" if p == scol else header
             if p in sel_cols:
                 kw = {**kw, "style": f"on {selected_bg}", "header_style": f"bold on {selected_bg}"}
-            t.add_column(header, **kw)
+            if on_header and p == hcol:
+                kw = {**kw, "header_style": "bold black on bright_cyan"}
+            t.add_column(hdr, **kw)
         if flash_on:
             t.add_column("", no_wrap=True, overflow="ellipsis")
         if n == 0:
@@ -2124,6 +2161,10 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
                 h = (f"[dim]↑↓[/] clip   [bold]1–{len(m.insights)}[/] insight   [bold]x[/] "
                      + ("hide caption" if ins_explain else "caption")
                      + "   [bold]i[/]/[bold]q[/] back")
+            elif on_header:
+                h = ("[bold cyan]sort[/]   [dim]←→[/] column   [bold]↵[/] ascending · again descending"
+                     + ("   [bold]↓[/] cells" if has_cells else "")
+                     + "   [bold]e[/]/[bold]r[/] row mode   [bold]q[/] quit")
             elif mode == "cell" and m.cell_hint: h = _resolve(m.cell_hint)
             elif mode == "col" and m.col_hint: h = _resolve(m.col_hint)
             else: h = _resolve(m.hint)
@@ -2204,6 +2245,8 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
             has_cols = bool(m.col_actions) and bool(m.col_targets)
             cell_tgts = m.cell_targets or m.col_targets
             has_cells = bool(cell_tgts) and bool(m.cell_actions)
+            sort_tgts = [i for i, k in enumerate(m.sort_keys or []) if k]
+            sortable = bool(sort_tgts)
             if mode == "col":
                 if key in ("left", "h"): cidx -= 1; sel_anchor = None
                 elif key in ("right", "l"): cidx += 1; sel_anchor = None
@@ -2228,8 +2271,21 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
                         thunks = [(lambda ci=ci: act(ci, rows, ctx)) for ci in sel]
                         if _run_batch(thunks, "columns", ctx) == "quit": break
                         sel_anchor = None
+            elif mode == "cell" and idx == -1:
+                # header band — pick a column, Enter toggles sort ascending/descending
+                if key in ("left", "h"): cidx -= 1
+                elif key in ("right", "l"): cidx += 1
+                elif key in ("down", "j"):
+                    if has_cells: idx = 0; cidx = 0          # descend into the cell grid
+                elif key in ("r", "e"): mode = "row"
+                elif key == "enter" and sort_tgts:
+                    col = sort_tgts[max(0, min(cidx, len(sort_tgts) - 1))]
+                    cur_s = sort_state.get(m.key)
+                    sort_state[m.key] = (col, -cur_s[1]) if (cur_s and cur_s[0] == col) else (col, 1)
             elif mode == "cell":
-                if key in ("left", "h"): cidx -= 1; cell_anchor = None
+                if key in ("up", "k") and idx == 0 and sort_tgts:
+                    idx = -1; cidx = 0; cell_anchor = None   # rise into the sort-header band
+                elif key in ("left", "h"): cidx -= 1; cell_anchor = None
                 elif key in ("right", "l"): cidx += 1; cell_anchor = None
                 elif key in ("up", "k"): idx -= 1; cell_anchor = None
                 elif key in ("down", "j"): idx += 1; cell_anchor = None
@@ -2309,7 +2365,9 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
                     elif m.insights and key == "i":
                         insights = True; ins_explain = True; show_preview = False; ins_sel = 0; sel_anchor = None
                     elif has_cols and key == "c": mode = "col"; cidx = 0; show_preview = False; sel_anchor = None
-                    elif has_cells and key == "e": mode = "cell"; cidx = 0; show_preview = False; cell_anchor = None
+                    elif (has_cells or sortable) and key == "e":
+                        mode = "cell"; cidx = 0; show_preview = False; cell_anchor = None
+                        if not has_cells: idx = -1     # no cells → land on the sort header
                 else:
                     pending = ""
             rows, n, avail, renderable = frame(); live.update(renderable, refresh=True)
@@ -2365,10 +2423,12 @@ def build_mode_main():
         return "mode:" + ("1", "2", "3", "4")[cpos] if cpos < 4 else None
     hint = "[dim]↑↓[/] [bold]e[/] entry mode   [bold]h[/] help   [bold]q[/] quit"
     cell_hint = ("[bold cyan]entry mode[/]   [dim]←→[/] pick a stage   [bold]↵[/] open that stage   "
-                 "[bold]e[/]/[bold]r[/] row mode   [bold]q[/] quit")
+                 "[bold]↑[/] sort   [bold]e[/]/[bold]r[/] row mode   [bold]q[/] quit")
     return Mode("main", "m", CLR_MAIN, glyph="⌂", build_rows=build_rows, columns=columns,
                 legend=legend, hint=hint,
-                cell_targets=[3, 4, 5, 6], cell_actions={"enter": dive, "o": dive}, cell_hint=cell_hint)
+                cell_targets=[3, 4, 5, 6], cell_actions={"enter": dive, "o": dive}, cell_hint=cell_hint,
+                sort_keys=[None, lambda r: r["_n"], lambda r: r["stem"], lambda r: r["verified"],
+                           lambda r: r["an"], lambda r: r["fi"], lambda r: r["vi"]])
 
 def main():
     """Shell v2 — mode-ring entry point (launched by bare `chaos`). Opens on the
