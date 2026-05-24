@@ -2093,7 +2093,10 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
         t = Table(box=box.SIMPLE, show_header=True, padding=(0, 1), expand=False)
         t.add_column(" ", width=2)
         for p, (header, _rf, kw) in enumerate(cols):
-            hdr = f"{header} {'▲' if sdir > 0 else '▼'}" if p == scol else header
+            hdr = header
+            if p == scol:
+                hdr = f"{header} {'▲' if sdir > 0 else '▼'}"
+                if "width" in kw: kw = {**kw, "width": kw["width"] + 2}   # room for ' ▲' (no wrap)
             if p in sel_cols:
                 kw = {**kw, "style": f"on {selected_bg}", "header_style": f"bold on {selected_bg}"}
             if on_header and p == hcol:
