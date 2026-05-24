@@ -718,14 +718,57 @@ def _ask_confirm(question, default=False):
             elif k == "\t": sel = not sel
             live.update(render(), refresh=True)
 
-def _do_suspended(ctx, work, pause=True, confirm=None, confirm_default=False):
+def _ask_confirm3(question, default="yes"):
+    """Three-way confirm on the suspended screen → "yes" | "force" | None.
+    "yes" runs the normal (missing-only) action; "force" re-renders
+    everything, including outputs that already exist; n/esc cancels.
+    ←→ / h l / tab move the highlight, enter confirms it, y/f/n act direct."""
+    opts = [("yes", "yes", "green"), ("force", "force all", "yellow"), ("no", "no", "red")]
+    sel = next((i for i, o in enumerate(opts) if o[0] == default), 0)
+    def render():
+        q = Panel(Text.from_markup(question), title="[bold yellow]confirm[/]",
+                  border_style="yellow", padding=(0, 1), expand=False)
+        line = Text("  ")
+        for i, (_v, label, color) in enumerate(opts):
+            style = f"bold black on {color}" if i == sel else ("dim" if color == "red" else color)
+            line.append(f"  {label}  ", style=style)
+            line.append("   ")
+        line.append("←→ choose · enter confirm · y/f/n direct · esc cancel", style="dim")
+        return Group(Text(""), q, line)
+    with Live(render(), console=console, auto_refresh=False) as live:
+        while True:
+            try:
+                k = _read_key()
+            except KeyboardInterrupt:
+                return None
+            if k == "y": return "yes"
+            if k == "f": return "force"
+            if k in ("n", "esc"): return None
+            if k == "enter": return opts[sel][0] if opts[sel][0] != "no" else None
+            if k in ("left", "h"): sel = max(0, sel - 1)
+            elif k in ("right", "l"): sel = min(len(opts) - 1, sel + 1)
+            elif k == "\t": sel = (sel + 1) % len(opts)
+            live.update(render(), refresh=True)
+
+def _do_suspended(ctx, work, pause=True, confirm=None, confirm_default=False,
+                  force_work=None):
     """Pause the live table, run work() on the normal terminal, optionally wait
     for a keypress, then resume. If confirm is given, ask y/n first and skip
-    work() unless confirmed. For row/column actions that shell out to a renderer."""
+    work() unless confirmed. When force_work is also given the prompt is
+    three-way (yes / force all / no): 'force' runs force_work() instead of
+    work() — used to re-render existing outputs, not just missing ones. For
+    row/column actions that shell out to a renderer."""
     def go():
-        if confirm and not ctx.batch and not _ask_confirm(confirm, default=confirm_default):
-            return
-        work()
+        chosen = work
+        if confirm and not ctx.batch:
+            if force_work is not None:
+                choice = _ask_confirm3(confirm)
+                if choice is None:
+                    return
+                chosen = force_work if choice == "force" else work
+            elif not _ask_confirm(confirm, default=confirm_default):
+                return
+        chosen()
         _invalidate_chaos_windows_cache()   # the action may have changed a clip's verdict
         if pause and not ctx.batch: _pause()
     ctx.suspend(go)
@@ -1428,13 +1471,17 @@ def build_mode_figures():
             _do_suspended(ctx, lambda: _run(SCRIPT_BATCH_FIGS, "--stem", row["stem"]))
             _log_activity(f"figures/{row['stem']}")
     def fill_all(row, rows, i, ctx):
-        def work(): _run(SCRIPT_BATCH_FIGS); _log_activity("figures: all")
-        _do_suspended(ctx, work,
-            confirm=f"Render [bold]all figure types[/] for all {len(tr)} clips?  [dim](QA-passed only)[/]")
+        def work():  _run(SCRIPT_BATCH_FIGS); _log_activity("figures: all")
+        def force(): _run(SCRIPT_BATCH_FIGS, "--force"); _log_activity("figures: all (force)")
+        _do_suspended(ctx, work, force_work=force,
+            confirm=f"Render [bold]all figure types[/] for all {len(tr)} clips?  "
+                    f"[dim](QA-passed; force all re-renders existing)[/]")
     def col_batch(t, ctx):
-        def work(): _run(SCRIPT_BATCH_FIGS, "--types", t[0]); _log_activity(f"figures col {t[1]}")
-        _do_suspended(ctx, work,
-            confirm=f"Create [bold]{t[2]}[/] for all {len(tr)} clips?  [dim](QA-passed only)[/]")
+        def work():  _run(SCRIPT_BATCH_FIGS, "--types", t[0]); _log_activity(f"figures col {t[1]}")
+        def force(): _run(SCRIPT_BATCH_FIGS, "--types", t[0], "--force"); _log_activity(f"figures col {t[1]} (force)")
+        _do_suspended(ctx, work, force_work=force,
+            confirm=f"Create [bold]{t[2]}[/] for all {len(tr)} clips?  "
+                    f"[dim](QA-passed; force all re-renders existing)[/]")
     def view_fig(stem, t, ctx):
         from paths import FIGURES_DIR
         path = os.path.join(FIGURES_DIR, t[0], f"{stem}_{t[0]}.png")
