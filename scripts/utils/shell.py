@@ -195,6 +195,24 @@ def _has_overlay(stem):
         return True
     return False
 
+def _overlay_stale(stem):
+    """True if an overlay exists but predates its tracking.csv — it was
+    rendered from a track that has since been re-run, so it no longer
+    reflects what's on disk. Keyed to tracking.csv only: the overlay is
+    built entirely from it (markers, and omega via SG-derivative of the
+    angles), so a standalone re-verify must not flag it. Derived from
+    mtime, so it needs no stored state and self-clears on re-render.
+    Caveat: a byte-identical re-track or a git checkout that rewrites
+    tracking.csv's mtime will read as stale even when content is
+    unchanged — harmless (a re-render is the only cost)."""
+    target = _overlay_path(stem)
+    if not os.path.isfile(target):
+        return False
+    src = os.path.join(clip_dir(stem), "tracking.csv")
+    if not os.path.isfile(src):
+        return False
+    return os.path.getmtime(src) > os.path.getmtime(target)
+
 def _open_file(path):
     import platform
     s = platform.system()
@@ -1460,7 +1478,8 @@ def build_mode_videos():
         rows = []
         for c in get_clips()[0]:
             s = c["stem"]
-            rows.append({"stem": s, "ov": _has_overlay(s),
+            ov = _has_overlay(s)
+            rows.append({"stem": s, "ov": ov, "stale": ov and _overlay_stale(s),
                          "verdict": _get_verdict(s, reg), "note": _note_for(s, reg),
                          "comb": _vid_exists("combined", s),
                          "anim": _vid_exists("phase_animation", s),
@@ -1468,16 +1487,20 @@ def build_mode_videos():
         for k, r in enumerate(rows, 1): r["_n"] = k
         return rows
     def _vcell(r):
-        if r["verdict"] == "pass": return "[green]pass[/]"
-        if r["verdict"] == "fail": return "[red]fail[/]"
+        v = r["verdict"]
+        if v in ("pass", "fail"):
+            # A verdict was set by watching an overlay; if that overlay is
+            # now stale the verdict no longer reflects the current track.
+            if r["stale"]: return f"[yellow]{v} (stale)[/]"
+            return "[green]pass[/]" if v == "pass" else "[red]fail[/]"
         if r["ov"]: return "[yellow]pending[/]"
         return "[dim]—[/]"
     def _ck(key): return lambda r: "[green]✓[/]" if r[key] else "[dim]·[/]"
     columns = [
         ("#",       lambda r: str(r["_n"]), dict(justify="right", width=3, style="dim")),
         ("clip",    lambda r: _render_glyph_clip(r["stem"]), dict(min_width=18, no_wrap=True)),
-        ("overlay", lambda r: "[green]✓[/]" if r["ov"] else "[dim]—[/]", dict(justify="center")),
-        ("verdict", _vcell,                 dict(width=8)),
+        ("overlay", lambda r: ("[yellow]stale[/]" if r["stale"] else "[green]✓[/]") if r["ov"] else "[dim]—[/]", dict(justify="center")),
+        ("verdict", _vcell,                 dict(width=13)),
         ("comb",    _ck("comb"),            dict(justify="center")),
         ("anim",    _ck("anim"),            dict(justify="center")),
         ("3d-rot",  _ck("rot3d"),           dict(justify="center")),
@@ -1490,10 +1513,13 @@ def build_mode_videos():
         reg = load_registry()
         ov = [_has_overlay(c["stem"]) for c in tr]
         vd = [_get_verdict(c["stem"], reg) for c in tr]
+        nst = sum(1 for c in tr if _overlay_stale(c["stem"]))
         npa = sum(1 for v in vd if v == "pass"); nfa = sum(1 for v in vd if v == "fail")
         npe = sum(1 for o, v in zip(ov, vd) if o and v is None); nno = sum(1 for o in ov if not o)
-        return (f"[green]{npa} pass[/]  [red]{nfa} fail[/]  [yellow]{npe} to review[/]  "
-                f"[dim]{nno} no overlay[/]")
+        out = (f"[green]{npa} pass[/]  [red]{nfa} fail[/]  [yellow]{npe} to review[/]  "
+               f"[dim]{nno} no overlay[/]")
+        if nst: out += f"  [yellow]{nst} stale[/]"
+        return out
     hint = ("[dim]↑↓[/] [bold]o[/]/[bold]↵[/] open   [green bold]p[/]ass [red bold]f[/]ail [bold]x[/] clear   "
             "[bold]c[/] column mode   [bold]e[/] entry mode   [bold]h[/] help   [bold]q[/] quit")
     col_hint = ("[bold cyan]column mode[/]   [dim]←→[/] pick column   [bold]↵[/] batch render   "
@@ -1502,8 +1528,9 @@ def build_mode_videos():
     def act_review(row, rows, i, ctx):
         if not row: return
         def work():
-            if not _has_overlay(row["stem"]):
-                console.print(f"  [dim]rendering overlay for {row['stem']}…[/]")
+            if not _has_overlay(row["stem"]) or row.get("stale"):
+                verb = "re-rendering stale overlay" if row.get("stale") else "rendering overlay"
+                console.print(f"  [dim]{verb} for {row['stem']}…[/]")
                 _render_overlay(row["stem"])
             mp4 = _overlay_path(row["stem"])
             if os.path.isfile(mp4):
@@ -1530,7 +1557,9 @@ def build_mode_videos():
     def _col_videos(tn, force):
         # 'overlay' is per-stem via overlay_video.py (not in batch_figures' suite)
         if tn == "overlay":
-            tgt = [c["stem"] for c in tr] if force else [c["stem"] for c in tr if not _has_overlay(c["stem"])]
+            tgt = ([c["stem"] for c in tr] if force
+                   else [c["stem"] for c in tr
+                         if not _has_overlay(c["stem"]) or _overlay_stale(c["stem"])])
             if not tgt: console.print("  [dim]All overlays already rendered.[/]"); return
             for s in tgt: _render_overlay(s)
         else:
