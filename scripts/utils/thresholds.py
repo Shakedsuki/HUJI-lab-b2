@@ -109,10 +109,25 @@ CROP_X_START = 350
 CROP_X_END   = 950
 
 # BGR colour ranges (NOT HSV). cv2.inRange-compatible (lo, hi) tuples.
-# Green is detected in one pass; red has three sequential fallback
-# ranges — the first one to produce a non-empty mask wins.
+# Both green and red use sequential fallback ranges — first non-empty
+# mask wins — so the strict primary range governs the ~96% of frames
+# with a sharp marker and a looser range only ever runs on a frame the
+# primary already missed (zero change to frames the primary detects).
+#
+# GREEN_BGR_RANGES: the primary box is the sharp-marker green. The
+# fallback drops the G floor (100->80) and lifts the B/R ceilings to
+# catch the marker on high-speed frames where motion blur dims and
+# desaturates green just past the primary box (measured on 4V low-freq
+# clips: blurred-green pixels fall to G~=87, R~=108). It recovers 100%
+# of those blur dropouts as tight ~2k-px blobs at the true position;
+# loosening further (G floor <=70) floods the reachable disc with
+# background, so the fallback stops at this one widened step.
 GREEN_BGR_LO = (0, 100, 0)
 GREEN_BGR_HI = (70, 255, 90)
+GREEN_BGR_RANGES = (
+    (GREEN_BGR_LO, GREEN_BGR_HI),    # primary: sharp marker
+    ((0, 80, 0), (90, 255, 115)),    # fallback: motion-blurred marker
+)
 RED_BGR_RANGES = (
     ((0, 0, 100), (45, 75, 255)),
     ((0, 0, 110), (60, 80, 255)),

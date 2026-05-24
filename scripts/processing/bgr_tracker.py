@@ -11,7 +11,8 @@ What it does
 For each frame of the input video:
   bbox    = 4·arm × 4·arm square centred on the pivot (reachable region)
   cropped = frame[bbox] AND inscribed disc mask
-  green   = centroid of moments(inRange(BGR, GREEN_BGR_LO, GREEN_BGR_HI))
+  green   = centroid from the first non-empty mask in GREEN_BGR_RANGES
+            (strict box, then a motion-blur fallback)
   red     = centroid from the first non-empty mask in RED_BGR_RANGES,
             additionally ANDed with a green-proximity disk
 
@@ -82,8 +83,7 @@ from thresholds import (  # noqa: E402
     PIVOT,
     ARM_LENGTH_PX,
     ARM_LENGTH_CM,
-    GREEN_BGR_LO,
-    GREEN_BGR_HI,
+    GREEN_BGR_RANGES,
     RED_BGR_RANGES,
     get_pivot_arm,
     DROPOUT_FAIL_PCT,
@@ -101,8 +101,8 @@ FPS_DEFAULT      = 59.94
 _RED_SEARCH_SLACK_PX = 30
 
 # Pre-build numpy arrays once at module load (cv2.inRange wants ndarray).
-_GREEN_LO_NP = np.array(GREEN_BGR_LO, dtype=np.uint8)
-_GREEN_HI_NP = np.array(GREEN_BGR_HI, dtype=np.uint8)
+_GREEN_RANGES_NP = [(np.array(lo, dtype=np.uint8), np.array(hi, dtype=np.uint8))
+                    for lo, hi in GREEN_BGR_RANGES]
 _RED_RANGES_NP = [(np.array(lo, dtype=np.uint8), np.array(hi, dtype=np.uint8))
                   for lo, hi in RED_BGR_RANGES]
 
@@ -210,14 +210,15 @@ def detect_markers_bgr(frame, pivot, arm_length_px, red_search_r_sq):
     reach_r_sq = (2 * arm_length_px) ** 2
     reach = ((xx - pcx)**2 + (yy - pcy)**2 <= reach_r_sq).astype(np.uint8) * 255
 
-    green_mask = cv2.inRange(cropped, _GREEN_LO_NP, _GREEN_HI_NP)
-    green_mask = cv2.bitwise_and(green_mask, reach)
-    M_g = cv2.moments(green_mask)
-    if M_g['m00'] > 0:
-        gx_c = M_g['m10'] / M_g['m00']
-        gy_c = M_g['m01'] / M_g['m00']
-    else:
-        gx_c = gy_c = None
+    gx_c = gy_c = None
+    for lo_np, hi_np in _GREEN_RANGES_NP:
+        green_mask = cv2.inRange(cropped, lo_np, hi_np)
+        green_mask = cv2.bitwise_and(green_mask, reach)
+        M_g = cv2.moments(green_mask)
+        if M_g['m00'] > 0:
+            gx_c = M_g['m10'] / M_g['m00']
+            gy_c = M_g['m01'] / M_g['m00']
+            break
 
     disk = None
     if gx_c is not None:
