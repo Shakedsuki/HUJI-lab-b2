@@ -1,0 +1,14 @@
+{
+  "stem": "2.5V_1Hz",
+  "lambda1": 1.0233949645159777,
+  "lambda1_sigma": 0.009750379522354885,
+  "lambda1_r2": 0.9898468005740916,
+  "observable": "omega2",
+  "regime": "CHAOTIC",
+  "tau": 11,
+  "emb_dim": 5,
+  "theiler": 59,
+  "fit_lo": 6,
+  "fit_hi": 120,
+  "dt_s": 0.016683334942084942
+}
