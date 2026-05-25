@@ -60,6 +60,7 @@ from paths import MEAS_DIR, EXPERIMENTS, clip_dir  # noqa: E402
 from figures_paths import FIGURES_DIR, mirror_to_ready  # noqa: E402
 from driven_helpers import (parse_stem, load_driven_csv,  # noqa: E402
                             strobe_sample)
+from figure_style import compact_tile_ax  # noqa: E402
 
 
 def parse_args():
@@ -87,61 +88,98 @@ def resolve_f_drive(stem, override):
     return parse_stem(stem)["f_drive_hz"], "stem name"
 
 
-def make_figure(t, th1, om1, t_s, th1_s, om1_s,
+def draw_strobe_section(ax, x, y, ts, xlabel, ylabel, title=None, *, compact=False):
+    """Stroboscopic section scatter, coloured by time. Shared by the per-clip
+    figure and the palette tile (compact=True trims markers/labels for tiles).
+    The time colour shows the section filling: orderly sweep = quasiperiodic
+    curve, scattered = chaos. Returns the scatter handle (None if no points)."""
+    sc = None
+    if len(ts) > 0:
+        if compact:
+            sc = ax.scatter(x, y, c=ts, cmap=plt.cm.viridis, s=7, alpha=0.9,
+                            linewidths=0)
+        else:
+            sc = ax.scatter(x, y, c=ts, cmap=plt.cm.viridis, s=22, alpha=0.9,
+                            edgecolors="k", linewidths=0.3)
+    if compact:
+        ax.axhline(0, color="0.85", lw=0.4)
+        ax.axvline(0, color="0.85", lw=0.4)
+        compact_tile_ax(ax, xlabel, ylabel)
+    else:
+        ax.axhline(0, color="gray", lw=0.5, ls="--")
+        ax.axvline(0, color="gray", lw=0.5, ls="--")
+        ax.set_xlabel(xlabel); ax.set_ylabel(ylabel)
+        ax.set_title(title, fontsize=11)
+        ax.grid(True, alpha=0.3)
+    return sc
+
+
+def _strobe_vs_time(ax, ts, ys, ylabel, title):
+    """Strobe-sampled angle vs time (period-n diagnostic)."""
+    if len(ts) > 0:
+        ax.scatter(ts, ys, c=ts, cmap=plt.cm.viridis, s=15,
+                   edgecolors="k", linewidths=0.3)
+        ax.plot(ts, ys, color="0.6", lw=0.5, zorder=0)
+    ax.axhline(0, color="gray", lw=0.5, ls="--")
+    ax.set_xlabel("t (s)"); ax.set_ylabel(ylabel)
+    ax.set_title(title, fontsize=11)
+    ax.grid(True, alpha=0.3)
+
+
+def _phase_overlay(ax, x_full, y_full, t_full, x_s, y_s, xlabel, ylabel, title):
+    """Full phase portrait with strobe points overlaid in red."""
+    ax.scatter(x_full, y_full, c=t_full, cmap=plt.cm.Greys, s=1, alpha=0.45)
+    if len(x_s) > 0:
+        ax.scatter(x_s, y_s, color="tab:red", s=22, zorder=5,
+                   edgecolors="k", linewidths=0.3, label="strobe points")
+    ax.axhline(0, color="gray", lw=0.5, ls="--")
+    ax.axvline(0, color="gray", lw=0.5, ls="--")
+    ax.set_xlabel(xlabel); ax.set_ylabel(ylabel)
+    ax.set_title(title, fontsize=11)
+    ax.grid(True, alpha=0.3)
+    if len(x_s) > 0:
+        ax.legend(loc="upper right", fontsize=8)
+
+
+def make_figure(t, th1, th2, om1, om2,
+                t_s, th1_s, th2_s, om1_s, om2_s,
                 stem, f_drive, transient_s, out_path):
-    fig = plt.figure(figsize=(15, 10))
-    gs = fig.add_gridspec(2, 2, hspace=0.3, wspace=0.28,
-                          left=0.07, right=0.97, top=0.93, bottom=0.07)
-    ax_main = fig.add_subplot(gs[:, 0])
-    ax_tl   = fig.add_subplot(gs[0, 1])
-    ax_full = fig.add_subplot(gs[1, 1])
+    n_s = len(t_s)
+    fig, axes = plt.subplots(2, 3, figsize=(17, 11), constrained_layout=True)
 
-    # Main: stroboscopic section, coloured by time.
-    if len(t_s) > 0:
-        sc = ax_main.scatter(th1_s, om1_s, c=t_s,
-                             cmap=plt.cm.viridis, s=22, alpha=0.9,
-                             edgecolors="k", linewidths=0.3)
-        plt.colorbar(sc, ax=ax_main, label="t (s)", shrink=0.85)
-    ax_main.axhline(0, color="gray", lw=0.5, ls="--")
-    ax_main.axvline(0, color="gray", lw=0.5, ls="--")
-    ax_main.set_xlabel(r"$\theta_1$  (deg) at strobe")
-    ax_main.set_ylabel(r"$\omega_1$  (deg/s) at strobe")
-    ax_main.set_title(
-        f"Stroboscopic Poincare:  t = n / f_drive   (n = {len(t_s)} strobes)")
-    ax_main.grid(True, alpha=0.3)
+    # ── Row 0: Arm 1 ────────────────────────────────────
+    sc1 = draw_strobe_section(axes[0, 0], th1_s, om1_s, t_s,
+                              r"$\theta_1$ (deg) at strobe",
+                              r"$\omega_1$ (deg/s) at strobe",
+                              f"Arm 1 stroboscopic  (n={n_s})")
+    if sc1 is not None:
+        plt.colorbar(sc1, ax=axes[0, 0], label="t (s)", shrink=0.85)
+    _strobe_vs_time(axes[0, 1], t_s, th1_s,
+                    r"$\theta_1$ (deg)",
+                    r"Arm 1 — strobe $\theta_1$ vs time")
+    _phase_overlay(axes[0, 2], th1, om1, t, th1_s, om1_s,
+                   r"$\theta_1$ (deg)", r"$\omega_1$ (deg/s)",
+                   "Arm 1 phase portrait + strobe")
 
-    # Top right: theta1 at each strobe vs time (period-n diagnostic).
-    if len(t_s) > 0:
-        ax_tl.scatter(t_s, th1_s, c=t_s, cmap=plt.cm.viridis, s=15,
-                      edgecolors="k", linewidths=0.3)
-        # Connect successive strobes lightly to read off period structure.
-        ax_tl.plot(t_s, th1_s, color="0.6", lw=0.5, zorder=0)
-    ax_tl.set_xlabel("t (s)")
-    ax_tl.set_ylabel(r"$\theta_1$ (deg) at strobe")
-    ax_tl.set_title("Strobe samples vs time")
-    ax_tl.axhline(0, color="gray", lw=0.5, ls="--")
-    ax_tl.grid(True, alpha=0.3)
-
-    # Bottom right: full phase portrait + strobe overlay.
-    ax_full.scatter(th1, om1, c=t, cmap=plt.cm.Greys, s=1, alpha=0.45)
-    if len(t_s) > 0:
-        ax_full.scatter(th1_s, om1_s, color="tab:red", s=22, zorder=5,
-                        edgecolors="k", linewidths=0.3,
-                        label="strobe points")
-    ax_full.set_xlabel(r"$\theta_1$ (deg)")
-    ax_full.set_ylabel(r"$\omega_1$ (deg/s)")
-    ax_full.set_title("Full phase portrait + strobe overlay")
-    ax_full.axhline(0, color="gray", lw=0.5, ls="--")
-    ax_full.axvline(0, color="gray", lw=0.5, ls="--")
-    ax_full.grid(True, alpha=0.3)
-    if len(t_s) > 0:
-        ax_full.legend(loc="upper right", fontsize=9)
+    # ── Row 1: Arm 2 ────────────────────────────────────
+    sc2 = draw_strobe_section(axes[1, 0], th2_s, om2_s, t_s,
+                              r"$\theta_2$ (deg) at strobe",
+                              r"$\omega_2$ (deg/s) at strobe",
+                              f"Arm 2 stroboscopic  (n={n_s})")
+    if sc2 is not None:
+        plt.colorbar(sc2, ax=axes[1, 0], label="t (s)", shrink=0.85)
+    _strobe_vs_time(axes[1, 1], t_s, th2_s,
+                    r"$\theta_2$ (deg)",
+                    r"Arm 2 — strobe $\theta_2$ vs time")
+    _phase_overlay(axes[1, 2], th2, om2, t, th2_s, om2_s,
+                   r"$\theta_2$ (deg)", r"$\omega_2$ (deg/s)",
+                   "Arm 2 phase portrait + strobe")
 
     fig.suptitle(
         f"Driven Poincare — {stem}   "
         f"(f_drive = {f_drive:.3f} Hz, T = {1/f_drive:.3f} s, "
         f"transient = {transient_s:.1f} s)",
-        fontsize=13, y=0.99)
+        fontsize=13)
 
     fig.savefig(out_path, dpi=140, bbox_inches="tight")
     mirror_to_ready(out_path)
@@ -164,11 +202,15 @@ def main():
     t_info.add_row("f_drive", f"{f_drive:.4f} Hz  [dim](source: {src})[/]")
     t_info.add_row("T",       f"{1/f_drive:.4f} s")
 
-    t, th1, _, om1, _ = load_driven_csv(csv_path)
+    t, th1, th2, om1, om2 = load_driven_csv(csv_path)
     t_info.add_row("rows loaded", f"{len(t)}  [dim]t ∈ [0, {t[-1]:.2f}] s[/]")
 
     t_s, th1_s, om1_s = strobe_sample(t, th1, om1, f_drive,
                                       transient_s=args.transient)
+    # Arm 2: interpolate on the same strobe times.
+    th2_s = np.interp(t_s, t, th2) if len(t_s) > 0 else np.array([])
+    om2_s = np.interp(t_s, t, om2) if len(t_s) > 0 else np.array([])
+
     t_info.add_row("strobe samples",
                    f"{len(t_s)}  [dim](skipping first {args.transient:.1f} s)[/]")
     console.print(t_info)
@@ -177,15 +219,18 @@ def main():
         out_csv = os.path.join(clip_dir(stem), "driven_poincare.csv")
         with open(out_csv, "w", newline="", encoding="utf-8") as f:
             w = csv.writer(f)
-            w.writerow(["t_s", "theta1_deg", "omega1_deg_s"])
-            for tc, th, om in zip(t_s, th1_s, om1_s):
-                w.writerow([f"{tc:.4f}", f"{th:.4f}", f"{om:.4f}"])
+            w.writerow(["t_s", "theta1_deg", "omega1_deg_s",
+                        "theta2_deg", "omega2_deg_s"])
+            for tc, a1, w1, a2, w2 in zip(t_s, th1_s, om1_s, th2_s, om2_s):
+                w.writerow([f"{tc:.4f}", f"{a1:.4f}", f"{w1:.4f}",
+                            f"{a2:.4f}", f"{w2:.4f}"])
         console.print(f"  [dim]Saved → {out_csv}[/]")
 
     out_dir = os.path.join(FIGURES_DIR, "driven_poincare")
     os.makedirs(out_dir, exist_ok=True)
     out_png = os.path.join(out_dir, f"{stem}_driven_poincare.png")
-    make_figure(t, th1, om1, t_s, th1_s, om1_s,
+    make_figure(t, th1, th2, om1, om2,
+                t_s, th1_s, th2_s, om1_s, om2_s,
                 stem, f_drive, args.transient, out_png)
     console.print(f"  [dim]Saved → {out_png}[/]")
 

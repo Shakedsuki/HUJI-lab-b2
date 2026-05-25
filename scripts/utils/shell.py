@@ -1474,7 +1474,7 @@ FIG_TYPES = [
 
 # Figure types whose palette (contact sheet) is built by the shared
 # palette_sweep.py harness. theta2_timeseries has its own standalone sweep.
-PALETTE_VIA_HARNESS = {"phase_panels"}
+PALETTE_VIA_HARNESS = {"phase_panels", "driven_poincare"}
 
 def build_mode_figures():
     """Figures mode — per-clip figure matrix; enter renders a clip's figures,

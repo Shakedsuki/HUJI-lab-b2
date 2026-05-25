@@ -60,6 +60,8 @@ from paths import clip_dir                                              # noqa: 
 from figures_paths import aggregate_path                               # noqa: E402
 from theta2_timeseries import (load_metrics, stem_freq, classify)      # noqa: E402
 import phase_panels                                                    # noqa: E402
+import driven_poincare                                                 # noqa: E402
+from driven_helpers import load_driven_csv, strobe_sample              # noqa: E402
 
 
 # ── Palette registry ──────────────────────────────────────────────────────
@@ -72,6 +74,7 @@ class PaletteSpec:
     available: Callable[[str], bool] # stem -> is the source data present?
     cell_w: float = 4.3              # tile width  (inches) per grid column
     cell_h: float = 1.3              # tile height (inches) per grid row
+    ncols: int = 3                   # default clips per row (CLI --ncols overrides)
     key: str = ""                    # plain-English caption: what each tile shows
 
 
@@ -98,12 +101,42 @@ def _tile_panels(subfig, stem, data, meta):
     return regime
 
 
+def _has_verification(stem):
+    return os.path.exists(os.path.join(clip_dir(stem), "verification.csv"))
+
+
+def _load_drpoinc(stem):
+    f_drive, _ = driven_poincare.resolve_f_drive(stem, None)
+    t, th1, th2, om1, om2 = load_driven_csv(os.path.join(clip_dir(stem),
+                                                         "verification.csv"))
+    t_s, th2_s, om2_s = strobe_sample(t, th2, om2, f_drive, transient_s=5.0)
+    return {"t_s": t_s, "th2_s": th2_s, "om2_s": om2_s}
+
+
+def _tile_drpoinc(subfig, stem, data, meta):
+    """One driven-Poincaré tile = the arm-2 stroboscopic section (ω₂ vs θ₂),
+    time-coloured. Fixed point → loop → cloud = locked → quasiperiodic → chaos."""
+    ax = subfig.subplots(1, 1)
+    driven_poincare.draw_strobe_section(ax, data["th2_s"], data["om2_s"],
+                                        data["t_s"], "θ₂", "ω₂", compact=True)
+    regime, col = classify(meta)
+    subfig.suptitle(f"{stem_freq(stem):g} Hz", color=col, fontsize=9,
+                    fontweight="bold", x=0.02, ha="left")
+    return regime
+
+
 SPECS = {
     "phase_panels": PaletteSpec(
         label="phase panels", load=_load_panels, tile=_tile_panels,
         available=_has_tracking, cell_w=5.2, cell_h=2.1,
         key="each tile:  arm 1 ω₁–θ₁ (green)  |  arm 2 ω₂–θ₂ (red)  |  "
             "configuration θ₂–θ₁ (blue)    ·  angles in deg, ω in deg/s"),
+    "driven_poincare": PaletteSpec(
+        label="driven Poincare", load=_load_drpoinc, tile=_tile_drpoinc,
+        available=_has_verification, ncols=5, cell_w=2.4, cell_h=2.3,
+        key="each tile: arm-2 stroboscopic section ω₂ vs θ₂ "
+            "(one sample per drive period; colour = time)    "
+            "point → loop → cloud  =  locked → quasiperiodic → chaos  ·  deg, deg/s"),
 }
 
 
@@ -151,8 +184,8 @@ def parse_args():
                    help="figure type to tile across the family")
     p.add_argument("--family", default="3.2V",
                    help="voltage prefix to sweep (default 3.2V)")
-    p.add_argument("--ncols", type=int, default=3,
-                   help="clips per row in the grid (default 3)")
+    p.add_argument("--ncols", type=int, default=None,
+                   help="clips per row in the grid (default: per type)")
     p.add_argument("--qa-only", action="store_true",
                    help="restrict to clips that passed overlay QA review")
     p.add_argument("--no-open", action="store_true",
@@ -175,7 +208,7 @@ def main():
                          f"{args.family!r}")
 
     n = len(stems)
-    ncols = max(1, args.ncols)
+    ncols = max(1, args.ncols or spec.ncols)
     nrows = math.ceil(n / ncols)
     regimes = {}
     console.print(f"[bold]{args.family}[/] {spec.label} palette — {n} clips, "
