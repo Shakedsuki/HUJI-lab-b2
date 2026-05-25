@@ -83,6 +83,8 @@ def main():
         t, th = load_theta2(stem)
         draw_theta2(axes[k], stem, t, th, metrics.get(stem),
                     unwrap=True, compact=True, units="deg", mark_loops=False)
+        # short tiles auto-tick at +-5000; force the true +-8000 range
+        axes[k].set_yticks([-8000, 0, 8000])
     for k in range(n, len(axes)):
         axes[k].axis("off")
 
