@@ -49,6 +49,7 @@ SCRIPT_ATTRACTOR   = os.path.join(REPO_ROOT, "scripts", "analysis", "attractor.p
 SCRIPT_WINDING_SWEEP = os.path.join(REPO_ROOT, "scripts", "analysis", "winding_sweep.py")
 SCRIPT_PHASE3D_PLOTLY = os.path.join(REPO_ROOT, "scripts", "analysis", "phase_3d_plotly.py")
 SCRIPT_WATERFALL   = os.path.join(REPO_ROOT, "scripts", "analysis", "spectral_waterfall.py")
+SCRIPT_THETA2_SWEEP = os.path.join(REPO_ROOT, "scripts", "analysis", "theta2_timeseries_sweep.py")
 SCRIPT_FTLE_WINDOWS = os.path.join(REPO_ROOT, "scripts", "analysis", "ftle_windows.py")
 SCRIPT_CHAOS_WINDOWS = os.path.join(REPO_ROOT, "scripts", "analysis", "chaos_windows.py")
 SCRIPT_OVERLAY     = os.path.join(REPO_ROOT, "scripts", "analysis", "overlay_video.py")
@@ -1460,6 +1461,7 @@ FIG_TYPES = [
     ("return_map",          "ret",    "return map"),
     ("recurrence",          "rec",    "recurrence plot"),
     ("attractor",           "attr",   "attractor embed"),
+    ("theta2_timeseries",   "th2",    "θ₂ cumulative"),
 ]
 
 def build_mode_figures():
@@ -2006,6 +2008,9 @@ def _palette_rotsweep():
 def _palette_dimsweep():
     if not _ask_confirm("Run [bold]dimension sweep[/] across the 3.2V family?"): return
     _run(SCRIPT_DIM_SWEEP); _log_activity("dimension sweep"); _pause()
+def _palette_theta2sweep():
+    if not _ask_confirm("Build [bold]θ₂ cumulative sweep[/] across the 3.2V family?"): return
+    _run(SCRIPT_THETA2_SWEEP); _log_activity("theta2 sweep"); _pause()
 def _palette_windsweep():
     if not _ask_confirm("Run [bold]winding-number sweep[/] across the 3.2V family?"): return
     _run(SCRIPT_WINDING_SWEEP); _log_activity("winding sweep"); _pause()
@@ -2054,7 +2059,7 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
     shell_cmds = {"sw": do_w, "pa": do_p, "cal": do_c, "load": _load,
                   "wf": _palette_waterfall, "bif": _palette_bif, "rs": _palette_rotsweep,
                   "ds": _palette_dimsweep, "ws": _palette_windsweep, "ftle": _palette_ftle,
-                  "cw": _palette_chaoswin}
+                  "cw": _palette_chaoswin, "ts": _palette_theta2sweep}
 
     def cur():
         return modes[midx]
@@ -2065,7 +2070,7 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
                                "[bold]↵[/] or an action key runs it across the range · esc clears"),
               Text.from_markup("  [dim]switch[/]  m/1/2/3/4/5 mode   [bold]tab[/] cycle"),
               Text.from_markup("  [dim]palette[/]  [bold cyan]/[/]  sw switch · pa paths · cal calibrate · load videos · "
-                               "wf waterfall · bif bifurcation · rs rot · ds dim · ws wind · ftle windows · cw verdict")]
+                               "wf waterfall · bif bifurcation · rs rot · ds dim · ws wind · ts θ₂ · ftle windows · cw verdict")]
         rh = _resolve(m.hint)
         if rh: hp.append(Text.from_markup("  [bold]row[/]      " + rh))
         if m.col_targets:

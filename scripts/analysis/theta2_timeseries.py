@@ -265,8 +265,8 @@ def out_path(stem, unwrap, override=None):
     if override:
         return override
     base = figure_path("theta2_timeseries", stem)
-    if unwrap:
-        base = base[:-4] + "_cumulative.png"
+    if not unwrap:                       # wrapped is the non-default variant
+        base = base[:-4] + "_wrapped.png"
     return base
 
 

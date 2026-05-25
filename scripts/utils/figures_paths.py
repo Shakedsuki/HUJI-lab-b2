@@ -52,6 +52,7 @@ FIGURE_TYPES = {
     "lyapunov",
     "verification",
     "chaos_analyze",
+    "theta2_timeseries",
     "friction_fit",
     "combined",
     "debug",

@@ -55,6 +55,7 @@ STATIC_SUITE = [
     ("return_map",        "png", True,  "return_map.py",     []),
     ("recurrence",        "png", True,  "recurrence.py",     []),
     ("attractor",         "png", True,  "attractor.py",      []),
+    ("theta2_timeseries", "png", True,  "theta2_timeseries.py", []),
 ]
 
 VIDEO_SUITE = [
