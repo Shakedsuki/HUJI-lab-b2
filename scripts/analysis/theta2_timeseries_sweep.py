@@ -24,7 +24,9 @@ Output
 import argparse
 import math
 import os
+import subprocess
 import sys
+from pathlib import Path
 
 try:
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -35,6 +37,13 @@ import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+
+from rich.console import Console
+from rich.live import Live
+from rich.table import Table
+from rich import box
+
+console = Console()
 
 _HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.normpath(os.path.join(_HERE, "..", "utils")))
@@ -57,6 +66,43 @@ def parse_args():
     return p.parse_args()
 
 
+REGIME_COLOR = {"REGULAR": "green", "CHAOTIC": "red"}
+
+
+def _progress_grid(stems, ncols, regimes, cur):
+    """A rich matrix mirroring the aggregate layout: each cell fills (freq,
+    regime-coloured) as its plot renders. pending = dim dot, in-progress = …."""
+    g = Table(box=box.SQUARE, show_header=False, padding=(0, 1))
+    for _ in range(ncols):
+        g.add_column(justify="center", min_width=6)
+    cells = []
+    for k, s in enumerate(stems):
+        f = stem_freq(s)
+        if s in regimes:
+            cells.append(f"[{REGIME_COLOR.get(regimes[s], 'white')}]{f:g}[/]")
+        elif k == cur:
+            cells.append("[yellow]…[/]")
+        else:
+            cells.append("[dim]·[/]")
+    for i in range(0, len(cells), ncols):
+        row = cells[i:i + ncols]
+        row += [""] * (ncols - len(row))
+        g.add_row(*row)
+    return g
+
+
+def _open_file(path):
+    try:
+        if sys.platform == "win32":
+            os.startfile(path)
+        elif sys.platform == "darwin":
+            subprocess.run(["open", path], check=False)
+        else:
+            subprocess.run(["xdg-open", path], check=False)
+    except Exception:
+        pass
+
+
 def main():
     args = parse_args()
     metrics = load_metrics()
@@ -68,38 +114,48 @@ def main():
         stems = [s for s in stems if s in passed]
     if not stems:
         raise SystemExit(f"no clips found for family {args.family!r}")
-    print(f"{len(stems)} clips: {stems[0]} ... {stems[-1]}")
 
-    # ── per-clip standalone primitives ────────────────────────────────────
-    if not args.no_individual:
-        for stem in stems:
-            regime, _ = render_clip(stem, meta=metrics.get(stem))
-            print(f"  {stem:18s} [{regime}]")
-
-    # ── aggregate grid (frequency-ordered, compact tiles) ─────────────────
     n = len(stems)
     ncols = max(1, args.ncols)
     nrows = math.ceil(n / ncols)
-    fig, axes = plt.subplots(
-        nrows, ncols, figsize=(4.3 * ncols, 1.15 * nrows + 0.7), dpi=150,
-        sharey=True, constrained_layout=True)
-    axes = np.atleast_1d(axes).ravel()
+    regimes = {}
+    console.print(f"[bold]{args.family}[/] palette — {n} clips, {nrows}×{ncols} grid")
 
-    for k, stem in enumerate(stems):
-        t, th = load_theta2(stem)
-        draw_theta2(axes[k], stem, t, th, metrics.get(stem),
-                    unwrap=True, compact=True, units="deg", mark_loops=False)
-        # short tiles auto-tick at +-5000; force the true +-8000 range
-        axes[k].set_yticks([-8000, 0, 8000])
-    for k in range(n, len(axes)):
-        axes[k].axis("off")
+    with Live(_progress_grid(stems, ncols, regimes, 0), console=console,
+              refresh_per_second=8) as live:
+        # per-clip standalone primitives (the slow render pass)
+        if not args.no_individual:
+            for k, stem in enumerate(stems):
+                live.update(_progress_grid(stems, ncols, regimes, k))
+                regime, _ = render_clip(stem, meta=metrics.get(stem))
+                regimes[stem] = regime
+                live.update(_progress_grid(stems, ncols, regimes, k + 1))
 
-    fig.suptitle(rf"$\theta_2(t)$ cumulative (deg) — {args.family} frequency "
-                 r"sweep   (green = regular, red = chaotic)", fontsize=13)
-    out = aggregate_path(f"theta2_timeseries_{args.family}.png")
-    fig.savefig(out, dpi=150)
-    plt.close(fig)
-    print(f"aggregate -> {out}")
+        # aggregate (frequency-ordered, compact tiles)
+        fig, axes = plt.subplots(
+            nrows, ncols, figsize=(4.3 * ncols, 1.15 * nrows + 0.7), dpi=150,
+            sharey=True, constrained_layout=True)
+        axes = np.atleast_1d(axes).ravel()
+        for k, stem in enumerate(stems):
+            t, th = load_theta2(stem)
+            regime, _ = draw_theta2(axes[k], stem, t, th, metrics.get(stem),
+                                    unwrap=True, compact=True, units="deg",
+                                    mark_loops=False)
+            axes[k].set_yticks([-8000, 0, 8000])   # show the true +-8000 range
+            if stem not in regimes:                 # --no-individual: animate here
+                regimes[stem] = regime
+                live.update(_progress_grid(stems, ncols, regimes, k + 1))
+        for k in range(n, len(axes)):
+            axes[k].axis("off")
+        fig.suptitle(rf"$\theta_2(t)$ cumulative (deg) — {args.family} frequency "
+                     r"sweep   (green = regular, red = chaotic)", fontsize=13)
+        out = aggregate_path(f"theta2_timeseries_{args.family}.png")
+        fig.savefig(out, dpi=150)
+        plt.close(fig)
+        live.update(_progress_grid(stems, ncols, regimes, n))
+
+    console.print(f"[green]✓ palette ready[/]   [link={Path(out).as_uri()}]{out}[/link]")
+    _open_file(out)
 
 
 if __name__ == "__main__":
