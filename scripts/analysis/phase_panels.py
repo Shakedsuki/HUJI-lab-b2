@@ -205,6 +205,70 @@ def poincare_crossings(th1, om1):
     return np.array(crossings[:-1]), np.array(crossings[1:])
 
 # ─────────────────────────────────────────────
+# PER-PANEL DRAWS  (shared by the 6-panel figure and the palette tiles)
+# ─────────────────────────────────────────────
+# compact=True strips labels/colourbars/ticks for small aggregate tiles
+# (cf. theta2_timeseries.draw_theta2); the full form IS the per-clip figure,
+# so the palette can never drift from what each clip actually looks like.
+
+def _compact_ax(ax):
+    ax.set_xticks([])
+    ax.set_yticks([])
+    for sp in ax.spines.values():
+        sp.set_linewidth(0.5)
+
+def draw_phase1(ax, t, th1, om1, *, compact=False):
+    """Phase portrait — arm 1 (θ₁ vs ω₁), green. Returns the scatter handle
+    (None when compact) so the caller can attach a colourbar."""
+    if compact:
+        ax.scatter(th1, om1, c=COLOR_ARM1, s=1, alpha=0.35, linewidths=0)
+        ax.axhline(0, color='0.85', lw=0.4)
+        ax.axvline(0, color='0.85', lw=0.4)
+        _compact_ax(ax)
+        return None
+    norm = plt.Normalize(t.min(), t.max())
+    sc = ax.scatter(th1, om1, c=t, cmap=plt.cm.Greens, s=2, alpha=0.8, norm=norm)
+    ax.set_xlabel('θ₁ (deg)')
+    ax.set_ylabel('ω₁ (deg/s)')
+    ax.set_title('Phase portrait — arm 1')
+    ax.axhline(0, color='gray', lw=0.5, ls='--')
+    ax.axvline(0, color='gray', lw=0.5, ls='--')
+    ax.grid(True, alpha=0.3)
+    return sc
+
+def draw_phase2(ax, t, th2, om2, *, compact=False):
+    """Phase portrait — arm 2 (θ₂ vs ω₂), red."""
+    if compact:
+        ax.scatter(th2, om2, c=COLOR_ARM2, s=1, alpha=0.35, linewidths=0)
+        ax.axhline(0, color='0.85', lw=0.4)
+        ax.axvline(0, color='0.85', lw=0.4)
+        _compact_ax(ax)
+        return None
+    norm = plt.Normalize(t.min(), t.max())
+    sc = ax.scatter(th2, om2, c=t, cmap=plt.cm.Reds, s=2, alpha=0.8, norm=norm)
+    ax.set_xlabel('θ₂ (deg)')
+    ax.set_ylabel('ω₂ (deg/s)')
+    ax.set_title('Phase portrait — arm 2')
+    ax.axhline(0, color='gray', lw=0.5, ls='--')
+    ax.axvline(0, color='gray', lw=0.5, ls='--')
+    ax.grid(True, alpha=0.3)
+    return sc
+
+def draw_config(ax, t, th1, th2, *, compact=False):
+    """Configuration space θ₁ vs θ₂, time-coloured (blue)."""
+    if compact:
+        ax.scatter(th1, th2, c=COLOR_CONFIG, s=1, alpha=0.35, linewidths=0)
+        _compact_ax(ax)
+        return None
+    norm = plt.Normalize(t.min(), t.max())
+    sc = ax.scatter(th1, th2, c=t, cmap=plt.cm.Blues, s=2, alpha=0.8, norm=norm)
+    ax.set_xlabel('θ₁ (deg)')
+    ax.set_ylabel('θ₂ (deg)')
+    ax.set_title('Configuration space  θ₁ vs θ₂')
+    ax.grid(True, alpha=0.3)
+    return sc
+
+# ─────────────────────────────────────────────
 # PLOT
 # ─────────────────────────────────────────────
 
@@ -222,10 +286,6 @@ def make_figure(t, th1, th2, om1, om2, label, out_path, force_save):
     ax4 = fig.add_subplot(gs[1, 0])
     ax5 = fig.add_subplot(gs[1, 1])
     ax6 = fig.add_subplot(gs[1, 2])
-
-    # Colour maps: colour by time so we can see temporal evolution
-    norm = plt.Normalize(t.min(), t.max())
-    cmap = plt.cm.plasma
 
     # ── Panel 1: theta1(t) ──────────────────────
     # Insert NaN at ±180° wraps so the line breaks instead of streaking
@@ -252,35 +312,15 @@ def make_figure(t, th1, th2, om1, om2, label, out_path, force_save):
     ax2.grid(True, alpha=0.3)
 
     # ── Panel 3: theta1 vs theta2 ───────────────
-    # Configuration space — scatter coloured by time
-    sc = ax3.scatter(th1, th2, c=t, cmap=plt.cm.Blues,
-                     s=2, alpha=0.8, norm=norm)
-    ax3.set_xlabel('θ₁ (deg)')
-    ax3.set_ylabel('θ₂ (deg)')
-    ax3.set_title('Configuration space  θ₁ vs θ₂')
-    ax3.grid(True, alpha=0.3)
+    sc = draw_config(ax3, t, th1, th2)
     plt.colorbar(sc, ax=ax3, label='t (s)', shrink=0.85)
 
     # ── Panel 4: Phase portrait arm 1 ───────────
-    sc4 = ax4.scatter(th1, om1, c=t, cmap=plt.cm.Greens,
-                      s=2, alpha=0.8, norm=norm)
-    ax4.set_xlabel('θ₁ (deg)')
-    ax4.set_ylabel('ω₁ (deg/s)')
-    ax4.set_title('Phase portrait — arm 1')
-    ax4.axhline(0, color='gray', lw=0.5, ls='--')
-    ax4.axvline(0, color='gray', lw=0.5, ls='--')
-    ax4.grid(True, alpha=0.3)
+    sc4 = draw_phase1(ax4, t, th1, om1)
     plt.colorbar(sc4, ax=ax4, label='t (s)', shrink=0.85)
 
     # ── Panel 5: Phase portrait arm 2 ───────────
-    sc5 = ax5.scatter(th2, om2, c=t, cmap=plt.cm.Reds,
-                      s=2, alpha=0.8, norm=norm)
-    ax5.set_xlabel('θ₂ (deg)')
-    ax5.set_ylabel('ω₂ (deg/s)')
-    ax5.set_title('Phase portrait — arm 2')
-    ax5.axhline(0, color='gray', lw=0.5, ls='--')
-    ax5.axvline(0, color='gray', lw=0.5, ls='--')
-    ax5.grid(True, alpha=0.3)
+    sc5 = draw_phase2(ax5, t, th2, om2)
     plt.colorbar(sc5, ax=ax5, label='t (s)', shrink=0.85)
 
     # ── Panel 6: Poincaré return map ─────────────

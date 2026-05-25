@@ -50,6 +50,7 @@ SCRIPT_WINDING_SWEEP = os.path.join(REPO_ROOT, "scripts", "analysis", "winding_s
 SCRIPT_PHASE3D_PLOTLY = os.path.join(REPO_ROOT, "scripts", "analysis", "phase_3d_plotly.py")
 SCRIPT_WATERFALL   = os.path.join(REPO_ROOT, "scripts", "analysis", "spectral_waterfall.py")
 SCRIPT_THETA2_SWEEP = os.path.join(REPO_ROOT, "scripts", "analysis", "theta2_timeseries_sweep.py")
+SCRIPT_PALETTE_SWEEP = os.path.join(REPO_ROOT, "scripts", "analysis", "palette_sweep.py")
 SCRIPT_FTLE_WINDOWS = os.path.join(REPO_ROOT, "scripts", "analysis", "ftle_windows.py")
 SCRIPT_CHAOS_WINDOWS = os.path.join(REPO_ROOT, "scripts", "analysis", "chaos_windows.py")
 SCRIPT_OVERLAY     = os.path.join(REPO_ROOT, "scripts", "analysis", "overlay_video.py")
@@ -1471,6 +1472,10 @@ FIG_TYPES = [
     ("theta2_timeseries",   "th2vst", "θ₂ vs t"),
 ]
 
+# Figure types whose palette (contact sheet) is built by the shared
+# palette_sweep.py harness. theta2_timeseries has its own standalone sweep.
+PALETTE_VIA_HARNESS = {"phase_panels"}
+
 def build_mode_figures():
     """Figures mode — per-clip figure matrix; enter renders a clip's figures,
     column mode batches a type across clips, entry mode opens/creates one cell."""
@@ -1502,12 +1507,15 @@ def build_mode_figures():
         _do_suspended(ctx, lambda: _run(SCRIPT_BATCH_FIGS, "--stem", stem, "--types", t[0], "--force", "--all-quality"))
         _log_activity(f"create {t[1]}/{stem}")
     def palette_fig(t, ctx):
-        if t[0] != "theta2_timeseries":
+        ttype = t[0]
+        if ttype == "theta2_timeseries":          # standalone single-axis palette
+            def work(): _run(SCRIPT_THETA2_SWEEP, "--qa-only"); _log_activity("theta2 palette")
+        elif ttype in PALETTE_VIA_HARNESS:         # shared contact-sheet harness
+            def work(): _run(SCRIPT_PALETTE_SWEEP, "--type", ttype, "--qa-only"); _log_activity(f"{t[1]} palette")
+        else:
             _do_suspended(ctx, lambda: (console.print(
                 f"  [dim]no palette figure for {t[2]} yet[/]"), _pause()))
             return
-        def work():
-            _run(SCRIPT_THETA2_SWEEP, "--qa-only"); _log_activity("theta2 palette")
         _do_suspended(ctx, work,
             confirm=f"Build the [bold]{t[2]}[/] palette across QA-passed clips?")
     hint = ("[dim]↑↓[/] [bold]↵[/] render   [bold]a[/] all   [bold]c[/] column mode   [bold]e[/] entry mode   "
