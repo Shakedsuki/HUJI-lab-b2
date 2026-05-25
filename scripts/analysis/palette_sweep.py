@@ -72,6 +72,7 @@ class PaletteSpec:
     available: Callable[[str], bool] # stem -> is the source data present?
     cell_w: float = 4.3              # tile width  (inches) per grid column
     cell_h: float = 1.3              # tile height (inches) per grid row
+    key: str = ""                    # plain-English caption: what each tile shows
 
 
 def _has_tracking(stem):
@@ -100,7 +101,9 @@ def _tile_panels(subfig, stem, data, meta):
 SPECS = {
     "phase_panels": PaletteSpec(
         label="phase panels", load=_load_panels, tile=_tile_panels,
-        available=_has_tracking, cell_w=4.7, cell_h=1.7),
+        available=_has_tracking, cell_w=5.2, cell_h=2.1,
+        key="each tile:  arm 1 ω₁–θ₁ (green)  |  arm 2 ω₂–θ₂ (red)  |  "
+            "configuration θ₂–θ₁ (blue)    ·  angles in deg, ω in deg/s"),
 }
 
 
@@ -191,8 +194,11 @@ def main():
         for k in range(n, len(subfigs)):
             subfigs[k].set_facecolor("none")     # blank trailing cells
 
-        fig.suptitle(f"{spec.label} — {args.family} frequency sweep   "
-                     "(green = regular, red = chaotic)", fontsize=13)
+        title = (f"{spec.label} — {args.family} frequency sweep   "
+                 "(green = regular, red = chaotic)")
+        if spec.key:
+            title += "\n" + spec.key
+        fig.suptitle(title, fontsize=11)
         out = aggregate_path(f"{args.type}_{args.family}.png")
         fig.savefig(out, dpi=150)
         plt.close(fig)

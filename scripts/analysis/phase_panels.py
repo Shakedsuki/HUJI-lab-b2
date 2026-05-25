@@ -40,6 +40,7 @@ import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
+from matplotlib.ticker import MaxNLocator
 from scipy.signal import savgol_filter
 
 _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -211,9 +212,15 @@ def poincare_crossings(th1, om1):
 # (cf. theta2_timeseries.draw_theta2); the full form IS the per-clip figure,
 # so the palette can never drift from what each clip actually looks like.
 
-def _compact_ax(ax):
-    ax.set_xticks([])
-    ax.set_yticks([])
+def _compact_ax(ax, xlabel, ylabel):
+    """Tile axis dressing: short symbol labels + 3 sparse numeric ticks so the
+    scale is legible without cluttering the contact sheet."""
+    ax.set_xlabel(xlabel, fontsize=6, labelpad=1)
+    ax.set_ylabel(ylabel, fontsize=6, labelpad=1)
+    ax.tick_params(labelsize=5, length=2, pad=1)
+    ax.xaxis.set_major_locator(MaxNLocator(3))
+    ax.yaxis.set_major_locator(MaxNLocator(3))
+    ax.grid(True, alpha=0.2)
     for sp in ax.spines.values():
         sp.set_linewidth(0.5)
 
@@ -224,7 +231,7 @@ def draw_phase1(ax, t, th1, om1, *, compact=False):
         ax.scatter(th1, om1, c=COLOR_ARM1, s=1, alpha=0.35, linewidths=0)
         ax.axhline(0, color='0.85', lw=0.4)
         ax.axvline(0, color='0.85', lw=0.4)
-        _compact_ax(ax)
+        _compact_ax(ax, 'θ₁', 'ω₁')
         return None
     norm = plt.Normalize(t.min(), t.max())
     sc = ax.scatter(th1, om1, c=t, cmap=plt.cm.Greens, s=2, alpha=0.8, norm=norm)
@@ -242,7 +249,7 @@ def draw_phase2(ax, t, th2, om2, *, compact=False):
         ax.scatter(th2, om2, c=COLOR_ARM2, s=1, alpha=0.35, linewidths=0)
         ax.axhline(0, color='0.85', lw=0.4)
         ax.axvline(0, color='0.85', lw=0.4)
-        _compact_ax(ax)
+        _compact_ax(ax, 'θ₂', 'ω₂')
         return None
     norm = plt.Normalize(t.min(), t.max())
     sc = ax.scatter(th2, om2, c=t, cmap=plt.cm.Reds, s=2, alpha=0.8, norm=norm)
@@ -258,7 +265,7 @@ def draw_config(ax, t, th1, th2, *, compact=False):
     """Configuration space θ₁ vs θ₂, time-coloured (blue)."""
     if compact:
         ax.scatter(th1, th2, c=COLOR_CONFIG, s=1, alpha=0.35, linewidths=0)
-        _compact_ax(ax)
+        _compact_ax(ax, 'θ₁', 'θ₂')
         return None
     norm = plt.Normalize(t.min(), t.max())
     sc = ax.scatter(th1, th2, c=t, cmap=plt.cm.Blues, s=2, alpha=0.8, norm=norm)
