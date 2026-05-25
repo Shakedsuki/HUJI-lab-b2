@@ -76,6 +76,8 @@ class PaletteSpec:
     cell_h: float = 1.3              # tile height (inches) per grid row
     ncols: int = 3                   # default clips per row (CLI --ncols overrides)
     key: str = ""                    # plain-English caption: what each tile shows
+    colorbar: str = ""               # if set, add a shared viridis time colorbar
+                                     # with this label (tiles colour points by time)
 
 
 def _has_tracking(stem):
@@ -134,6 +136,7 @@ SPECS = {
     "driven_poincare": PaletteSpec(
         label="driven Poincare", load=_load_drpoinc, tile=_tile_drpoinc,
         available=_has_verification, ncols=5, cell_w=2.4, cell_h=2.3,
+        colorbar="strobe time",
         key="each tile: arm-2 stroboscopic section ω₂ vs θ₂ "
             "(one sample per drive period; colour = time)    "
             "point → loop → cloud  =  locked → quasiperiodic → chaos  ·  deg, deg/s"),
@@ -216,9 +219,16 @@ def main():
 
     with Live(_progress_grid(stems, ncols, regimes, 0), console=console,
               refresh_per_second=8) as live:
-        fig = plt.figure(figsize=(spec.cell_w * ncols, spec.cell_h * nrows + 0.6),
-                         dpi=150, constrained_layout=True)
-        subfigs = fig.subfigures(nrows, ncols, squeeze=False).ravel()
+        bar_h = 0.6 if spec.colorbar else 0.0
+        fig = plt.figure(
+            figsize=(spec.cell_w * ncols, spec.cell_h * nrows + 0.6 + bar_h),
+            dpi=150, constrained_layout=True)
+        if spec.colorbar:    # reserve a thin bottom strip for the shared colorbar
+            grid_fig, bar_fig = fig.subfigures(
+                2, 1, height_ratios=[spec.cell_h * nrows, bar_h])
+        else:
+            grid_fig, bar_fig = fig, None
+        subfigs = grid_fig.subfigures(nrows, ncols, squeeze=False).ravel()
         for k, stem in enumerate(stems):
             live.update(_progress_grid(stems, ncols, regimes, k))
             data = spec.load(stem)
@@ -226,6 +236,16 @@ def main():
             live.update(_progress_grid(stems, ncols, regimes, k + 1))
         for k in range(n, len(subfigs)):
             subfigs[k].set_facecolor("none")     # blank trailing cells
+
+        if bar_fig is not None:
+            sm = plt.cm.ScalarMappable(cmap=plt.cm.viridis, norm=plt.Normalize(0, 1))
+            cax = bar_fig.add_axes([0.36, 0.42, 0.28, 0.22])
+            cb = bar_fig.colorbar(sm, cax=cax, orientation="horizontal")
+            cb.set_ticks([0, 1])
+            cb.set_ticklabels(["early", "late"])
+            cb.ax.tick_params(labelsize=7)
+            cb.set_label(spec.colorbar, fontsize=8)
+            cb.ax.xaxis.set_label_position("top")   # above the bar so it can't clip
 
         title = (f"{spec.label} — {args.family} frequency sweep   "
                  "(green = regular, red = chaotic)")
