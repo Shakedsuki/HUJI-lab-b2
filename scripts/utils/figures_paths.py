@@ -56,6 +56,7 @@ FIGURE_TYPES = {
     "friction_fit",
     "combined",
     "debug",
+    "recurrence",
 }
 
 
