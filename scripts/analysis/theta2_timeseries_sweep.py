@@ -52,6 +52,8 @@ def parse_args():
                    help="columns in the aggregate grid (default 3)")
     p.add_argument("--no-individual", action="store_true",
                    help="build only the aggregate, skip per-clip figures")
+    p.add_argument("--qa-only", action="store_true",
+                   help="restrict to clips that passed overlay QA review")
     return p.parse_args()
 
 
@@ -60,6 +62,10 @@ def main():
     metrics = load_metrics()
     stems = sorted([s for s in metrics if s.startswith(args.family)],
                    key=stem_freq)
+    if args.qa_only:
+        from batch_figures import passed_qa_stems
+        passed = passed_qa_stems()
+        stems = [s for s in stems if s in passed]
     if not stems:
         raise SystemExit(f"no clips found for family {args.family!r}")
     print(f"{len(stems)} clips: {stems[0]} ... {stems[-1]}")

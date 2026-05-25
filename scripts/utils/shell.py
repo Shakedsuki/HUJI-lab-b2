@@ -1387,7 +1387,7 @@ def _vid_exists(vtype, stem):
 
 def _inventory_mode(name, key, color, types, exists_fn, *, key_actions, hint, glyph="",
                     on_col=None, col_hint=None,
-                    on_view=None, on_create=None, cell_hint=None,
+                    on_view=None, on_create=None, cell_hint=None, on_palette=None,
                     preview_fn=None, preview_key=None, explain_fn=None, insights=None):
     """Navigable clip×type matrix.
     on_col(type_tuple, ctx) enables column mode ('c'): ←→ pick a type column, enter
@@ -1440,12 +1440,19 @@ def _inventory_mode(name, key, color, types, exists_fn, *, key_actions, hint, gl
                          + ("   [bold]↵[/]/[bold]o[/] open" if on_view else "")
                          + ("   [bold]+[/] create" if on_create else "")
                          + "   [bold]↑[/] sort   [bold]e[/]/[bold]r[/] row mode   [bold]q[/] quit")
+    palette_action = None
+    if on_palette:
+        def palette_at(hcol, ctx):
+            ti = hcol - 2                      # columns: [#, clip, type0, type1, ...]
+            if 0 <= ti < len(types):
+                on_palette(types[ti], ctx)
+        palette_action = palette_at
     return Mode(name=name, key=key, color=color, glyph=glyph, build_rows=build_rows,
                 columns=columns, key_actions=key_actions, legend=legend, hint=hint,
                 col_targets=col_targets, col_actions=col_actions, col_hint=col_hint,
                 cell_targets=col_targets, cell_actions=cell_actions, cell_hint=cell_hint,
                 preview_fn=preview_fn, preview_key=preview_key, explain_fn=explain_fn,
-                insights=insights, sort_keys=sort_keys)
+                insights=insights, sort_keys=sort_keys, palette_action=palette_action)
 
 # Figures
 FIG_TYPES = [
@@ -1461,7 +1468,7 @@ FIG_TYPES = [
     ("return_map",          "ret",    "return map"),
     ("recurrence",          "rec",    "recurrence plot"),
     ("attractor",           "attr",   "attractor embed"),
-    ("theta2_timeseries",   "th2",    "θ₂ cumulative"),
+    ("theta2_timeseries",   "th2vst", "θ₂ vs t"),
 ]
 
 def build_mode_figures():
@@ -1494,11 +1501,20 @@ def build_mode_figures():
     def create_fig(stem, t, ctx):
         _do_suspended(ctx, lambda: _run(SCRIPT_BATCH_FIGS, "--stem", stem, "--types", t[0], "--force", "--all-quality"))
         _log_activity(f"create {t[1]}/{stem}")
+    def palette_fig(t, ctx):
+        if t[0] != "theta2_timeseries":
+            _do_suspended(ctx, lambda: (console.print(
+                f"  [dim]no palette figure for {t[2]} yet[/]"), _pause()))
+            return
+        def work():
+            _run(SCRIPT_THETA2_SWEEP, "--qa-only"); _log_activity("theta2 palette")
+        _do_suspended(ctx, work,
+            confirm=f"Build the [bold]{t[2]}[/] palette across QA-passed clips?")
     hint = ("[dim]↑↓[/] [bold]↵[/] render   [bold]a[/] all   [bold]c[/] column mode   [bold]e[/] entry mode   "
             "[bold]h[/] help   [bold]q[/] quit")
     return _inventory_mode("figures", "3", CLR_FIGURES, FIG_TYPES, _fig_exists,
                            key_actions={"enter": render_clip, "a": fill_all},
-                           hint=hint, on_col=col_batch,
+                           hint=hint, on_col=col_batch, on_palette=palette_fig,
                            on_view=view_fig, on_create=create_fig)
 
 def do_fi(tr):
@@ -1949,6 +1965,7 @@ class Mode:
     explain_fn: object = None    # row -> explanation panel; enables `x` explain
     insights: object = None      # [(id, label, qi_key)] for `i` insights mode; enables `i`
     sort_keys: object = None     # per-column fn(row)->value (or None); enables header-sort in entry mode
+    palette_action: object = None  # fn(table_col_pos, ctx); enables `p` on a column header in entry mode
 
 def _ring_title(modes, active):
     t = Text()
@@ -2008,9 +2025,6 @@ def _palette_rotsweep():
 def _palette_dimsweep():
     if not _ask_confirm("Run [bold]dimension sweep[/] across the 3.2V family?"): return
     _run(SCRIPT_DIM_SWEEP); _log_activity("dimension sweep"); _pause()
-def _palette_theta2sweep():
-    if not _ask_confirm("Build [bold]θ₂ cumulative sweep[/] across the 3.2V family?"): return
-    _run(SCRIPT_THETA2_SWEEP); _log_activity("theta2 sweep"); _pause()
 def _palette_windsweep():
     if not _ask_confirm("Run [bold]winding-number sweep[/] across the 3.2V family?"): return
     _run(SCRIPT_WINDING_SWEEP); _log_activity("winding sweep"); _pause()
@@ -2059,7 +2073,7 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
     shell_cmds = {"sw": do_w, "pa": do_p, "cal": do_c, "load": _load,
                   "wf": _palette_waterfall, "bif": _palette_bif, "rs": _palette_rotsweep,
                   "ds": _palette_dimsweep, "ws": _palette_windsweep, "ftle": _palette_ftle,
-                  "cw": _palette_chaoswin, "ts": _palette_theta2sweep}
+                  "cw": _palette_chaoswin}
 
     def cur():
         return modes[midx]
@@ -2070,7 +2084,7 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
                                "[bold]↵[/] or an action key runs it across the range · esc clears"),
               Text.from_markup("  [dim]switch[/]  m/1/2/3/4/5 mode   [bold]tab[/] cycle"),
               Text.from_markup("  [dim]palette[/]  [bold cyan]/[/]  sw switch · pa paths · cal calibrate · load videos · "
-                               "wf waterfall · bif bifurcation · rs rot · ds dim · ws wind · ts θ₂ · ftle windows · cw verdict")]
+                               "wf waterfall · bif bifurcation · rs rot · ds dim · ws wind · ftle windows · cw verdict")]
         rh = _resolve(m.hint)
         if rh: hp.append(Text.from_markup("  [bold]row[/]      " + rh))
         if m.col_targets:
@@ -2247,6 +2261,7 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
                      + "   [bold]i[/]/[bold]q[/] back")
             elif on_header:
                 h = ("[bold cyan]sort[/]   [dim]←→[/] column   [bold]↵[/] ascending · again descending"
+                     + ("   [bold]p[/] palette" if m.palette_action else "")
                      + ("   [bold]↓[/] cells" if has_cells else "")
                      + "   [bold]e[/]/[bold]r[/] row mode   [bold]q[/] quit")
             elif mode == "cell" and m.cell_hint: h = _resolve(m.cell_hint)
@@ -2362,6 +2377,9 @@ def run_modes(modes, start=0, phase_label=None, selected_bg="grey23", overall_fn
                 elif key in ("down", "j"):
                     if has_cells: idx = 0; cidx = 0          # descend into the cell grid
                 elif key in ("r", "e"): mode = "row"
+                elif key == "p" and m.palette_action and sort_tgts:
+                    hcol = sort_tgts[max(0, min(cidx, len(sort_tgts) - 1))]
+                    if m.palette_action(hcol, ctx) == "quit": break
                 elif key == "enter" and sort_tgts:
                     col = sort_tgts[max(0, min(cidx, len(sort_tgts) - 1))]
                     cur_s = sort_state.get(m.key)
