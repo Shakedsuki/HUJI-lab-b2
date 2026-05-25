@@ -1460,7 +1460,7 @@ FIG_TYPES = [
     ("phase_panels",        "panels", "phase panels"),
     ("poincare",            "poinc",  "poincaré section"),
     ("phase_3d_trajectory", "3d",     "3D trajectory"),
-    ("chaos_analyze",       "chaos",  "chaos card"),
+    ("chaos_analyze",       "power",  "power spectrum"),
     ("lyapunov",            "lyap",   "lyapunov"),
     ("seismograph_v1",      "seis1",  "seismograph v1 (spiral)"),
     ("seismograph_v2",      "seis2",  "seismograph v2 (ripple)"),
@@ -1474,7 +1474,7 @@ FIG_TYPES = [
 
 # Figure types whose palette (contact sheet) is built by the shared
 # palette_sweep.py harness. theta2_timeseries has its own standalone sweep.
-PALETTE_VIA_HARNESS = {"phase_panels", "driven_poincare"}
+PALETTE_VIA_HARNESS = {"phase_panels", "driven_poincare", "chaos_analyze"}
 
 def build_mode_figures():
     """Figures mode — per-clip figure matrix; enter renders a clip's figures,

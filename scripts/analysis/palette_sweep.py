@@ -61,6 +61,7 @@ from figures_paths import aggregate_path                               # noqa: E
 from theta2_timeseries import (load_metrics, stem_freq, classify)      # noqa: E402
 import phase_panels                                                    # noqa: E402
 import driven_poincare                                                 # noqa: E402
+import chaos_analyze                                                   # noqa: E402
 from driven_helpers import load_driven_csv, strobe_sample              # noqa: E402
 
 
@@ -75,6 +76,7 @@ class PaletteSpec:
     cell_w: float = 4.3              # tile width  (inches) per grid column
     cell_h: float = 1.3              # tile height (inches) per grid row
     ncols: int = 3                   # default clips per row (CLI --ncols overrides)
+    out_name: str = ""               # aggregate filename stem (default: the --type key)
     key: str = ""                    # plain-English caption: what each tile shows
     colorbar: str = ""               # if set, add a shared viridis time colorbar
                                      # with this label (tiles colour points by time)
@@ -127,6 +129,26 @@ def _tile_drpoinc(subfig, stem, data, meta):
     return regime
 
 
+def _load_power(stem):
+    d = chaos_analyze.load_free_swing(os.path.join(clip_dir(stem), "verification.csv"))
+    dt = float(np.median(np.diff(d["time_s"])))
+    freq, spec = chaos_analyze.compute_psd(d["th2"], dt)
+    f_drive, _ = driven_poincare.resolve_f_drive(stem, None)
+    return {"freq": freq, "spec": spec, "f_drive": f_drive}
+
+
+def _tile_power(subfig, stem, data, meta):
+    """One power tile = θ₂ power spectrum (log-log), regime-coloured, with dotted
+    lines at the drive fundamental + harmonics. broadband = chaotic, peaks = regular."""
+    ax = subfig.subplots(1, 1)
+    regime, col = classify(meta)
+    chaos_analyze.draw_power_spectrum(ax, data["freq"], data["spec"], compact=True,
+                                      color=col, f_drive=data["f_drive"], n_harm=3)
+    subfig.suptitle(f"{stem_freq(stem):g} Hz", color=col, fontsize=9,
+                    fontweight="bold", x=0.02, ha="left")
+    return regime
+
+
 SPECS = {
     "phase_panels": PaletteSpec(
         label="phase panels", load=_load_panels, tile=_tile_panels,
@@ -140,6 +162,12 @@ SPECS = {
         key="each tile: arm-2 stroboscopic section ω₂ vs θ₂ "
             "(one sample per drive period; colour = time)    "
             "point → loop → cloud  =  locked → quasiperiodic → chaos  ·  deg, deg/s"),
+    "chaos_analyze": PaletteSpec(
+        label="power spectrum", load=_load_power, tile=_tile_power,
+        available=_has_verification, ncols=5, cell_w=2.6, cell_h=2.2,
+        out_name="power",
+        key="each tile: θ₂ power spectrum (log-log, Hz vs deg²)   dotted = drive "
+            "f & harmonics   ·   broadband = chaotic, sharp peaks = regular"),
 }
 
 
@@ -252,7 +280,7 @@ def main():
         if spec.key:
             title += "\n" + spec.key
         fig.suptitle(title, fontsize=11)
-        out = aggregate_path(f"{args.type}_{args.family}.png")
+        out = aggregate_path(f"{spec.out_name or args.type}_{args.family}.png")
         fig.savefig(out, dpi=150)
         plt.close(fig)
         live.update(_progress_grid(stems, ncols, regimes, n))

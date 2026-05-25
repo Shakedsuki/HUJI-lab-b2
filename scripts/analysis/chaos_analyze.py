@@ -55,6 +55,7 @@ _THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(_THIS_DIR, "..", "utils"))
 from paths import DATA_DIR, MEAS_DIR, VIDEOS_DIR, EXPERIMENTS, REPO_ROOT, clip_dir  # noqa: E402
 from figures_paths import figure_path, mirror_to_ready  # noqa: E402
+from figure_style import compact_tile_ax  # noqa: E402
 
 # scripts/analysis/ → scripts/ → repo root
 
@@ -456,6 +457,44 @@ def print_card(stem, topo, stat, verdict, reasons):
 # OUTPUT — PLOT
 # ─────────────────────────────────────────────
 
+def compute_psd(th2, dt):
+    """Welch power spectral density of θ₂(t). Returns (freq, spec)."""
+    th2 = np.asarray(th2, dtype=float)
+    N = len(th2)
+    if N < 2:
+        return np.array([]), np.array([])
+    nperseg = min(N, 1024)
+    freq, spec = welch(th2 - th2.mean(), fs=1.0 / max(dt, 1e-6),
+                       nperseg=nperseg, noverlap=nperseg // 2, window="hann")
+    return freq, spec
+
+
+def draw_power_spectrum(ax, freq, spec, *, compact=False, color="royalblue",
+                        f_drive=None, n_harm=0, k_str=None):
+    """θ₂ power spectrum on log-log axes — shared by the per-clip figure and the
+    power palette tile. broadband floor = chaotic, sharp discrete peaks = regular.
+    compact=True trims for tiles; f_drive + n_harm draw faint dotted lines at the
+    drive fundamental and its harmonics (used by the palette tile)."""
+    mask = (freq > 0) & (spec > 0)
+    if mask.any():
+        ax.loglog(freq[mask], spec[mask], color=color,
+                  lw=(0.5 if compact else 0.6), alpha=0.85)
+    if f_drive and n_harm and f_drive > 0:
+        for h in range(1, n_harm + 1):
+            ax.axvline(h * f_drive, color="0.6", lw=0.4, ls=":", alpha=0.7, zorder=0)
+    if compact:
+        compact_tile_ax(ax, "Hz", "deg²", logx=True, logy=True)
+    else:
+        ax.set_xlabel("frequency (Hz)")
+        ax.set_ylabel("power (deg²)")
+        title = ("power spectrum of θ₂(t)\n"
+                 "(broadband = chaotic, sharp peaks = regular)")
+        if k_str is not None:
+            title += f"   K = {k_str}"
+        ax.set_title(title)
+        ax.grid(alpha=0.25, which="both")
+
+
 def make_plot(stem, topo, stat, out_path):
     t          = topo["time_s"] - topo["time_s"][0]
     theta2_abs = topo["theta2_abs"]
@@ -497,23 +536,9 @@ def make_plot(stem, topo, stat, out_path):
 
     # ── Right panel: power spectrum of θ₂(t) on log-log axes ─────────
     ax = axes[1]
-    N  = len(th2)
-    if N > 1:
-        dt   = float(np.median(np.diff(topo["time_s"])))
-        nperseg = min(N, 1024)
-        freq, spec = welch(th2 - th2.mean(), fs=1.0 / max(dt, 1e-6),
-                           nperseg=nperseg, noverlap=nperseg // 2, window="hann")
-        mask = (freq > 0) & (spec > 0)
-        if mask.any():
-            ax.loglog(freq[mask], spec[mask],
-                      color="royalblue", lw=0.6, alpha=0.85)
+    freq, spec = compute_psd(th2, float(np.median(np.diff(topo["time_s"]))))
     K_str = f"{stat['K_chaos']:.2f}" if not np.isnan(stat["K_chaos"]) else "n/a"
-    ax.set_xlabel("frequency (Hz)")
-    ax.set_ylabel("power (deg²)")
-    ax.set_title(
-        f"power spectrum of θ₂(t)\n"
-        f"(broadband = chaotic, sharp peaks = regular)   K = {K_str}")
-    ax.grid(alpha=0.25, which="both")
+    draw_power_spectrum(ax, freq, spec, k_str=K_str)
 
     plt.tight_layout()
     plt.savefig(out_path, dpi=140)
