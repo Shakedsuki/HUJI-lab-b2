@@ -52,9 +52,8 @@ chaos/
 │
 ├── reports/                      writeups for the course
 │   ├── lab-assignment.pdf
-│   ├── weekly/                   short catch-up reports
 │   ├── interim/                  midterm-style summaries
-│   └── final/                    final reports
+│   └── final/                    final report (week 6 resonance sweep)
 │
 └── requirements.txt
 ```
@@ -412,7 +411,6 @@ Each entry is keyed by `config_description`.
 | Path                                                                                           | Audience   | What's in it                                               |
 | ---------------------------------------------------------------------------------------------- | ---------- | ---------------------------------------------------------- |
 | [`reports/lab-assignment.pdf`](reports/lab-assignment.pdf)                                     | original   | Course assignment (Diodes + RLC + Dynamical Systems, 2025) |
-| [`reports/weekly/`](reports/weekly/)                                                           | instructor | Lightweight catch-up notes                                 |
 | [`reports/interim/01_week1-2_diode-rld/`](reports/interim/01_week1-2_diode-rld/)               | course     | Interim report — weeks 1–2 (diode + RLD)                   |
 | [`reports/interim/02_week3-4_pendulum-free/`](reports/interim/02_week3-4_pendulum-free/)       | course     | Interim report — weeks 3–4 ("Expansion report 1")          |
 | [`reports/interim/03_week5-6_pendulum-motor-driven/`](reports/interim/03_week5-6_pendulum-motor-driven/) | course | Interim report — weeks 5–6 ("Expansion report 2") |
