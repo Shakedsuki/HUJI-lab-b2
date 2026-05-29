@@ -110,6 +110,23 @@ def select_low_mid_high(stems=None):
     return [stems[0], stems[len(stems) // 2], stems[-1]]
 
 
+def select_evenly(n, stems=None):
+    """Pick n clips evenly spaced across the frequency-sorted sweep, endpoints
+    included — a left-to-right sample of the route to chaos. Dedupes if n is
+    large relative to the clip count."""
+    if stems is None:
+        stems = list_clips()
+    if len(stems) < n:
+        raise ValueError(f"need >={n} clips, found {len(stems)}")
+    idx = [round(i * (len(stems) - 1) / (n - 1)) for i in range(n)]
+    out, seen = [], set()
+    for i in idx:
+        if i not in seen:
+            seen.add(i)
+            out.append(stems[i])
+    return out
+
+
 def load_metrics():
     """stem -> row dict from the aggregate chaos_sweep_*.csv (D2, lambda1...).
     Returns {} if no such csv is found."""
