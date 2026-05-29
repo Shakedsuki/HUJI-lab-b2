@@ -98,8 +98,6 @@ The motor-driven videos are copied separately into each driven phase's
 The pipeline's primary interface is an **interactive Rich TUI hub**. From
 the repo root just run `chaos` with no arguments (PowerShell: `.\chaos`):
 
-![The chaos hub — track / analyze / output / info, with the active phase, an XP progress bar, and live verified / tracked / pending counts](docs/chaos-hub.png)
-
 The header shows the active **phase**, an XP-style progress bar, and a
 live `verified · tracked · pending` count. Type a one- or two-character
 key to act; `-` folds the hub to a compact list, `+` expands it again,
@@ -344,7 +342,7 @@ calibration — see `thresholds.get_pivot_arm(stem)`.
 
 ### Writeup
 
-[`reports/final/week5-6_pendulum-motor-driven/`](reports/final/week5-6_pendulum-motor-driven/) — "Expansion report 2": LyX source, PDF, per-clip phase-panel PNGs.
+[`reports/interim/03_week5-6_pendulum-motor-driven/`](reports/interim/03_week5-6_pendulum-motor-driven/) — "Expansion report 2": LyX source, PDF, per-clip phase-panel PNGs.
 
 ---
 
@@ -417,7 +415,8 @@ Each entry is keyed by `config_description`.
 | [`reports/weekly/`](reports/weekly/)                                                           | instructor | Lightweight catch-up notes                                 |
 | [`reports/interim/01_week1-2_diode-rld/`](reports/interim/01_week1-2_diode-rld/)               | course     | Interim report — weeks 1–2 (diode + RLD)                   |
 | [`reports/interim/02_week3-4_pendulum-free/`](reports/interim/02_week3-4_pendulum-free/)       | course     | Interim report — weeks 3–4 ("Expansion report 1")          |
-| [`reports/final/week5-6_pendulum-motor-driven/`](reports/final/week5-6_pendulum-motor-driven/) | course     | Final report — motor-driven ("Expansion report 2")         |
+| [`reports/interim/03_week5-6_pendulum-motor-driven/`](reports/interim/03_week5-6_pendulum-motor-driven/) | course | Interim report — weeks 5–6 ("Expansion report 2") |
+| [`reports/final/`](reports/final/)                                                             | course     | Final report — week 6 resonance sweep (in progress)        |
 
 ---
 
