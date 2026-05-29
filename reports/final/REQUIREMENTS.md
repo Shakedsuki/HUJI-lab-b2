@@ -76,15 +76,76 @@
 - Define all notation after presenting the equation
 - Use standard symbols (ω for frequency, etc.) — be consistent
 
+---
+
+## Introduction scope
+
+- What is chaos; chaotic systems in general
+- The double pendulum system — setup, driven vs free
+- The chaotic regime: when/why it appears, what characterises it
+- Methodology / topology used in the analysis:
+  - Poincaré sections (stroboscopic)
+  - Do a brief "colloquium" treatment — accessible but rigorous
+
+---
+
+## Figures — confirmed
+
+These are in. Scripts go in `scripts/`, output PNGs in `figures/`.
+
+### Fig A — Spectral waterfall
+Source: `scripts/analysis/spectral_waterfall.py` (existing aggregate script)
+
+- Per sample: take the last X% of frames (no transients), compute FFT
+- Stack all week-6 samples into a 2D plot: x = drive frequency, y = signal frequency, color = FFT amplitude
+- Shows how the frequency content of θ₂ evolves across the resonance sweep
+- **Extra idea (separate graph):** extract just the amplitude at f_drive from each sample → amplitude-at-resonance vs f_drive curve
+
+### Fig B — θ₂ time series (3-panel)
+Source: `scripts/analysis/phase_analysis.py` or new script
+
+- Three representative clips: periodic (green) / chaotic (red) / periodic (green)
+- Time window: first 10 s (0–10 t), wrapped angle
+- Shows the qualitative transition visually
+
+### Fig C — Phase space of arm 2, single row
+Source: `scripts/analysis/phase_panels.py` (codename: Gaussian row)
+
+- θ₂ vs ω₂ phase portrait for all week-6 clips, laid out in a single row ordered by f_drive
+- Shows the P1 → P2 → chaos → P1 progression across the sweep
+
+---
+
+## Figures — ideas / candidates
+
+Not committed yet. Revisit after confirmed figures are drafted.
+
+- **Lyapunov exponent λ₁ vs f_drive** — sweeps all week-6 clips; already computed per-clip, just needs aggregation. Strong quantitative marker of chaos onset.
+- **Stroboscopic Poincaré spread** — for each clip compute std-dev / area / volume of the stroboscopic section; plot vs f_drive. Extremum marks the chaotic regime.
+- **Phase-space area of arm 2** — area enclosed by the θ₂ phase portrait (normalised); another scalar proxy for chaos.
+- **Rotation / flip count** — time-window counter (last 50% of frames, no transients): how many full CW/CCW loops per arm per clip → aggregate mean vs f_drive.
+- **Energy graph** — reconstructed mechanical energy vs time (or vs f_drive). TBD whether this adds independent information.
+
+---
+
+## Errors / uncertainties to address
+
+- Pixel-to-angle calibration uncertainty (pivot position, arm-length fit)
+- Frame-dropout rate and its effect on ω estimates
+- Stroboscopic sampling jitter (f_drive precision from function generator)
+- Sensitivity of λ₁ estimate to window length
+
+---
+
 ## Directory Structure (this folder)
 ```
 reports/final/
 ├── REQUIREMENTS.md       ← this file
-├── report/               ← report document (LyX/LaTeX/etc.)
+├── final_report.lyx      ← report document
+├── system.png / .pptx    ← experimental setup diagram
 ├── figures/              ← figures that appear in the report
 ├── scripts/              ← final-report-specific scripts (produce figures/data)
-├── data/                 ← data files used in the report
-└── week5-6_pendulum-motor-driven/  ← existing expansion report (keep as reference)
+└── data/                 ← data files used in the report
 ```
 
 **Rule:** every figure in `figures/` has a corresponding script in `scripts/` that produces it.
