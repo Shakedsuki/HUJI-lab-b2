@@ -1,0 +1,2547 @@
+#LyX 2.4 created this file. For more info see https://www.lyx.org/
+\lyxformat 620
+\begin_document
+\begin_header
+\save_transient_properties true
+\origin unavailable
+\textclass article
+\begin_preamble
+\usepackage{pdfpages}
+\raggedbottom
+\end_preamble
+\use_default_options true
+\maintain_unincluded_children no
+\language hebrew
+\language_package default
+\inputencoding utf8
+\fontencoding auto
+\font_roman "default" "default"
+\font_sans "default" "default"
+\font_typewriter "default" "default"
+\font_math "auto" "auto"
+\font_default_family default
+\use_non_tex_fonts false
+\font_sc false
+\font_roman_osf false
+\font_sans_osf false
+\font_typewriter_osf false
+\font_sf_scale 100 100
+\font_tt_scale 100 100
+\use_microtype false
+\use_dash_ligatures true
+\graphics default
+\default_output_format default
+\output_sync 0
+\bibtex_command default
+\index_command default
+\float_placement h
+\float_alignment class
+\paperfontsize default
+\spacing single
+\use_hyperref false
+\papersize default
+\use_geometry true
+\use_package amsmath 1
+\use_package amssymb 1
+\use_package cancel 1
+\use_package esint 1
+\use_package mathdots 1
+\use_package mathtools 1
+\use_package mhchem 1
+\use_package stackrel 1
+\use_package stmaryrd 1
+\use_package undertilde 1
+\cite_engine basic
+\cite_engine_type default
+\biblio_style plain
+\use_bibtopic false
+\use_indices false
+\paperorientation portrait
+\suppress_date false
+\justification true
+\use_refstyle 1
+\use_formatted_ref 0
+\use_minted 0
+\use_lineno 0
+\index Index
+\shortcut idx
+\color #008080
+\end_index
+\leftmargin 1cm
+\topmargin 2cm
+\rightmargin 1cm
+\bottommargin 2cm
+\secnumdepth 3
+\tocdepth 3
+\paragraph_separation indent
+\paragraph_indentation default
+\is_math_indent 0
+\math_numbering_side default
+\quotes_style plain
+\dynamic_quotes 0
+\papercolumns 2
+\papersides 1
+\paperpagestyle default
+\tablestyle default
+\tracking_changes false
+\output_changes false
+\change_bars false
+\postpone_fragile_content true
+\html_math_output 0
+\html_css_as_file 0
+\html_be_strict false
+\docbook_table_output 0
+\docbook_mathml_prefix 1
+\html_math_img_scale 1.1
+\end_header
+
+\begin_body
+
+\begin_layout Standard
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+twocolumn[   
+\backslash
+begin{@twocolumnfalse} 
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Title
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+ 
+\backslash
+vskip -3em
+\end_layout
+
+\end_inset
+
+השפעת תדירות השדה המגנטי המאלץ על המימד הפרקטלי בדומיינים מגנטיים בגרנט פרימגנטי
+\end_layout
+
+\begin_layout Author
+אלעד רויכמן,
+ ניר כהן
+\end_layout
+
+\begin_layout Abstract
+האם לתדירות השדה המגנטי החיצוני יש השפעה על צורת המגנטיזציה של החומר?
+ כדי לבדוק זאת בחנו את הקשר בין המימד הפרקטלי של דומיינים מגנטיים בגרנט לשדה המגנטי החיצוני,
+ וכיצד הקשר תלוי בתדר השדה.
+ לצורך כך,
+ צילמנו פיסת גרנט תוך כדי הפעלת שדה מגנטי חיצוני בצורת סינוס בתדירויות שונות.
+ מצאנו שקיימת השפעה בסיסית של התדירות של השדה על הקשר בין הפרקטליות,
+ והיא שהמימד הפרקטלי המקסימלי נמוך יותר כאשר התדירות גבוהה יותר.
+ ייתכן כי השפעה זאת נובעת מחוסר זמן להתייצב על מצבם החדש,
+ כלומר רלקסציה.
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+end{@twocolumnfalse} ]
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+מבוא
+\end_layout
+
+\begin_layout Standard
+ראשית נגדיר כמה מושגי יסוד.
+ החשוב מהם הוא דומיינים מגנטיים.
+ בחומרים מגנטיים,
+ החומר נוטה להתחלק לאזורים מיקרוסקופיים בהם כל הדיפולים מצביעים באותו הכיוון.
+ אזורים אלה נקראים דומיינים מגנטיים.
+ כאשר מופעל שדה מגנטי חיצוני חזק על החומר,
+ הוא יכול לגרום לכל הדומיינים להצביע באותו הכיוון.
+ מצב זה נקרא רוויה מגנטית,
+ והמגנטיזציה של החומר היא מקסימלית.
+ היציבות של המצב הממוגנט משתנה כתלות בחומר,
+ אך ככלל המצב המקרוסקופי היציב הוא שדומיינים שכנים לא מצביעים באותו הכיוון.
+ קיימים סוגים שונים של חומרים מגנטיים,
+ וביניהם חומרים פרומגנטיים ופרימגנטיים.
+ בעוד שבחומרים פרומגנטיים הדיפולים השכנים נוטים להסתדר במקביל ובאותו הכיוון,
+ בפרימגנטים הדיפולים השכנים נוטים להיות מקבילים אחד לשני,
+ אבל בכיוון ההפוך.
+ זה מוביל לכך שבפרימגנטיים הדומיינים המגנטים בהם מצביעים לאורך ציר אחד משותף,
+ כשהם פונים לאחד משני הכיוונים האפשריים על אותו הציר.
+\end_layout
+
+\begin_layout Standard
+כדי לצפות בדומיינים האלו נעזרנו באפקט פאראדיי - אפקט המתאר את סיבוב הקיטוב של אור העובר דרך חומר ממוגנט,
+ כאשר הסיבוב תלוי במגנוט של האזור בחומר דרכו עבר האור.
+ כאשר מעבירים את האור דרך מקטב,
+ סיבוב הקיטוב מתורגם לשינוי בעוצמת האור.
+ בניסוי,
+ שיטה זאת אפשרה לנו לזהות חזותית את מיקומי הדומיינים המגנטיים השונים על בסיס שינויים בעוצמת האור.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+placement h
+alignment center
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename zero_voltage_domains.png
+	lyxscale 10
+	scale 30
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+תמונה פיסת גרנט שצולמה דרך מיקרוסקופ.
+ הקווים בבהירות הגבוהה הם דומיינים בכיוון אחד,
+ והקווים בבהירות הנמוכה הם דומיינים בדיוק בכיוון ההפוך מהפסים האחרים.
+ בתמונה זאת לא פועל שדה חיצוני.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+צורה מוכרת לתיאור שינוי חומרים מגנטיים תחת שדה מגנטי חיצוני היא לולאת חשל.
+ לולאה זו נוצרת כאשר מציגים גרף של השדה המגנטי המושרה בחומר - המגנטיזציה - כתלות בשדה החיצוני המופעל עליו,
+ כאשר השדה החיצוני משתנה לאורך זמן באופן מחזורי.
+ צורה זאת מאפשרת ללמוד על תכונות החומרים אותם מודדים.
+ בחומרים פרומגנטיים ופרימגנטיים יש אפקט שהחומר "זוכר" את מצבו,
+ ואז מתקבלת צורה של לולאה בגרף ולא קו ישר - כלומר הקשר בין השדה החיצוני למגנטיזציה לא קשר לינארי ואפילו לא פונקציה,
+ שכן לאותו ערך שדה חיצוני יש שתי אפשרויות למגנטיזציה.
+ זה נובע מכך שהמגנטיזציה של החומר תלויה במסלול במישור המגנטיזציה
+\backslash
+שדה חיצוני שנעשה,
+ ולא רק בשדה החיצוני הנוכחי,
+ כלומר יש לחומרים אלו מידת "זיכרון".
+ 
+\end_layout
+
+\begin_layout Standard
+בתהליך חקירת לולאות החשל בחנו את התמונות של צורות הדומיינים המגנטים.
+ שמנו לב שלאורך המחזור הדומיינים משתנים בעוביים (שכן המגנטיזציה משתנה) אך גם פרמטרים אחרים משתנים באופן מעניין,
+ כגון כמות הפניות והצמתים בקווי הדומיינים כמו שרואים באיור
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\numeric on
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+1
+\numeric off
+.
+\end_layout
+
+\begin_layout Standard
+כדי לכמת את הבחנה זו השתמשנו בשיטה מוכרת מהספרות של מימד פרקטלי.
+ הרעיון הבסיסי העומד מאחוריה הוא שאורך "הגבול" של צורה פרקטלית תלוי באופן רציף באורך יחידת המדידה ("שנת הסרגל") שבה משתמשים.
+ ככל שקטנה יחידת המידה 
+\begin_inset Formula $\delta$
+\end_inset
+
+,
+ כך האורך הנמדד 
+\begin_inset Formula $L(\delta)$
+\end_inset
+
+ של הגבול גדל.
+ לעומת זאת,
+ עבור צורה חלקה ולא־פרקטלית,
+ מעבר לרזולוציה מסוימת האורך הנמדד כבר כמעט ואינו משתנה עם הקטנת 
+\begin_inset Formula $\delta$
+\end_inset
+
+.
+ כדי להפוך אינטואיציה זו להגדרה מתמטית ופרקטית,
+ משתמשים בשיטת “ספירת קופסאות”.
+ מחלקים את המישור לריבועים (קופסאות דו־מימדיות) שאורך צלעם 
+\begin_inset Formula $\delta$
+\end_inset
+
+ וסופרים כמה קופסאות מאלה נחתכות על־ידי שפת הצורה.
+ נסמן את מספר הקופסאות הללו ב-
+\begin_inset Formula $N(\delta)$
+\end_inset
+
+.
+ קירוב טבעי לאורך הגבול בקנה המידה 
+\begin_inset Formula $\delta$
+\end_inset
+
+ הוא:
+ 
+\begin_inset Formula 
+\begin{equation}
+L(\delta):=\delta\cdot N(\delta)
+\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+ההבחנה המשמעותית האחרונה היא להבין שכמות הקופסאות שיכנסו לקובייה 
+\begin_inset Formula $D$
+\end_inset
+
+ מימדית עם צלעות באורך
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\numeric on
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+1
+\numeric off
+ כאשר הוא 
+\begin_inset Formula $N=\delta^{-D}$
+\end_inset
+
+.
+ נרציף את ההגדרה הזו ונקבל את הגדרת המימד הפרקטלי 
+\begin_inset Formula $D_{fractal}$
+\end_inset
+
+ לפי הקונבנציה של ריצ'רדסון
+\begin_inset CommandInset citation
+LatexCommand cite
+key "maragos_measuring_1989"
+literal "false"
+
+\end_inset
+
+,
+ שבה השתמשנו:
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula 
+\begin{equation}
+D_{fractal}=\underset{\delta\rightarrow0}{lim}\frac{-ln(L(\delta))}{ln(\delta)}
+\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+כאשר 
+\begin_inset Formula $L(\delta)$
+\end_inset
+
+ הוא אורך שפת הצורה כאשר נמדדת עם אורך שנתה 
+\begin_inset Formula $\delta$
+\end_inset
+
+.
+ בהמשך נגדיר את המושג לולאת פרקטליות - גרף של מימד הפרקטליות כתלות בשדה החיצוני המופעל עליו,
+ כאשר השדה החיצוני משתנה לאורך זמן באופן מחזורי.
+ הוא דומה ברעיון ללולאת חשל,
+ רק שהוא בוחן את פרמטר מימד הפרקטליות.
+\end_layout
+
+\begin_layout Standard
+השערת המחקר הייתה שקשר זה ישתנה כתלות בתדירות השדה החיצוני שפועל על החומר,
+ שכן אולי בזמנים מהירים יותר,
+ הדומיינים לא יספיקו "ליצור" פניות וצמתים,
+ אלא ייווצרו יותר קווים ישרים שמזוהים עם מימד נמוך יותר.
+ 
+\end_layout
+
+\begin_layout Standard
+כשבוחנים את המערכת בתדירויות שונות צריך לשים לב לתהליך הרלקסציה - התהליך שבו הדומיינים המגנטיים מגיעים לשיווי משקל ומתייצבים בתבנית מסויימת בשדה חיצוני נתון,
+ כאשר ייתכן שמשך תהליך זה לא זניח בהשוואה לתדירות השדה החיצוני.
+ 
+\end_layout
+
+\begin_layout Section
+שיטות
+\end_layout
+
+\begin_layout Standard
+מערך הניסוי:
+\begin_inset Float figure
+placement h
+alignment left
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename system diagram.png
+	lyxscale 10
+	scale 50
+
+\end_inset
+
+
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+דיאגרמה סכמתית של המערכת:
+ קיימת פיסת גרנט פרימגנטי דקה בין שתי שכבות מקטבות,
+ ודרכן מנורה חזקה מאירה את הגרנט,
+ אל תוך מצלמה.
+ המצלמה מצלמת את הגביש,
+ ומהתמונות ניתן לחלץ את הדומיינים המגנטים בגביש.
+ יש מקור מתח חילופין שמחובר לסליל שמקיף את הגרנט,
+ שמפעיל שדה מגנטי חיצוני על הגביש,
+ וכדי למדוד את המתח על הסליל חיברנו למעגל אוסילוסקופ.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+ניתן לראות דיאגרמה של המערכת באיור
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\numeric on
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+2
+\numeric off
+.
+ המערכת הניסיונית התבססה על מתקן לצפייה בדומיינים מגנטיים בפיסת גרנט דקה באמצעות אפקט פאראדיי.
+ המתקן כולל שני מקטבים,
+ שביניהם פיסת הגרנט.
+ כאשר אור נכנס מצד אחד הוא מקוטב,
+ במעבר דרך הגרנט,
+ בגלל אפקט פאראדיי,
+ קיטוב האור ישתנה לוקאלית לפי כיוון הדומיין המגנטי בגרנט שהוא עובר דרכו.
+ לאחר מעבר במקטב השני,
+ עוצמת האור תרד לפי הדומיין שעבר דרכו.
+ המתקן כולל בתוכו סליל שמקיף את הגרנט,
+ שניתן להזרים בו זרם חשמלי.
+\end_layout
+
+\begin_layout Standard
+פיסת הגרנט היא פרימגנטית,
+ והדומיינים המגנטים בתוכה מצביעים רק בכיוון הציר המאונך לפיסת הגרנט,
+ אבל יש להם חופש להצביע "למעלה" או "למטה".
+ לכן יש רק שני סוגי דומיינים מגנטיים הנראים בתמונה.
+\end_layout
+
+\begin_layout Standard
+המערכת הכוללת הורכבה ממנורה חזקה שהאירה דרך המתקן לכיוון המצלמה.
+ עם המצלמה הקלטנו סרטונים בקצב של 
+\begin_inset Formula $200\text{FPS}$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+חיברנו ספק מתח חילופין לסליל,
+ ובכך הפעלנו שדה מגנטי חיצוני על הגרנט.
+ השדה החיצוני מיגנט את הגרנט,
+ וגרם לדומיינים המגנטים בו להסתדר לפי כיוונו.
+\end_layout
+
+\begin_layout Standard
+בעזרת אוסילוסקופ מדדנו את המתח על הסליל,
+ שהוא לינארי לשדה המגנטי החיצוני שהסליל משרה 
+\begin_inset Formula 
+\[
+H\propto V
+\]
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+לאורך הניסוי הפרמטר המשתנה היה תדירות מתח החילופין שהפעלנו.
+\end_layout
+
+\begin_layout Standard
+בעבור כל מדידה,
+ ראשית התחלנו להקליט סרטון במצלמה,
+ לאחר מכן התחלנו מדידה באוסילוסקופ,
+ ואז הדלקנו את ספק מתח החילופין,
+ לפי התדירות שבחרנו.
+\end_layout
+
+\begin_layout Standard
+האמפליטודה של מתח החילופין הייתה 
+\begin_inset Formula $4.1V$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+לאחר כל מדידה,
+ ייצאנו קובץ סרטון של הגרנט וקובץ של המתח כתלות בזמן מהאוסילוסקופ.
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset Newline newline
+\end_inset
+
+כדי להמיר את הסרט שלנו לשחור ולבן כל תמונה בסרטון עברה עיבוד משמעותי,
+ כפי שמתואר בנספחים.
+ באיור
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\numeric on
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+3
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\numeric off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+ניתן לראות כיצד נראות התמונות אחרי ההמרה לשחור לבן.
+ 
+\end_layout
+
+\begin_layout Standard
+כדי לאמת שתהליך זה מתאים לנתונים מוכרים ולא מעוות את עיקר המידע בסרטון,
+ הוצאנו גרפים לאורך התהליך,
+ וחילצנו לולאות חשל של החומר על בסיס הסרטונים המועבדים.
+ 
+\begin_inset Newline newline
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+placement H
+alignment center
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename extreme_voltage_bw_domains.png
+	lyxscale 20
+	scale 11
+
+\end_inset
+
+
+\begin_inset Graphics
+	filename flipped_final_voltage_bw_domains.png
+	lyxscale 20
+	scale 11
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename zero_voltage_bw_domains.png
+	lyxscale 20
+	scale 11
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+תמונות מסרטון אחרי עיבוד ללבן שחור.
+ נציין את ערכי המתח 
+\begin_inset Formula $\left(V\right)$
+\end_inset
+
+ והמגנטיזציה 
+\begin_inset Formula $\left(M\right)$
+\end_inset
+
+ של כל תמונה.
+ למעלה ימינה:
+ 
+\begin_inset Formula $V=2.0v,M=0.81$
+\end_inset
+
+,
+ למעלה שמאלה:
+ 
+\begin_inset Formula $V=-2.1v,M=-0.86$
+\end_inset
+
+ למטה:
+ 
+\begin_inset Formula $V=-0.8v,M=-0.44$
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+לאחר שסיווגנו כל פיקסל,
+ ספרנו את הכמות של פיקסלים של דומיין מסוים ומצאנו את המגנטיזציה היחסית לפי הנוסחה:
+\begin_inset Formula 
+\begin{equation}
+M=2\frac{N_{domain}}{N_{tot}}-1
+\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+כאשר 
+\begin_inset Formula $N_{domain}$
+\end_inset
+
+ כמות הפיקסלים של אחד הדומיינים,
+ 
+\begin_inset Formula $N_{tot}$
+\end_inset
+
+ כמות הפיקסלים הכוללת.
+ המגנטיזציה היחסית תהיה בטווח 
+\begin_inset Formula $\left[-1,1\right]$
+\end_inset
+
+.
+ ערכי הקיצון 
+\begin_inset Formula $\pm1$
+\end_inset
+
+ יתקבלו כאשר החומר ממוגנט לחלוטין באחד הכיוונים,
+ ו
+\begin_inset Formula $0$
+\end_inset
+
+ כאשר החומר לא ממוגנט.
+ באיור
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\numeric on
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+3
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\numeric off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+אפשר לראות גם כמה דוגמאות לתמונות וערכי המגנטיזציה שלהן.
+\end_layout
+
+\begin_layout Standard
+עם מדידות אלה ייצרנו לולאות חשל ומהן הסקנו שעיבוד הנתונים שנעשה לא שיבש את המידע המקורי,
+ שכן הן תאמו את התוצאות שנצפו בניסוי המקדים.
+\end_layout
+
+\begin_layout Standard
+לאחר מכן רצינו לחשב את המימד הפרקטלי 
+\begin_inset Formula $D_{fractal}$
+\end_inset
+
+ שהוגדר לפי משוואה 
+\begin_inset Formula $(2)$
+\end_inset
+
+.
+ ראשית היינו צריכים למדוד את 
+\begin_inset Formula $N(\delta)$
+\end_inset
+
+,
+ אז השתמשנו בשיטה של
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+\lang english
+Box Counting
+\lang hebrew
+
+\begin_inset CommandInset citation
+LatexCommand cite
+key "liebovitch1989fast"
+literal "false"
+
+\end_inset
+
+
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+- מחלקים תמונה לרשת של ריבועים בעלי אורך צלע 
+\begin_inset Formula $\delta$
+\end_inset
+
+,
+ וסופרים כמה מהם על שפת הצורה שרוצים לחשב את הפרקטליות שלה.
+ 
+\end_layout
+
+\begin_layout Standard
+על מנת לקבוע שפה לדומיינים המגנטיים בכל תמונה,
+ השתמשנו בסיווג הפיקסלים לשחורים ולבנים לפי הדומיין,
+ וקבענו שאם ריבוע מכיל פיקסלים שחורים וגם לבנים אז הוא נמצא על שפת דומיין.
+ 
+\end_layout
+
+\begin_layout Standard
+לאחר מכן שיערכנו את 
+\begin_inset Formula $D_{fractal}$
+\end_inset
+
+ באמצעות רגרסיה לינארית על סט של עשר נקודות מדידה 
+\begin_inset Formula $\left(\delta_{i},L(\delta_{i})\right)$
+\end_inset
+
+,
+ כאשר 
+\begin_inset Formula $\delta_{i}=2^{i}$
+\end_inset
+
+ עבור האינדקס 
+\begin_inset Formula $1\leq i\leq10$
+\end_inset
+
+.
+ השיפוע שהתקבל מהתאמת הקו הלינארי הוא בעצם 
+\begin_inset Formula $D_{fractal}$
+\end_inset
+
+.
+ הבחירה לחסום את 
+\begin_inset Formula $i$
+\end_inset
+
+ בערך 
+\numeric on
+10
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\numeric off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ נובעת מכך ש
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+לערכי 
+\begin_inset Formula $\delta$
+\end_inset
+
+ גדולים יותר נראה שהגרף 
+\begin_inset Formula $D_{fractal}$
+\end_inset
+
+ כתלות ב-
+\begin_inset Formula $\delta$
+\end_inset
+
+ כבר לא לינארי.
+ זה הגיוני,
+ שכן מדידת ההיקף ברזולוציה גסה מדי ביחס לגודל התמונה מאבדת הרבה פרטים ותהיה לא מדוייקת.
+\begin_inset Newline newline
+\end_inset
+
+ 
+\begin_inset Float figure
+placement h
+alignment center
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename flipped_final_voltage_domains.png
+	lyxscale 20
+	scale 15
+
+\end_inset
+
+
+\begin_inset Graphics
+	filename mid_voltage_domains.png
+	lyxscale 20
+	scale 15
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+צילומים של הגרנט הפרימגנטי תחת שדה מגנטי חיצוני שונה.
+ ניתן לראות רמיזות למימד פרקטלי שונה בתמונות לפי כמות ה
+\begin_inset Quotes qrd
+\end_inset
+
+פניות
+\begin_inset Quotes qrd
+\end_inset
+
+ של הקווים.
+ מימין לשמאל - א.
+ ממוגנט לכיוון המתאים למתח שלילי,
+ ניתן לראות שכבה שנייה של דומיינים מאחורה ולכלוך.
+ ב.
+ ממוגנט לכיוון המתאים למתח חיובי,
+ ניתן לראות שהצבעים התחלפו בדומיננטיות שלהם.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+המתח עובר כמה מחזורים בכל מדידה,
+ ובכל מחזור המדידות אמורות להיות זהות,
+ שכן סינוס מחזורי.
+ ניתן לראות עדות לזה באיור
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\numeric on
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+5
+\numeric off
+,
+ שמציג את המדידות לאורך הרבה מחזורים,
+ כאשר כל נקודה צבועה לפי הזמן היחסי שלה במחזור.
+ בגרף רואים שכאשר הזמן היחסי במחזור זהה אז המדידות הן באותו ערך,
+ עד כדי סטיית תקן.
+ זה מראה שהתהליך אכן מחזורי.
+ 
+\end_layout
+
+\begin_layout Standard
+השתמשנו במחזוריות כדי לקבל שיערוך ל
+\begin_inset Formula $D_{fractal}(V)$
+\end_inset
+
+.
+ את השיערוך קיבלנו מחלוקת המדידות לקבוצות לפי הזמן היחסי שלהם בתוך כל מחזור,
+ ועל כל קבוצה חישבנו ממוצע וסטיית תקן.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+placement h
+alignment center
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename d_vs_v_time_color_coded.png
+	lyxscale 10
+	scale 21.5
+
+\end_inset
+
+
+\begin_inset Box Frameless
+position "t"
+hor_pos "c"
+has_inner_box 1
+inner_pos "t"
+use_parbox 0
+use_makebox 0
+width "100col%"
+special "none"
+height "1in"
+height_special "totalheight"
+thickness "0.4pt"
+separation "3pt"
+shadowsize "4pt"
+framecolor "default"
+backgroundcolor "none"
+status open
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+גרף של 
+\begin_inset Formula $D_{fractal}$
+\end_inset
+
+ כתלות במתח כאשר המתח היה בצורת סינוס עם תדירות 
+\begin_inset Formula $30Hz$
+\end_inset
+
+.
+ הנקודות צבועות על פי הזמן היחסי שלהם בתוך המחזור של הסינוס.
+ ניתן לראות כי הנקודות שנצבעו באותו הצבע שייכות לאותו המתח וקרובות בערך הפרקטליות.
+ מכך ניתן להסיק שהנקודות עם אותו הזמן היחסי מייצגות מדידות חוזרות של אותו המצב,
+ ולכן מוצדק למצע אותן ולחשב עליהן סטיית תקן.
+ חשוב לשים לב שלא היה ניתן להשתמש במתח במקום הזמן היחסי,
+ שכן המתח בצורת סינוס ולכן אינו חח
+\begin_inset Quotes qrd
+\end_inset
+
+ע במחזור.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+נסיים עם תיאור גורמי השגיאות.
+ 
+\end_layout
+
+\begin_layout Standard
+ראשית היו כמה סיבות טכניות שהקשו על תהליך עיבוד הסרטונים.
+ היו הרבה ארטיפקטים וויזואליים בתמונות שצילמנו,
+ לא ברור אם מקורם במצלמה או בחומר,
+ ועל כן עיבוד המידע פחות מדויק.
+ התאורה על החומר הייתה לא אחידה והפחיתה מדיוק הניתוח.
+ בנוסף,
+ הסיווג של כל פיקסל לדומיין מסויים לא מדויק עבור הפיקסלים שבהם עוברים גבולות הדומיינים,
+ שכן אנו מחשיבים אותם רק לדומיין אחד כאשר הם מכילים שני סוגים.
+ לא פחות זניח הן רעידות של החומר ביחס למצלמה,
+ שנבעו מגורמים בסביבת המערכת.
+\end_layout
+
+\begin_layout Standard
+מקור נוסף לשגיאות הוא שבתדירויות גבוהות היה קשה לסנכרן את זמני קובץ המתחים והסרטון,
+ מה שמוסיף שגיאה במדידת המתח של כל נקודה.
+\end_layout
+
+\begin_layout Section
+תוצאות
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+placement H
+alignment center
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename first hysteresis big.png
+	lyxscale 10
+	scale 30
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+גרף לולאת חשל,
+ של המגנטיזציה של החומר כתלות במתח על הסליל,
+ שפרופורציוני לשדה החיצוני.
+ התדירות של המתח היא 
+\begin_inset Formula $0.1Hz$
+\end_inset
+
+.
+ בגרף רואים את תכונת ההיסטרזיס,
+ שכן יש רוחב קטן ללולאה.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename all hysteresis big.png
+	lyxscale 10
+	scale 30
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+גרף לולאת חשל,
+ של המגנטיזציה של החומר כתלות במתח על הסליל,
+ שפרופורציוני לשדה החיצוני.
+ בגרף רואים מרחב רחב של תדירויות.
+ קיים מספר קטן של נקודות עבור התדירויות הגבוהות,
+ מוסבר מדוע בדיון.
+ ניתן לראות שכאשר התדירות גבוהה יותר,
+ לולאת החשל רחבה יותר.
+ נשער כי זה נובע מכך שבתדירויות הגבוהות הדומיינים המגנטיים לא מספיקים לעבור רלקסציה,
+ מה שגורם למגנטיזציה להישאר ליותר זמן יחסי במחזור.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+בגרף באיור
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\numeric on
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+6
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\numeric off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+רואים את לולאת החשל עבור מתח בתדירות הכי נמוכה שמדדנו.
+ מגרף זה אנו יכולים להסיק שעיבוד הנתונים שנעשה לא שיבש את המידע המקורי,
+ שכן הוא תואם את התוצאות שנצפו בניסוי המקדים.
+\begin_inset Newline newline
+\end_inset
+
+בגרף באיור
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\numeric on
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+7
+\numeric off
+ אנו יכולים לראות שיש השפעה ניכרת של תדירות המתח על צורת לולאת החשל.
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset Float figure
+placement h
+alignment center
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename fractal one.png
+	lyxscale 10
+	scale 29
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+גרף לולאת פרקטליות,
+ של המגנטיזציה של החומר כתלות במתח על הסליל,
+ שפרופורציוני לשדה החיצוני בעבור גל בתדירות 
+\begin_inset Formula $0.1hz$
+\end_inset
+
+.
+ ניתן לראות שכאשר המתח בקצוות,
+ הפרקטליות מינימלית,
+ ובמרכז היא מקסימלית.
+ קיימת ירידה חדה בצד הימני של הגרף,
+ והיא נובעת מתקלה בעיבוד התמונות שהוזכרה בגורמי השגיאות.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+placement h
+alignment center
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename fractal many.png
+	lyxscale 10
+	scale 26
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+גרף לולאת פרקטליות,
+ של המגנטיזציה של החומר כתלות במתח על הסליל,
+ שפרופורציוני לשדה החיצוני,
+ כאשר כל לולאה נוצרת ממתח בתדירות שונה.
+ יש מגמה של ירידה בין הגרפים כשהתדירות עולה.
+ 
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+בגרף באיור
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\numeric on
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+8
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\numeric off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+אפשר לראות את לולאת הפרקטליות בעבור גל סינוס עם תדירות
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+
+\begin_inset Formula $0.1Hz$
+\end_inset
+
+.
+ בגרף באיור
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\numeric on
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+9
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\numeric off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+ניתן לראות
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+ את הלולאות בעבור כל התדירויות (מלבד התדירות 
+\begin_inset Formula $0.1Hz$
+\end_inset
+
+ שמופיעה באיור הקודם,
+ שכן היא מעמיסה על הגרף ויחסית זהה בצורה לתדירות 
+\begin_inset Formula $1Hz$
+\end_inset
+
+).
+ אנו רואים תופעה מעניינת,
+ והיא שאכן יש השפעה של התדירות על צורת הלולאה הפרקטלית.
+ באופן ממוקד,
+ אפשר לראות שבקצוות הם מתנהגים דומה,
+ שזה הגיוני כי זה שם החומר ברווייה.
+ לעומת זאת במרכז רואים שהגרף נהיה יותר פחוס בתדירויות הגבוהות יותר,
+ שזה כאשר החומר מחליף סימן במגנטיזציה,
+ ושם אכן ציפינו לראות הבדל.
+\end_layout
+
+\begin_layout Section
+דיון
+\end_layout
+
+\begin_layout Standard
+מצאנו את הצורה הכללית של לולאת פרקטליות בחומר שבדקנו,
+ שהוא הגרף באיור
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\numeric on
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+8
+\numeric off
+.
+ הצורה שמצאנו הגיונית,
+ שכן כשהמתח בקצוות החומר ממוגנט כמעט לחלוטין,
+ אז כל החומר אמור להיות מורכב מדומיין אחד,
+ כלומר התמונה כולה בגוון אחד,
+ ומתמונה כזאת היינו מצפים להיות במימד קרוב ל-
+\begin_inset Formula $1$
+\end_inset
+
+.
+ לעומת זאת במרכז,
+ הפרקטליות מקסימלית,
+ בהתאם לכך שראינו ששם התמונות הכי מורכבות ומפותלות,
+ כי יש כמות זהה של שני הדומיינים שמשתלבים בתבניות מורכבות.
+ 
+\end_layout
+
+\begin_layout Standard
+מההשוואה של כמה תדירויות שונות באיור
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\numeric on
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+9
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\numeric off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+ראינו כי יש השפעה של התדירות על לולאת הפרקטליות,
+ והיא שהערך המקסימלי יורד ככל שהתדירות עולה.
+ ייתכן שזה נובע מכך שאין מספיק זמן לרלקסציה,
+ אז הדומיינים מדלגים על החלק שבו הדומיינים השונים "מסועפים" אחד בתוך השני,
+ ועוברים מהר יותר למצב הרווייה בכיוון השני.
+\end_layout
+
+\begin_layout Standard
+
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+נתקלנו בשתי בעיות שהקשו להגיע למסקנות חד
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\numeric on
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+-
+\numeric off
+משמעיות
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ על השפעת תדירות המתח על לולאת הפרקטליות,
+ והן חוסר בכמות נקודות דגימה שונות וחוסר דיוק בפאזת המתח.
+ בעיות אלה נובעות משתי סיבות.
+\end_layout
+
+\begin_layout Standard
+סיבה אחת היא בחירת תדירויות סינוסים לא טובה,
+ שגרמה לבעיית 
+\begin_inset Formula $\text{Aliasing}$
+\end_inset
+
+.
+ בכל דגימה צילמנו תמונות בקצב של 
+\begin_inset Formula $f_{s}=200Hz$
+\end_inset
+
+.
+ התדירויות שבחרנו למתח היו 
+\begin_inset Formula $f_{v}\in\left\{ 0.1Hz,10Hz,20Hz,...,100Hz\right\} $
+\end_inset
+
+.
+ בדגימת תהליך מחזורי עם קצב דגימה מסויים,
+ ניתן לחשב מה כמות הנקודות השונות במחזור שיידגמו 
+\begin_inset Formula $\left(N_{unique}\right)$
+\end_inset
+
+ לפי תדר התהליך 
+\begin_inset Formula $\left(f_{v}\right)$
+\end_inset
+
+ ותדר הדגימה 
+\begin_inset Formula $\left(f_{s}\right)$
+\end_inset
+
+ לפי הנוסחה:
+\begin_inset Formula 
+\begin{equation}
+N_{unique}=\frac{\text{f_{s}}}{\gcd\left(f_{s},f_{v}\right)}
+\end{equation}
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+כאשר 
+\begin_inset Formula $\gcd$
+\end_inset
+
+ הוא 
+\begin_inset Formula $\text{Greatest Common Divisor}$
+\end_inset
+
+.
+ אפשר לשים לב שעל מנת לקבל כמה שיותר נקודות שונות במחזור,
+ צריך היה לבחור תדירות למתח כמה שיותר זרה לתדירות המצלמה.
+ אנו לא עשינו את זה,
+ ולכן בכל הלולאות (מלבד אלה שנוצרו מתדירות המתח 
+\begin_inset Formula $0.1Hz$
+\end_inset
+
+) יש לכל היותר 
+\begin_inset Formula $20$
+\end_inset
+
+ נקודות שונות.
+ 
+\end_layout
+
+\begin_layout Standard
+בעייה שנייה הייתה רמת הדיוק בזמן של האוסילוסקופ איתו מדדנו את המתח.
+ רמת הדיוק שלו בזמן לא הייתה גבוהה מספיק בתדרים שמעל
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\begin_inset Formula $70Hz$
+\end_inset
+
+.
+ חוסר הדיוק התבטא בסינכרון של דגימות המתחים לסרטון הוידאו,
+ ולכן הפאזה שחילצנו מהמתחים לא הייתה מדוייקת מספיק כדי להתאים לדגימות מהוידאו.
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset Newline newline
+\end_inset
+
+כדי להתקדם במחקר היינו נוקטים בצעדים הבאים.
+\end_layout
+
+\begin_layout Standard
+ראשית היינו מתקנים את הבעיות שציינו,
+ על ידי בחירת תדרי מתח מתאימים יותר,
+ בסביבה יציבה יותר ושימוש באוסילוסקופ מדויק יותר.
+\end_layout
+
+\begin_layout Standard
+שנית,
+ כמו כל תופעה פיזיקלית ראויה כדאי לנסות לפתח מודל תיאורטי וסימולציות לכיצד יראו הדומיינים בתדירויות שונות.
+\end_layout
+
+\begin_layout Standard
+בנוסף,
+ מחקרנו התמקד בגל בצורת סינוס שבה השיפועים משתנים בהדרגה וגודל השיפועים זהה לגודל הגל.
+ מעניין לבדוק האם לגלים בהם יש שיפועים גדולים יותר יש השפעה שונה על לולאת הפרקטליות,
+ למשל גל ריבועי שבו השיפועים הרבה יותר קיצוניים יחסית לסינוס.
+\end_layout
+
+\begin_layout Standard
+כמו כן,
+ בניסויינו בדקנו חומר בודד,
+ אך מעניין לבדוק האם תופעה זו כללית וחלה על חומרים אחרים.
+ אם היא לא אז ניתן להשוות בין החומרים ולהסיק האם יש מאפיינים אחרים שמשפיעים על התופעה.
+\end_layout
+
+\begin_layout Standard
+בנוסף מעניין לנסות להשתמש במתחים גבוהים יותר,
+ כדי לבחון האם זה משפיע על זמני הרלקסציה.
+ 
+\end_layout
+
+\begin_layout Standard
+לסיום,
+ הרחבה ניסיונית נוספת שאנו מתעניינים בה היא השפעת הטמפרטורה על לולאת הפרקטליות.
+ חומר בטמפרטורת קירי מאבד את תכונותיו המגנטיות,
+ וכנראה שהדומיינים יראו כמו רעש לבן,
+ אך ייתכן כי יש תופעות מעניינות לאורך התהליך של העלאת הטמפרטורה.
+\end_layout
+
+\begin_layout Standard
+
+\lang english
+\begin_inset CommandInset bibtex
+LatexCommand bibtex
+btprint "btPrintCited"
+bibfiles "My Library"
+options "unsrt"
+encoding "default"
+
+\end_inset
+
+
+\lang hebrew
+
+\begin_inset Newline newline
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+
+\series bold
+נספח:
+ פירוט שיטת הניסוי
+\end_layout
+
+\begin_layout Standard
+א.
+ כדי לנתח את המדידות ראשית היינו צריכים להתאים לכל תמונה את המתח המתאים.
+ כדי לעשות זאת,
+ הסתמכנו על העובדה שהדלקנו את ספק המתח ברגע מסויים לאחר שצילום הסרטון התחיל.
+ זה מאפשר לסנכרן בזמנים בין קובץ המתחים והסרטון,
+ כי בשניהם יש שינוי ברגע הדלקת המתח.
+ לאחר הסנכרון יכולנו לדעת מה המתח בכל זמן בסרטון,
+ מכיוון שעל ידי התאמת סינוס לקובץ המתחים הצלחנו לחלץ את הפאזה ההתחלתית של הסינוס.
+\begin_inset Formula $ $
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+ב.
+ הנוסחה הכימית של פיסת הגרנט היא 
+\begin_inset Formula $\mathrm{Bi_{0.6}Tm_{2.4}Ga_{1.15}Fe_{3.85}O_{12}}$
+\end_inset
+
+,
+ והיא בעובי 
+\begin_inset Formula $8\mu m$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+ג.
+ להלן תיאור של תהליך העיבוד המפורט שעשינו לכל תמונה בסרט,
+ כאשר חשוב לשים לב שהרבה מן הקבועים נבחרו אמפירית לפי עד כמה הם מפרידים את הפיקסלים באופן מיטבי.
+ בשלב הראשון טענו את כל פריימי הווידאו והמרנו אותם ל-
+\lang english
+grayscale
+\lang hebrew
+,
+ כאשר לבן הוא
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\numeric on
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+255
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\numeric off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+ושחור הוא
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\numeric on
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+0
+\numeric off
+.
+ לאחר מכן כדי להקל על הצעדים הבאים,
+ הפכנו את הצבעים של כל תמונה עם צבע ממוצע קטן מ-
+\numeric on
+70
+\numeric off
+.
+ על בסיס סדרת התמונות חישבנו לכל פיקסל סטיית תקן לאורך הזמן,
+ וסימנו כפיקסלים “סטטיים” את אלו שהשונות שלהם נמוכה מ-
+\numeric on
+15
+\numeric off
+.
+ פיקסלים אלה נובעים מלכלוך על העדשה או ארטיפקטים אחרים,
+ שאינם משתתפים בדינמיקה של הדומיינים,
+ ולכן הוצאו מכל החישובים בהמשך.
+ מתוך המפה של הפיקסלים הדינמיים בחרנו את המלבּן הגדול ביותר שבו רוב הפיקסלים משתנים בזמן – אזור זה שימש כ־
+\lang english
+ROI
+\lang hebrew
+ (
+\lang english
+region of interest
+\lang hebrew
+) שבו ניתחנו את מבנה הדומיינים והדפנות שלהם.
+ על ערכי הבהירות ב־
+\lang english
+ROI
+\lang hebrew
+ ביצענו החלקה מרחבית עדינה בשתי שיטות כדי להסיר רעשים נקודתיים מבלי לפגוע בקווי הגבול הרציפים של הדומיינים.
+ אחת היא סינון בילטרלי
+\begin_inset CommandInset citation
+LatexCommand cite
+key "aubert-kornprobst:06"
+literal "false"
+
+\end_inset
+
+ עם קוטר
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\numeric on
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+5
+\numeric off
+,
+ סטיית תקן מרחבית
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\numeric on
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+50
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\numeric off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+וסטיית תקן צבעית
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\numeric on
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+50
+\numeric off
+.
+ השיטה השנייה היא שתי איטרציות של טרנספורמציה מורפולוגית
+\begin_inset CommandInset citation
+LatexCommand cite
+key "joshi2015opencv"
+literal "false"
+
+\end_inset
+
+ עם קרנל מטריציוני בגודל 
+\begin_inset Formula $3\times3$
+\end_inset
+
+.
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset Newline newline
+\end_inset
+
+לאחר הכנת ה־
+\lang english
+ROI
+\lang hebrew
+ והסרת הרעש סיימנו את תהליך העיבוד שעשינו על בסיס הסרט ב-
+\lang english
+grayscale
+\lang hebrew
+.
+ הפכנו את התמונה לתמונה בינארית שחור–לבן בעזרת
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+\lang english
+
+\begin_inset CommandInset citation
+LatexCommand cite
+key "joshi2015opencv"
+literal "false"
+
+\end_inset
+
+adaptive thresholding
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+\lang hebrew
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+עם משקול גאוסיאני עם גודל בלוק
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\numeric on
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+100
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\numeric off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+ופרמטר ביאס
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\numeric on
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+5
+\numeric off
+.
+ לאחר מכן ביצענו עוד הסרת ארטיפקטים שנותרו בתמונות - אזורים שצבעם היה קבוע או השפיעו בצורה קבועה על האור מחלק מאזורי התמונה.
+ הסרנו אותם בכך שמצאנו אזורים שחורים רציפים ששטחם היה מתחת או ששווה ל-
+\begin_inset Formula $300$
+\end_inset
+
+ פיקסלים ריבועיים.
+ המרנו אותם ללבן,
+ כאשר נזכור שהפכנו את צבעי התמונות הכהות,
+ לכן הלכלוך יזוהה גם בהן.
+ על התמונות שנוצרו פה שוב הפעלנו טרנספורמציה מורפולוגית זהה לראשונה שעשינו.
+ בכך מסתיים תהליך עיבוד התמונות בסרטים.
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset Formula $ $
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+
+\series bold
+נספח:
+ דוח ביניים
+\end_layout
+
+\begin_layout Standard
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+includepdf[pages=-]{Interim_report_fixed.pdf}
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_body
+\end_document
