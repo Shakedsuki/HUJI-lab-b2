@@ -89,42 +89,35 @@
 
 ---
 
-## Figures — confirmed
+## Figures — status
 
-These are in. Scripts go in `scripts/`, output PNGs in `figures/`.
+Each figure has a script in `scripts/` and a PNG in `figures/`. Shared
+conventions live in `report_common.py` (`tail_window` steady-state slice,
+`TIME_WINDOW_S`=10 s for traces, `PORTRAIT_WINDOW_S`=60 s for portraits).
 
-### Fig A — Spectral waterfall
-Source: `scripts/analysis/spectral_waterfall.py` (existing aggregate script)
+### ✅ Done
 
-- Per sample: take the last X% of frames (no transients), compute FFT
-- Stack all week-6 samples into a 2D plot: x = drive frequency, y = signal frequency, color = FFT amplitude
-- Shows how the frequency content of θ₂ evolves across the resonance sweep
-- **Extra idea (separate graph):** extract just the amplitude at f_drive from each sample → amplitude-at-resonance vs f_drive curve
+| Figure | Script | PNG |
+|---|---|---|
+| **Fig A — Spectral waterfall** (FFT heatmap: x=f_drive, y=response freq, colour=amplitude; f_drive + f_drive/2 guides) | `spectral_waterfall.py` | `spectral_waterfall_3.2V.png` |
+| **Fig A companion** — locked-response amplitude \|FFT(θ₂)\| at f_drive vs f_drive (high at ends, dips through chaos) | `spectral_waterfall.py` (`--out-companion`) | `spectral_amplitude_3.2V.png` |
+| **Fig B — θ₂ time series** (3-panel low/mid/high; wrapped; **last** 10 s steady-state, not first 10 s) | `theta2_timeseries.py` | `theta2_timeseries.png`, `theta2_0.9Hz_fixed.png` |
+| **Fig C — Arm-2 phase portraits** (curated 5-tile row **and** full 33-clip grid tinted by phase-lock quadrant) | `phase_portrait_row.py`, `phase_portrait_grid.py` | `phase_portrait_row.png`, `phase_portrait_grid.png` |
+| **Phase-locking** (ρ arm-coherence vs H_θ₂ scatter; locked↔regular / unlocked↔chaotic) — new, from the implementation brief | `phase_locking.py` | `phase_locking_3.2V.png` |
+| **Energy** (⟨E⟩/⟨T⟩/⟨U⟩ + virial T/U vs f_drive; resonance peak ~0.95 Hz) | `energies.py` | `energies_3.2V.png` |
+| **Chaos profile** (H_θ₂ + D₂ vs f, and θ₁ amplitude + % inversion vs f — quantifies the route AND the resonance "why") | `chaos_profile.py` | `chaos_profile_3.2V.png` |
 
-### Fig B — θ₂ time series (3-panel)
-Source: `scripts/analysis/phase_analysis.py` or new script
+### ⬜ Remaining candidates (optional)
 
-- Three representative clips: periodic (green) / chaotic (red) / periodic (green)
-- Time window: first 10 s (0–10 t), wrapped angle
-- Shows the qualitative transition visually
+- **λ₁ vs f_drive** — superseded by the chaos-profile plot; λ₁ measured non-discriminating on this sweep (ftle classification labels every clip "chaotic"). Skip unless wanted.
+- **Stroboscopic Poincaré spread** (std/area of the strobed section vs f_drive) — not built.
+- **Phase-space area of arm 2** (normalised) — not built; the phase-portrait grid already conveys this qualitatively.
+- **Rotation / flip count vs f_drive** — partially covered: phase-locking surfaces rotation fraction; `rotation_counter.py` is interactive (not wired for static report use).
 
-### Fig C — Phase space of arm 2, single row
-Source: `scripts/analysis/phase_panels.py` (codename: Gaussian row)
-
-- θ₂ vs ω₂ phase portrait for all week-6 clips, laid out in a single row ordered by f_drive
-- Shows the P1 → P2 → chaos → P1 progression across the sweep
-
----
-
-## Figures — ideas / candidates
-
-Not committed yet. Revisit after confirmed figures are drafted.
-
-- **Lyapunov exponent λ₁ vs f_drive** — sweeps all week-6 clips; already computed per-clip, just needs aggregation. Strong quantitative marker of chaos onset.
-- **Stroboscopic Poincaré spread** — for each clip compute std-dev / area / volume of the stroboscopic section; plot vs f_drive. Extremum marks the chaotic regime.
-- **Phase-space area of arm 2** — area enclosed by the θ₂ phase portrait (normalised); another scalar proxy for chaos.
-- **Rotation / flip count** — time-window counter (last 50% of frames, no transients): how many full CW/CCW loops per arm per clip → aggregate mean vs f_drive.
-- **Energy graph** — reconstructed mechanical energy vs time (or vs f_drive). TBD whether this adds independent information.
+### Deviations from the original spec (intentional, agreed)
+- Time-domain figures use the **last** N s (steady-state tail, homogenised) rather than the first 10 s.
+- The chaos reference is **H_θ₂ / D₂**, not λ₁ (which doesn't resolve the band here).
+- Two data-integrity fixes underpin every figure: ω via SG derivative (`scripts/utils/kinematics.py`) and the 8 regenerated stale `verification.csv` files.
 
 ---
 

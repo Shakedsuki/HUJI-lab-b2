@@ -66,6 +66,9 @@ def parse_args():
                    help="max response frequency on the y-axis (Hz, default 3)")
     p.add_argument("--nfreq", type=int, default=800, help="response-frequency bins")
     p.add_argument("--out", default=os.path.join(FIGURES_DIR, "spectral_waterfall_3.2V.png"))
+    p.add_argument("--out-companion",
+                   default=os.path.join(FIGURES_DIR, "spectral_amplitude_3.2V.png"),
+                   help="companion: locked-response amplitude at f_drive vs f_drive")
     return p.parse_args()
 
 
@@ -73,7 +76,7 @@ def main():
     args = parse_args()
     stems = list_clips()                                    # freq-sorted
     unified = np.linspace(0.01, args.fmax, args.nfreq)      # common y-axis
-    drive, Z = [], []
+    drive, Z, amp_fd = [], [], []
     for stem in stems:
         t, th2 = load_theta2(stem)
         t, th2 = tail_window(t, th2, window_s=args.window)
@@ -87,9 +90,13 @@ def main():
         col = interp1d(xf, amp, kind="linear", bounds_error=False,
                        fill_value=1e-10)(unified)
         Z.append(np.clip(col, 1e-3, None))
-        drive.append(stem_freq(stem))
+        fd = stem_freq(stem)
+        drive.append(fd)
+        # response amplitude locked to the drive: |FFT(θ₂)| at f = f_drive
+        amp_fd.append(float(interp1d(xf, amp, bounds_error=False, fill_value=0.0)(fd)))
     X = np.asarray(drive)
     Z = np.asarray(Z).T                                    # (freq, clip)
+    amp_fd = np.asarray(amp_fd)
 
     fig, ax = plt.subplots(figsize=(11, 7), constrained_layout=True)
     vmax = float(np.percentile(Z, 99.9))
@@ -114,7 +121,22 @@ def main():
     os.makedirs(os.path.dirname(args.out), exist_ok=True)
     fig.savefig(args.out, dpi=150)
     plt.close(fig)
-    print(f"{len(X)} clips  ->  {args.out}")
+
+    # companion: the locked-response amplitude |FFT(θ₂)| at f = f_drive, vs
+    # f_drive — a 1-D slice along the heatmap's primary diagonal. High where the
+    # response is concentrated at the drive (regular ends); it dips through the
+    # chaotic core, where energy leaks into a broadband continuum.
+    fig2, axc = plt.subplots(figsize=(11, 4), constrained_layout=True)
+    axc.plot(X, amp_fd, "o-", color="#c0392b", lw=1.6)
+    axc.fill_between(X, 0, amp_fd, color="#c0392b", alpha=0.10)
+    axc.set_xlabel("drive frequency $f_{drive}$ (Hz)")
+    axc.set_ylabel(r"$|\mathrm{FFT}(\theta_2)|$ at $f_{drive}$ (deg)")
+    axc.set_title(r"Locked-response amplitude at $f_{drive}$ across the 3.2 V sweep",
+                  loc="left", fontweight="bold")
+    axc.set_xlim(X.min(), X.max()); axc.grid(alpha=0.25)
+    fig2.savefig(args.out_companion, dpi=150)
+    plt.close(fig2)
+    print(f"{len(X)} clips  ->  {args.out}\n           ->  {args.out_companion}")
 
 
 if __name__ == "__main__":
