@@ -41,6 +41,10 @@ DATA_DIR = os.path.normpath(os.path.join(_HERE, "..", "data"))
 # so the "last N seconds, anchored at the end" rule stays identical.
 TIME_WINDOW_S = 10.0
 
+# Phase portraits want a denser attractor than the time-series trace wants
+# readability, so they use a longer steady-state window (same tail rule).
+PORTRAIT_WINDOW_S = 60.0
+
 # regime palette — repo convention: green = regular, red = chaotic
 COL_REGULAR = "#2e8b57"
 COL_CHAOTIC = "#c0392b"

@@ -41,7 +41,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 from report_common import (
-    FIGURES_DIR, TIME_WINDOW_S, clip_dir, list_clips, tail_window, stem_freq,
+    FIGURES_DIR, PORTRAIT_WINDOW_S, clip_dir, list_clips, tail_window, stem_freq,
 )
 
 _REPO = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
@@ -60,8 +60,8 @@ TINT = {"chaotic": ("#c0392b", 0.10), "regular": ("#2e8b57", 0.10),
 def parse_args():
     p = argparse.ArgumentParser(description="Arm-2 phase-portrait grid, tinted by phase-lock quadrant.")
     p.add_argument("--ncols", type=int, default=6, help="grid columns (default 6)")
-    p.add_argument("--window", type=float, default=TIME_WINDOW_S,
-                   help=f"steady-state tail window (s), default {TIME_WINDOW_S:g}")
+    p.add_argument("--window", type=float, default=PORTRAIT_WINDOW_S,
+                   help=f"steady-state tail window (s), default {PORTRAIT_WINDOW_S:g}")
     p.add_argument("--out", default=os.path.join(FIGURES_DIR, "phase_portrait_grid.png"))
     return p.parse_args()
 

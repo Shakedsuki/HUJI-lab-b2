@@ -45,7 +45,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 from report_common import (
-    FIGURES_DIR, TIME_WINDOW_S, clip_dir, tail_window, stem_freq,
+    FIGURES_DIR, PORTRAIT_WINDOW_S, clip_dir, tail_window, stem_freq,
     select_evenly, load_metrics, classify,
 )
 
@@ -62,8 +62,8 @@ def parse_args():
                    help="number of subplots / clips (default 5)")
     p.add_argument("--stems", default=None,
                    help="comma-separated stems (overrides --n auto-selection)")
-    p.add_argument("--window", type=float, default=TIME_WINDOW_S,
-                   help=f"steady-state tail window in seconds (default {TIME_WINDOW_S:g})")
+    p.add_argument("--window", type=float, default=PORTRAIT_WINDOW_S,
+                   help=f"steady-state tail window in seconds (default {PORTRAIT_WINDOW_S:g})")
     p.add_argument("--out", default=os.path.join(FIGURES_DIR, "phase_portrait_row.png"),
                    help="output png path")
     return p.parse_args()
