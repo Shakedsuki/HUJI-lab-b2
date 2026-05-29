@@ -1,225 +1,142 @@
-# -*- coding: utf-8 -*-
+#!/usr/bin/env python3
 """
-Created on Wed May 27 17:57:07 2026
+energies.py — final-report mechanical energy vs drive frequency.
 
-@author: cohen
+Static report version of N. Cohen's interactive energy explorer. For every
+3.2 V clip it reconstructs the kinetic (T) and potential (U) energy of the two
+rods, averages each over the steady-state tail, and plots ⟨E⟩, ⟨T⟩, ⟨U⟩ and the
+virial ratio ⟨T⟩/⟨U⟩ against drive frequency — the resonance peak plus the
+departure of T/U from 1 (an anharmonicity / chaos marker) across the sweep.
+
+Two changes from the original beyond making it static:
+  - ω from the shared SG derivative (kinematics.angular_velocity), NOT a raw
+    np.gradient — energy ∝ ω², so finite-difference jitter would inflate T.
+  - θ from verification.csv, steady-state slice via report_common.tail_window.
+
+Rod model (N. Cohen): two uniform rods, M=0.1 kg, L=0.27 m each. These set the
+absolute Joule scale (approximate); the resonance shape and T/U ratio are the
+physics of interest.
+
+Usage:
+  python reports/final/scripts/energies.py
+  python reports/final/scripts/energies.py --window 60
+
+Output:
+  reports/final/figures/energies_3.2V.png
 """
 
-# -*- coding: utf-8 -*-
-"""
-Metric 8: Average Energy vs. Driving Frequency (Interactive Resonance & Virial Ratio)
-Includes sliders for Transient Filtering and Radio Buttons for Rod Selection.
-"""
-
+import argparse
+import csv
 import os
-import re
-import glob
+import sys
+
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+except (AttributeError, OSError):
+    pass
+
 import numpy as np
-import pandas as pd
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-from matplotlib.widgets import Slider, RadioButtons
 
-# =============================================================================
-# 1. CONFIGURATION
-# =============================================================================
-BASE_DIR = r"C:\Users\Nir\Documents\Courses\year 2 semester b\Lab b2\experiments\week6-pendulum-motor-driven\measurements"
+from report_common import FIGURES_DIR, clip_dir, list_clips, tail_window, stem_freq
 
-COL_TIME = "time_s"
-COL_THETA1 = "theta1_deg"
-COL_THETA2 = "theta2_deg"
+_REPO = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+sys.path.insert(0, os.path.join(_REPO, "scripts", "utils"))
+from kinematics import angular_velocity     # noqa: E402
 
-# PHYSICAL CONSTANTS
-M1 = 0.1   # Mass of top rod (kg)
-M2 = 0.1   # Mass of bottom rod (kg)
-L1 = 0.27  # FULL Length of top rod (meters)
-L2 = 0.27  # FULL Length of bottom rod (meters)
-G = 9.81   # Gravity (m/s^2)
+# rod model (N. Cohen): two uniform rods
+M1 = M2 = 0.1      # kg
+L1 = L2 = 0.27     # m (full rod length)
+G = 9.81           # m/s²
 
-# =============================================================================
-# 2. DATA PROCESSING & ENERGY CACHING
-# =============================================================================
-def load_and_cache_energies():
-    print("Scanning directories and caching full energy arrays...")
-    csv_files = glob.glob(os.path.join(BASE_DIR, '*', 'tracking.csv'), recursive=True)
-    
-    cache = {}
-    
-    for file_path in csv_files:
-        folder_name = os.path.basename(os.path.dirname(file_path))
-        match_freq = re.search(r'(\d+(?:\.\d+)?)\s*Hz', folder_name, re.IGNORECASE)
-        
-        if not match_freq: continue
-        freq_val = float(match_freq.group(1))
-        
+
+def load_clip(stem):
+    path = os.path.join(clip_dir(stem), "verification.csv")
+    t, a, b = [], [], []
+    with open(path, newline="", encoding="utf-8") as f:
+        for r in csv.DictReader(f):
+            if r.get("phase") not in ("driven", "free_swing"):
+                continue
+            try:
+                t.append(float(r["time_s"]))
+                a.append(float(r["theta1_deg"])); b.append(float(r["theta2_deg"]))
+            except (KeyError, ValueError):
+                continue
+    return np.asarray(t, float), np.asarray(a, float), np.asarray(b, float)
+
+
+def energies(stem, window_s):
+    """Steady-state ⟨E⟩, ⟨T⟩, ⟨U⟩ (J) for one clip."""
+    t, th1, th2 = load_clip(stem)
+    om1 = np.radians(angular_velocity(th1, t))      # SG derivative -> rad/s
+    om2 = np.radians(angular_velocity(th2, t))
+    r1, r2 = np.radians(th1), np.radians(th2)
+    # kinetic (two-rod double pendulum, full coupling)
+    T1 = (1.0 / 6.0) * M1 * L1**2 * om1**2
+    T2 = (0.5 * M2 * L1**2 * om1**2
+          + (1.0 / 6.0) * M2 * L2**2 * om2**2
+          + 0.5 * M2 * L1 * L2 * om1 * om2 * np.cos(r1 - r2))
+    # potential
+    U1 = M1 * G * (L1 / 2.0) * (1 - np.cos(r1))
+    U2 = M2 * G * (L1 * (1 - np.cos(r1)) + (L2 / 2.0) * (1 - np.cos(r2)))
+    T, U = T1 + T2, U1 + U2
+    _, T, U = tail_window(t, T, U, window_s=window_s)
+    return float(np.mean(T + U)), float(np.mean(T)), float(np.mean(U))
+
+
+def parse_args():
+    p = argparse.ArgumentParser(description="Report energy vs drive frequency.")
+    p.add_argument("--window", type=float, default=60.0,
+                   help="steady-state tail window in s (default 60)")
+    p.add_argument("--out", default=os.path.join(FIGURES_DIR, "energies_3.2V.png"))
+    return p.parse_args()
+
+
+def main():
+    args = parse_args()
+    f, E, T, U = [], [], [], []
+    for stem in list_clips():
         try:
-            df = pd.read_csv(file_path).dropna(subset=[COL_TIME, COL_THETA1, COL_THETA2])
-            time = df[COL_TIME].values
-            
-            th1_u = np.rad2deg(np.unwrap(np.deg2rad(df[COL_THETA1].values)))
-            th2_u = np.rad2deg(np.unwrap(np.deg2rad(df[COL_THETA2].values)))
-            
-            omega1 = np.gradient(th1_u, time)
-            omega2 = np.gradient(th2_u, time)
+            e, kt, pu = energies(stem, args.window)
+        except (FileNotFoundError, ValueError):
+            continue
+        f.append(stem_freq(stem)); E.append(e); T.append(kt); U.append(pu)
+    f, E, T, U = map(np.asarray, (f, E, T, U))
+    ratio = np.divide(T, U, out=np.zeros_like(T), where=U > 1e-12)
 
-            th1_rad = np.deg2rad(th1_u)
-            th2_rad = np.deg2rad(th2_u)
-            om1_rad = np.deg2rad(omega1)
-            om2_rad = np.deg2rad(omega2)
-            
-            # --- CALCULATE FULL ARRAYS ---
-            T1 = (1.0 / 6.0) * M1 * (L1**2) * (om1_rad**2)
-            T2 = 0.5 * M2 * (L1**2) * (om1_rad**2) + \
-                 (1.0 / 6.0) * M2 * (L2**2) * (om2_rad**2) + \
-                 0.5 * M2 * L1 * L2 * om1_rad * om2_rad * np.cos(th1_rad - th2_rad)
-                 
-            U1 = M1 * G * (L1 / 2.0) * (1 - np.cos(th1_rad))
-            U2 = M2 * G * (L1 * (1 - np.cos(th1_rad)) + (L2 / 2.0) * (1 - np.cos(th2_rad)))
-            
-            cache[freq_val] = {
-                'time': time,
-                'T1': T1, 'T2': T2,
-                'U1': U1, 'U2': U2
-            }
-            
-        except Exception as e:
-            print(f"Failed {file_path}: {e}")
+    fig, ax1 = plt.subplots(figsize=(11, 6), constrained_layout=True)
+    ax1.plot(f, E, "o-", color="black", lw=2.0, label=r"total $E$")
+    ax1.plot(f, T, "s--", color="#2980b9", ms=4, lw=1.5, label=r"kinetic $T$")
+    ax1.plot(f, U, "^-.", color="#2e8b57", ms=4, lw=1.5, label=r"potential $U$")
+    ax1.set_xlabel("drive frequency $f_{drive}$ (Hz)")
+    ax1.set_ylabel("steady-state energy (J)")
+    ax1.grid(alpha=0.3)
+    ax1.set_ylim(0, float(np.max(E)) * 1.15)
 
-    return cache
+    ax2 = ax1.twinx()
+    ax2.plot(f, ratio, ":", color="#8e44ad", lw=2.0, marker="D", ms=4, label=r"$T/U$ (virial)")
+    ax2.axhline(1.0, color="#8e44ad", lw=1.0, alpha=0.3)
+    ax2.set_ylabel(r"virial ratio  $\langle T\rangle/\langle U\rangle$", color="#8e44ad")
+    ax2.tick_params(axis="y", labelcolor="#8e44ad")
 
-energy_cache = load_and_cache_energies()
+    # mark resonance peak in total energy
+    i = int(np.argmax(E))
+    ax1.annotate(f"resonance\n{f[i]:g} Hz", xy=(f[i], E[i]), xytext=(0, 22),
+                 textcoords="offset points", ha="center", fontsize=10, fontweight="bold",
+                 arrowprops=dict(arrowstyle="->", lw=1.3))
 
-if not energy_cache:
-    print("No valid data found to plot.")
-    exit()
+    lines = ax1.get_lines()[:3] + ax2.get_lines()[:1]
+    ax1.legend(lines, [ln.get_label() for ln in lines], loc="upper right", fontsize=9)
+    ax1.set_title(r"Mechanical energy & virial ratio vs drive frequency (3.2 V)",
+                  loc="left", fontweight="bold")
 
-sorted_freqs = sorted(list(energy_cache.keys()))
+    os.makedirs(os.path.dirname(args.out), exist_ok=True)
+    fig.savefig(args.out, dpi=150)
+    plt.close(fig)
+    print(f"{len(f)} clips  peak E at {f[i]:g} Hz  ->  {args.out}")
 
-# =============================================================================
-# 3. INTERACTIVE PLOTTING UI
-# =============================================================================
-fig, ax1 = plt.subplots(figsize=(14, 8))
-fig.canvas.manager.set_window_title("Interactive Energy Explorer")
-plt.subplots_adjust(bottom=0.20, right=0.85) # Make room for slider and radio buttons
 
-# Secondary axis for the ratio
-ax2 = ax1.twinx()
-
-# --- SETUP UI CONTROLS ---
-# Slider for % of points from the end
-ax_slider = plt.axes([0.10, 0.08, 0.65, 0.03])
-slider_keep = Slider(ax_slider, 'Steady State Window\n(% from end)', 5.0, 100.0, valinit=30.0, valstep=1.0)
-
-# Radio Buttons for Rod Selection
-ax_radio = plt.axes([0.87, 0.45, 0.11, 0.15], facecolor='whitesmoke')
-radio_mode = RadioButtons(ax_radio, ('Both Rods', 'Top Rod', 'Bottom Rod'))
-
-def update(val=None):
-    keep_pct = slider_keep.val
-    mode = radio_mode.value_selected
-    
-    frequencies = []
-    avg_totals = []
-    avg_Ts = []
-    avg_Us = []
-    ratios_TU = []
-    
-    # 1. Process data based on UI states
-    for freq in sorted_freqs:
-        data = energy_cache[freq]
-        time = data['time']
-        
-        # Determine slicing mask
-        video_duration = time.max() - time.min()
-        cutoff_time = time.max() - ((keep_pct / 100.0) * video_duration)
-        mask = time >= cutoff_time
-        
-        # Select Rod logic
-        if mode == 'Both Rods':
-            T = data['T1'] + data['T2']
-            U = data['U1'] + data['U2']
-        elif mode == 'Top Rod':
-            T = data['T1']
-            U = data['U1']
-        elif mode == 'Bottom Rod':
-            T = data['T2']
-            U = data['U2']
-            
-        T_filt = T[mask]
-        U_filt = U[mask]
-        Total_filt = T_filt + U_filt
-        
-        avg_tot = np.mean(Total_filt)
-        avg_T = np.mean(T_filt)
-        avg_U = np.mean(U_filt)
-        ratio_TU = avg_T / avg_U if avg_U > 1e-10 else 0
-        
-        frequencies.append(freq)
-        avg_totals.append(avg_tot)
-        avg_Ts.append(avg_T)
-        avg_Us.append(avg_U)
-        ratios_TU.append(ratio_TU)
-        
-    # 2. Clear and Redraw Graph
-    ax1.clear()
-    ax2.clear()
-    
-    # Titles and Labels
-    ax1.set_title(f"Energy and T/U Ratio ({mode})\nSteady State: Final {keep_pct:.1f}% of video", fontsize=15, pad=15)
-    ax1.set_xlabel("Driving Motor Frequency (Hz)", fontsize=13)
-    ax1.set_ylabel("Average Energy (Joules)", fontsize=13)
-    ax2.set_ylabel("Energy Ratio (T / U)", fontsize=13, color='purple')
-
-    # Draw Primary Energy Lines
-    l1, = ax1.plot(frequencies, avg_totals, color='black', linestyle='-', linewidth=2.5, alpha=0.8, label='Total Energy ($E$)')
-    ax1.scatter(frequencies, avg_totals, color='black', s=50, zorder=5)
-
-    l2, = ax1.plot(frequencies, avg_Ts, color='blue', linestyle='--', linewidth=2, alpha=0.8, label='Kinetic Energy ($T$)')
-    ax1.scatter(frequencies, avg_Ts, color='blue', s=40, zorder=5)
-
-    l3, = ax1.plot(frequencies, avg_Us, color='green', linestyle='-.', linewidth=2, alpha=0.8, label='Potential Energy ($U$)')
-    ax1.scatter(frequencies, avg_Us, color='green', s=40, zorder=5)
-
-    # Draw Ratio Line
-    l4, = ax2.plot(frequencies, ratios_TU, color='purple', linestyle=':', linewidth=2.5, alpha=0.9, label='T/U Ratio')
-    ax2.scatter(frequencies, ratios_TU, color='purple', s=50, marker='s', zorder=5) 
-    ax2.tick_params(axis='y', labelcolor='purple')
-
-    # Faint Ratio Baseline
-    ax2.axhline(1.0, color='purple', linestyle='-', linewidth=1.5, alpha=0.2)
-    ax2.text(frequencies[0], 1.01, ' Ideal Harmonic Oscillator (Ratio = 1.0)', color='purple', alpha=0.5, fontsize=10, va='bottom')
-
-    # Highlight Resonance Peak
-    max_idx = np.argmax(avg_totals)
-    max_f = frequencies[max_idx]
-    max_tot = avg_totals[max_idx]
-
-    ax1.annotate(f"Resonance Peak\n{max_f} Hz", 
-                 xy=(max_f, max_tot), 
-                 xytext=(0, 20), textcoords='offset points', 
-                 ha='center', va='bottom', fontsize=11, fontweight='bold', color='black',
-                 arrowprops=dict(arrowstyle="->", color='black', lw=1.5))
-
-    # Formatting and Auto-scaling
-    ax1.grid(True, linestyle='--', alpha=0.5)
-    
-    # Merge Legends
-    lines = [l1, l2, l3, l4]
-    labels = [l.get_label() for l in lines]
-    ax1.legend(lines, labels, loc='upper left', fontsize=11, framealpha=0.9)
-
-    ax1.set_xlim(min(frequencies) - 0.05, max(frequencies) + 0.05)
-    ax1.set_ylim(0, max(avg_totals) * 1.15) 
-    
-    max_ratio = max(ratios_TU)
-    min_ratio = min(ratios_TU)
-    ax2.set_ylim(min(0.5, min_ratio - 0.2), max(1.5, max_ratio + 0.2))
-    
-    fig.canvas.draw_idle()
-
-# Hook up events
-slider_keep.on_changed(update)
-radio_mode.on_clicked(update)
-
-# Initial draw
-update()
-plt.show()
+if __name__ == "__main__":
+    main()

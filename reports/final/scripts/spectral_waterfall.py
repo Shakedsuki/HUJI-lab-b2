@@ -1,158 +1,121 @@
-# -*- coding: utf-8 -*-
+#!/usr/bin/env python3
 """
-Created on Tue May 26 15:45:07 2026
+spectral_waterfall.py — final-report FFT spectral-bifurcation heatmap.
 
-@author: cohen
+Report version of N. Cohen's fftheatmap.py, de-hardcoded onto the repo paths.
+For every 3.2 V clip it takes the steady-state tail of θ₂(t), computes its
+amplitude spectrum, and stacks the spectra into a 2-D map:
+
+    x = drive frequency f_drive       y = response frequency
+    colour = |FFT(θ₂)| amplitude (log)
+
+This is the route to chaos in the frequency domain: a single bright line on
+the f = f_drive diagonal is a phase-locked period-1 response; a line appearing
+at f_drive/2 is a period-doubling; broadband vertical smear is chaos.
+
+Conventions: θ₂ from verification.csv (driven phase), steady-state slice via
+report_common.tail_window (last --window s, default 60 for FFT resolution).
+
+Usage:
+  python reports/final/scripts/spectral_waterfall.py
+  python reports/final/scripts/spectral_waterfall.py --window 60 --fmax 3
+
+Output:
+  reports/final/figures/spectral_waterfall_3.2V.png
 """
 
-# -*- coding: utf-8 -*-
-"""
-Metric 6: Spectral Bifurcation Diagram (FFT Heatmap)
-Maps the route to chaos by plotting FFT amplitude as a color map across driving frequencies.
-"""
-
+import argparse
+import csv
 import os
-import re
-import glob
+import sys
+
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+except (AttributeError, OSError):
+    pass
+
 import numpy as np
-import pandas as pd
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 from scipy.interpolate import interp1d
 
-# =============================================================================
-# 1. CONFIGURATION
-# =============================================================================
-BASE_DIR = r"C:\Users\Nir\Documents\Courses\year 2 semester b\Lab b2\experiments\week6-pendulum-motor-driven\measurements"
+from report_common import FIGURES_DIR, clip_dir, list_clips, tail_window, stem_freq
 
-COL_TIME = "time_s"
-COL_THETA2 = "theta2_deg"
 
-TIME_WINDOW = 60.0     # Only analyze the last 20 seconds to avoid startup noise
-MAX_FFT_FREQ = 3.0     # The maximum frequency to display on the Y-axis
+def load_theta2(stem):
+    path = os.path.join(clip_dir(stem), "verification.csv")
+    t, th = [], []
+    with open(path, newline="", encoding="utf-8") as f:
+        for r in csv.DictReader(f):
+            if r.get("phase") not in ("driven", "free_swing"):
+                continue
+            try:
+                t.append(float(r["time_s"])); th.append(float(r["theta2_deg"]))
+            except (KeyError, ValueError):
+                continue
+    return np.asarray(t, float), np.asarray(th, float)
 
-# =============================================================================
-# 2. DATA LOADING
-# =============================================================================
-def load_data():
-    print("Scanning directories for CSV files...")
-    csv_files = glob.glob(os.path.join(BASE_DIR, '*', 'tracking.csv'), recursive=True)
-    
-    data_dict = {}
-    for file_path in csv_files:
-        folder_name = os.path.basename(os.path.dirname(file_path))
-        match_freq = re.search(r'(\d+(?:\.\d+)?)\s*Hz', folder_name, re.IGNORECASE)
-        if not match_freq: continue
-        
-        try:
-            df = pd.read_csv(file_path).dropna(subset=[COL_TIME, COL_THETA2])
-            data_dict[folder_name] = {
-                't': df[COL_TIME].values, 
-                'th2': df[COL_THETA2].values, 
-                'freq_val': float(match_freq.group(1))
-            }
-        except Exception as e:
-            pass
-            
-    print(f"Loaded data for {len(data_dict)} folders.")
-    return data_dict
 
-data_cache = load_data()
+def parse_args():
+    p = argparse.ArgumentParser(description="Report spectral-waterfall heatmap.")
+    p.add_argument("--window", type=float, default=60.0,
+                   help="steady-state tail window in s (default 60, for FFT resolution)")
+    p.add_argument("--fmax", type=float, default=3.0,
+                   help="max response frequency on the y-axis (Hz, default 3)")
+    p.add_argument("--nfreq", type=int, default=800, help="response-frequency bins")
+    p.add_argument("--out", default=os.path.join(FIGURES_DIR, "spectral_waterfall_3.2V.png"))
+    return p.parse_args()
 
-if not data_cache:
-    print("No valid data found.")
-    exit()
 
-# Sort folders logically by driving frequency
-sorted_folders = sorted(list(data_cache.keys()), key=lambda k: data_cache[k]['freq_val'])
-
-# =============================================================================
-# 3. FFT PROCESSING & MATRIX GENERATION
-# =============================================================================
-print("Computing FFTs and interpolating spectral matrix...")
-
-# We need a unified Y-axis (Frequency Bins) because videos have slightly different lengths
-unified_freqs = np.linspace(0.01, MAX_FFT_FREQ, 800) # Start slightly above 0 to avoid DC offset blowing up log scale
-
-drive_freqs = []
-Z_matrix = []
-
-for folder_name in sorted_folders:
-    t_raw = data_cache[folder_name]['t']
-    th2_raw = data_cache[folder_name]['th2']
-    drive_f = data_cache[folder_name]['freq_val']
-    
-    # 1. Unwrap Angle
-    th2_u = np.rad2deg((np.deg2rad(th2_raw)))
-    
-    # 2. Transient Filter
-    cutoff_time = t_raw.max() - min(TIME_WINDOW, t_raw.max() - t_raw.min())
-    mask = t_raw >= cutoff_time
-    t_filt = t_raw[mask]
-    th2_filt = th2_u[mask]
-    
-    # 3. Remove DC Offset
-    th2_centered = th2_filt - np.mean(th2_filt)
-    
-    # 4. Calculate FFT
-    N = len(th2_centered)
-    dt = np.mean(np.diff(t_filt))
-    
-    if N > 0 and dt > 0:
-        yf = np.fft.rfft(th2_centered)
+def main():
+    args = parse_args()
+    stems = list_clips()                                    # freq-sorted
+    unified = np.linspace(0.01, args.fmax, args.nfreq)      # common y-axis
+    drive, Z = [], []
+    for stem in stems:
+        t, th2 = load_theta2(stem)
+        t, th2 = tail_window(t, th2, window_s=args.window)
+        if t.size < 16:
+            continue
+        x = th2 - np.mean(th2)                              # remove DC offset
+        dt = float(np.median(np.diff(t)))
+        N = len(x)
+        amp = (2.0 / N) * np.abs(np.fft.rfft(x))
         xf = np.fft.rfftfreq(N, d=dt)
-        amplitude = (2.0 / N) * np.abs(yf)
-        
-        # 5. Interpolate onto the unified frequency axis
-        # Any frequency out of bounds of the video's Nyquist limit gets amplitude 0
-        interp_func = interp1d(xf, amplitude, kind='linear', bounds_error=False, fill_value=1e-10)
-        unified_amp = interp_func(unified_freqs)
-        
-        # Add a tiny noise floor to prevent log(0) errors in the colormap
-        unified_amp = np.clip(unified_amp, a_min=1e-5, a_max=None)
-        
-        Z_matrix.append(unified_amp)
-        drive_freqs.append(drive_f)
+        col = interp1d(xf, amp, kind="linear", bounds_error=False,
+                       fill_value=1e-10)(unified)
+        Z.append(np.clip(col, 1e-3, None))
+        drive.append(stem_freq(stem))
+    X = np.asarray(drive)
+    Z = np.asarray(Z).T                                    # (freq, clip)
 
-# Convert lists to NumPy arrays for plotting
-# Transpose Z so that Y-axis is Response Frequency and X-axis is Driving Frequency
-X = np.array(drive_freqs)
-Y = unified_freqs
-Z = np.array(Z_matrix).T 
+    fig, ax = plt.subplots(figsize=(11, 7), constrained_layout=True)
+    vmax = float(np.percentile(Z, 99.9))
+    c = ax.pcolormesh(X, unified, Z, cmap="inferno", shading="nearest",
+                      norm=LogNorm(vmin=1.0, vmax=vmax))
+    cbar = fig.colorbar(c, ax=ax, pad=0.02)
+    cbar.set_label(r"$|\mathrm{FFT}(\theta_2)|$  amplitude (deg, log)")
 
-# =============================================================================
-# 4. DRAWING THE HEATMAP
-# =============================================================================
-fig, ax = plt.subplots(figsize=(14, 8))
-fig.canvas.manager.set_window_title("Spectral Bifurcation Diagram")
+    # guide lines: primary response, period-doubling sub-harmonic, 2nd harmonic
+    ax.plot(X, X, color="#22d3ee", ls="--", lw=1.3, alpha=0.7, label=r"$f_{drive}$ (primary)")
+    ax.plot(X, X / 2.0, color="#a3e635", ls=":", lw=1.4, alpha=0.8, label=r"$f_{drive}/2$ (period-doubling)")
+    ax.plot(X, 2.0 * X, color="white", ls=":", lw=1.0, alpha=0.4, label=r"$2f_{drive}$")
+    ax.legend(loc="upper left", fontsize=9, facecolor="black",
+              edgecolor="0.5", labelcolor="white", framealpha=0.7)
 
-ax.set_title("Spectral Bifurcation Diagram (FFT Waterfall Plot)\nColor Intensity = FFT Amplitude", fontsize=16, pad=15)
-ax.set_xlabel("Driving Motor Frequency (Hz)", fontsize=14)
-ax.set_ylabel("Pendulum Response Frequency (Hz)", fontsize=14)
+    ax.set_xlabel("drive frequency $f_{drive}$ (Hz)")
+    ax.set_ylabel("response frequency (Hz)")
+    ax.set_title(r"Spectral bifurcation — $\theta_2$ amplitude spectrum across the 3.2 V sweep",
+                 loc="left", fontweight="bold")
+    ax.set_xlim(X.min(), X.max()); ax.set_ylim(0, args.fmax)
 
-# Create the heatmap. We use shading='nearest' to make the individual frequencies clear
-# LogNorm creates the logarithmic color mapping to reveal the chaotic dust
-c = ax.pcolormesh(X, Y, Z, cmap='inferno', shading='nearest')
+    os.makedirs(os.path.dirname(args.out), exist_ok=True)
+    fig.savefig(args.out, dpi=150)
+    plt.close(fig)
+    print(f"{len(X)} clips  ->  {args.out}")
 
-# Add a colorbar to explain the intensities
-cbar = fig.colorbar(c, ax=ax, pad=0.02)
-cbar.set_label('FFT Amplitude (Log Scale)', fontsize=12)
 
-# --- OVERLAY GUIDELINES ---
-# Draw a diagonal line showing where the pendulum perfectly matches the motor (f = f_drive)
-ax.plot(X, X, color='cyan', linestyle='--', linewidth=1.5, alpha=0.6, label='Primary Response ($f_{drive}$)')
-
-# Draw a diagonal line showing the period-doubling frequency (f = f_drive / 2)
-ax.plot(X, X/2.0, color='lime', linestyle=':', linewidth=1.5, alpha=0.8, label='Period-Doubling ($f_{drive}/2$)')
-
-# Draw a line for the 3rd harmonic just in case the system hits non-linear resonance
-ax.plot(X, X*3.0, color='white', linestyle=':', linewidth=1.0, alpha=0.4, label='3rd Harmonic ($3 \cdot f_{drive}$)')
-
-ax.legend(loc='upper left', fontsize=11, facecolor='black', edgecolor='white', labelcolor='white')
-
-# Tighten the limits to the exact data bounds
-ax.set_xlim(X.min(), X.max())
-ax.set_ylim(0, MAX_FFT_FREQ)
-
-plt.tight_layout()
-plt.show()
+if __name__ == "__main__":
+    main()
