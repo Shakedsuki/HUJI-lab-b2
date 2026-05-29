@@ -53,6 +53,7 @@ sys.path.insert(0, _HERE)
 from paths import clip_dir                          # noqa: E402
 from figures_paths import figure_path, mirror_to_ready  # noqa: E402
 from dimension import load_clip, embed              # noqa: E402
+from kinematics import angular_velocity             # noqa: E402
 
 DEFAULT_M = 5
 DEFAULT_TAU = 11
@@ -99,8 +100,7 @@ def main():
     if keep.sum() > 200:
         t, th2 = t[keep], th2[keep]
 
-    phi = np.degrees(np.unwrap(np.radians(th2)))
-    om2 = np.gradient(phi, t)
+    om2 = angular_velocity(th2, t)   # SG-smoothed dθ₂/dt — see kinematics.py
 
     m, tau, src = read_embed_params(stem, args.tau)
     X = embed(om2, 3, tau)            # 3 delay coords for the 3-D render

@@ -56,6 +56,7 @@ from driven_helpers import parse_stem              # noqa: E402
 from rotations import winding_metrics              # noqa: E402
 from phase_analysis import cyclic_phase, drive_relative, phase_metrics  # noqa: E402
 from dimension import embed, autocorr_tau, correlation_dimension        # noqa: E402
+from kinematics import angular_velocity            # noqa: E402
 
 console = Console()
 RUN_PHASES = ("driven", "free_swing")
@@ -122,9 +123,10 @@ def clip_metrics(t, th1, th2, f_drive, transient_s, with_lyap):
     # correlation dimension — lower-arm attractor. Embed the angular
     # VELOCITY ω₂ (stationary under circulation); embedding the unbounded
     # unwrapped angle is drift-dominated and inflates D₂ past m on the
-    # rotating/chaotic clips. Mirrors dimension.compute() (single source).
-    phi2 = np.degrees(np.unwrap(np.radians(th2)))
-    om2 = np.gradient(phi2, t)
+    # rotating/chaotic clips. ω₂ is the SG-smoothed derivative (kinematics.py):
+    # a raw np.gradient amplifies tracking jitter into ±1000s deg/s spikes that
+    # fill the embedding and inflate D₂ — mirrors dimension.compute() exactly.
+    om2 = angular_velocity(th2, t)
     tau = autocorr_tau(om2)
     dt = float(np.median(np.diff(t)))
     theiler = max(tau, int(round(0.5 / dt)) if dt > 0 else tau)

@@ -59,6 +59,7 @@ sys.path.insert(0, os.path.normpath(os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "..", "utils")))
 from paths import clip_dir             # noqa: E402
 from figures_paths import figure_path  # noqa: E402
+from kinematics import angular_velocity  # noqa: E402
 
 RUN_PHASES = ("driven", "free_swing")
 
@@ -316,12 +317,13 @@ def compute(stem, m, tau_arg, transient_s, seed=0):
     if keep.sum() > 200:
         t, th2 = t[keep], th2[keep]
 
-    phi = np.degrees(np.unwrap(np.radians(th2)))   # continuous angle, for ω
-    om2 = np.gradient(phi, t)
+    om2 = angular_velocity(th2, t)   # SG-smoothed dθ₂/dt — see kinematics.py
     # Embed the angular VELOCITY ω₂, not the angle: ω₂ is stationary even
     # when the lower arm circulates, whereas the unwrapped angle drifts
     # without bound and makes the delay-embedding drift-dominated (which
     # inflates the GP slope past the embedding dimension on rotating clips).
+    # ω₂ must be the SMOOTHED derivative: a raw np.gradient amplifies tracking
+    # jitter into ±1000s deg/s spikes that fill the embedding and inflate D₂.
     tau = tau_arg or autocorr_tau(om2)
 
     X = embed(om2, m, tau)
