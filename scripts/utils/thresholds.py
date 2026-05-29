@@ -100,6 +100,21 @@ def get_pivot_arm(stem):
         return PIVOT_3_2V, ARM_LENGTH_PX_3_2V
     return PIVOT, ARM_LENGTH_PX
 
+# ── Arm phase-locking (phase_locking.py) ──────────────────────────────────
+# ρ = Kuramoto phase-coherence of the θ₁–θ₂ relative phase over the
+# post-transient region; df = relative-phase drift (detuning) in Hz.
+# PROVISIONAL starting points — to be CALIBRATED against the measured chaos
+# band (spectral entropy H_θ₂ / D₂), NOT literature constants.
+PLOCK_RHO_LOCK      = 0.80    # ρ above this → locked
+PLOCK_RHO_UNLOCK    = 0.50    # ρ below this → unlocked (chaos candidate)
+                              # [RHO_UNLOCK, RHO_LOCK] = labeled "ambiguous"
+PLOCK_DF_TOL        = 0.02    # |df| < this · f_drive → locked (detuning tolerance)
+PLOCK_INPHASE_DEG   = 30.0    # |mean dphi| < this → in-phase
+PLOCK_ANTIPHASE_DEG = 30.0    # |mean dphi − 180°| < this → anti-phase
+PLOCK_ROT_FRAC      = 0.25    # rotation-window fraction above this → flag rotation
+PLOCK_W_PERIODS     = 8.0     # sliding-window length, in drive periods
+PLOCK_STEP_PERIODS  = 1.0     # sliding-window step, in drive periods
+
 # BGR tracker crop window — Cohen's original X-only crop from
 # chaos/get_video_coords.py. No Y bound: any Y crop tight enough to
 # exclude the upper wall fabric on low-amplitude 3.2V clips also cut

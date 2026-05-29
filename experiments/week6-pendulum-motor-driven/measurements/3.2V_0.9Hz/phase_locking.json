@@ -1,0 +1,14 @@
+{
+  "stem": "3.2V_0.9Hz",
+  "f_drive_hz": 0.9,
+  "transient_s": 5.0,
+  "rho": 0.8417107404442999,
+  "mean_dphi_deg": -11.56330216427591,
+  "df_hz": 0.0009336758664446348,
+  "psi_drive_df_hz": 0.007212029192875771,
+  "rotation_fraction": 0.0,
+  "verdict": "locked",
+  "sub": "in-phase",
+  "sg_window_frames": 13,
+  "n_windows": 70
+}

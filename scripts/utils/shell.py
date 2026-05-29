@@ -53,6 +53,7 @@ SCRIPT_THETA2_SWEEP = os.path.join(REPO_ROOT, "scripts", "analysis", "theta2_tim
 SCRIPT_RECURRENCE_SWEEP = os.path.join(REPO_ROOT, "scripts", "analysis", "recurrence_sweep.py")
 SCRIPT_PALETTE_SWEEP = os.path.join(REPO_ROOT, "scripts", "analysis", "palette_sweep.py")
 SCRIPT_FTLE_WINDOWS = os.path.join(REPO_ROOT, "scripts", "analysis", "ftle_windows.py")
+SCRIPT_PHASE_LOCK  = os.path.join(REPO_ROOT, "scripts", "analysis", "phase_locking.py")
 SCRIPT_CHAOS_WINDOWS = os.path.join(REPO_ROOT, "scripts", "analysis", "chaos_windows.py")
 SCRIPT_OVERLAY     = os.path.join(REPO_ROOT, "scripts", "analysis", "overlay_video.py")
 
@@ -1085,6 +1086,7 @@ ANALYZE_TYPES = [
     ("recurrence",    "rec",    "recurrence plot"),
     ("attractor",     "attr",   "attractor embed"),
     ("ftle_windows",  "ftle",   "FTLE windows"),
+    ("phase_locking", "plock",  "arm phase-lock"),
 ]
 
 def _analyze_exists(tn, stem):
@@ -1093,6 +1095,7 @@ def _analyze_exists(tn, stem):
     if tn == "dimension":  return os.path.isfile(os.path.join(clip_dir(stem), "dimension.json"))
     if tn == "return_map": return os.path.isfile(os.path.join(clip_dir(stem), "return_map.csv"))
     if tn == "ftle_windows": return os.path.isfile(os.path.join(clip_dir(stem), "ftle_windows.json"))
+    if tn == "phase_locking": return os.path.isfile(os.path.join(clip_dir(stem), "phase_locking.json"))
     return _fig_exists(tn, stem)
 
 def _voltage_sweep_ok(clips):
@@ -1132,6 +1135,8 @@ def build_mode_analyze():
         if row: _runclip(ctx, SCRIPT_RECURRENCE, "--stem", row["stem"]); _log_activity(f"recurrence {row['stem']}")
     def act_attractor(row, rows, i, ctx):
         if row: _runclip(ctx, SCRIPT_ATTRACTOR, "--stem", row["stem"]); _log_activity(f"attractor {row['stem']}")
+    def act_plock(row, rows, i, ctx):
+        if row: _runclip(ctx, SCRIPT_PHASE_LOCK, "--stem", row["stem"]); _log_activity(f"phase-lock {row['stem']}")
     def act_explore(row, rows, i, ctx):
         if not row: return
         sys.path.insert(0, os.path.join(REPO_ROOT, "scripts", "analysis"))
@@ -1139,7 +1144,7 @@ def build_mode_analyze():
         _do_suspended(ctx, lambda: explore(row["stem"]), pause=False)
     _RUN = {"chaos": act_chaos, "poinc": act_poin, "lyap": act_lyap, "ftle": act_ftle,
             "driven": act_driven, "rot": act_rot, "dim": act_dim, "ret": act_returnmap,
-            "rec": act_recurrence, "attr": act_attractor}
+            "rec": act_recurrence, "attr": act_attractor, "plock": act_plock}
     def run_cell(stem, t, ctx):
         fn = _RUN.get(t[1])
         if fn: fn({"stem": stem}, None, None, ctx)

@@ -1,0 +1,14 @@
+{
+  "stem": "3.2V_1.34Hz",
+  "f_drive_hz": 1.34,
+  "transient_s": 5.0,
+  "rho": 0.9815752104494603,
+  "mean_dphi_deg": -121.38883492008098,
+  "df_hz": 4.975072974041802e-05,
+  "psi_drive_df_hz": -2.680060727508907,
+  "rotation_fraction": 0.0,
+  "verdict": "locked",
+  "sub": "general phase-lock (Δφ≈-121°)",
+  "sg_window_frames": 9,
+  "n_windows": 115
+}
