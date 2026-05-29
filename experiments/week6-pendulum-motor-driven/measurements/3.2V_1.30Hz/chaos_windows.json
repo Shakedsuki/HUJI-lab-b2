@@ -1,21 +1,22 @@
 {
   "stem": "3.2V_1.30Hz",
-  "verdict": "CHAOTIC",
+  "verdict": "BORDERLINE",
   "reasons": [
-    "E_peak / E_inversion = 16.64 > 1.2 with K = 0.76 > 0.5"
+    "below inversion threshold but K > 0.3 (max |θ₂_abs| = 140.2°, K = 0.60)",
+    "spectral entropy in transitional band (θ₂ norm. entropy = 0.26)"
   ],
-  "K_chaos": 0.7582,
-  "K_chaos_iqr": 0.191,
-  "spectral_entropy_th2": 0.2874,
+  "K_chaos": 0.5985,
+  "K_chaos_iqr": 0.3399,
+  "spectral_entropy_th2": 0.2638,
   "n_windows": 8,
   "window_entropy": [
-    0.4179,
-    0.2335,
-    0.2449,
-    0.2616,
-    0.2534,
-    0.2158,
-    0.2322,
-    0.1951
+    0.4029,
+    0.2148,
+    0.2208,
+    0.2397,
+    0.2373,
+    0.1892,
+    0.2106,
+    0.177
   ]
 }

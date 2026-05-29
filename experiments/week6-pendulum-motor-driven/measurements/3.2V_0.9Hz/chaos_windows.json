@@ -1,22 +1,21 @@
 {
   "stem": "3.2V_0.9Hz",
-  "verdict": "CHAOTIC",
+  "verdict": "REGULAR",
   "reasons": [
-    "full arm-2 inversions (max |θ₂_abs| = 180.0°) with K = 0.92 > 0.5",
-    "E_peak / E_inversion = 7.06 > 1.2 with K = 0.92 > 0.5"
+    "K = 0.16 < 0.3 and spectral entropy = 0.18 < 0.4"
   ],
-  "K_chaos": 0.916,
-  "K_chaos_iqr": 0.1125,
-  "spectral_entropy_th2": 0.5455,
+  "K_chaos": 0.1603,
+  "K_chaos_iqr": 0.1528,
+  "spectral_entropy_th2": 0.1793,
   "n_windows": 8,
   "window_entropy": [
-    0.9003,
-    0.5567,
-    0.5399,
-    0.548,
-    0.5429,
-    0.5376,
-    0.5555,
-    0.5451
+    0.2476,
+    0.1833,
+    0.1822,
+    0.1824,
+    0.1828,
+    0.1822,
+    0.183,
+    0.1827
   ]
 }
