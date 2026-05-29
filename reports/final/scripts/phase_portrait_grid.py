@@ -131,8 +131,6 @@ def main():
     counts = {"chaotic": 0, "regular": 0, "transition": 0}
     for ax, (stem, th2, om2, rho, H, q) in zip(axes, tiles):
         counts[q] += 1
-        face, a = TINT[q]
-        ax.set_facecolor((*_hex2rgb(face), a))
         ax.scatter(th2, om2, s=1.2, alpha=0.45, linewidths=0, color=COLOR_ARM2)
         ax.set_xlim(-185, 185); ax.set_ylim(-om_lim, om_lim)
         ax.set_xticks([-180, 0, 180]); ax.tick_params(labelsize=6)
@@ -153,11 +151,6 @@ def main():
     fig.savefig(args.out, dpi=140)
     plt.close(fig)
     print(f"{n} clips  ({counts})  ->  {args.out}")
-
-
-def _hex2rgb(h):
-    h = h.lstrip("#")
-    return tuple(int(h[i:i+2], 16) / 255.0 for i in (0, 2, 4))
 
 
 if __name__ == "__main__":
