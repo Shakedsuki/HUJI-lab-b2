@@ -355,15 +355,19 @@ def run_sweep(voltage, transient_s):
         if np.isfinite(x) and np.isfinite(y):
             ax.annotate(st.split("_")[1].replace("Hz", ""), (x, y),
                         fontsize=6, alpha=0.6, xytext=(3, 3), textcoords="offset points")
-    ax.axvline(TH.PLOCK_RHO_LOCK, color="0.6", ls=":", lw=0.8)
-    ax.axhline(0.4, color="0.6", ls=":", lw=0.8)
-    ax.text(0.97, 0.16, "locked +\nregular", ha="right", va="center",
-            fontsize=9, color="#2e8b57", fontweight="bold")
-    ax.text(0.04, 0.70, "unlocked +\nchaotic", ha="left", va="center",
-            fontsize=9, color="#c0392b", fontweight="bold")
+    # gentle region tints instead of text: locked+regular (green, bottom-right),
+    # unlocked+chaotic (red, top-left)
+    xlo, xhi = -0.02, 1.02
+    ylo = float(np.nanmin(H)) - 0.04
+    yhi = float(np.nanmax(H)) + 0.04
+    RL, HT = TH.PLOCK_RHO_LOCK, 0.4
+    ax.fill_between([RL, xhi], ylo, HT, color="#2e8b57", alpha=0.07, zorder=0)
+    ax.fill_between([xlo, RL], HT, yhi, color="#c0392b", alpha=0.07, zorder=0)
+    ax.axvline(RL, color="0.7", ls=":", lw=0.8, zorder=1)
+    ax.axhline(HT, color="0.7", ls=":", lw=0.8, zorder=1)
     ax.set_xlabel("ρ  (arm phase coherence)")
     ax.set_ylabel("H_θ₂  (spectral entropy)")
-    ax.set_xlim(-0.02, 1.02); ax.grid(alpha=0.25)
+    ax.set_xlim(xlo, xhi); ax.set_ylim(ylo, yhi); ax.grid(alpha=0.25)
     ax.set_title("Arm lock vs spectral chaos agree", loc="left", fontweight="bold")
     fig.colorbar(sc, ax=ax, label="f_drive (Hz)")
 
