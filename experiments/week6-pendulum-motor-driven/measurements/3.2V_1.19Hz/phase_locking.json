@@ -2,13 +2,13 @@
   "stem": "3.2V_1.19Hz",
   "f_drive_hz": 1.19,
   "transient_s": 5.0,
-  "rho": 0.6870178324766342,
-  "mean_dphi_deg": 149.7140876601772,
-  "df_hz": -0.04651377468779828,
-  "psi_drive_df_hz": 0.3846103454060592,
+  "rho": null,
+  "mean_dphi_deg": null,
+  "df_hz": null,
+  "psi_drive_df_hz": null,
   "rotation_fraction": 0.9440559440559441,
   "verdict": "rotation",
-  "sub": "94% of windows rotate (over-the-top)",
+  "sub": "94% of windows rotate (over-the-top) — ρ undefined",
   "sg_window_frames": 11,
   "n_windows": 143
 }
