@@ -50,6 +50,7 @@ SCRIPT_WINDING_SWEEP = os.path.join(REPO_ROOT, "scripts", "analysis", "winding_s
 SCRIPT_PHASE3D_PLOTLY = os.path.join(REPO_ROOT, "scripts", "analysis", "phase_3d_plotly.py")
 SCRIPT_WATERFALL   = os.path.join(REPO_ROOT, "scripts", "analysis", "spectral_waterfall.py")
 SCRIPT_THETA2_SWEEP = os.path.join(REPO_ROOT, "scripts", "analysis", "theta2_timeseries_sweep.py")
+SCRIPT_RECURRENCE_SWEEP = os.path.join(REPO_ROOT, "scripts", "analysis", "recurrence_sweep.py")
 SCRIPT_PALETTE_SWEEP = os.path.join(REPO_ROOT, "scripts", "analysis", "palette_sweep.py")
 SCRIPT_FTLE_WINDOWS = os.path.join(REPO_ROOT, "scripts", "analysis", "ftle_windows.py")
 SCRIPT_CHAOS_WINDOWS = os.path.join(REPO_ROOT, "scripts", "analysis", "chaos_windows.py")
@@ -1510,6 +1511,8 @@ def build_mode_figures():
         ttype = t[0]
         if ttype == "theta2_timeseries":          # standalone single-axis palette
             def work(): _run(SCRIPT_THETA2_SWEEP, "--qa-only"); _log_activity("theta2 palette")
+        elif ttype == "recurrence":                    # standalone recurrence palette
+            def work(): _run(SCRIPT_RECURRENCE_SWEEP, "--qa-only", "--ncols", "6"); _log_activity("recurrence palette")
         elif ttype in PALETTE_VIA_HARNESS:         # shared contact-sheet harness
             def work(): _run(SCRIPT_PALETTE_SWEEP, "--type", ttype, "--qa-only"); _log_activity(f"{t[1]} palette")
         else:
