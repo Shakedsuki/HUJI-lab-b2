@@ -5,7 +5,7 @@
   "rho": 0.6870178324766342,
   "mean_dphi_deg": 149.7140876601772,
   "df_hz": -0.04651377468779828,
-  "psi_drive_df_hz": -1.9834742412495254,
+  "psi_drive_df_hz": 0.3846103454060592,
   "rotation_fraction": 0.9440559440559441,
   "verdict": "rotation",
   "sub": "94% of windows rotate (over-the-top)",

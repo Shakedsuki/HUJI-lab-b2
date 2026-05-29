@@ -247,9 +247,18 @@ def make_figure(res, out_path):
     fig = plt.figure(figsize=(13, 9), constrained_layout=True)
     gs = fig.add_gridspec(3, 2, height_ratios=[1.1, 1.0, 1.2])
 
-    # (1) dφ(t) — flat ⇒ locked, drifting ⇒ unlocked
+    # (1) relative phase — raw wrapped (faint) + sliding-window mean (bold).
+    # A locked clip sits at a near-constant offset; an unlocked one drifts/wraps.
     ax = fig.add_subplot(gs[0, :])
-    ax.plot(t0, np.degrees(dphi), lw=0.7, color="#333333")
+    ax.scatter(t0, wrap180(np.degrees(dphi)), s=1, alpha=0.15, color="0.6",
+               linewidths=0, label="Δφ (raw, wrapped)")
+    ax.plot(win["t"] - t[0], win["mean"], lw=1.6, color="#8e44ad",
+            label="window-mean Δφ̄ (locked offset)")
+    ax.axhline(0, color="#2e8b57", lw=0.6, ls=":")
+    ax.axhline(180, color="#c0392b", lw=0.6, ls=":")
+    ax.axhline(-180, color="#c0392b", lw=0.6, ls=":")
+    ax.set_ylim(-185, 185); ax.set_yticks([-180, -90, 0, 90, 180])
+    ax.legend(loc="lower right", fontsize=8, ncol=2)
     ax.set_ylabel("Δφ = φ₁−φ₂ (deg)")
     ax.set_title(f"{res['stem']}   f_drive={res['f_drive_hz']:g} Hz   "
                  f"ρ={res['rho']:.2f}   Δφ̄={res['mean_dphi_deg']:.0f}°   "
@@ -350,36 +359,46 @@ def run_sweep(voltage, transient_s):
     f, rho, mean, df, rotf, H, D2, lam = (arr(0), arr(1), arr(2), arr(3),
                                           arr(4), arr(6), arr(7), arr(8))
 
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 5.5), constrained_layout=True)
-    # left: rho(f) + mean_dphi(f), chaos reference on twin axis
-    ax1.plot(f, rho, "o-", color="#8e44ad", label="ρ (arm coherence)")
-    ax1.plot(f, np.abs(mean) / 180.0, "s--", color="#16a085", ms=4,
-             label="|Δφ̄|/180° (0=in-phase,1=anti)")
-    ax1.scatter(f[rotf > TH.PLOCK_ROT_FRAC], rho[rotf > TH.PLOCK_ROT_FRAC],
-                s=90, facecolors="none", edgecolors="#e67e22", linewidths=1.5,
-                label="rotation-flagged", zorder=5)
-    ax1.axhline(TH.PLOCK_RHO_LOCK, color="0.6", ls=":", lw=0.8)
-    ax1.set_xlabel("drive frequency (Hz)"); ax1.set_ylabel("ρ  /  |Δφ̄|/180°")
-    ax1.set_ylim(0, 1.05); ax1.grid(alpha=0.25); ax1.legend(loc="center left", fontsize=8)
-    axb = ax1.twinx()
-    axb.plot(f, H, "^-", color="#c0392b", ms=4, alpha=0.85, label="H_θ₂ (chaos: entropy)")
-    axb.plot(f, D2 / 3.5, "v--", color="#7f1d1d", ms=3, alpha=0.6, label="D₂/3.5")
-    axb.plot(f, lam, ":", color="0.6", lw=1.0, alpha=0.7, label="λ₁ (non-discriminating)")
-    axb.set_ylabel("chaos score (H_θ₂, D₂/3.5, λ₁)")
-    axb.set_ylim(0, 1.2); axb.legend(loc="upper right", fontsize=7)
-    ax1.set_title("Arm phase-locking vs drive frequency", loc="left", fontweight="bold")
+    rotation = rotf > TH.PLOCK_ROT_FRAC
+    rho_valid = rho.copy()
+    rho_valid[rotation] = np.nan        # ρ is undefined where the arm rotates
 
-    # right: rho vs chaos score (primary = H_θ₂); test locked↔regular
-    sc = ax2.scatter(rho, H, c=f, cmap="viridis", s=45, edgecolors="k", linewidths=0.4)
-    for x, y, st in zip(rho, H, [r[9] for r in rows]):
-        if np.isfinite(x) and np.isfinite(y):
-            ax2.annotate(st.split("_")[1].replace("Hz", ""), (x, y),
-                         fontsize=6, alpha=0.6, xytext=(2, 2), textcoords="offset points")
-    ax2.axvline(TH.PLOCK_RHO_LOCK, color="#2e8b57", ls=":", lw=0.8)
-    ax2.axhline(0.4, color="#c0392b", ls=":", lw=0.8)
-    ax2.set_xlabel("ρ (arm coherence)"); ax2.set_ylabel("H_θ₂ (spectral entropy)")
-    ax2.set_title("locked (high ρ) ↔ regular (low H) ?", loc="left", fontweight="bold")
-    ax2.grid(alpha=0.25)
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5.2), constrained_layout=True)
+
+    # LEFT — arm coherence vs frequency. ρ is meaningful only where the arms
+    # librate; in the rotation (chaotic) band the phase angle degenerates, so
+    # we blank ρ there and shade the band instead. One axis, one curve.
+    if rotation.any():
+        ax1.axvspan(f[rotation].min(), f[rotation].max(), color="#e67e22",
+                    alpha=0.10, lw=0)
+        ax1.text(float(np.median(f[rotation])), 0.07,
+                 "rotation: arm 2 over-the-top\nρ undefined (chaotic core)",
+                 ha="center", va="bottom", fontsize=9, color="#b9560f")
+    ax1.plot(f, rho_valid, "o-", color="#8e44ad", lw=1.6, ms=6,
+             label="ρ (arm phase coherence)")
+    ax1.axhline(TH.PLOCK_RHO_LOCK, color="#2e8b57", ls=":", lw=1.0)
+    ax1.text(f.min(), TH.PLOCK_RHO_LOCK + 0.01, f" locked (ρ > {TH.PLOCK_RHO_LOCK})",
+             color="#2e8b57", fontsize=8, va="bottom")
+    ax1.set_xlabel("drive frequency (Hz)")
+    ax1.set_ylabel("ρ  (arm phase coherence)")
+    ax1.set_ylim(0, 1.05); ax1.grid(alpha=0.25)
+    ax1.legend(loc="lower center", fontsize=9)
+    ax1.set_title("Arms lock at the sweep ends, tumble in the middle",
+                  loc="left", fontweight="bold")
+
+    # RIGHT — do the two independent 'regular' tests agree? ρ (phase-lock) vs
+    # H_θ₂ (spectral). bottom-right = locked+regular, top-left = chaotic.
+    sc = ax2.scatter(rho, H, c=f, cmap="viridis", s=55, edgecolors="k", linewidths=0.4)
+    ax2.axvline(TH.PLOCK_RHO_LOCK, color="0.6", ls=":", lw=0.8)
+    ax2.axhline(0.4, color="0.6", ls=":", lw=0.8)
+    ax2.text(0.97, 0.18, "locked +\nregular", ha="right", va="center",
+             fontsize=9, color="#2e8b57", fontweight="bold")
+    ax2.text(0.06, 0.70, "unlocked /\nrotation +\nchaotic", ha="left", va="center",
+             fontsize=9, color="#c0392b", fontweight="bold")
+    ax2.set_xlabel("ρ (arm phase coherence)")
+    ax2.set_ylabel("H_θ₂ (spectral entropy)")
+    ax2.set_xlim(-0.02, 1.02); ax2.grid(alpha=0.25)
+    ax2.set_title("Two independent 'regular' tests agree", loc="left", fontweight="bold")
     fig.colorbar(sc, ax=ax2, label="f_drive (Hz)")
 
     out = aggregate_path(f"phase_locking_{voltage:g}V.png")
