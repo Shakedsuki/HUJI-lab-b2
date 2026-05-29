@@ -365,25 +365,24 @@ def run_sweep(voltage, transient_s):
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5.2), constrained_layout=True)
 
-    # LEFT — arm coherence vs frequency. ρ is meaningful only where the arms
-    # librate; in the rotation (chaotic) band the phase angle degenerates, so
-    # we blank ρ there and shade the band instead. One axis, one curve.
-    if rotation.any():
-        ax1.axvspan(f[rotation].min(), f[rotation].max(), color="#e67e22",
-                    alpha=0.10, lw=0)
-        ax1.text(float(np.median(f[rotation])), 0.07,
-                 "rotation: arm 2 over-the-top\nρ undefined (chaotic core)",
-                 ha="center", va="bottom", fontsize=9, color="#b9560f")
-    ax1.plot(f, rho_valid, "o-", color="#8e44ad", lw=1.6, ms=6,
-             label="ρ (arm phase coherence)")
+    # LEFT — two complementary [0,1] curves vs frequency. ρ (arm coherence) is
+    # meaningful only where the arms librate, so it is blanked across the
+    # rotation band; the rotation FRACTION (arm 2 over-the-top) is defined
+    # everywhere and fills that band — it IS the chaos signature. Together:
+    # ρ→1 at the ends (locked), rotation→1 in the middle (tumbling).
+    ax1.fill_between(f, 0, rotf, color="#e67e22", alpha=0.15, zorder=0)
+    ax1.plot(f, rotf, "s-", color="#e67e22", lw=1.3, ms=4,
+             label="rotation fraction (arm 2 over-the-top)")
+    ax1.plot(f, rho_valid, "o-", color="#8e44ad", lw=1.8, ms=6,
+             label="ρ (arm coherence, where librating)")
     ax1.axhline(TH.PLOCK_RHO_LOCK, color="#2e8b57", ls=":", lw=1.0)
     ax1.text(f.min(), TH.PLOCK_RHO_LOCK + 0.01, f" locked (ρ > {TH.PLOCK_RHO_LOCK})",
              color="#2e8b57", fontsize=8, va="bottom")
     ax1.set_xlabel("drive frequency (Hz)")
-    ax1.set_ylabel("ρ  (arm phase coherence)")
+    ax1.set_ylabel("ρ (coherence)  ·  rotation fraction")
     ax1.set_ylim(0, 1.05); ax1.grid(alpha=0.25)
-    ax1.legend(loc="lower center", fontsize=9)
-    ax1.set_title("Arms lock at the sweep ends, tumble in the middle",
+    ax1.legend(loc="center", fontsize=8.5)
+    ax1.set_title("Arms lock at the sweep ends (ρ→1), tumble in the middle (rot→1)",
                   loc="left", fontweight="bold")
 
     # RIGHT — do the two independent 'regular' tests agree? ρ (phase-lock) vs
