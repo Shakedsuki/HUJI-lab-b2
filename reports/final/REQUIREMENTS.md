@@ -107,11 +107,11 @@ conventions live in `report_common.py` (`tail_window` steady-state slice,
 | **Energy** (⟨E⟩/⟨T⟩/⟨U⟩ + virial T/U vs f_drive; resonance peak ~0.95 Hz) | `energies.py` | `energies_3.2V.png` |
 | **Chaos profile** (H_θ₂ + D₂ vs f, and θ₁ amplitude + % inversion vs f — quantifies the route AND the resonance "why") | `chaos_profile.py` | `chaos_profile_3.2V.png` |
 | **Phase-space area** (normalised filling fraction of the θ₂–ω₂ cloud vs f_drive, with D_box cross-check; low=loop, high=filled) | `phase_area.py` | `phase_area_3.2V.png` |
+| **Stroboscopic Poincaré spread** (normalised standard distance of the strobe cloud vs f_drive; extrema = most clustered / most scattered) | `poincare_spread.py` | `poincare_spread_3.2V.png` |
 
 ### ⬜ Remaining candidates (optional)
 
 - **λ₁ vs f_drive** — superseded by the chaos-profile plot; λ₁ measured non-discriminating on this sweep (ftle classification labels every clip "chaotic"). Skip unless wanted.
-- **Stroboscopic Poincaré spread** (std/area of the strobed section vs f_drive) — not built.
 - **Rotation / flip count vs f_drive** — partially covered: phase-locking surfaces rotation fraction; `rotation_counter.py` is interactive (not wired for static report use).
 
 ### Deviations from the original spec (intentional, agreed)
