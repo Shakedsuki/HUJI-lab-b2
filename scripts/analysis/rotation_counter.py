@@ -1,23 +1,30 @@
 """
 rotation_counter.py
 -------------------
-Interactive CW / CCW rotation counter for arm2 (lower pendulum, θ₂).
+Interactive CW / CCW rotation counter for arm2 (lower pendulum, theta2),
+across a whole drive-voltage family.
 
-Opens a matplotlib GUI with a "transient cutoff" slider so you can trim the
-initial settling period before counting turns.  Counts update live.
+Plots the number of completed clockwise (CW) and counter-clockwise (CCW)
+turns that arm2 makes, with drive frequency on the x-axis, for every clip
+at one voltage (default 3.2 V).
+
+The start of each run contains a transient before the pendulum settles onto
+its attractor. A slider trims it: drag "transient cut" to set how many
+seconds to discard from the start of every clip before counting, and the
+whole sweep recomputes and redraws live so you can find the right window.
+
+Turn-counting convention
+~~~~~~~~~~~~~~~~~~~~~~~~~
+theta2 (atan2 output, wrapped to (-180, 180]) is unwrapped once, then a
+hysteresis-free counter logs one CCW turn each time the angle advances a
+full +360 deg past a ratcheting reference, one CW turn each -360 deg. An
+arm oscillating below 360 deg amplitude logs nothing; a full back-and-forth
+loop logs one each way. Matches scripts/analysis/rotations.py.
 
 Usage
 ~~~~~
-  python scripts/analysis/rotation_counter.py --stem 3.2V_1.20Hz
-
-Controls
-~~~~~~~~
-  Slider  — drag to set the transient cutoff time t_start.
-            Everything to the left of the dashed line is ignored.
-  Counts displayed in the figure:
-      CW turns  (θ₂ decreasing, i.e. turns_neg in the winding convention)
-      CCW turns (θ₂ increasing, turns_pos)
-      Net turns (CCW − CW, signed)
+  python scripts/analysis/rotation_counter.py
+  python scripts/analysis/rotation_counter.py --voltage 4.0
 """
 
 import argparse
@@ -27,21 +34,22 @@ import sys
 
 import numpy as np
 import matplotlib
-matplotlib.use("TkAgg")            # interactive backend; falls back gracefully
+matplotlib.use("TkAgg")            # interactive GUI backend
 import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider
 
 sys.path.insert(0, os.path.normpath(os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "..", "utils")))
-from paths import clip_dir          # noqa: E402
+from paths import clip_dir, iter_clip_dirs       # noqa: E402
+from driven_helpers import parse_stem            # noqa: E402
+
+
+RUN_PHASES = ("driven", "free_swing")
 
 
 # ─────────────────────────────────────────────────────
-# DATA LOADING  (inline — avoids rotations.py Agg lock)
+# DATA
 # ─────────────────────────────────────────────────────
-
-_RUN_PHASES = ("driven", "free_swing")
-
 
 def _f(x):
     try:
@@ -50,14 +58,12 @@ def _f(x):
         return np.nan
 
 
-def load_clip(csv_path):
-    t, th2, om2 = [], [], []
+def load_theta2(csv_path):
+    """Clean (t0, theta2) arrays for arm2. Time zero-based. None if sparse."""
+    t, th2 = [], []
     with open(csv_path, newline="", encoding="utf-8") as fh:
-        reader = csv.DictReader(fh)
-        fields = reader.fieldnames or []
-        has_omega = "omega2_deg_s" in fields
-        for r in reader:
-            if r.get("phase") not in _RUN_PHASES:
+        for r in csv.DictReader(fh):
+            if r.get("phase") not in RUN_PHASES:
                 continue
             d = r.get("dropout", "0")
             try:
@@ -70,28 +76,53 @@ def load_clip(csv_path):
                 continue
             t.append(tt)
             th2.append(th)
-            if has_omega:
-                om2.append(_f(r.get("omega2_deg_s")))
     if len(t) < 30:
-        raise SystemExit(f"too few clean frames ({len(t)}) in {csv_path}")
+        return None
     t = np.array(t)
-    th2 = np.array(th2)
-    om2 = np.array(om2) if has_omega else None
-    return t, th2, om2
+    return t - t[0], np.array(th2)
+
+
+def load_family(voltage):
+    """Preload every clip at `voltage`: [{f, stem, t0, phi, dur}, ...].
+
+    phi is the unwrapped theta2 (degrees), computed once so the slider can
+    re-slice and recount cheaply without touching disk.
+    """
+    fam = []
+    for stem, _cdir in iter_clip_dirs():
+        try:
+            meta = parse_stem(stem)
+        except ValueError:
+            continue
+        if abs(meta["v_drill_v"] - voltage) > 1e-6:
+            continue
+        cdir = clip_dir(stem)
+        csv_path = next(
+            (os.path.join(cdir, n) for n in ("verification.csv", "tracking.csv")
+             if os.path.exists(os.path.join(cdir, n))), None)
+        if csv_path is None:
+            continue
+        loaded = load_theta2(csv_path)
+        if loaded is None:
+            print(f"  skip {stem}: too few clean frames")
+            continue
+        t0, th2 = loaded
+        phi = np.degrees(np.unwrap(np.radians(th2)))
+        fam.append({"f": meta["f_drive_hz"], "stem": stem,
+                    "t0": t0, "phi": phi, "dur": float(t0[-1])})
+    fam.sort(key=lambda c: c["f"])
+    return fam
 
 
 # ─────────────────────────────────────────────────────
-# ROTATION MATHS
+# COUNTING
 # ─────────────────────────────────────────────────────
 
-def unwrap_deg(phi_wrapped):
-    return np.degrees(np.unwrap(np.radians(phi_wrapped)))
-
-
-def count_turns(rel):
-    """Hysteresis-free completed ±360° revolution counter.
-    Returns (turns_ccw, turns_cw) as non-negative integers."""
-    R = float(rel[0])
+def count_turns(phi_window):
+    """(ccw, cw) completed +/-360 deg revolutions over an unwrapped slice.
+    Hysteresis on a ratcheting reference; re-zeroed at the slice start."""
+    rel = phi_window - phi_window[0]
+    R = 0.0
     ccw = cw = 0
     for x in rel.tolist():
         while x - R >= 360.0:
@@ -103,146 +134,86 @@ def count_turns(rel):
     return ccw, cw
 
 
-def compute_window(t, th2, t_start):
-    mask = t >= t_start
+def turns_after(clip, t_start):
+    """(ccw, cw) for one clip counting only t >= t_start. None if too short."""
+    mask = clip["t0"] >= t_start
     if mask.sum() < 10:
         return None
-    t_w = t[mask]
-    phi = unwrap_deg(th2[mask])
-    rel = phi - phi[0]
-    ccw, cw = count_turns(rel)
-    net = (ccw - cw)
-    return {
-        "t": t_w,
-        "rel": rel,
-        "ccw": ccw,
-        "cw": cw,
-        "net": net,
-        "n": int(mask.sum()),
-        "dur": float(t_w[-1] - t_w[0]),
-    }
+    return count_turns(clip["phi"][mask])
 
 
 # ─────────────────────────────────────────────────────
 # GUI
 # ─────────────────────────────────────────────────────
 
-def launch_gui(stem, t, th2, om2):
-    t0 = t - t[0]
-    T = float(t0[-1])
+def launch_gui(fam, voltage):
+    freqs = np.array([c["f"] for c in fam])
+    min_dur = min(c["dur"] for c in fam)
+    max_cut = max(min_dur * 0.7, 1.0)     # keep >=30% of the shortest clip
+    init_cut = min(5.0, max_cut)
 
-    fig = plt.figure(figsize=(13, 8))
-    fig.canvas.manager.set_window_title(f"Rotation counter — {stem}")
+    fig, ax = plt.subplots(figsize=(12, 7))
+    fig.subplots_adjust(bottom=0.20)
+    fig.canvas.manager.set_window_title(
+        f"arm2 rotation counter — {voltage:g} V family")
 
-    # Layout: top = raw angle, mid = accumulated turns, bottom = slider
-    ax_raw  = fig.add_axes([0.08, 0.60, 0.86, 0.33])
-    ax_acc  = fig.add_axes([0.08, 0.22, 0.86, 0.33])
-    ax_sl   = fig.add_axes([0.15, 0.07, 0.70, 0.04])
+    ccw_line, = ax.plot(freqs, np.zeros_like(freqs), "-o",
+                        color="tab:blue", ms=5, lw=1.3, label="CCW (+)")
+    cw_line,  = ax.plot(freqs, np.zeros_like(freqs), "-o",
+                        color="tab:red",  ms=5, lw=1.3, label="CW (-)")
+    ax.set_xlabel("drive frequency (Hz)")
+    ax.set_ylabel(r"completed turns of arm2 ($\theta_2$)")
+    ax.grid(True, alpha=0.25)
+    ax.legend(loc="upper left")
 
-    slider = Slider(ax_sl, "t_start (s)", 0.0, T * 0.85,
-                    valinit=0.0, valstep=max(T / 500, 0.05),
+    ax_sl = fig.add_axes([0.15, 0.06, 0.70, 0.035])
+    slider = Slider(ax_sl, "transient cut (s)", 0.0, max_cut,
+                    valinit=init_cut, valstep=max(max_cut / 400, 0.05),
                     color="steelblue")
 
-    # ── raw angle panel ──
-    ax_raw.plot(t0, th2, color="tab:red", lw=0.7, alpha=0.85)
-    vline_raw = ax_raw.axvline(0, color="k", lw=1.2, ls="--", alpha=0.7)
-    span_raw  = ax_raw.axvspan(0, 0, color="0.88", zorder=0)
-    ax_raw.set_ylabel(r"$\theta_2$ (deg, wrapped)")
-    ax_raw.set_title(f"arm2  θ₂   —   {stem}", fontsize=10)
-    ax_raw.set_xlim(0, T)
-    ax_raw.grid(True, alpha=0.2)
-
-    # ── accumulated turns panel ──
-    phi_full = unwrap_deg(th2)
-    rel_full = phi_full - phi_full[0]
-    line_acc,  = ax_acc.plot(t0, rel_full / 360.0, color="tab:red", lw=0.9, label="full")
-    line_win,  = ax_acc.plot([], [], color="tab:blue", lw=1.4, label="window")
-    vline_acc  = ax_acc.axvline(0, color="k", lw=1.2, ls="--", alpha=0.7)
-    span_acc   = ax_acc.axvspan(0, 0, color="0.88", zorder=0)
-    ax_acc.axhline(0, color="0.5", lw=0.5)
-    ax_acc.set_ylabel("accumulated angle (rev)")
-    ax_acc.set_xlabel("t (s)")
-    ax_acc.set_xlim(0, T)
-    ax_acc.grid(True, alpha=0.2)
-    ax_acc.legend(fontsize=8, loc="upper left")
-
-    # count annotation
-    ann = ax_acc.text(
-        0.99, 0.97, "",
-        transform=ax_acc.transAxes,
-        ha="right", va="top",
-        fontsize=12, family="monospace",
-        bbox=dict(boxstyle="round,pad=0.4", fc="white", ec="0.7", alpha=0.9),
-    )
-
-    def _update_span(span, xmin, xmax):
-        # Polygon vertices: bl, tl, tr, br
-        verts = span.get_xy()
-        verts[:, 0] = [xmin, xmin, xmax, xmax, xmin]
-        span.set_xy(verts)
-
-    def update(val):
+    def update(_):
         ts = float(slider.val)
-        vline_raw.set_xdata([ts])
-        vline_acc.set_xdata([ts])
-        _update_span(span_raw, 0, ts)
-        _update_span(span_acc, 0, ts)
+        ccw_vals, cw_vals = [], []
+        for c in fam:
+            res = turns_after(c, ts)
+            if res is None:
+                ccw_vals.append(np.nan); cw_vals.append(np.nan)
+            else:
+                ccw_vals.append(res[0]); cw_vals.append(res[1])
+        ccw_vals = np.array(ccw_vals, float)
+        cw_vals = np.array(cw_vals, float)
 
-        w = compute_window(t0, th2, ts)
-        if w is None:
-            ann.set_text("(window too short)")
-            fig.canvas.draw_idle()
-            return
-
-        t_rel = w["t"] - w["t"][0]
-        line_win.set_xdata(w["t"])
-        line_win.set_ydata(w["rel"] / 360.0)
-
-        ax_acc.relim()
-        ax_acc.autoscale_view(scalex=False)
-
-        rate_ccw = w["ccw"] / w["dur"] if w["dur"] > 0 else 0
-        rate_cw  = w["cw"]  / w["dur"] if w["dur"] > 0 else 0
-        ann.set_text(
-            f"window  {ts:.1f}–{t0[-1]:.1f} s  ({w['dur']:.1f} s)\n"
-            f"CCW  {w['ccw']:>3d} turns   ({rate_ccw:.2f} /s)\n"
-            f"CW   {w['cw']:>3d} turns   ({rate_cw:.2f} /s)\n"
-            f"Net  {w['net']:>+3d} turns"
-        )
+        ccw_line.set_ydata(ccw_vals)
+        cw_line.set_ydata(cw_vals)
+        top = np.nanmax(np.concatenate([ccw_vals, cw_vals, [1.0]]))
+        ax.set_ylim(0, top * 1.1)
+        ax.set_title(
+            f"arm2 ($\\theta_2$) rotations — {voltage:g} V family   "
+            f"(transient {ts:.1f} s trimmed)", fontsize=11)
         fig.canvas.draw_idle()
 
     slider.on_changed(update)
-    update(0.0)
-
+    update(None)
     plt.show()
 
 
 # ─────────────────────────────────────────────────────
-# ENTRY POINT
-# ─────────────────────────────────────────────────────
 
 def main():
-    ap = argparse.ArgumentParser(description=__doc__,
-                                 formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--stem", required=True,
-                    help="clip stem, e.g. 3.2V_1.20Hz")
+    ap = argparse.ArgumentParser(
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--voltage", type=float, default=3.2,
+                    help="drive voltage family to plot (default: 3.2)")
     args = ap.parse_args()
 
-    cdir = clip_dir(args.stem)
-    csv_path = None
-    for name in ("verification.csv", "tracking.csv"):
-        p = os.path.join(cdir, name)
-        if os.path.exists(p):
-            csv_path = p
-            break
-    if csv_path is None:
-        raise SystemExit(f"no verification.csv / tracking.csv in {cdir}")
+    print(f"loading {args.voltage:g} V family ...")
+    fam = load_family(args.voltage)
+    if not fam:
+        raise SystemExit(f"no clips found at {args.voltage:g} V")
+    print(f"  {len(fam)} clips, {fam[0]['f']:g}-{fam[-1]['f']:g} Hz")
 
-    print(f"loading {csv_path} …")
-    t, th2, om2 = load_clip(csv_path)
-    print(f"  {len(t)} clean frames, {t[-1]-t[0]:.1f} s")
-
-    launch_gui(args.stem, t, th2, om2)
+    launch_gui(fam, args.voltage)
 
 
 if __name__ == "__main__":
