@@ -203,32 +203,22 @@ def compute(stem, transient_s=5.0):
     psi = np.unwrap(phi2 + 2.0 * np.pi * f_drive * (t - t[0]))
 
     win_series = sliding_lock(t, dphi, th1, th2, f_drive)
-    lib = ~win_series["rotation"]
     rot_frac = float(np.mean(win_series["rotation"]))
 
-    # Phase is only defined for LIBRATION. If the clip is rotation-dominated the
-    # (θ,ω) orbit never encircles the origin, so φ — and therefore ρ, mean_dφ,
-    # df — are UNDEFINED. Report them as null (not a coincidental value from the
-    # few leftover libration windows) so the chaos signal isn't silently faked.
-    if rot_frac > TH.PLOCK_ROT_FRAC:
-        rho = mean_dphi = df = psi_df = None
-        verdict = "rotation"
-        sub = f"{rot_frac*100:.0f}% of windows rotate (over-the-top) — ρ undefined"
-    else:
-        if lib.any():
-            lo, hi = win_series["t"][lib].min(), win_series["t"][lib].max()
-            m = (t >= lo) & (t <= hi)
-            dphi_lib = dphi[m] if m.sum() > 10 else dphi
-            t_lib = t[m] if m.sum() > 10 else t
-        else:
-            dphi_lib, t_lib = dphi, t
-        z = np.mean(np.exp(1j * dphi_lib))
-        rho = float(np.abs(z))
-        mean_dphi = float(wrap180(np.degrees(np.angle(z))))
-        df = float(np.polyfit(t_lib - t_lib[0], dphi_lib, 1)[0] / (2.0 * np.pi))
-        # drive cross-check: is arm-2 phase-locked to the drive? (psi boundedness)
-        psi_df = float(np.polyfit(t - t[0], psi, 1)[0] / (2.0 * np.pi))
-        verdict, sub = classify(rho, mean_dphi, df, f_drive, rot_frac)
+    # Global coherence over the FULL post-transient record (NOT a libration-only
+    # sliver). This is what keeps ρ honest for every clip: a tumbling clip's
+    # relative phase winds through many turns, so the Kuramoto average collapses
+    # to ρ≈0 (correctly unlocked) on its own — no rotation special-case, and no
+    # spurious high ρ from a near-stationary libration window. rot_frac is kept
+    # as a secondary marker (how much of the clip is over-the-top tumbling).
+    z = np.mean(np.exp(1j * dphi))
+    rho = float(np.abs(z))
+    mean_dphi = float(wrap180(np.degrees(np.angle(z))))
+    df = float(np.polyfit(t - t[0], dphi, 1)[0] / (2.0 * np.pi))
+    # drive cross-check: is arm-2 phase-locked to the drive? (boundedness of psi)
+    psi_df = float(np.polyfit(t - t[0], psi, 1)[0] / (2.0 * np.pi))
+
+    verdict, sub = classify(rho, mean_dphi, df, f_drive, rot_frac)
     return {
         "stem": stem, "f_drive_hz": f_drive, "transient_s": transient_s,
         "rho": rho, "mean_dphi_deg": mean_dphi, "df_hz": df,
@@ -257,13 +247,9 @@ def make_figure(res, out_path):
     ax = fig.add_subplot(gs[0, :])
     ax.plot(t0, np.degrees(dphi), lw=0.7, color="#333333")
     ax.set_ylabel("Δφ = φ₁−φ₂ (deg)")
-    if res["rho"] is None:                          # rotation-dominated: ρ undefined
-        scal = "ρ = — (rotation: phase undefined)"
-    else:
-        scal = (f"ρ={res['rho']:.2f}   Δφ̄={res['mean_dphi_deg']:.0f}°   "
-                f"df={res['df_hz']:+.3f} Hz")
-    ax.set_title(f"{res['stem']}   f_drive={res['f_drive_hz']:g} Hz   {scal}   "
-                 f"→  {res['verdict'].upper()} ({res['sub']})",
+    ax.set_title(f"{res['stem']}   f_drive={res['f_drive_hz']:g} Hz   "
+                 f"ρ={res['rho']:.2f}   Δφ̄={res['mean_dphi_deg']:.0f}°   "
+                 f"df={res['df_hz']:+.3f} Hz   →  {res['verdict'].upper()} ({res['sub']})",
                  loc="left", fontsize=11, fontweight="bold")
     ax.grid(alpha=0.25)
 
@@ -362,15 +348,12 @@ def run_sweep(voltage, transient_s):
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 5.5), constrained_layout=True)
     # left: rho(f) + mean_dphi(f), chaos reference on twin axis
-    rotmask = rotf > TH.PLOCK_ROT_FRAC
     ax1.plot(f, rho, "o-", color="#8e44ad", label="ρ (arm coherence)")
     ax1.plot(f, np.abs(mean) / 180.0, "s--", color="#16a085", ms=4,
              label="|Δφ̄|/180° (0=in-phase,1=anti)")
-    # ρ is undefined for rotation-dominated clips (NaN, so the ρ line breaks);
-    # mark them on a strip at the bottom rather than at a fake ρ value.
-    ax1.scatter(f[rotmask], np.zeros(int(rotmask.sum())), marker="o", s=70,
-                facecolors="none", edgecolors="#e67e22", linewidths=1.5,
-                label="rotation (ρ undefined)", zorder=5, clip_on=False)
+    ax1.scatter(f[rotf > TH.PLOCK_ROT_FRAC], rho[rotf > TH.PLOCK_ROT_FRAC],
+                s=90, facecolors="none", edgecolors="#e67e22", linewidths=1.5,
+                label="rotation-flagged", zorder=5)
     ax1.axhline(TH.PLOCK_RHO_LOCK, color="0.6", ls=":", lw=0.8)
     ax1.set_xlabel("drive frequency (Hz)"); ax1.set_ylabel("ρ  /  |Δφ̄|/180°")
     ax1.set_ylim(0, 1.05); ax1.grid(alpha=0.25); ax1.legend(loc="center left", fontsize=8)
@@ -382,21 +365,12 @@ def run_sweep(voltage, transient_s):
     axb.set_ylim(0, 1.2); axb.legend(loc="upper right", fontsize=7)
     ax1.set_title("Arm phase-locking vs drive frequency", loc="left", fontweight="bold")
 
-    # right: rho vs chaos score (primary = H_θ₂); test locked↔regular. Clips with
-    # defined ρ plot normally; rotation clips (ρ undefined) go on a left strip so
-    # their H is still visible without faking a ρ value.
+    # right: rho vs chaos score (primary = H_θ₂); test locked↔regular
     sc = ax2.scatter(rho, H, c=f, cmap="viridis", s=45, edgecolors="k", linewidths=0.4)
     for x, y, st in zip(rho, H, [r[9] for r in rows]):
         if np.isfinite(x) and np.isfinite(y):
             ax2.annotate(st.split("_")[1].replace("Hz", ""), (x, y),
                          fontsize=6, alpha=0.6, xytext=(2, 2), textcoords="offset points")
-    if rotmask.any():
-        ax2.scatter(np.full(int(rotmask.sum()), -0.07), H[rotmask], marker="o", s=45,
-                    facecolors="none", edgecolors="#e67e22", linewidths=1.2,
-                    label="rotation (ρ undefined)")
-        ax2.axvline(-0.02, color="0.8", lw=0.6)
-        ax2.set_xlim(-0.13, 1.02)
-        ax2.legend(loc="lower left", fontsize=7)
     ax2.axvline(TH.PLOCK_RHO_LOCK, color="#2e8b57", ls=":", lw=0.8)
     ax2.axhline(0.4, color="#c0392b", ls=":", lw=0.8)
     ax2.set_xlabel("ρ (arm coherence)"); ax2.set_ylabel("H_θ₂ (spectral entropy)")
@@ -411,10 +385,7 @@ def run_sweep(voltage, transient_s):
     console.print(f"\n[bold]phase-locking sweep — {voltage} V ({len(rows)} clips)[/]")
     console.print(f"{'f':>6} {'rho':>5} {'dphi':>6} {'df':>7} {'rot%':>5} {'H':>5}  verdict")
     for r in rows:
-        rho_s = f"{r[1]:>5.2f}" if r[1] is not None else "    —"
-        dphi_s = f"{r[2]:>6.0f}" if r[2] is not None else "     —"
-        df_s = f"{r[3]:>+7.3f}" if r[3] is not None else "      —"
-        console.print(f"{r[0]:>6.2f} {rho_s} {dphi_s} {df_s} "
+        console.print(f"{r[0]:>6.2f} {r[1]:>5.2f} {r[2]:>6.0f} {r[3]:>+7.3f} "
                       f"{r[4]*100:>4.0f}% {(r[6] if r[6]==r[6] else 0):>5.2f}  {r[5]}")
     console.print(f"[dim]→ {out}[/]")
     return out
@@ -478,13 +449,9 @@ def main():
     r = res
     console.print(f"[cyan]{r['stem']}[/]  f_drive={r['f_drive_hz']:g} Hz  "
                   f"[bold]{r['verdict'].upper()}[/] ({r['sub']})")
-    if r["rho"] is None:
-        console.print(f"  ρ = — (rotation: phase undefined)  "
-                      f"rotation={r['rotation_fraction']*100:.0f}%")
-    else:
-        console.print(f"  ρ={r['rho']:.3f}  Δφ̄={r['mean_dphi_deg']:.1f}°  "
-                      f"df={r['df_hz']:+.4f} Hz  rotation={r['rotation_fraction']*100:.0f}%  "
-                      f"[dim](drive cross-check df={r['psi_drive_df_hz']:+.4f} Hz)[/]")
+    console.print(f"  ρ={r['rho']:.3f}  Δφ̄={r['mean_dphi_deg']:.1f}°  "
+                  f"df={r['df_hz']:+.4f} Hz  rotation={r['rotation_fraction']*100:.0f}%  "
+                  f"[dim](drive cross-check df={r['psi_drive_df_hz']:+.4f} Hz)[/]")
     console.print(f"  [dim]→ {out_json}[/]")
 
     if not args.no_plot:
