@@ -164,7 +164,7 @@ vskip -3em
 \end_layout
 
 \begin_layout Standard
-\begin_inset Separator plain
+\begin_inset Newpage newpage
 \end_inset
 
 
@@ -220,6 +220,82 @@ status open
 \end_inset
 
  של כל מדידה כנגד שני מושגים אלו היא אפוא המבחן הוויזואלי המיידי ביותר להבחנה בין תנועה סדורה לכאוטית.
+\end_layout
+
+\begin_layout Standard
+לצד המבט האיכותני על המערכת,
+ מבט משלים וכמותי מתקבל מה-
+\begin_inset Formula $\text{power spectrum}$
+\end_inset
+
+ (התמרת הפורייה) של זווית המוט התחתון 
+\begin_inset Formula $\theta_{2}$
+\end_inset
+
+:
+ תנועה מחזורית או נעולת-פאזה מרכזת את העוצמה בכמה קווים דיסקרטיים (המתארים את תדירות האילוץ וההרמוניות שלה),
+ בעוד שתנועה כאוטית מפזרת את העוצמה על פני רצועה רחבה ורציפה יותר.
+ את ניגודיות זו של העוצמה אנו מכמתים באמצעות מספר יחיד הנקרא האנטרופיה המרחבית/הספקטרלית 
+\begin_inset Formula $H_{\theta_{2}}$
+\end_inset
+
+ (
+\begin_inset Formula $\text{spectral entropy}$
+\end_inset
+
+) ,
+ כאשר 
+\begin_inset Formula $H_{\theta_{2}}\approx0$
+\end_inset
+
+ מתאר תנועה סדורה בעלת מספר פיקים חדים,
+ ו- 
+\begin_inset Formula $H_{\theta_{2}}\approx1$
+\end_inset
+
+ עבור תנועה כאוטית,
+ עם ספקטרום תדרים רחב ורועש.
+ 
+\end_layout
+
+\begin_layout Standard
+מכיוון שעל שני המוטות במערכת המטוטולת הכפולה ניתן להסתכל כזוג אוסילטורים מצומדים,
+ יהיה יאה בנוסף לסדירות התנועה ללדבר גם על קוהרנטיות וסינכרון המוטות לאורך המדידה.
+ קרי,
+ אנו מייחסים לכל מוט פאזה רגעית ומודדים עד כמה יציב הפרש הפאזות 
+\begin_inset Formula $\phi_{1}-\phi_{2}$
+\end_inset
+
+ באמצעות הפרמטר:
+\begin_inset Formula 
+\begin{equation}
+\rho=\left|\left\langle e^{i\left(\phi_{1}-\phi_{2}\right)}\right\rangle \right|
+\end{equation}
+
+\end_inset
+
+ הנקרא גם פרמטר הסדר של קוראמוטו.
+ הפרש פאזות הנותר קבוע נותן 
+\begin_inset Formula $\rho\approx1$
+\end_inset
+
+ (המתאר מצב בו המוטות נעולים בפאזה והתנועה סדורה),
+ ואילו הפרש פאזות שאינו נותר קבוע מתמצע לכדי 
+\begin_inset Formula $\rho\approx0$
+\end_inset
+
+ (המתאר תנועה כאוטית).
+\end_layout
+
+\begin_layout Standard
+לבסוף,
+ מכיוון שהמנוע המחובר למטוטלת הכפולה מזריק זרם אנרגיה למערכת,
+ האנרגיה המכאנית במצב העמיד 
+\begin_inset Formula $E=T+U$
+\end_inset
+
+ - אנרגיה קינטית ופוטנציאלית,
+ המחושבת מן הזוויות והמהירויות הזוויות הנמדדות - מודדת עד כמה 
 \end_layout
 
 \begin_layout Section
