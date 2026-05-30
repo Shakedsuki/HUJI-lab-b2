@@ -58,6 +58,31 @@ def load_theta2(stem):
     return np.asarray(t, float), np.asarray(th, float)
 
 
+def amp_at(x, dt, fd):
+    """Locked-response amplitude |FFT(x)| at f = fd (deg), single periodogram."""
+    x = x - np.mean(x)
+    a = (2.0 / len(x)) * np.abs(np.fft.rfft(x))
+    ff = np.fft.rfftfreq(len(x), d=dt)
+    return float(interp1d(ff, a, bounds_error=False, fill_value=0.0)(fd))
+
+
+def locked_amp_error(x, dt, fd, n_seg):
+    """SEM of the locked-response amplitude at f_drive, from a Welch-style split.
+
+    A single periodogram has no built-in error. Splitting the steady-state tail
+    into ``n_seg`` independent contiguous sub-records, reading the amplitude at
+    f_drive in each, and taking std/√K gives the sampling uncertainty of the
+    full-record estimate (the full record IS the K segments, so var(mean) ≈
+    σ²_seg/K). Returns NaN if the window is too short to split. Small at the
+    locked ends; larger through the chaotic core where the line leaks into a
+    broadband continuum that scatters segment to segment."""
+    n = len(x) // n_seg
+    if n < 8:
+        return float("nan")
+    vals = [amp_at(x[i * n:(i + 1) * n], dt, fd) for i in range(n_seg)]
+    return float(np.std(vals, ddof=1) / np.sqrt(len(vals))) if len(vals) >= 2 else float("nan")
+
+
 def parse_args():
     p = argparse.ArgumentParser(description="Report spectral-waterfall heatmap.")
     p.add_argument("--window", type=float, default=60.0,
@@ -65,6 +90,10 @@ def parse_args():
     p.add_argument("--fmax", type=float, default=3.0,
                    help="max response frequency on the y-axis (Hz, default 3)")
     p.add_argument("--nfreq", type=int, default=800, help="response-frequency bins")
+    p.add_argument("--n-seg", type=int, default=6,
+                   help="Welch segments for the companion's amplitude SEM (default 6)")
+    p.add_argument("--no-errors", action="store_true",
+                   help="companion: draw a plain line without error bars")
     p.add_argument("--out", default=os.path.join(FIGURES_DIR, "spectral_waterfall_3.2V.png"))
     p.add_argument("--out-companion",
                    default=os.path.join(FIGURES_DIR, "spectral_amplitude_3.2V.png"),
@@ -76,7 +105,8 @@ def main():
     args = parse_args()
     stems = list_clips()                                    # freq-sorted
     unified = np.linspace(0.01, args.fmax, args.nfreq)      # common y-axis
-    drive, Z, amp_fd = [], [], []
+    drive, Z, amp_fd, amp_fd_err = [], [], [], []
+    Tmin = np.inf                                           # shortest record used
     for stem in stems:
         t, th2 = load_theta2(stem)
         t, th2 = tail_window(t, th2, window_s=args.window)
@@ -85,6 +115,7 @@ def main():
         x = th2 - np.mean(th2)                              # remove DC offset
         dt = float(np.median(np.diff(t)))
         N = len(x)
+        Tmin = min(Tmin, N * dt)
         amp = (2.0 / N) * np.abs(np.fft.rfft(x))
         xf = np.fft.rfftfreq(N, d=dt)
         col = interp1d(xf, amp, kind="linear", bounds_error=False,
@@ -93,10 +124,14 @@ def main():
         fd = stem_freq(stem)
         drive.append(fd)
         # response amplitude locked to the drive: |FFT(θ₂)| at f = f_drive
+        # (full-window value) + its Welch-segment sampling SEM.
         amp_fd.append(float(interp1d(xf, amp, bounds_error=False, fill_value=0.0)(fd)))
+        amp_fd_err.append(locked_amp_error(x, dt, fd, args.n_seg))
     X = np.asarray(drive)
     Z = np.asarray(Z).T                                    # (freq, clip)
     amp_fd = np.asarray(amp_fd)
+    amp_fd_err = np.asarray(amp_fd_err)
+    df_res = 1.0 / args.window                              # FFT resolution Δf = 1/T
 
     fig, ax = plt.subplots(figsize=(11, 7), constrained_layout=True)
     vmax = float(np.percentile(Z, 99.9))
@@ -127,16 +162,23 @@ def main():
     # response is concentrated at the drive (regular ends); it dips through the
     # chaotic core, where energy leaks into a broadband continuum.
     fig2, axc = plt.subplots(figsize=(11, 4), constrained_layout=True)
-    axc.plot(X, amp_fd, "o-", color="#c0392b", lw=1.6)
+    yerr = None if args.no_errors else amp_fd_err
+    axc.errorbar(X, amp_fd, yerr=yerr, fmt="o-", color="#c0392b", lw=1.6,
+                 capsize=2, elinewidth=0.8, capthick=0.8)
     axc.fill_between(X, 0, amp_fd, color="#c0392b", alpha=0.10)
     axc.set_xlabel("drive frequency $f_{drive}$ (Hz)")
     axc.set_ylabel(r"$|\mathrm{FFT}(\theta_2)|$ at $f_{drive}$ (deg)")
     axc.set_title(r"Locked-response amplitude at $f_{drive}$ across the 3.2 V sweep",
                   loc="left", fontweight="bold")
     axc.set_xlim(X.min(), X.max()); axc.grid(alpha=0.25)
+    top = np.nanmax(amp_fd + (0.0 if args.no_errors else np.nan_to_num(amp_fd_err)))
+    axc.set_ylim(0, float(top) * 1.10)
     fig2.savefig(args.out_companion, dpi=150)
     plt.close(fig2)
-    print(f"{len(X)} clips  ->  {args.out}\n           ->  {args.out_companion}")
+    print(f"{len(X)} clips  Δf = 1/T = {df_res:.4f} Hz "
+          f"(shortest record {Tmin:.0f}s → Δf ≤ {1.0/Tmin:.4f} Hz);  "
+          f"companion err = Welch-SEM over {args.n_seg} segments")
+    print(f"  ->  {args.out}\n  ->  {args.out_companion}")
 
 
 if __name__ == "__main__":

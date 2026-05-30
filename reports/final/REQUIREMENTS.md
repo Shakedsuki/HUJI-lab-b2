@@ -128,6 +128,61 @@ conventions live in `report_common.py` (`tail_window` steady-state slice,
 - Stroboscopic sampling jitter (f_drive precision from function generator)
 - Sensitivity of λ₁ estimate to window length
 
+### Error bars — implemented (scalar-vs-f_drive plots)
+
+Error bars are drawn only where a point is an *estimate with a quantifiable
+uncertainty* — the five scalar-vs-f_drive curves below. Heatmaps
+(`spectral_waterfall`, comparison figures), raw traces (`theta2_timeseries`)
+and phase-portrait clouds carry **no** bars (a bar is meaningless there); the
+waterfalls quote their frequency resolution Δf = 1/T_window in the caption
+instead (text below). The pixel→angle calibration is a near-constant
+**systematic** per clip, so it belongs once in the methodology (a single ±θ
+statement, text below), not as per-point bars. The phase-locking ρ–H scatter is
+left bar-free by choice: both axes are estimable, but its message is the
+qualitative locked/regular ↔ unlocked/chaotic split, not point precision.
+
+| Figure | Quantity | Error bar |
+|---|---|---|
+| `energies.py` | ⟨E⟩, ⟨T⟩, ⟨U⟩ | steady-state time-average error (see model toggle); T/U by error propagation |
+| `chaos_profile.py` | H_θ₂ | SEM across the per-window entropies (`window_entropy[]`) |
+| | D₂ | bootstrap σ (`D2_sigma`, pair-sampling) |
+| | θ₁ rms | steady-state time-average error |
+| | % inversion | binomial proportion error √(p(1−p)/n) |
+| `phase_area.py` | filling fraction, D_box | spread over sub-cell grid-origin jitters |
+| `poincare_spread.py` | strobe spread | RMS-distance sampling error ≈ spread/√(2N) |
+| `spectral_waterfall.py` (companion) | locked amplitude at f_drive | Welch-segment SEM (`--n-seg`, default 6) |
+
+**Time-average error model** (`report_common.series_mean_error`, toggle via
+`--err-model {cycle,acf,plain}`, default `cycle`). Frames are densely sampled
+along a smooth oscillation, so a naïve std/√N badly under-reports; the
+independent unit is one drive cycle:
+- `cycle` — bin the tail into drive periods, err = std(period means)/√n_periods.
+  Autocorrelation-safe and physical (bars grow through the chaotic band).
+- `acf` — integrated-autocorrelation correction, err = σ/√N·√τ_int.
+- `plain` — std/√N; under-estimates, shown only for comparison.
+
+`cycle` and `acf` agree closely; `plain` is visibly smaller. `--no-errors`
+restores plain lines on any of the scripts.
+
+### Caption / methodology notes (substitutes for bars on the no-bar figures)
+
+Ready-to-paste text for the figures that correctly carry no error bars:
+
+- **Waterfall + comparison-heatmap captions** (frequency resolution, not a bar):
+  > Frequency resolution Δf = 1/T ≈ 0.017 Hz (60 s steady-state window; the
+  > shortest record, 43 s, gives Δf ≤ 0.024 Hz). The 800-point response-frequency
+  > axis is oversampled relative to this physical resolution.
+
+- **Methodology — pixel→angle calibration systematic** (state once; do NOT draw
+  as per-point bars, it is correlated across a whole clip):
+  > Angles are measured from marker centroids relative to the calibrated pivot.
+  > A pivot/centroid localisation uncertainty of ≈2–3 px at the arm length of
+  > ≈161 px (3.2 V) gives a systematic angular uncertainty δθ ≈ δr/L ≈ ±1°, very
+  > nearly constant within a clip. Because it shifts all of a clip's angles
+  > together (it does not shrink with more frames and is not point-to-point
+  > independent), it enters as a common offset, not as the per-point error bars,
+  > which capture only the random cycle-to-cycle / sampling spread.
+
 ---
 
 ## Directory Structure (this folder)

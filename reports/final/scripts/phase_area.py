@@ -48,12 +48,11 @@ from report_common import (
 
 _REPO = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 sys.path.insert(0, os.path.join(_REPO, "scripts", "utils"))
-sys.path.insert(0, os.path.join(_REPO, "scripts", "analysis"))
 from kinematics import angular_velocity         # noqa: E402
-from dimension import box_counting_dimension     # noqa: E402
 
 GRID_K = 5          # 2**5 = 32 -> 32x32 grid, 1024 cells
 H_CHAOS = 0.4       # spectral-entropy split, for band shading
+N_OFFSETS = 12      # grid-origin perturbations for the box-counting uncertainty
 
 
 def load_theta2(stem):
@@ -78,21 +77,64 @@ def spectral_entropy(stem):
         return np.nan
 
 
+def _occupancy(p, k, phi):
+    """# occupied cells of a 2^k grid on the [0,1]² cloud ``p``, with the grid
+    origin jittered by the sub-cell fraction ``phi`` (per-axis, in cell units)."""
+    nb = 2 ** k
+    cells = np.floor(p * nb + phi).astype(np.int64)   # phi ∈ [0,1) → sub-cell shift
+    cells = np.clip(cells, 0, nb - 1)
+    return len(np.unique(cells[:, 0] * nb + cells[:, 1]))
+
+
 def filling_and_dbox(th2, om2):
+    """(filling fraction, σ_ff, D_box, σ_Dbox).
+
+    Box-counting is deterministic once the grid origin is fixed, so the
+    uncertainty is the spread under N_OFFSETS *sub-cell* jitters of the grid
+    origin — a genuine sensitivity bar (how much the geometry measure depends on
+    where the grid happens to fall), not fit scatter. (NB: we jitter by a
+    fraction of a cell, p·nb+φ with φ∈[0,1), rather than reusing
+    dimension.box_counting_dimension's whole-cell ``grid_offset`` which would
+    crush edge points into the boundary bin and inflate the spread.)
+
+    Filling fraction is the occupied / 1024 count at the 32×32 grid; D_box is the
+    slope of log N(ε) vs log(1/ε) over the unsaturated scales. Both are
+    recomputed per jitter; we report mean ± std.
+    """
     pts = np.column_stack([th2, om2])
-    box = box_counting_dimension(pts)            # normalises cloud to [0,1]^2
-    nb = 2 ** GRID_K
-    return float(box["Ns"][GRID_K - 1]) / (nb * nb), float(box["Dbox"])
+    mn, mx = pts.min(0), pts.max(0)
+    span = np.where(mx > mn, mx - mn, 1.0)
+    p = (pts - mn) / span                              # normalise cloud to [0,1]²
+    npts = len(p)
+    nbK = 2 ** GRID_K
+    ks = np.arange(1, 10)
+    inv_eps = 2.0 ** ks                                # 1/ε at each scale
+    ffs, dboxes = [], []
+    for i in range(N_OFFSETS):
+        phi = np.random.default_rng(i).uniform(0.0, 1.0, size=2)
+        Ns = np.array([_occupancy(p, int(k), phi) for k in ks], float)
+        ffs.append(_occupancy(p, GRID_K, phi) / (nbK * nbK))
+        mask = (Ns > 4) & (Ns < 0.6 * npts)
+        if mask.sum() >= 3:
+            slope = np.polyfit(np.log(inv_eps[mask]), np.log(Ns[mask]), 1)[0]
+            dboxes.append(float(slope))
+    ff = float(np.mean(ffs)); ff_e = float(np.std(ffs, ddof=1)) if len(ffs) > 1 else 0.0
+    db = float(np.mean(dboxes)) if dboxes else np.nan
+    db_e = float(np.std(dboxes, ddof=1)) if len(dboxes) > 1 else np.nan
+    return ff, ff_e, db, db_e
 
 
 def parse_args():
     p = argparse.ArgumentParser(description="Report phase-space filling vs f_drive.")
+    p.add_argument("--no-errors", action="store_true",
+                   help="draw plain lines without error bars")
     p.add_argument("--out", default=os.path.join(FIGURES_DIR, "phase_area_3.2V.png"))
     return p.parse_args()
 
 
 def main():
     args = parse_args()
+    show_err = not args.no_errors
     rows = []
     for stem in list_clips():
         t, th2 = load_theta2(stem)
@@ -100,26 +142,29 @@ def main():
         t, th2, om2 = tail_window(t, th2, om2, window_s=PORTRAIT_WINDOW_S)
         if t.size < 64:
             continue
-        ff, dbox = filling_and_dbox(th2, om2)
-        rows.append((stem_freq(stem), ff, dbox, spectral_entropy(stem)))
+        ff, ff_e, dbox, dbox_e = filling_and_dbox(th2, om2)
+        rows.append((stem_freq(stem), ff, ff_e, dbox, dbox_e, spectral_entropy(stem)))
     rows.sort()
-    f, ff, dbox, H = (np.asarray(c, float) for c in zip(*rows))
+    f, ff, ff_e, dbox, dbox_e, H = (np.asarray(c, float) for c in zip(*rows))
 
     fig, ax = plt.subplots(figsize=(11, 5), constrained_layout=True)
     chaotic = H >= H_CHAOS
     if chaotic.any():
         ax.axvspan(f[chaotic].min(), f[chaotic].max(), color="#c0392b", alpha=0.06, lw=0)
 
-    ax.plot(f, ff, "o-", color="#c0392b", lw=1.8, label="phase-space filling fraction (32×32)")
+    ax.errorbar(f, ff, yerr=(ff_e if show_err else None), fmt="o-", color="#c0392b",
+                lw=1.8, label="phase-space filling fraction (32×32)",
+                capsize=2, elinewidth=0.8, capthick=0.8)
     ax.fill_between(f, 0, ff, color="#c0392b", alpha=0.10)
     ax.set_xlabel(r"drive frequency $f_{drive}$ (Hz)")
     ax.set_ylabel("filling fraction (occupied / 1024)", color="#c0392b")
     ax.tick_params(axis="y", labelcolor="#c0392b")
-    ax.set_ylim(0, float(np.max(ff)) * 1.15); ax.grid(alpha=0.25)
+    ax.set_ylim(0, float(np.max(ff + (ff_e if show_err else 0.0))) * 1.15); ax.grid(alpha=0.25)
 
     ax2 = ax.twinx()
-    ax2.plot(f, dbox, "s--", color="#8e44ad", ms=4, alpha=0.7,
-             label=r"$D_{box}$ (1 = loop, 2 = filled)")
+    ax2.errorbar(f, dbox, yerr=(dbox_e if show_err else None), fmt="s--", color="#8e44ad",
+                 ms=4, alpha=0.7, label=r"$D_{box}$ (1 = loop, 2 = filled)",
+                 capsize=2, elinewidth=0.7, capthick=0.7)
     ax2.set_ylabel(r"$D_{box}$", color="#8e44ad")
     ax2.tick_params(axis="y", labelcolor="#8e44ad"); ax2.set_ylim(0.8, 2.05)
 

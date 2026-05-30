@@ -78,12 +78,15 @@ def spectral_entropy(stem):
 
 def parse_args():
     p = argparse.ArgumentParser(description="Stroboscopic Poincaré spread vs f_drive.")
+    p.add_argument("--no-errors", action="store_true",
+                   help="draw a plain line without error bars")
     p.add_argument("--out", default=os.path.join(FIGURES_DIR, "poincare_spread_3.2V.png"))
     return p.parse_args()
 
 
 def main():
     args = parse_args()
+    show_err = not args.no_errors
     stems = [s for s in list_clips()
              if os.path.exists(os.path.join(clip_dir(s), "driven_poincare.csv"))]
 
@@ -105,10 +108,14 @@ def main():
         dth = wrap180(th2 - circ_mean_deg(th2)) / S_THETA
         dw = (w2 - np.mean(w2)) / S_omega
         spread = float(np.sqrt(np.mean(dth**2 + dw**2)))
-        rows.append((stem_freq(s), spread, spectral_entropy(s), s))
+        # sampling error of an RMS distance from N strobe points: σ ≈ spread/√(2N).
+        # Few strobe points (short clip / low f) ⇒ a loosely-determined spread.
+        err = spread / np.sqrt(2.0 * th2.size)
+        rows.append((stem_freq(s), spread, err, spectral_entropy(s), s))
     rows.sort()
     f = np.array([r[0] for r in rows]); spread = np.array([r[1] for r in rows])
-    H = np.array([r[2] for r in rows]); names = [r[3] for r in rows]
+    spread_err = np.array([r[2] for r in rows])
+    H = np.array([r[3] for r in rows]); names = [r[4] for r in rows]
 
     imin, imax = int(np.argmin(spread)), int(np.argmax(spread))
 
@@ -116,7 +123,8 @@ def main():
     chaotic = H >= H_CHAOS
     if chaotic.any():
         ax.axvspan(f[chaotic].min(), f[chaotic].max(), color="#c0392b", alpha=0.06, lw=0)
-    ax.plot(f, spread, "o-", color="#8e44ad", lw=1.8)
+    ax.errorbar(f, spread, yerr=(spread_err if show_err else None), fmt="o-",
+                color="#8e44ad", lw=1.8, capsize=2, elinewidth=0.8, capthick=0.8)
     ax.fill_between(f, 0, spread, color="#8e44ad", alpha=0.10)
 
     ax.scatter(f[imin], spread[imin], s=140, marker="*", color="#2e8b57", zorder=6,
@@ -133,7 +141,8 @@ def main():
 
     ax.set_xlabel(r"drive frequency $f_{drive}$ (Hz)")
     ax.set_ylabel("strobe-cloud spread (normalised std distance)")
-    ax.set_ylim(0, float(np.max(spread)) * 1.18); ax.grid(alpha=0.25)
+    ax.set_ylim(0, float(np.max(spread + (spread_err if show_err else 0.0))) * 1.18)
+    ax.grid(alpha=0.25)
     ax.set_title("Stroboscopic Poincaré spread of arm 2 vs drive frequency (3.2 V)",
                  loc="left", fontweight="bold")
 

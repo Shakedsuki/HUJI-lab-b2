@@ -84,6 +84,92 @@ def tail_window(t, *arrays, window_s=TIME_WINDOW_S, rezero=True):
     return (t_out, *outs)
 
 
+# --- error model for steady-state time-averages -----------------------------
+# Report figures that plot a time-AVERAGED scalar per clip (⟨E⟩, ⟨T⟩, ⟨U⟩, the
+# θ₁ rms amplitude) carry an error bar for that average. The frames are NOT
+# independent — they are densely sampled along a smooth oscillation — so a naive
+# std/√N badly understates the uncertainty. Three models are offered (toggle via
+# each figure's --err-model) so the choice can be compared visually:
+#
+#   "cycle"  — bin the steady-state tail into drive periods, average per period,
+#              err = std(period means)/√(n_periods). The independent unit is one
+#              drive cycle. Autocorrelation-safe and physical: a phase-locked
+#              clip repeats cycle-to-cycle (tiny bar), a chaotic clip wanders
+#              (large bar). DEFAULT. Needs f_drive; falls back to "acf".
+#   "acf"    — integrated-autocorrelation-time correction: var(mean) =
+#              σ²/N · τ_int, τ_int = 1 + 2·Σ ρ_k (summed to the first ρ_k ≤ 0,
+#              Sokal). err = σ/√N · √τ_int. No f_drive needed.
+#   "plain"  — std/√N. Ignores correlation, so it UNDER-estimates; shown only
+#              for comparison.
+ERR_MODELS = ("cycle", "acf", "plain")
+
+
+def _tau_int(x):
+    """Integrated autocorrelation time τ = 1 + 2 Σ_{k≥1} ρ_k, summed up to the
+    first non-positive ρ_k (Sokal's automatic window). τ ≥ 1."""
+    x = np.asarray(x, float)
+    x = x - x.mean()
+    n = x.size
+    denom = float(np.dot(x, x))
+    if n < 2 or denom <= 0:
+        return 1.0
+    tau = 1.0
+    for k in range(1, n - 1):
+        rho_k = float(np.dot(x[:-k], x[k:])) / denom
+        if rho_k <= 0.0:
+            break
+        tau += 2.0 * rho_k
+    return max(tau, 1.0)
+
+
+def series_mean_error(values, t=None, f_drive=None, model="cycle"):
+    """(mean, err) of a steady-state time series under one of ERR_MODELS.
+
+    ``values`` are the per-frame samples (already tail-sliced); ``t`` their
+    times (s), ``f_drive`` the drive frequency (Hz, only needed for "cycle").
+    The "cycle" model falls back to "acf" if f_drive is missing or the window
+    holds fewer than two whole drive periods.
+    """
+    v = np.asarray(values, float)
+    v = v[np.isfinite(v)]
+    n = v.size
+    if n == 0:
+        return float("nan"), float("nan")
+    mean = float(np.mean(v))
+    if n < 2:
+        return mean, 0.0
+    std = float(np.std(v, ddof=1))
+
+    if model == "plain":
+        return mean, std / np.sqrt(n)
+
+    if model == "cycle" and t is not None and f_drive and f_drive > 0:
+        t = np.asarray(t, float)
+        if t.size == n:
+            cyc = np.floor((t - t.min()) * f_drive).astype(int)
+            means = [float(np.mean(v[cyc == c])) for c in np.unique(cyc)]
+            if len(means) >= 2:
+                return mean, float(np.std(means, ddof=1)) / np.sqrt(len(means))
+        # not enough whole cycles → fall through to acf
+
+    # "acf" (also the cycle fallback)
+    tau = _tau_int(v)
+    return mean, std / np.sqrt(n) * np.sqrt(tau)
+
+
+def rms_with_error(values, t=None, f_drive=None, model="cycle"):
+    """(rms, err) for the rms of a series. The error model acts on the mean of
+    the squares; err_rms = err_meansq / (2·rms) by propagation."""
+    v = np.asarray(values, float)
+    v = v[np.isfinite(v)]
+    if v.size == 0:
+        return float("nan"), float("nan")
+    msq, msq_err = series_mean_error(v ** 2, t, f_drive, model)
+    rms = float(np.sqrt(msq)) if msq > 0 else 0.0
+    err = msq_err / (2.0 * rms) if rms > 0 else float("nan")
+    return rms, err
+
+
 def stem_freq(stem):
     """Drive frequency (Hz) parsed from a clip stem, e.g. 3.2V_1.20Hz -> 1.20.
     Handles trailing take indices like 3.2V_1.33Hz_2."""
