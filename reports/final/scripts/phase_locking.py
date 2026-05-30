@@ -394,10 +394,13 @@ def run_sweep(voltage, transient_s):
     fig2, ax2 = plt.subplots(figsize=(8.2, 6.0), constrained_layout=True)
     # locked / unlocked ρ zones as transparent horizontal bands (the middle
     # strip ρ∈(unlock, lock) is the transition / partial-lock zone, left clear)
-    lock_band = ax2.axhspan(TH.PLOCK_RHO_LOCK, 1.02, color="#2e8b57", alpha=0.10,
-                            lw=0, zorder=0, label=f"locked  (ρ ≥ {TH.PLOCK_RHO_LOCK:g})")
-    unlock_band = ax2.axhspan(-0.02, TH.PLOCK_RHO_UNLOCK, color="#c0392b", alpha=0.10,
-                              lw=0, zorder=0, label=f"unlocked  (ρ ≤ {TH.PLOCK_RHO_UNLOCK:g})")
+    # neutral band hues (blue=locked, tan=unlocked) that do NOT compete with the
+    # green→red H_θ₂ marker map — so marker colour means spectral entropy only,
+    # while the bands just demarcate the ρ-zones.
+    lock_band = ax2.axhspan(TH.PLOCK_RHO_LOCK, 1.02, color="#3b6ea5", alpha=0.13,
+                            lw=0, zorder=0, label="phase locked")
+    unlock_band = ax2.axhspan(-0.02, TH.PLOCK_RHO_UNLOCK, color="#b0855b", alpha=0.13,
+                              lw=0, zorder=0, label="phase unlocked")
     sc2 = ax2.scatter(f, rho, c=H, cmap=CHAOS_CMAP, vmin=float(np.nanmin(H)),
                       vmax=float(np.nanmax(H)), s=70, edgecolors="k",
                       linewidths=0.4, zorder=3)
