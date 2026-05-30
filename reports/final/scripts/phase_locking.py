@@ -59,8 +59,15 @@ import numpy as np
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from matplotlib.colors import LinearSegmentedColormap
 
 from rich.console import Console
+
+# marker colormap for the f_drive-vs-ρ view: endpoints are the exact locked /
+# unlocked band colours (green = regular/low-H → red = chaotic/high-H), gold
+# midpoint so transition points stay legible. Aligns with the ρ-zone bands.
+CHAOS_CMAP = LinearSegmentedColormap.from_list(
+    "bandGR", ["#2e8b57", "#e8c84d", "#c0392b"])
 
 # Report copy — lives in reports/final/scripts/ (original is
 # scripts/analysis/phase_locking.py). Resolve the repo's scripts/utils, and
@@ -385,21 +392,19 @@ def run_sweep(voltage, transient_s):
     # independent spectral measure) tracks ρ-height, so the two measures agree.
     # Same x = f_drive convention as every other report figure.
     fig2, ax2 = plt.subplots(figsize=(8.2, 6.0), constrained_layout=True)
-    chaotic = H >= HT
-    if chaotic.any():
-        ax2.axvspan(f[chaotic].min(), f[chaotic].max(), color="#c0392b",
-                    alpha=0.06, lw=0, zorder=0)
-    sc2 = ax2.scatter(f, rho, c=H, cmap="RdYlGn_r", vmin=float(np.nanmin(H)),
+    # locked / unlocked ρ zones as transparent horizontal bands (the middle
+    # strip ρ∈(unlock, lock) is the transition / partial-lock zone, left clear)
+    lock_band = ax2.axhspan(TH.PLOCK_RHO_LOCK, 1.02, color="#2e8b57", alpha=0.10,
+                            lw=0, zorder=0, label=f"locked  (ρ ≥ {TH.PLOCK_RHO_LOCK:g})")
+    unlock_band = ax2.axhspan(-0.02, TH.PLOCK_RHO_UNLOCK, color="#c0392b", alpha=0.10,
+                              lw=0, zorder=0, label=f"unlocked  (ρ ≤ {TH.PLOCK_RHO_UNLOCK:g})")
+    sc2 = ax2.scatter(f, rho, c=H, cmap=CHAOS_CMAP, vmin=float(np.nanmin(H)),
                       vmax=float(np.nanmax(H)), s=70, edgecolors="k",
                       linewidths=0.4, zorder=3)
-    ax2.axhline(TH.PLOCK_RHO_LOCK, color="#2e8b57", ls=":", lw=1.0,
-                label=f"lock  ρ = {TH.PLOCK_RHO_LOCK:g}")
-    ax2.axhline(TH.PLOCK_RHO_UNLOCK, color="#c0392b", ls=":", lw=1.0,
-                label=f"unlock  ρ = {TH.PLOCK_RHO_UNLOCK:g}")
     ax2.set_xlabel(r"drive frequency $f_{drive}$ (Hz)")
     ax2.set_ylabel(r"$\rho$  (arm phase coherence)")
     ax2.set_ylim(-0.02, 1.02); ax2.grid(alpha=0.25)
-    ax2.legend(loc="center left", fontsize=8)
+    ax2.legend(handles=[lock_band, unlock_band], loc="center left", fontsize=8)
     ax2.set_title("Arm coherence vs drive frequency (colour = spectral chaos, 3.2 V)",
                   loc="left", fontweight="bold")
     cbar = fig2.colorbar(sc2, ax=ax2, pad=0.02)
