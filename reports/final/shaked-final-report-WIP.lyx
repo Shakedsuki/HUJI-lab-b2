@@ -450,14 +450,6 @@ status open
 
 
 \begin_inset Graphics
-	filename C:/Users/Shake/Downloads/tracking_schematic.pdf
-	lyxscale 40
-	width 20col%
-
-\end_inset
-
-
-\begin_inset Graphics
 	filename ../../../../Users/Shake/Downloads/drive_circuit.png
 	lyxscale 40
 	width 50col%
