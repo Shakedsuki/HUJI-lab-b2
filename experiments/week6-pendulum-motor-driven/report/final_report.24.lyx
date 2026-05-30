@@ -136,13 +136,39 @@ vskip -3em
 \end_layout
 
 \begin_layout Abstract
-מטוטלת כפולה היא הדוגמה הקלאסית למערכת כאוטית,
- אך מה קורה כאשר מוסיפים כוח מאלץ למערכת?
- כדי לבדוק זאת בחנו את הדינמיקה של מערכת מטוטלת כפולה אשר חובר לציר הראשי שלה מנוע,
- שיצר כוח מאלץ על המטוטלת הראשונה.
- בוצעו דגימות שבהן המנוע הופעל בתדירויות שונות,
- ובכך יכלנו לבדוק את הקשר בין תדירות הכוח המאלץ לתכונות הכאוטיות של המערכת.
- מצאנו כי בלהבלה
+המטוטלת הכפולה היא הדוגמה הקלאסית למערכת כאוטית:
+ מצד אחד פשוטה ברמתה המכאנית (שני מוטות המחוברים יחדיו) ודטרמינסטית לחלוטין,
+ ומצד שני תנועותיה בטווח הארוך בלתי ניתנות לחיזוי הלכה למעשה.
+ בדו
+\begin_inset Quotes qrd
+\end_inset
+
+ח זה אנו מתחקים אחר כיצד מתנהג כאוס זה ואופי תנועת המטוטלת תחת כוחות מאלצים מחזוריים.
+ כאשר אמפליטודת האילוץ מקובעת 
+\begin_inset Formula $\left(V_{drill}=V_{0}\right)$
+\end_inset
+
+ ותדירות האילוץ 
+\begin_inset Formula $f_{drive}$
+\end_inset
+
+ משתנה בין הדגימות 
+\begin_inset Formula $\left(N=33\right)$
+\end_inset
+
+.
+ מערכת זו הינה 
+\series bold
+מטוטלת כפולה מאולצת
+\series default
+,
+ שמצבה הרגעי הוא ווקטור במרחב הפאזה הארבע-ממדי 
+\begin_inset Formula $\left(\theta_{1},\theta_{2},\omega_{1},\omega_{2}\right)$
+\end_inset
+
+.
+ אנו מוצאים כי התנועה הכאוטית אינה מקיימת קשר מונוטוני פשוט עם תדירות האילוץ,
+ אלא תופסת רצועה סופית של תדירויות אילוץ המאפיינות תנועה בפאזה (סדורה ומסונכרנת) לבין תנועה נעולת-פאזה.
 \end_layout
 
 \begin_layout Standard
@@ -161,100 +187,255 @@ end{@twocolumnfalse} ]
 \end_layout
 
 \begin_layout Section
-מבוא
+מבוא ורקע תיאורטי
 \end_layout
 
 \begin_layout Standard
-ראשית נגדיר כמה מושגי יסוד.
+מערכת דטרמנייטסית מכונה 
+\series bold
+כאוטית
+\series default
+ כאשר היא מגלה רגישות לתנאי ההתחלה שלה:
+ שני מסלולים היוצאים ממצבים כמעט זהים במהרה מתרחקים זה מזה במהירות אקספוננציאלית,
+ כך שחיזוי של התנועה לאורך טווח כמעט ובלתי ניתן הלכה-למעשה.
+ 
+\begin_inset Foot
+status open
+
+\begin_layout Plain Layout
+משהו משהו אינטגרציה נומרית משהו משהו רמאות
+\end_layout
+
+\end_inset
+
+ עבור מטוטלת כפולה מאולצת פירוש הדבר שלא ניתן להכריע רק ממבט חטוף על תנועתה אם תדירות האילוץ הנתונה מייצרת כאוס או לא;
+ זוהי תכונה של האופן שבו ממלא מסלול המטוטלת את מרחב המצבים (
+\begin_inset Formula $\text{state space}$
+\end_inset
+
+) לאורך הזמן,
+ כפי שנציג בהמשך הדו
+\begin_inset Quotes qrd
+\end_inset
+
+ח.
+ ההבחנה הישירה ביותר בין שני המצבים מתקבלת במרחב הפאזה,
+ שבו מצב המערכת משרטט מסלול לאורך הזמן (בפועל אנו מתבוננים על ההיטל הדו-ממדי של מרחב המצב הארבע-ממדי).
+ תנועה סדורה ומחזורית מתכנסת במרחב הפאזה אל לולאות סגורות (
+\begin_inset Formula $\text{limit cycle}$
+\end_inset
+
+) ואילו תנועה כאוטית לעולם אינה נסגרת אלא ממשיכה למלא תחום חסום אך כזה שאינו חוזר על עצמו (
+\begin_inset Formula $\text{strange attractor}$
+\end_inset
+
+).
+ על כן,
+ השוואת ה-
+\begin_inset Formula $\text{phase portrait}$
+\end_inset
+
+ של כל מדידה כנגד שני מושגים אלו היא אפוא המבחן הוויזואלי המיידי ביותר להבחנה בין תנועה סדורה לכאוטית.
+\end_layout
+
+\begin_layout Standard
+לצד המבט האיכותני על המערכת,
+ מבט משלים וכמותי מתקבל מה-
+\begin_inset Formula $\text{power spectrum}$
+\end_inset
+
+ (התמרת הפורייה) של זווית המוט התחתון 
+\begin_inset Formula $\theta_{2}$
+\end_inset
+
+:
+ תנועה מחזורית או נעולת-פאזה מרכזת את העוצמה בכמה קווים דיסקרטיים (המתארים את תדירות האילוץ וההרמוניות שלה),
+ בעוד שתנועה כאוטית מפזרת את העוצמה על פני רצועה רחבה ורציפה יותר.
+ את ניגודיות זו של העוצמה אנו מכמתים באמצעות מספר יחיד הנקרא האנטרופיה המרחבית/הספקטרלית 
+\begin_inset Formula $H_{\theta_{2}}$
+\end_inset
+
+ (
+\begin_inset Formula $\text{spectral entropy}$
+\end_inset
+
+) ,
+ כאשר 
+\begin_inset Formula $H_{\theta_{2}}\approx0$
+\end_inset
+
+ מתאר תנועה סדורה בעלת מספר פיקים חדים,
+ ו- 
+\begin_inset Formula $H_{\theta_{2}}\approx1$
+\end_inset
+
+ עבור תנועה כאוטית,
+ עם ספקטרום תדרים רחב ורועש.
  
 \end_layout
 
 \begin_layout Standard
-\begin_inset Float figure
-placement h
-alignment center
-wide false
-sideways false
-status open
+מכיוון שעל שני המוטות במערכת המטוטולת הכפולה ניתן להסתכל כזוג אוסילטורים מצומדים,
+ יהיה יאה בנוסף לסדירות התנועה ללדבר גם על קוהרנטיות וסינכרון המוטות לאורך המדידה.
+ קרי,
+ אנו מייחסים לכל מוט פאזה רגעית ומודדים עד כמה יציב הפרש הפאזות 
+\begin_inset Formula $\phi_{1}-\phi_{2}$
+\end_inset
 
-\begin_layout Plain Layout
-\begin_inset Graphics
-	filename system.png
-	lyxscale 10
-	scale 30
+ באמצעות הפרמטר:
+\begin_inset Formula 
+\begin{equation}
+\rho=\left|\left\langle e^{i\left(\phi_{1}-\phi_{2}\right)}\right\rangle \right|
+\end{equation}
 
 \end_inset
 
-
-\end_layout
-
-\begin_layout Plain Layout
-\begin_inset Caption Standard
-
-\begin_layout Plain Layout
-ת
-\end_layout
-
+ הנקרא גם פרמטר הסדר של קוראמוטו.
+ הפרש פאזות הנותר קבוע נותן 
+\begin_inset Formula $\rho\approx1$
 \end_inset
 
-
-\end_layout
-
+ (המתאר מצב בו המוטות נעולים בפאזה והתנועה סדורה),
+ ואילו הפרש פאזות שאינו נותר קבוע מתמצע לכדי 
+\begin_inset Formula $\rho\approx0$
 \end_inset
 
+ (המתאר תנועה כאוטית).
+\end_layout
 
+\begin_layout Standard
+לבסוף,
+ מכיוון שהמנוע המחובר למטוטלת הכפולה מזריק זרם אנרגיה למערכת,
+ האנרגיה המכאנית במצב העמיד 
+\begin_inset Formula $E=T+U$
+\end_inset
+
+ - אנרגיה קינטית ופוטנציאלית,
+ המחושבת מן הזוויות והמהירויות הזוויות הנמדדות - מודדת עד כמה כל תדירות אילוץ מעוררת את המערכת.
+ בהצגתה כתלות בתדירות האילוץ 
+\begin_inset Formula $f_{drive}$
+\end_inset
+
+ מופיע שיא רזוננס סמוך ל- 
+\begin_inset Formula $0.95\text{Hz}$
+\end_inset
+
+,
+ שבו האילוץ מזריק אנרגיה אל המטוטלת ביעילות הגבוהה ביותר (זוהי גם אחת הסיבות מאחורי מדוע רצועת הכאוס נפתחת סביב תדירות הרזוננס ונמשכת לתדירויות אילוץ גבוהות יותר).
+ כפי שראינו גם במכניקה אנליטית,
+ נוכל לקשר בין האנרגיה הקינטית והפוטנציאלית באמצעות משפט הויריאל,
+ הקובע את האיזון בין ממוצע הזמן לבין האנרגיה הקינטית והפוטנציאלית.
+ כך שעבור פוטנציאל הרמוני בתנודות קטנות,
+ ראינו כי 
+\begin_inset Formula $\left\langle T\right\rangle =\left\langle U\right\rangle $
+\end_inset
+
+ (קרי יחס ויריאלי של 
+\begin_inset Formula $\frac{T}{U}=1$
+\end_inset
+
+) ולכן נוכל לפרש כל סטייה של היחס הזה מגודל יחידה לכדי אינדיקציה נוספת לכמה התרחקה התנודה המאולצת של המטוטלת מתחום התנודות ההרמוניות לכאוס.
 \end_layout
 
 \begin_layout Section
-שיטות
+מהלך הניסוי
 \end_layout
 
 \begin_layout Standard
-מערך הניסוי:
+\align block
 \begin_inset Float figure
-placement h
-alignment left
+placement H
+alignment document
 wide false
 sideways false
 status open
 
 \begin_layout Plain Layout
+\align center
 \begin_inset Graphics
-	filename system.png
-	lyxscale 10
-	scale 50
+	filename ../../../reports/final/system.png
+	lyxscale 40
+	width 30col%
 
 \end_inset
 
 
+\end_layout
+
+\begin_layout Plain Layout
+\align center
 \begin_inset Caption Standard
 
 \begin_layout Plain Layout
-דיאגרמה סכמתית של המערכת:
- המערכת של המטוטלת הכפולה מורכבת משני מוטות זהים,
- כאשר המוט הראשון מחובר בציר אל מנוע והמוט השני מחובר אל המוט הראשון בציר.
- הציר המחבר המנוע למוט הראשון אינו חופשי,
- כלומר המנוע והמוט הראשון מסתובבים באותו האופן,
- בניגוד לציר השני המחבר בין המוט הראשון לשני שהוא כן ציר חופשי,
- כלומר המוטות יכולים לנוע סביבו בחופשיות.
-\end_layout
 
+\series bold
+דיאגרמה סכמטית של מערכת הניסוי (מכאנית).
+
+\series default
+ המטוטלת הכפולה מורכבת משני מוטות אלומיניום זהים (
+\begin_inset Formula $24$
 \end_inset
 
-
-\end_layout
-
-\begin_layout Plain Layout
-
-\end_layout
-
+ ס
+\begin_inset Quotes qrd
 \end_inset
 
+מ אורך,
+ 
+\begin_inset Formula $1$
+\end_inset
 
-\end_layout
+ ס
+\begin_inset Quotes qrd
+\end_inset
 
-\begin_layout Standard
-ניתן לראות דיאגרמה של המערכת באיור
+מ רוחב,
+ 
+\begin_inset Formula $1$
+\end_inset
+
+ ס
+\begin_inset Quotes qrd
+\end_inset
+
+מ עומק).
+ המוט העליון קובע אל ציר מנוע,
+ כך שהמנוע והמוט העליון הסתובבו כגוף אחד.
+ המנוע שינה את כיוון סיבובו בכל חצי-מחזור,
+ ובכך כפה על המוט העליון תנודה דו-כיוונית בתדירות האילוץ 
+\begin_inset Formula $f_{drive}$
+\end_inset
+
+.
+ המוט התחתון חובר אל קצה המוט העליון בציר חופשי,
+ ללא אילוץ.
+ תצורת המערכת מתוארת על יד שתי זוויות המוטות,
+ 
+\begin_inset Formula $\theta_{1}$
+\end_inset
+
+ ו- 
+\begin_inset Formula $\theta_{2}$
+\end_inset
+
+,
+ המוגדרות ביחס לאנך כלפי מטה (כאשר 
+\begin_inset Formula $0^{\circ}$
+\end_inset
+
+ כלפי מטה,
+ ו- 
+\begin_inset Formula $+90^{\circ}$
+\end_inset
+
+ ימינה);
+ הזווית 
+\begin_inset Formula $\theta_{2}$
+\end_inset
+
+ נמדדת ביחס לאנך בנקודת החיבור ולא ביחס לכיוון המוט העליון (הזווית האבסולוטית).
+ שתי מדבקות (באיור מופיעות כנקודה ירוקה בציר החיבור בין המוט העליון והתחתון,
+ וכנקודה אדומה בקצה המוט התחתון) הונחו כמתואר על גבי המוטות בכדי לסייע במעקב אחר תנועתם לאורך המדידות (ראו איור
 \family roman
 \series medium
 \shape up
@@ -283,100 +464,320 @@ status open
 \uwave default
 \noun default
 \color inherit
-2
+3
+\numeric off
+).
+\end_layout
+
+\end_inset
+
+
+\begin_inset Graphics
+	filename ../../../../../Users/Shake/Downloads/drive_circuit.png
+	lyxscale 40
+	width 50col%
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+
+\series bold
+דיאגרמה סכמטית של מערכת הניסוי (רכיבים חשמליים).
+
+\series default
+ ספק מתח ישר 
+\begin_inset Formula $\text{Keysight EDU36311A }$
+\end_inset
+
+ סיפק את מתח המנוע 
+\begin_inset Formula $V_{drill}$
+\end_inset
+
+,
+ אשר קבע את אמפליטודת הכוח המאלץ,
+ וסיפק בנוסף מתח קבוע של 
+\begin_inset Formula $6V$
+\end_inset
+
+ שהזין את סליל הממסר (ריליי).
+ מחולל אותות 
+\begin_inset Formula $\text{Agilent 33120A}$
+\end_inset
+
+ הניע את הממסר בתדירות גל ריבועי של 
+\begin_inset Formula $5V_{pp}$
+\end_inset
+
+;
+ הזנת הסליל בתדירות האילוץ 
+\begin_inset Formula $f_{drive}$
+\end_inset
+
+ פתחה וסגרה את השערים בממסר,
+ ובכך הפכו את הקוטביות של 
+\begin_inset Formula $V_{drill}$
+\end_inset
+
+ על המנוע בכל חצי-מחזור.
+ כתוצאה מכך התנדנד המנוע עם כיוון השעון ונגד כיוון השעון בתדירות 
+\begin_inset Formula $f_{drive}$
+\end_inset
+
+ ואילץ את המוט העליון לנוע דרך ציר החיבור ביניהם.
+ לאורך המדידות בדו
+\begin_inset Quotes qrd
+\end_inset
+
+ח זה קיבענו את גודל 
+\begin_inset Formula $V_{drill}=3.2V$
+\end_inset
+
+ וסרקנו את ערכי תדירות האילוץ 
+\begin_inset Formula $\left(0.9\text{Hz}<f_{drive}<1.34\text{Hz}\right)$
+\end_inset
+
+.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+המטוטלת הכפולה צולמה במישור התנועה שלה (מערכת המעבדה) באמצעות מצלמת 
+\begin_inset Formula $\text{Nikon D7200}$
+\end_inset
+
+.
+ המצלמה חוברה למחשב שהריץ את תוכנת 
+\begin_inset Formula $\text{digiCamControl}$
+\end_inset
+
+,
+ ודרכה הוקלטו המדידות הגולמיות במהירות של 
+\begin_inset Formula $60\text{FPS}$
+\end_inset
+
+ וברזולוציה של 
+\begin_inset Formula $1280\times720$
+\end_inset
+
+ פיקסלים.
+ 
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+בכל מדידה אותחלה המטוטלת הכפולה מתנאי התחלה זהים,
+ כך שהמטוטלת היתה במנוחה (שתי המוטות נמצאו בזווית 
+\begin_inset Formula $0^{\circ}$
+\end_inset
+
+).
+
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+ לאורך כלל המדידות קיבענו את מתח המנוע 
+\begin_inset Formula $V_{drill}=3.2V$
+\end_inset
+
+ (הקובע את אמפליטודת האילוץ),
+ וסרקנו את ערכי תדירות האילוץ 
+\begin_inset Formula $\left(0.9\text{Hz}<f_{drive}<1.34\text{Hz}\right)$
+\end_inset
+
+ לאורך
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\begin_inset Formula $N=33$
+\end_inset
+
+ סרטונים.
+ כל סרטון נשמר בשם הכולל את המתח המנוע ותדירות האילוץ (כגון 
+\begin_inset Formula $\text{3.2V\_0.9Hz}$
+\end_inset
+
+ עבור מדידה בה תדירות האילוץ היתה 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+
+\begin_inset Formula $f_{drive}=0.9\text{Hz}$
+\end_inset
+
+
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+).
+ אורך כל מדידה נמשכה בקירוב כ- 
+\begin_inset Formula $90$
+\end_inset
+
+ שניות.
+ 
+\family default
+\series bold
+\shape default
+\size default
+\emph default
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+עיבוד הסרטונים
+\series default
+ נעשה מקצה לקצה באמצעות תוכנת 
+\begin_inset Formula $\text{python}$
+\end_inset
+
+:
+ עבור כל סרטון,
+ סקריפט ייעודי איתר בכל פריים את את שתי המדבקות (ראו 
+\begin_inset Formula $\text{bgr\_tracker.py}$
+\end_inset
+
+) ומהם חילצנו את הזוויות 
+\begin_inset Formula $\theta_{1},\theta_{2}\in\left[-180^{\circ},180^{\circ}\right]$
+\end_inset
+
+ כמתואר באיור
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\numeric on
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+3
 \numeric off
 .
- #פירוט על המערכת#.
-\begin_inset Newline newline
+ את המהירויות הזוויתיות 
+\begin_inset Formula $\omega_{1},\omega_{2}$
 \end_inset
 
-
-\begin_inset Newline newline
+ חישבנו באמצעות גזירת הזוויות והשתמשנו בפילטר 
+\begin_inset Formula $\text{savitzky-golay}$
 \end_inset
 
-#פירוט על עיבוד נתונים.#.
- 
-\begin_inset Newline newline
+ בכדי לנקות ולהחליק ארטיפאקטים שנוצרו בתהליך הטראקינג.
+ מכלל המדידות הושמטו חמשת השניות הראשונות 
+\begin_inset Formula $\left(t_{transient}=5\text{sec}\right)$
 \end_inset
 
-
+ על מנת להיפטר מהטרנזיינטים בתחילת המדידה.
 \end_layout
 
 \begin_layout Standard
-\begin_inset Float figure
-placement H
-alignment center
-wide false
-sideways false
-status open
 
-\begin_layout Plain Layout
-\begin_inset Caption Standard
-
-\begin_layout Plain Layout
-תמונות מסרטון 
-\end_layout
-
+\series bold
+שגיאות מדידה
+\series default
+.
+ אי-הוודאות ברמת הפיקסל של מרכז המסה של כל אחת מהנקודות הביאה איתה שגיאות בעבור כל אחת מהזוויות 
+\begin_inset Formula $\theta_{1},\theta_{2}$
 \end_inset
 
-
-\end_layout
-
-\begin_layout Plain Layout
-
-\end_layout
-
+,
+ וכתוצאה ישירה מכך גם לשגיאה בכל הגדלים אשר נגזרו מהם (לרבות המהירויות הזוויתיות 
+\begin_inset Formula $\omega_{1},\omega_{2}$
 \end_inset
 
-
-\end_layout
-
-\begin_layout Standard
-\begin_inset Float figure
-placement h
-alignment center
-wide false
-sideways false
-status open
-
-\begin_layout Plain Layout
-\begin_inset Caption Standard
-
-\begin_layout Plain Layout
-גרפים של זוויות?
-\end_layout
-
+,
+ האנרגיה המכאנית וכו').
+ עקב כך,
+ בגרפים המציגים את הזוויות הגולמיות לא 
+\begin_inset Formula $\text{error-bars}$
 \end_inset
 
-
-\end_layout
-
-\end_inset
-
-
-\end_layout
-
-\begin_layout Standard
-נסיים עם תיאור גורמי השגיאות.
- 
-\end_layout
-
-\begin_layout Standard
-ראשית היו כמה סיבות טכניות שהקשו על תהליך עיבוד הסרטונים.
- היו הרבה ארטיפקטים וויזואליים בתמונות שצילמנו,
- לא ברור אם מקורם במצלמה או בחומר,
- ועל כן עיבוד המידע פחות מדויק.
- התאורה על החומר הייתה לא אחידה והפחיתה מדיוק הניתוח.
- בנוסף,
- הסיווג של כל פיקסל לדומיין מסויים לא מדויק עבור הפיקסלים שבהם עוברים גבולות הדומיינים,
- שכן אנו מחשיבים אותם רק לדומיין אחד כאשר הם מכילים שני סוגים.
- לא פחות זניח הן רעידות של החומר ביחס למצלמה,
- שנבעו מגורמים בסביבת המערכת.
-\end_layout
-
-\begin_layout Standard
-מקור נוסף לשגיאות הוא שבתדירויות גבוהות היה קשה לסנכרן את זמני קובץ המתחים והסרטון,
- מה שמוסיף שגיאה במדידת המתח של כל נקודה.
+,
+ ואילו עבור כל גודל שחושב כממוצע בזמן (כגון האנרגיה המכאנית) כללנו את השגיאה המתקבלת ביחס למחזור אילוץ בודד,
+ שהיא השגיאה התקנית של ממוצע המחזורים.
 \end_layout
 
 \begin_layout Section
