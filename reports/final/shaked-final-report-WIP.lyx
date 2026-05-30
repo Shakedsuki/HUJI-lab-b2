@@ -2,8 +2,8 @@
 \lyxformat 643
 \begin_document
 \begin_header
-\save_transient_properties true
-\origin C:/dev/chaos/reports/final/
+\save_transient_properties false
+\origin unavailable
 \textclass article
 \begin_preamble
 \usepackage{pdfpages}
@@ -38,16 +38,7 @@
 \float_alignment class
 \paperfontsize default
 \spacing single
-\use_hyperref true
-\pdf_bookmarks true
-\pdf_bookmarksnumbered false
-\pdf_bookmarksopen false
-\pdf_bookmarksopenlevel 1
-\pdf_breaklinks false
-\pdf_pdfborder false
-\pdf_colorlinks false
-\pdf_backref false
-\pdf_pdfusetitle true
+\use_hyperref false
 \papersize default
 \use_geometry true
 \use_package amsmath 1
@@ -96,7 +87,7 @@
 \math_numbering_side default
 \quotes_style plain
 \dynamic_quotes 0
-\papercolumns 2
+\papercolumns 1
 \papersides 1
 \paperpagestyle default
 \tablestyle default
@@ -114,23 +105,6 @@
 \end_header
 
 \begin_body
-
-\begin_layout Standard
-\begin_inset ERT
-status open
-
-\begin_layout Plain Layout
-
-\backslash
-twocolumn[   
-\backslash
-begin{@twocolumnfalse} 
-\end_layout
-
-\end_inset
-
-
-\end_layout
 
 \begin_layout Title
 \begin_inset ERT
@@ -164,15 +138,7 @@ vskip -3em
 \end_layout
 
 \begin_layout Standard
-\begin_inset ERT
-status open
-
-\begin_layout Plain Layout
-
-\backslash
-end{@twocolumnfalse} ]
-\end_layout
-
+\begin_inset Separator plain
 \end_inset
 
 
@@ -187,31 +153,6 @@ end{@twocolumnfalse} ]
  
 \end_layout
 
-\begin_layout Standard
-\begin_inset Float figure
-placement h
-alignment center
-wide false
-sideways false
-status open
-
-\begin_layout Plain Layout
-\begin_inset Caption Standard
-
-\begin_layout Plain Layout
-ת
-\end_layout
-
-\end_inset
-
-
-\end_layout
-
-\end_inset
-
-
-\end_layout
-
 \begin_layout Section
 שיטות
 \end_layout
@@ -220,8 +161,8 @@ status open
 \align block
 מערך הניסוי:
 \begin_inset Float figure
-placement h
-alignment left
+placement H
+alignment right
 wide false
 sideways false
 status open
@@ -229,19 +170,23 @@ status open
 \begin_layout Plain Layout
 \align center
 \begin_inset Graphics
-	filename system.jpeg
-	lyxscale 10
-	width 100col%
+	filename C:/dev/chaos/reports/final/system.jpeg
+	lyxscale 40
+	width 40col%
 
 \end_inset
 
 
+\end_layout
+
+\begin_layout Plain Layout
+\align center
 \begin_inset Caption Standard
 
 \begin_layout Plain Layout
 
 \series bold
-דיאגרמה סכמטית של מערכת הניסוי.
+דיאגרמה סכמטית של מערכת הניסוי (מכאנית).
 
 \series default
  המטוטלת הכפולה מורכבת משני מוטות אלומיניום זהים (
@@ -271,7 +216,7 @@ status open
 \end_inset
 
 מ עומק).
- המוט העליון מקובע אל ציר מנוע,
+ המוט העליון מקובע אל ציר מנוע [מקדחה...],
  כך שהמנוע והמוט העליון מסתובבים כגוף אחד.
  המנוע משנה את כיוון סיבובו בכל חצי-מחזור,
  ובכך כופה על המוט העליון תנודה דו-כיוונית בתדירות האילוץ 
@@ -344,104 +289,81 @@ status open
 \end_inset
 
 
-\end_layout
+\begin_inset Graphics
+	filename ../../../../Users/Shake/Downloads/drive_circuit.png
+	lyxscale 40
+	width 100col%
 
 \end_inset
 
 
 \end_layout
 
-\begin_layout Standard
-ניתן לראות דיאגרמה של המערכת באיור
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\nospellcheck off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
- 
-\family default
+\begin_layout Plain Layout
+\align center
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+
+\series bold
+דיאגרמה סכמטית של מערכת הניסוי (רכיבים חשמליים).
+
 \series default
-\shape default
-\size default
-\emph default
-\numeric on
-\nospellcheck default
-\bar default
-\strikeout default
-\xout default
-\uuline default
-\uwave default
-\noun default
-\color inherit
-2
-\numeric off
+ ספק מתח ישר 
+\begin_inset Formula $\text{Keysight EDU36311A }$
+\end_inset
+
+ סיפק את מתח המנוע 
+\begin_inset Formula $V_{drill}$
+\end_inset
+
+,
+ אשר קבע את אמפליטודת הכוח המאלץ,
+ וסיפק בנוסף מתח קבוע של 
+\begin_inset Formula $6V$
+\end_inset
+
+ שהזין את סליל הממסר (ריליי).
+ מחולל אותות 
+\begin_inset Formula $\text{Agilent 33120A}$
+\end_inset
+
+ הניע את הממסר בתדירות גל ריבועי של 
+\begin_inset Formula $5V_{pp}$
+\end_inset
+
+;
+ הזנת הסליל בתדירות האילוץ 
+\begin_inset Formula $f_{drive}$
+\end_inset
+
+ פתחה וסגרה את השערים בממסר,
+ ובכך הפכו את הקוטביות של 
+\begin_inset Formula $V_{drill}$
+\end_inset
+
+ על המנוע בכל חצי-מחזור.
+ כתוצאה מכך התנדנד המנוע עם כיוון השעון ונגד כיוון השעון בתדירות 
+\begin_inset Formula $f_{drive}$
+\end_inset
+
+ ואילץ את המוט העליון לנוע דרך ציר החיבור ביניהם.
+\begin_inset Newline newline
+\end_inset
+
+לאורך המדידות בדו
+\begin_inset Quotes qrd
+\end_inset
+
+ח זה קיבענו את גודל 
+\begin_inset Formula $V_{drill}=3.2V$
+\end_inset
+
+ וסרקנו את ערכי תדירות האילוץ 
+\begin_inset Formula $\left(0.9\text{Hz}<f_{drive}<1.34\text{Hz}\right)$
+\end_inset
+
 .
- #פירוט על המערכת#.
-\begin_inset Newline newline
-\end_inset
-
-
-\begin_inset Newline newline
-\end_inset
-
-#פירוט על עיבוד נתונים.#.
- 
-\begin_inset Newline newline
-\end_inset
-
-
-\end_layout
-
-\begin_layout Standard
-\begin_inset Float figure
-placement H
-alignment center
-wide false
-sideways false
-status open
-
-\begin_layout Plain Layout
-\begin_inset Caption Standard
-
-\begin_layout Plain Layout
-תמונות מסרטון 
-\end_layout
-
-\end_inset
-
-
-\end_layout
-
-\begin_layout Plain Layout
-
-\end_layout
-
-\end_inset
-
-
-\end_layout
-
-\begin_layout Standard
-\begin_inset Float figure
-placement h
-alignment center
-wide false
-sideways false
-status open
-
-\begin_layout Plain Layout
-\begin_inset Caption Standard
-
-\begin_layout Plain Layout
-גרפים של זוויות?
 \end_layout
 
 \end_inset
@@ -452,274 +374,6 @@ status open
 \end_inset
 
 
-\end_layout
-
-\begin_layout Standard
-נסיים עם תיאור גורמי השגיאות.
- 
-\end_layout
-
-\begin_layout Standard
-sssss
-\end_layout
-
-\begin_layout Section
-תוצאות
-\end_layout
-
-\begin_layout Standard
-\begin_inset Float figure
-placement H
-alignment center
-wide false
-sideways false
-status open
-
-\begin_layout Plain Layout
-\begin_inset Caption Standard
-
-\begin_layout Plain Layout
-גרף של זווית המוט השני לאורך זמן במתחים שונים
-\end_layout
-
-\end_inset
-
-
-\end_layout
-
-\begin_layout Plain Layout
-\begin_inset Caption Standard
-
-\begin_layout Plain Layout
-מרחבי פאזה?
-\end_layout
-
-\end_inset
-
-
-\end_layout
-
-\end_inset
-
-
-\end_layout
-
-\begin_layout Standard
-aaaaל.
-\begin_inset Newline newline
-\end_inset
-
-
-\begin_inset Float figure
-placement h
-alignment center
-wide false
-sideways false
-status open
-
-\begin_layout Plain Layout
-\begin_inset Caption Standard
-
-\begin_layout Plain Layout
-התמרות פורייה?
-\end_layout
-
-\end_inset
-
-
-\end_layout
-
-\end_inset
-
-
-\end_layout
-
-\begin_layout Standard
-\begin_inset Float figure
-placement h
-alignment center
-wide false
-sideways false
-status open
-
-\begin_layout Plain Layout
-\begin_inset Caption Standard
-
-\begin_layout Plain Layout
-אנרגיות?
- משהו אחר?
-\end_layout
-
-\end_inset
-
-
-\end_layout
-
-\end_inset
-
-
-\end_layout
-
-\begin_layout Standard
-בגרף באיור
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\nospellcheck off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
- 
-\family default
-\series default
-\shape default
-\size default
-\emph default
-\numeric on
-\nospellcheck default
-\bar default
-\strikeout default
-\xout default
-\uuline default
-\uwave default
-\noun default
-\color inherit
-8
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\numeric off
-\nospellcheck off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
- 
-\family default
-\series default
-\shape default
-\size default
-\emph default
-\nospellcheck default
-\bar default
-\strikeout default
-\xout default
-\uuline default
-\uwave default
-\noun default
-\color inherit
-א
-\end_layout
-
-\begin_layout Section
-דיון
-\end_layout
-
-\begin_layout Standard
-מצאנו כי ככה וככה,
- לקשר לאיורים
-\end_layout
-
-\begin_layout Standard
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\nospellcheck off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-נתקלנו בבעיה שהקשתה להגיע למסקנות חד
-\family default
-\series default
-\shape default
-\size default
-\emph default
-\numeric on
-\nospellcheck default
-\bar default
-\strikeout default
-\xout default
-\uuline default
-\uwave default
-\noun default
-\color inherit
--
-\numeric off
-משמעיות
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\nospellcheck off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
- על #.
- בעיות אלה נובעות משתי סיבות.
-\end_layout
-
-\begin_layout Standard
-
-\family roman
-\series medium
-\shape up
-\size normal
-\emph off
-\nospellcheck off
-\bar no
-\strikeout off
-\xout off
-\uuline off
-\uwave off
-\noun off
-\color none
-.
-\begin_inset Newline newline
-\end_inset
-
-
-\begin_inset Newline newline
-\end_inset
-
-כדי להתקדם במחקר היינו נוקטים בצעדים הבאים.
-\end_layout
-
-\begin_layout Standard
-ראשית היינו מתקנים את הבעיות שציינו,
- על ידי #.
-\end_layout
-
-\begin_layout Standard
-שנית,
- כמו כל תופעה פיזיקלית ראויה כדאי לנסות לפתח מודל תיאורטי וסימולציות לכיצד יראו הדומיינים בתדירויות שונות.
-\end_layout
-
-\begin_layout Standard
-בנוסף,
- #.
 \end_layout
 
 \end_body
