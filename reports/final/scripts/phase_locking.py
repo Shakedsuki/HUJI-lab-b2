@@ -404,11 +404,13 @@ def run_sweep(voltage, transient_s):
     ax2.set_xlabel(r"drive frequency $f_{drive}$ (Hz)")
     ax2.set_ylabel(r"$\rho$  (arm phase coherence)")
     ax2.set_ylim(-0.02, 1.02); ax2.grid(alpha=0.25)
-    ax2.legend(handles=[lock_band, unlock_band], loc="center left", fontsize=8)
-    ax2.set_title("Arm coherence vs drive frequency (colour = spectral chaos, 3.2 V)",
-                  loc="left", fontweight="bold")
+    # legend in the clear transition strip (ρ≈0.5–0.8), framed so it reads on white
+    leg = ax2.legend(handles=[lock_band, unlock_band], loc="center",
+                     bbox_to_anchor=(0.5, 0.66), fontsize=9, frameon=True,
+                     framealpha=0.95, edgecolor="0.3", fancybox=False)
+    leg.get_frame().set_linewidth(1.0)
     cbar = fig2.colorbar(sc2, ax=ax2, pad=0.02)
-    cbar.set_label(r"$H_{\theta_2}$  spectral entropy  (0 = periodic, 1 = chaotic)")
+    cbar.set_label(r"$H_{\theta_2}$  spectral entropy")
     cbar.ax.axhline(HT, color="0.2", lw=0.8)   # mark the chaos split on the bar
     out2 = os.path.join(FINAL_FIGURES, f"phase_locking_freq_{voltage:g}V.png")
     fig2.savefig(out2, dpi=140); plt.close(fig2)
