@@ -1,0 +1,955 @@
+#LyX 2.4 created this file. For more info see https://www.lyx.org/
+\lyxformat 620
+\begin_document
+\begin_header
+\save_transient_properties true
+\origin unavailable
+\textclass article
+\begin_preamble
+\usepackage{pdfpages}
+\raggedbottom
+\end_preamble
+\use_default_options true
+\maintain_unincluded_children no
+\language hebrew
+\language_package default
+\inputencoding utf8
+\fontencoding auto
+\font_roman "default" "default"
+\font_sans "default" "default"
+\font_typewriter "default" "default"
+\font_math "auto" "auto"
+\font_default_family default
+\use_non_tex_fonts false
+\font_sc false
+\font_roman_osf false
+\font_sans_osf false
+\font_typewriter_osf false
+\font_sf_scale 100 100
+\font_tt_scale 100 100
+\use_microtype false
+\use_dash_ligatures true
+\graphics default
+\default_output_format default
+\output_sync 0
+\bibtex_command default
+\index_command default
+\float_placement h
+\float_alignment class
+\paperfontsize default
+\spacing single
+\use_hyperref false
+\papersize default
+\use_geometry true
+\use_package amsmath 1
+\use_package amssymb 1
+\use_package cancel 1
+\use_package esint 1
+\use_package mathdots 1
+\use_package mathtools 1
+\use_package mhchem 1
+\use_package stackrel 1
+\use_package stmaryrd 1
+\use_package undertilde 1
+\cite_engine basic
+\cite_engine_type default
+\biblio_style plain
+\use_bibtopic false
+\use_indices false
+\paperorientation portrait
+\suppress_date false
+\justification true
+\use_refstyle 1
+\use_formatted_ref 0
+\use_minted 0
+\use_lineno 0
+\index Index
+\shortcut idx
+\color #008080
+\end_index
+\leftmargin 1cm
+\topmargin 2cm
+\rightmargin 1cm
+\bottommargin 2cm
+\secnumdepth 3
+\tocdepth 3
+\paragraph_separation indent
+\paragraph_indentation default
+\is_math_indent 0
+\math_numbering_side default
+\quotes_style plain
+\dynamic_quotes 0
+\papercolumns 2
+\papersides 1
+\paperpagestyle default
+\tablestyle default
+\tracking_changes false
+\output_changes false
+\change_bars false
+\postpone_fragile_content true
+\html_math_output 0
+\html_css_as_file 0
+\html_be_strict false
+\docbook_table_output 0
+\docbook_mathml_prefix 1
+\html_math_img_scale 1.1
+\end_header
+
+\begin_body
+
+\begin_layout Standard
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+twocolumn[   
+\backslash
+begin{@twocolumnfalse} 
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Title
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+ 
+\backslash
+vskip -3em
+\end_layout
+
+\end_inset
+
+מטוטלות מרקדות:
+ השפעת תדירות כוח מאלץ על הכאוטיות של מערכת מטוטלת כפולה
+\end_layout
+
+\begin_layout Author
+שקד סוקניק,
+ ניר כהן
+\end_layout
+
+\begin_layout Abstract
+מטוטלת כפולה היא הדוגמה הקלאסית למערכת כאוטית,
+ אך מה קורה כאשר מוסיפים כוח מאלץ למערכת?
+ כדי לבדוק זאת בחנו את הדינמיקה של מערכת מטוטלת כפולה אשר חובר לציר הראשי שלה מנוע,
+ שיצר כוח מאלץ על המטוטלת הראשונה.
+ בוצעו דגימות שבהן המנוע הופעל בתדירויות שונות,
+ ובכך יכלנו לבדוק את הקשר בין תדירות הכוח המאלץ לתכונות הכאוטיות של המערכת.
+ מצאנו כי בלהבלה
+\end_layout
+
+\begin_layout Standard
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+end{@twocolumnfalse} ]
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+מבוא
+\end_layout
+
+\begin_layout Standard
+ראשית נגדיר כמה מושגי יסוד.
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+placement h
+alignment center
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename system.png
+	lyxscale 10
+	scale 30
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+ת
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+שיטות
+\end_layout
+
+\begin_layout Standard
+מערך הניסוי:
+\begin_inset Float figure
+placement h
+alignment left
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename system.png
+	lyxscale 10
+	scale 50
+
+\end_inset
+
+
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+דיאגרמה סכמתית של המערכת:
+ המערכת של המטוטלת הכפולה מורכבת משני מוטות זהים,
+ כאשר המוט הראשון מחובר בציר אל מנוע והמוט השני מחובר אל המוט הראשון בציר.
+ הציר המחבר המנוע למוט הראשון אינו חופשי,
+ כלומר המנוע והמוט הראשון מסתובבים באותו האופן,
+ בניגוד לציר השני המחבר בין המוט הראשון לשני שהוא כן ציר חופשי,
+ כלומר המוטות יכולים לנוע סביבו בחופשיות.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+ניתן לראות דיאגרמה של המערכת באיור
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\numeric on
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+2
+\numeric off
+.
+ #פירוט על המערכת#.
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset Newline newline
+\end_inset
+
+#פירוט על עיבוד נתונים.#.
+ 
+\begin_inset Newline newline
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+placement H
+alignment center
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+תמונות מסרטון 
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+placement h
+alignment center
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+גרפים של זוויות?
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+נסיים עם תיאור גורמי השגיאות.
+ 
+\end_layout
+
+\begin_layout Standard
+ראשית היו כמה סיבות טכניות שהקשו על תהליך עיבוד הסרטונים.
+ היו הרבה ארטיפקטים וויזואליים בתמונות שצילמנו,
+ לא ברור אם מקורם במצלמה או בחומר,
+ ועל כן עיבוד המידע פחות מדויק.
+ התאורה על החומר הייתה לא אחידה והפחיתה מדיוק הניתוח.
+ בנוסף,
+ הסיווג של כל פיקסל לדומיין מסויים לא מדויק עבור הפיקסלים שבהם עוברים גבולות הדומיינים,
+ שכן אנו מחשיבים אותם רק לדומיין אחד כאשר הם מכילים שני סוגים.
+ לא פחות זניח הן רעידות של החומר ביחס למצלמה,
+ שנבעו מגורמים בסביבת המערכת.
+\end_layout
+
+\begin_layout Standard
+מקור נוסף לשגיאות הוא שבתדירויות גבוהות היה קשה לסנכרן את זמני קובץ המתחים והסרטון,
+ מה שמוסיף שגיאה במדידת המתח של כל נקודה.
+\end_layout
+
+\begin_layout Section
+תוצאות
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula $ $
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+בחלק זה בחנו את תוצאות המדידות,
+ והתמקדנו בניתוח של התנהגות הזווית 
+\begin_inset Formula $\theta_{2}$
+\end_inset
+
+ בדגימות השונות ובפרט כיצד תדר האילוץ מתקשר לכאוטיות בזווית 
+\begin_inset Formula $\theta_{2}$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+כפי שרואים באיור
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\numeric on
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+5
+\numeric off
+,
+ כאשר בוחנים את ההתנהגות הבסיסית של 
+\begin_inset Formula $\theta_{2}$
+\end_inset
+
+ לאורך זמן,
+ ניתן לראות בקצות תחום תדרי האילוץ התנועה יציבה ומחזורית.
+ לעומת זאת,
+ סביב מרכז תחום התדרים התנועה מאבדת את מחזוריותה ומתנהגת באופן לא צפוי וכאוטי.
+\end_layout
+
+\begin_layout Standard
+המעבר מתחום יציב לכאוטי ניכר היטב גם באיור 
+\begin_inset Formula $6$
+\end_inset
+
+ המציג את מרחבי הפאזה עבור תדירויות אילוץ שונות.
+ במרחבי הפאזה רואים את המעבר ההדרגתי ממסלול סגור ומחזורי למסלול פתוח וכאוטי,
+ וחזרה למסלול מחזורי.
+\end_layout
+
+\begin_layout Standard
+התמרות הפורייה של זווית המוט מאפשרות לראות את תופעה זאת לאורך כל תחום תדרי האילוץ,
+ כפי שרואים באיור
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\numeric on
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+7
+\numeric off
+.
+ בתחומי תדרי אילוץ בקצוות (
+\begin_inset Formula $\left[0.9,0.93\right]Hz,\left[1.29,1.34\right]HZ$
+\end_inset
+
+),
+ האנרגיה מרוכזת בתדר תגובה יחיד אשר זהה לתדר המנוע.
+ לעומת זאת,
+ באזור הכאוטי המרכזי מופיע ספקטרום רחב של תדרים פעילים במקביל,
+ המצביע על תנועה לא מחזורית וכאוטית.
+\end_layout
+
+\begin_layout Standard
+בנוסף,
+ מדד בולט לכאוטיות במטוטלת כפולה הוא כמות ההיפוכים.
+ כפי שרואים באיור
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\numeric on
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+9
+\numeric off
+,
+ בקצוות תדרי האילוץ אין היפוכים כלל,
+ ובמרכז התחום יש היפוכים.
+ יתרה על כך,
+ אנו רואים כי שונות תדירות ההיפוכים במרכז התחום גבוהה,
+ כלומר תדירות ההיפוכים לארוך הדגימה מתשנה מה שמעיד על כך חוסר היציבוןת של המערכת,
+ ועל כך שהיא אינה מחזורית וכאוטית.
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+placement H
+alignment center
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename theta2_timeseries.png
+	lyxscale 20
+	scale 25
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+גרפים של זווית המוט השני במעלות כתלות בזמן.
+ כל גרף נוצר מדגימה שונה,
+ כאשר ההבדל הוא תדירות הכוח המאלץ.
+ התדירויות המתאימות לגרפים מלמעלה למטה הן 
+\begin_inset Formula $0.9Hz,1.26Hz,1.34Hz$
+\end_inset
+
+.
+ ניתן לראות כי התנועה בתדירויות 
+\begin_inset Formula $0.9Hz,1.34Hz$
+\end_inset
+
+ אינה כאוטית ובפרט מחזורית,
+ אך לעומתה הדגימה בתדירות 
+\begin_inset Formula $1.26Hz$
+\end_inset
+
+ אינה מחזורית ומתנהגת באופן לא צפוי.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset Float figure
+placement document
+alignment center
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename phase_portrait_row.png
+	lyxscale 30
+	scale 27
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+גרפים של מרחב הפאזה של המוט השני,
+ כלומר של המהירות הזוויתית לעומת הזוויות.
+ כל גרף נוצר מדגימה שבה תדירות הכוח המאלץ הייתה שונה,
+ כאשר התדירויות המתאימות משמאל לימין הן 
+\begin_inset Formula $\left[0.9,0.94,1.19,1.28,1.34\right]Hz$
+\end_inset
+
+.
+ ניתן לראות כי בקצוות מרחב הפאזה הוא קוו סגור,
+ והמשמעות היא שתנועת המטוטלת מחזורית.
+ בתדירויות האמצעיות מרחב הפאזה אינו קוו בודד סגור,
+ אלא ממלא את המרחב,
+ ומכך ניתן להסיק שבתחומי תדר אילוץ כאלה התנועה כאוטית.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset Float figure
+placement document
+alignment center
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename cohen_fftheatmap_3.2V.png
+	lyxscale 40
+	scale 29
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+מפת חום של התדרים הפעילים של 
+\begin_inset Formula $\theta_{2}$
+\end_inset
+
+ כתלות בתדירות הכוח המאלץ.
+ הצבע של כל משבצת מתאר את עוצמת התדירות בדגימה של זווית 
+\begin_inset Formula $\theta_{2}$
+\end_inset
+
+ לפי התמרת פורייה.
+ הקו המקווקו מתאר את העקומה שבה התדר בדגימת הזווית זהה לתדר האילוץ.
+ בגרף ניתן לראות כי בקצוות תחום תדרי האילוץ (בתחומי תדר 
+\begin_inset Formula $\left[0.9,0.93\right]Hz,\left[1.29,1.34\right]HZ$
+\end_inset
+
+) קיים תדר תגובה יחיד הזהה לתדר האילוץ,
+ מה שמעיד על תנועה מחזורית יציבה בתדר האילוץ.
+ לעומת זאת בתחום תדרי האילוץ המרכזי קיים מגוון תדרים פעילים במקביל,
+ מה שמעיד על שבירת המחזוריות ומעבר לתנועה כאוטית.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+placement h
+alignment center
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename energies2.png
+	lyxscale 30
+	scale 26
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+גרף של האנרגיות הממוצעות בדגימה כתלות בתדירות הכוח המאלץ.
+ בגרף יש
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\numeric on
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+3
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\numeric off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+עקומות המתארות לכל דגימה את האנרגיה המכנית הכוללת הממוצעת,
+ האנרגיה הקינטית הממוצעת,
+ האנרגיה הפוטנציאלית הממוצעת ויחס האנרגיה הקינטית לפוטנציאלית.
+ ניתן לראות כי באופן כללי יש מגמת ירידה בכמות האנרגיה הממוצעת כתלות בתדר האילוץ.
+ 
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\begin_inset Float figure
+placement h
+alignment center
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename flips.png
+	lyxscale 30
+	scale 26
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+גרף של תדירות ההיפוכים שביצע המוט השני בתנועתו כתלות בתדירות הכוח המאלץ.
+ תדירות ההיפוכים בדגימה וסטיית התקן חושבו על ידי פיצול הדגימה ל
+\numeric on
+10
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\numeric off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+חלונות זמן,
+ חישוב תדירות ההיפוכים בכל חלון ומיצוע על החלונות לקבלת הערך וסטיית התקן.
+ ניתן לראות כי עבור תדרי האילוץ בקצוות (בתחומי תדר 
+\begin_inset Formula $\left[0.9,0.93\right]Hz,\left[1.29,1.34\right]HZ$
+\end_inset
+
+) אין היפוכים כלל,
+ ואילו במרכז קיימת תדירות היפוכים משתנה.
+ בנוסף ניתן לראות שהשונות במרכז מאוד גדולה,
+ מה שמעיד על כך שהתנועה כאוטית שכן תדריות הסיבובים מאוד משתנה לאורך הדגימה.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+דיון
+\end_layout
+
+\begin_layout Standard
+מצאנו כי לתדירות האילוץ יש השפעה משמעותית על רמת הכאוטיות של המערכת,
+ ובפרט כי קיימות תדירויות סף המחלקות את המערכת לתחומים יציבים וכאוטיים.
+\end_layout
+
+\begin_layout Standard
+קיבלנו כי קיימת תדירות מינימלית שמתחתיה המערכת אינה כאוטית,
+ וכשעוברים אותה התנועה בחדות נהית כאוטית.
+ ייתכן כי זה נובע מכך שנדרש סף מינימלי של אנרגיה במוט התחתון על מנת לקבל תנועה כאוטית,
+ ורק כאשר עוברים תדירות אילוץ מינימלית המנוע מכניס מספיק אנרגיה למערכת.
+\end_layout
+
+\begin_layout Standard
+באופן מפתיע,
+ ראינו כי קיימת תדירות סף שמעליה התנועה מפסיקה להיות כאוטית.
+ ייתכן שזה נובע מכך שכאשר תדירות המנוע גדלה,
+ המערכת לא מספיקה להגיב לתדירות זאת ולא עוברת מספיק אנרגיה למוט התחתון על מנת לאפשר תנועה כאוטית.
+\end_layout
+
+\begin_layout Standard
+
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+בעיה שקרתה תוך כדי מהלך הניסוי היא שביצענו יחסית מעט דגימות בתחום התדרים המרכזי,אלא התמקדנו בתחום הכניסה והיציאה מהכאוס אילו תחום זה היה נדגם,
+ זה היה עוזר לכימות רמת הכאוס במערכת מעבר לאמרה האם המערכת כאוטית או לא.
+\end_layout
+
+\begin_layout Standard
+
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+.
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset Newline newline
+\end_inset
+
+כדי להתקדם במחקר היינו נוקטים בצעדים הבאים.
+\end_layout
+
+\begin_layout Standard
+ראשית,
+ היינו מתקנים את הבעיה שציינו על ידי דגימת תחום התדרים באופן שווה.
+\end_layout
+
+\begin_layout Standard
+ניתן גם להרחיב את תחום התדרים יותר ולראות האם המערכת נכנסת לכאוס שוב.
+\end_layout
+
+\begin_layout Standard
+בנוסף,
+ ניתן לשנות המתח למנוע ולראות כיצד זה משפיע על רמת הכאוטיות.
+\end_layout
+
+\end_body
+\end_document

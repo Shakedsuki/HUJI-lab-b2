@@ -1,0 +1,784 @@
+#LyX 2.4 created this file. For more info see https://www.lyx.org/
+\lyxformat 620
+\begin_document
+\begin_header
+\save_transient_properties true
+\origin unavailable
+\textclass article
+\begin_preamble
+\usepackage{pdfpages}
+\raggedbottom
+\end_preamble
+\use_default_options true
+\maintain_unincluded_children no
+\language hebrew
+\language_package default
+\inputencoding utf8
+\fontencoding auto
+\font_roman "default" "default"
+\font_sans "default" "default"
+\font_typewriter "default" "default"
+\font_math "auto" "auto"
+\font_default_family default
+\use_non_tex_fonts false
+\font_sc false
+\font_roman_osf false
+\font_sans_osf false
+\font_typewriter_osf false
+\font_sf_scale 100 100
+\font_tt_scale 100 100
+\use_microtype false
+\use_dash_ligatures true
+\graphics default
+\default_output_format default
+\output_sync 0
+\bibtex_command default
+\index_command default
+\float_placement h
+\float_alignment class
+\paperfontsize default
+\spacing single
+\use_hyperref false
+\papersize default
+\use_geometry true
+\use_package amsmath 1
+\use_package amssymb 1
+\use_package cancel 1
+\use_package esint 1
+\use_package mathdots 1
+\use_package mathtools 1
+\use_package mhchem 1
+\use_package stackrel 1
+\use_package stmaryrd 1
+\use_package undertilde 1
+\cite_engine basic
+\cite_engine_type default
+\biblio_style plain
+\use_bibtopic false
+\use_indices false
+\paperorientation portrait
+\suppress_date false
+\justification true
+\use_refstyle 1
+\use_formatted_ref 0
+\use_minted 0
+\use_lineno 0
+\index Index
+\shortcut idx
+\color #008080
+\end_index
+\leftmargin 1cm
+\topmargin 2cm
+\rightmargin 1cm
+\bottommargin 2cm
+\secnumdepth 3
+\tocdepth 3
+\paragraph_separation indent
+\paragraph_indentation default
+\is_math_indent 0
+\math_numbering_side default
+\quotes_style plain
+\dynamic_quotes 0
+\papercolumns 2
+\papersides 1
+\paperpagestyle default
+\tablestyle default
+\tracking_changes false
+\output_changes false
+\change_bars false
+\postpone_fragile_content true
+\html_math_output 0
+\html_css_as_file 0
+\html_be_strict false
+\docbook_table_output 0
+\docbook_mathml_prefix 1
+\html_math_img_scale 1.1
+\end_header
+
+\begin_body
+
+\begin_layout Standard
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+twocolumn[   
+\backslash
+begin{@twocolumnfalse} 
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Title
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+ 
+\backslash
+vskip -3em
+\end_layout
+
+\end_inset
+
+מטוטלות מרקדות:
+ השפעת תדירות כוח מאלץ על הכאוטיות של מערכת מטוטלת כפולה
+\end_layout
+
+\begin_layout Author
+שקד סוקניק,
+ ניר כהן
+\end_layout
+
+\begin_layout Abstract
+מטוטלת כפולה היא הדוגמה הקלאסית למערכת כאוטית,
+ אך מה קורה כאשר מוסיפים כוח מאלץ למערכת?
+ כדי לבדוק זאת בחנו את הדינמיקה של מערכת מטוטלת כפולה אשר חובר לציר הראשי שלה מנוע,
+ שיצר כוח מאלץ על המטוטלת הראשונה.
+ בוצעו דגימות שבהן המנוע הופעל בתדירויות שונות,
+ ובכך יכלנו לבדוק את הקשר בין תדירות הכוח המאלץ לתכונות הכאוטיות של המערכת.
+ מצאנו כי בלהבלה
+\end_layout
+
+\begin_layout Standard
+\begin_inset ERT
+status open
+
+\begin_layout Plain Layout
+
+
+\backslash
+end{@twocolumnfalse} ]
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+מבוא
+\end_layout
+
+\begin_layout Standard
+ראשית נגדיר כמה מושגי יסוד.
+ 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+placement h
+alignment center
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename system.png
+	lyxscale 10
+	scale 30
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+ת
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Section
+שיטות
+\end_layout
+
+\begin_layout Standard
+מערך הניסוי:
+\begin_inset Float figure
+placement h
+alignment left
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename system.png
+	lyxscale 10
+	scale 50
+
+\end_inset
+
+
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+דיאגרמה סכמתית של המערכת:
+ המערכת של המטוטלת הכפולה מורכבת משני מוטות זהים,
+ כאשר המוט הראשון מחובר בציר אל מנוע והמוט השני מחובר אל המוט הראשון בציר.
+ הציר המחבר המנוע למוט הראשון אינו חופשי,
+ כלומר המנוע והמוט הראשון מסתובבים באותו האופן,
+ בניגוד לציר השני המחבר בין המוט הראשון לשני שהוא כן ציר חופשי,
+ כלומר המוטות יכולים לנוע סביבו בחופשיות.
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+ניתן לראות דיאגרמה של המערכת באיור
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\numeric on
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+2
+\numeric off
+.
+ #פירוט על המערכת#.
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset Newline newline
+\end_inset
+
+#פירוט על עיבוד נתונים.#.
+ 
+\begin_inset Newline newline
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+placement H
+alignment center
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+תמונות מסרטון 
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+placement h
+alignment center
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+גרפים של זוויות?
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+נסיים עם תיאור גורמי השגיאות.
+ 
+\end_layout
+
+\begin_layout Standard
+ראשית היו כמה סיבות טכניות שהקשו על תהליך עיבוד הסרטונים.
+ היו הרבה ארטיפקטים וויזואליים בתמונות שצילמנו,
+ לא ברור אם מקורם במצלמה או בחומר,
+ ועל כן עיבוד המידע פחות מדויק.
+ התאורה על החומר הייתה לא אחידה והפחיתה מדיוק הניתוח.
+ בנוסף,
+ הסיווג של כל פיקסל לדומיין מסויים לא מדויק עבור הפיקסלים שבהם עוברים גבולות הדומיינים,
+ שכן אנו מחשיבים אותם רק לדומיין אחד כאשר הם מכילים שני סוגים.
+ לא פחות זניח הן רעידות של החומר ביחס למצלמה,
+ שנבעו מגורמים בסביבת המערכת.
+\end_layout
+
+\begin_layout Standard
+מקור נוסף לשגיאות הוא שבתדירויות גבוהות היה קשה לסנכרן את זמני קובץ המתחים והסרטון,
+ מה שמוסיף שגיאה במדידת המתח של כל נקודה.
+\end_layout
+
+\begin_layout Section
+תוצאות
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+placement H
+alignment center
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename system.png
+	lyxscale 10
+	scale 30
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+גרף של זווית המוט השני לאורך זמן במתחים שונים
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename system.png
+	lyxscale 10
+	scale 30
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+מרחבי פאזה?
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+בגרף באיור
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\numeric on
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+6
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\numeric off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+רואים את לולאת החשל עבור מתח בתדירות הכי נמוכה שמדדנו.
+ מגרף זה אנו יכולים להסיק שעיבוד הנתונים שנעשה לא שיבש את המידע המקורי,
+ שכן הוא תואם את התוצאות שנצפו בניסוי המקדים.
+\begin_inset Newline newline
+\end_inset
+
+בגרף באיור
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\numeric on
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+7
+\numeric off
+ אנו יכולים לראות שיש השפעה ניכרת של תדירות המתח על צורת לולאת החשל.
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset Float figure
+placement h
+alignment center
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename system.png
+	lyxscale 10
+	scale 29
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+התמרות פורייה?
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+\begin_inset Float figure
+placement h
+alignment center
+wide false
+sideways false
+status open
+
+\begin_layout Plain Layout
+\begin_inset Graphics
+	filename system.png
+	lyxscale 10
+	scale 26
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Plain Layout
+\begin_inset Caption Standard
+
+\begin_layout Plain Layout
+אנרגיות?
+ משהו אחר?
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+בגרף באיור
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\numeric on
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+8
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\numeric off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ 
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+א
+\end_layout
+
+\begin_layout Section
+דיון
+\end_layout
+
+\begin_layout Standard
+מצאנו כי ככה וככה,
+ לקשר לאיורים
+\end_layout
+
+\begin_layout Standard
+
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+נתקלנו בבעיה שהקשתה להגיע למסקנות חד
+\family default
+\series default
+\shape default
+\size default
+\emph default
+\numeric on
+\nospellcheck default
+\bar default
+\strikeout default
+\xout default
+\uuline default
+\uwave default
+\noun default
+\color inherit
+-
+\numeric off
+משמעיות
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+ על #.
+ בעיות אלה נובעות משתי סיבות.
+\end_layout
+
+\begin_layout Standard
+
+\family roman
+\series medium
+\shape up
+\size normal
+\emph off
+\nospellcheck off
+\bar no
+\strikeout off
+\xout off
+\uuline off
+\uwave off
+\noun off
+\color none
+.
+\begin_inset Newline newline
+\end_inset
+
+
+\begin_inset Newline newline
+\end_inset
+
+כדי להתקדם במחקר היינו נוקטים בצעדים הבאים.
+\end_layout
+
+\begin_layout Standard
+ראשית היינו מתקנים את הבעיות שציינו,
+ על ידי #.
+\end_layout
+
+\begin_layout Standard
+שנית,
+ כמו כל תופעה פיזיקלית ראויה כדאי לנסות לפתח מודל תיאורטי וסימולציות לכיצד יראו הדומיינים בתדירויות שונות.
+\end_layout
+
+\begin_layout Standard
+בנוסף,
+ #.
+\end_layout
+
+\end_body
+\end_document

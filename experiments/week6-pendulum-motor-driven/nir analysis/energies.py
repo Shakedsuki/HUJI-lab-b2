@@ -29,10 +29,10 @@ COL_THETA1 = "theta1_deg"
 COL_THETA2 = "theta2_deg"
 
 # PHYSICAL CONSTANTS
-M1 = 0.1   # Mass of top rod (kg)
-M2 = 0.1   # Mass of bottom rod (kg)
-L1 = 0.27  # FULL Length of top rod (meters)
-L2 = 0.27  # FULL Length of bottom rod (meters)
+M1 = 0.08   # Mass of top rod (kg)
+M2 = 0.08   # Mass of bottom rod (kg)
+L1 = 0.24  # FULL Length of top rod (meters)
+L2 = 0.24  # FULL Length of bottom rod (meters)
 G = 9.81   # Gravity (m/s^2)
 
 # =============================================================================
