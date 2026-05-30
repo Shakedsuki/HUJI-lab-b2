@@ -40,7 +40,10 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-from report_common import FIGURES_DIR, clip_dir, list_clips, tail_window, stem_freq
+from report_common import (
+    FIGURES_DIR, clip_dir, list_clips, tail_window, stem_freq,
+    series_mean_error, ERR_MODELS,
+)
 
 _REPO = os.path.normpath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
 sys.path.insert(0, os.path.join(_REPO, "scripts", "utils"))
@@ -67,8 +70,8 @@ def load_clip(stem):
     return np.asarray(t, float), np.asarray(a, float), np.asarray(b, float)
 
 
-def energies(stem, window_s):
-    """Steady-state ⟨E⟩, ⟨T⟩, ⟨U⟩ (J) for one clip."""
+def energy_series(stem, window_s):
+    """Steady-state per-frame (t, T, U) series (J) for one clip, re-zeroed."""
     t, th1, th2 = load_clip(stem)
     om1 = np.radians(angular_velocity(th1, t))      # SG derivative -> rad/s
     om2 = np.radians(angular_velocity(th2, t))
@@ -82,41 +85,70 @@ def energies(stem, window_s):
     U1 = M1 * G * (L1 / 2.0) * (1 - np.cos(r1))
     U2 = M2 * G * (L1 * (1 - np.cos(r1)) + (L2 / 2.0) * (1 - np.cos(r2)))
     T, U = T1 + T2, U1 + U2
-    _, T, U = tail_window(t, T, U, window_s=window_s)
-    return float(np.mean(T + U)), float(np.mean(T)), float(np.mean(U))
+    ts, T, U = tail_window(t, T, U, window_s=window_s)
+    return ts, T, U
+
+
+def energies(stem, window_s, err_model):
+    """Steady-state ⟨E⟩, ⟨T⟩, ⟨U⟩ (J) + their errors for one clip. Each error is
+    the uncertainty of the steady-state time-average under ``err_model`` (see
+    report_common.series_mean_error). Returns six floats:
+        (E, E_err, T, T_err, U, U_err)."""
+    ts, T, U = energy_series(stem, window_s)
+    fd = stem_freq(stem)
+    E, E_err = series_mean_error(T + U, ts, fd, err_model)
+    Tm, T_err = series_mean_error(T, ts, fd, err_model)
+    Um, U_err = series_mean_error(U, ts, fd, err_model)
+    return E, E_err, Tm, T_err, Um, U_err
 
 
 def parse_args():
     p = argparse.ArgumentParser(description="Report energy vs drive frequency.")
     p.add_argument("--window", type=float, default=60.0,
                    help="steady-state tail window in s (default 60)")
+    p.add_argument("--err-model", choices=ERR_MODELS, default="cycle",
+                   help="time-average error model (default cycle; see report_common)")
+    p.add_argument("--no-errors", action="store_true",
+                   help="draw plain lines without error bars")
     p.add_argument("--out", default=os.path.join(FIGURES_DIR, "energies_3.2V.png"))
     return p.parse_args()
 
 
 def main():
     args = parse_args()
-    f, E, T, U = [], [], [], []
+    show_err = not args.no_errors
+    f, E, Ee, T, Te, U, Ue = ([] for _ in range(7))
     for stem in list_clips():
         try:
-            e, kt, pu = energies(stem, args.window)
+            e, ee, kt, te, pu, ue = energies(stem, args.window, args.err_model)
         except (FileNotFoundError, ValueError):
             continue
-        f.append(stem_freq(stem)); E.append(e); T.append(kt); U.append(pu)
-    f, E, T, U = map(np.asarray, (f, E, T, U))
+        f.append(stem_freq(stem))
+        E.append(e); Ee.append(ee); T.append(kt); Te.append(te); U.append(pu); Ue.append(ue)
+    f, E, Ee, T, Te, U, Ue = map(np.asarray, (f, E, Ee, T, Te, U, Ue))
     ratio = np.divide(T, U, out=np.zeros_like(T), where=U > 1e-12)
+    # virial ratio error by propagation: (σ_r/r)² = (σ_T/T)² + (σ_U/U)²
+    with np.errstate(divide="ignore", invalid="ignore"):
+        ratio_err = ratio * np.sqrt(np.where(T > 0, (Te / T) ** 2, 0.0)
+                                    + np.where(U > 0, (Ue / U) ** 2, 0.0))
 
     fig, ax1 = plt.subplots(figsize=(11, 6), constrained_layout=True)
-    ax1.plot(f, E, "o-", color="black", lw=2.0, label=r"total $E$")
-    ax1.plot(f, T, "s--", color="#2980b9", ms=4, lw=1.5, label=r"kinetic $T$")
-    ax1.plot(f, U, "^-.", color="#2e8b57", ms=4, lw=1.5, label=r"potential $U$")
+    ebar = dict(capsize=2, elinewidth=0.8, capthick=0.8)
+    ax1.errorbar(f, E, yerr=(Ee if show_err else None), fmt="o-", color="black",
+                 lw=2.0, label=r"total $E$", **ebar)
+    ax1.errorbar(f, T, yerr=(Te if show_err else None), fmt="s--", color="#2980b9",
+                 ms=4, lw=1.5, label=r"kinetic $T$", **ebar)
+    ax1.errorbar(f, U, yerr=(Ue if show_err else None), fmt="^-.", color="#2e8b57",
+                 ms=4, lw=1.5, label=r"potential $U$", **ebar)
     ax1.set_xlabel("drive frequency $f_{drive}$ (Hz)")
     ax1.set_ylabel("steady-state energy (J)")
     ax1.grid(alpha=0.3)
-    ax1.set_ylim(0, float(np.max(E)) * 1.15)
+    ax1.set_ylim(0, float(np.max(E + (Ee if show_err else 0.0))) * 1.15)
 
     ax2 = ax1.twinx()
-    ax2.plot(f, ratio, ":", color="#8e44ad", lw=2.0, marker="D", ms=4, label=r"$T/U$ (virial)")
+    ax2.errorbar(f, ratio, yerr=(ratio_err if show_err else None), fmt=":D",
+                 color="#8e44ad", lw=2.0, ms=4, label=r"$T/U$ (virial)",
+                 capsize=2, elinewidth=0.7, capthick=0.7, alpha=0.9)
     ax2.axhline(1.0, color="#8e44ad", lw=1.0, alpha=0.3)
     ax2.set_ylabel(r"virial ratio  $\langle T\rangle/\langle U\rangle$", color="#8e44ad")
     ax2.tick_params(axis="y", labelcolor="#8e44ad")
@@ -127,15 +159,17 @@ def main():
                  textcoords="offset points", ha="center", fontsize=10, fontweight="bold",
                  arrowprops=dict(arrowstyle="->", lw=1.3))
 
-    lines = ax1.get_lines()[:3] + ax2.get_lines()[:1]
-    ax1.legend(lines, [ln.get_label() for ln in lines], loc="upper right", fontsize=9)
+    h1, l1 = ax1.get_legend_handles_labels()
+    h2, l2 = ax2.get_legend_handles_labels()
+    ax1.legend(h1 + h2, l1 + l2, loc="upper right", fontsize=9)
     ax1.set_title(r"Mechanical energy & virial ratio vs drive frequency (3.2 V)",
                   loc="left", fontweight="bold")
 
     os.makedirs(os.path.dirname(args.out), exist_ok=True)
     fig.savefig(args.out, dpi=150)
     plt.close(fig)
-    print(f"{len(f)} clips  peak E at {f[i]:g} Hz  ->  {args.out}")
+    em = "off" if args.no_errors else args.err_model
+    print(f"{len(f)} clips  peak E at {f[i]:g} Hz  err={em}  ->  {args.out}")
 
 
 if __name__ == "__main__":
