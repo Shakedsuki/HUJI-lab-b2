@@ -351,21 +351,22 @@ def run_sweep(voltage, transient_s):
     f, rho, mean, df, rotf, H, D2, lam = (arr(0), arr(1), arr(2), arr(3),
                                           arr(4), arr(6), arr(7), arr(8))
 
-    # Single panel: arm phase-lock (ρ) vs spectral chaos (H_θ₂), coloured by
-    # drive frequency. Two independent regular/chaotic measures — bottom-right
-    # = locked + regular, top-left = unlocked + chaotic.
+    os.makedirs(FINAL_FIGURES, exist_ok=True)
+    HT = 0.4   # spectral-entropy chaos split (shared with the other report figs)
+
+    # ── figure 1 (original): ρ vs H_θ₂, coloured by drive frequency ──────────
+    # Two independent regular/chaotic measures — bottom-right = locked + regular,
+    # top-left = unlocked + chaotic.
     fig, ax = plt.subplots(figsize=(7.6, 6.2), constrained_layout=True)
     sc = ax.scatter(rho, H, c=f, cmap="viridis", s=60, edgecolors="k", linewidths=0.4)
     for x, y, st in zip(rho, H, [r[9] for r in rows]):
         if np.isfinite(x) and np.isfinite(y):
             ax.annotate(st.split("_")[1].replace("Hz", ""), (x, y),
                         fontsize=6, alpha=0.6, xytext=(3, 3), textcoords="offset points")
-    # gentle region tints instead of text: locked+regular (green, bottom-right),
-    # unlocked+chaotic (red, top-left)
     xlo, xhi = -0.02, 1.02
     ylo = float(np.nanmin(H)) - 0.04
     yhi = float(np.nanmax(H)) + 0.04
-    RL, HT = TH.PLOCK_RHO_LOCK, 0.4
+    RL = TH.PLOCK_RHO_LOCK
     ax.fill_between([RL, xhi], ylo, HT, color="#2e8b57", alpha=0.07, zorder=0)
     ax.fill_between([xlo, RL], HT, yhi, color="#c0392b", alpha=0.07, zorder=0)
     ax.axvline(RL, color="0.7", ls=":", lw=0.8, zorder=1)
@@ -375,10 +376,37 @@ def run_sweep(voltage, transient_s):
     ax.set_xlim(xlo, xhi); ax.set_ylim(ylo, yhi); ax.grid(alpha=0.25)
     ax.set_title("Arm lock vs spectral chaos agree", loc="left", fontweight="bold")
     fig.colorbar(sc, ax=ax, label="f_drive (Hz)")
-
-    os.makedirs(FINAL_FIGURES, exist_ok=True)
     out = os.path.join(FINAL_FIGURES, f"phase_locking_{voltage:g}V.png")
     fig.savefig(out, dpi=140); plt.close(fig)
+
+    # ── figure 2: arm coherence ρ vs drive frequency, coloured by H_θ₂ ───────
+    # (green = regular, red = chaotic — repo palette). ρ collapses through the
+    # chaotic band and recovers to a rigid lock at the high-f end; colour (the
+    # independent spectral measure) tracks ρ-height, so the two measures agree.
+    # Same x = f_drive convention as every other report figure.
+    fig2, ax2 = plt.subplots(figsize=(8.2, 6.0), constrained_layout=True)
+    chaotic = H >= HT
+    if chaotic.any():
+        ax2.axvspan(f[chaotic].min(), f[chaotic].max(), color="#c0392b",
+                    alpha=0.06, lw=0, zorder=0)
+    sc2 = ax2.scatter(f, rho, c=H, cmap="RdYlGn_r", vmin=float(np.nanmin(H)),
+                      vmax=float(np.nanmax(H)), s=70, edgecolors="k",
+                      linewidths=0.4, zorder=3)
+    ax2.axhline(TH.PLOCK_RHO_LOCK, color="#2e8b57", ls=":", lw=1.0,
+                label=f"lock  ρ = {TH.PLOCK_RHO_LOCK:g}")
+    ax2.axhline(TH.PLOCK_RHO_UNLOCK, color="#c0392b", ls=":", lw=1.0,
+                label=f"unlock  ρ = {TH.PLOCK_RHO_UNLOCK:g}")
+    ax2.set_xlabel(r"drive frequency $f_{drive}$ (Hz)")
+    ax2.set_ylabel(r"$\rho$  (arm phase coherence)")
+    ax2.set_ylim(-0.02, 1.02); ax2.grid(alpha=0.25)
+    ax2.legend(loc="center left", fontsize=8)
+    ax2.set_title("Arm coherence vs drive frequency (colour = spectral chaos, 3.2 V)",
+                  loc="left", fontweight="bold")
+    cbar = fig2.colorbar(sc2, ax=ax2, pad=0.02)
+    cbar.set_label(r"$H_{\theta_2}$  spectral entropy  (0 = periodic, 1 = chaotic)")
+    cbar.ax.axhline(HT, color="0.2", lw=0.8)   # mark the chaos split on the bar
+    out2 = os.path.join(FINAL_FIGURES, f"phase_locking_freq_{voltage:g}V.png")
+    fig2.savefig(out2, dpi=140); plt.close(fig2)
 
     # printed summary — measured, no assertions
     console.print(f"\n[bold]phase-locking sweep — {voltage} V ({len(rows)} clips)[/]")
@@ -387,6 +415,7 @@ def run_sweep(voltage, transient_s):
         console.print(f"{r[0]:>6.2f} {r[1]:>5.2f} {r[2]:>6.0f} {r[3]:>+7.3f} "
                       f"{r[4]*100:>4.0f}% {(r[6] if r[6]==r[6] else 0):>5.2f}  {r[5]}")
     console.print(f"[dim]→ {out}[/]")
+    console.print(f"[dim]→ {out2}[/]")
     return out
 
 
