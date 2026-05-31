@@ -22,11 +22,11 @@ COL_TIME = "time_s"
 COL_THETA2 = "theta2_deg"
 
 TIME_WINDOW = 60.0     # Only analyze the last 20 seconds to avoid startup noise
-MAX_FFT_FREQ = 20.5     # The maximum frequency to display on the Y-axis
+MAX_FFT_FREQ = 2.5     # The maximum frequency to display on the Y-axis
 
 # --- PLOT SETTINGS ---
-LABEL_FONT_SIZE = 18    # Size of the X and Y axis titles
-TICK_FONT_SIZE = 14     # Size of the numbers on the axes
+LABEL_FONT_SIZE = 22    # Size of the X and Y axis titles
+TICK_FONT_SIZE = 18     # Size of the numbers on the axes
 # ---------------------
 
 # =============================================================================
@@ -125,7 +125,7 @@ plt.subplots_adjust(bottom=0.25)
 
 # Axis titles with larger fonts
 ax.set_xlabel("Driving Motor Frequency (Hz)", fontsize=LABEL_FONT_SIZE)
-ax.set_ylabel("Pendulum Response Frequency (Hz)", fontsize=LABEL_FONT_SIZE)
+ax.set_ylabel("Pendulum Frequency (Hz)", fontsize=LABEL_FONT_SIZE)
 
 # Tick marks with larger fonts
 ax.tick_params(axis='both', which='major', labelsize=TICK_FONT_SIZE)
@@ -135,7 +135,7 @@ c = ax.pcolormesh(X, Y, Z, cmap='inferno', shading='nearest', vmin=Z.min(), vmax
 
 # Colorbar with increased font size
 cbar = fig.colorbar(c, ax=ax, pad=0.02)
-cbar.set_label('FFT Amplitude (Linear Scale)', fontsize=TICK_FONT_SIZE)
+cbar.set_label('FFT Amplitude', fontsize=TICK_FONT_SIZE)
 cbar.ax.tick_params(labelsize=TICK_FONT_SIZE)
 
 # --- OVERLAY GUIDELINES ---

@@ -18,8 +18,8 @@ CHOSEN_FREQS = [0.9, 1.26, 1.34] # Replace these with your desired frequencies
 
 # --- PLOT SETTINGS ---
 MARKER_SIZE = 7         # Size of the scatter points
-LABEL_FONT_SIZE = 18    # Size of the X and Y axis titles
-TICK_FONT_SIZE = 14     # Size of the numbers on the axes
+LABEL_FONT_SIZE = 28    # Size of the X and Y axis titles
+TICK_FONT_SIZE = 24     # Size of the numbers on the axes
 # ---------------------
 
 csv_files = glob.glob(os.path.join(BASE_DIR, '*', 'tracking.csv'), recursive=True)
