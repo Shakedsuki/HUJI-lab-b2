@@ -42,12 +42,18 @@ FS_LABEL, FS_TICK, FS_CBAR = 25, 19, 22
 def load_columns():
     uf = np.linspace(0.01, MAX_FFT_FREQ, N_FFT_BINS)
     rows = []
-    for d in sorted(glob.glob(os.path.join(BASE, f"{VOLT}_*Hz"))):
+    seen = set()
+    # "*Hz*" also catches retake folders like 3.2V_1.33Hz_1 / _2; dedupe by freq.
+    for d in sorted(glob.glob(os.path.join(BASE, f"{VOLT}_*Hz*"))):
         m = re.search(r"_(\d+(?:\.\d+)?)Hz", os.path.basename(d))
         if not m:
             continue
-        f = float(m.group(1))
-        df = pd.read_csv(os.path.join(d, "tracking.csv")).dropna(subset=["time_s", "theta2_deg"])
+        f = round(float(m.group(1)), 2)
+        csv = os.path.join(d, "tracking.csv")
+        if f in seen or not os.path.exists(csv):
+            continue
+        seen.add(f)
+        df = pd.read_csv(csv).dropna(subset=["time_s", "theta2_deg"])
         t = df["time_s"].values
         th = df["theta2_deg"].values
         cut = t.max() - min(TIME_WINDOW, t.max() - t.min())
@@ -113,32 +119,53 @@ def direction1(uf, freqs, cols, vmax, out_png):
     print("Saved ->", out_png)
 
 
-def direction2(uf, freqs, cols, vmax, out_png):
+def direction2(uf, freqs, cols, vmax, out_png, tick_step=2):
+    """Broken x-axis with DISCRETE, equal-width columns (one per measured clip),
+    ticked at the real measured frequencies. The under-sampled middle
+    (1.00–1.15 Hz, only 1.09) is dropped."""
     mL = freqs <= 1.005
     mR = freqs >= 1.145
-    fig = plt.figure(figsize=(14, 7))
-    gs = fig.add_gridspec(1, 2, width_ratios=[(1.00 - 0.90), (freqs.max() - 1.15)], wspace=0.045)
+    fL, cL = freqs[mL], cols[:, mL]
+    fR, cR = freqs[mR], cols[:, mR]
+    iL, iR = np.arange(len(fL)), np.arange(len(fR))
+
+    fig = plt.figure(figsize=(15.5, 7.4))
+    gs = fig.add_gridspec(1, 2, width_ratios=[len(fL), len(fR)], wspace=0.05)
     axL = fig.add_subplot(gs[0]); axR = fig.add_subplot(gs[1], sharey=axL)
-    axL.pcolormesh(freqs[mL], uf, cols[:, mL], shading="nearest", cmap="inferno", vmin=0, vmax=vmax)
-    pc = axR.pcolormesh(freqs[mR], uf, cols[:, mR], shading="nearest", cmap="inferno", vmin=0, vmax=vmax)
-    axL.plot([0.90, 1.00], [0.90, 1.00], color="cyan", ls="--", lw=3, alpha=0.30)
-    axR.plot([1.15, freqs.max()], [1.15, freqs.max()], color="cyan", ls="--", lw=3, alpha=0.30)
-    axL.set_xlim(0.90, 1.00); axR.set_xlim(1.15, freqs.max()); axL.set_ylim(0, MAX_FFT_FREQ)
+    axL.pcolormesh(iL, uf, cL, shading="nearest", cmap="inferno", vmin=0, vmax=vmax)
+    pc = axR.pcolormesh(iR, uf, cR, shading="nearest", cmap="inferno", vmin=0, vmax=vmax)
+    # resonance guide (pendulum freq = drive freq) on the categorical axis
+    axL.plot(iL, fL, color="cyan", ls="--", lw=3, alpha=0.30)
+    axR.plot(iR, fR, color="cyan", ls="--", lw=3, alpha=0.30)
+
+    M = 0.7                                   # half-column margin -> break breathing room
+    axL.set_xlim(-M, len(fL) - 1 + M)
+    axR.set_xlim(-M, len(fR) - 1 + M)
+    axL.set_ylim(0, MAX_FFT_FREQ)
+
+    def discrete_ticks(ax, idx, fvals):
+        sel = list(range(0, len(idx), tick_step))
+        ax.set_xticks(idx[sel])
+        ax.set_xticklabels([f"{fvals[i]:.2f}" for i in sel])
+    discrete_ticks(axL, iL, fL)
+    discrete_ticks(axR, iR, fR)
+
     axL.spines["right"].set_visible(False); axR.spines["left"].set_visible(False)
     axR.tick_params(left=False); plt.setp(axR.get_yticklabels(), visible=False)
-    axL.tick_params(labelsize=FS_TICK); axR.tick_params(labelsize=FS_TICK)
+    axL.tick_params(axis="x", labelsize=FS_TICK); axL.tick_params(axis="y", labelsize=FS_TICK)
+    axR.tick_params(axis="x", labelsize=FS_TICK)
+
     dd = 0.014
     for ax, xx in [(axL, 1), (axR, 0)]:
         kw = dict(transform=ax.transAxes, color="k", clip_on=False, lw=1.4)
         ax.plot((xx - dd, xx + dd), (-dd, dd), **kw)
         ax.plot((xx - dd, xx + dd), (1 - dd, 1 + dd), **kw)
+
     axL.set_ylabel("Pendulum Frequency (Hz)", fontsize=FS_LABEL)
     fig.text(0.5, 0.03, "Driving Motor Frequency (Hz)", ha="center", fontsize=FS_LABEL)
-    fig.text(0.5, 0.965, "1.00–1.15 Hz omitted — under-sampled (single measurement)",
-             ha="center", fontsize=14, color="0.35")
     cbar = fig.colorbar(pc, ax=axR, pad=0.02)
     cbar.set_label("FFT Amplitude", fontsize=FS_CBAR); cbar.ax.tick_params(labelsize=FS_TICK)
-    fig.subplots_adjust(bottom=0.135, left=0.07, right=0.99, top=0.93)
+    fig.subplots_adjust(bottom=0.135, left=0.065, right=0.99, top=0.985)
     fig.savefig(out_png, dpi=200); plt.close(fig)
     print("Saved ->", out_png)
 
