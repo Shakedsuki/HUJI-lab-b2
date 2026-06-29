@@ -28,7 +28,7 @@ import cv2
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-from matplotlib.patches import FancyArrowPatch
+from matplotlib.patches import FancyArrowPatch, Rectangle
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                 "..", "..", "..", "scripts", "utils"))
@@ -53,10 +53,12 @@ DISP = 300
 PHI1_C, PHI2_C = "#1f77b4", "#ff7f0e"   # phi1 / phi2 hand colours
 HAND_LEN = 0.9
 
-FIG_W, FIG_H, OUT_DPI = 15.0, 8.0, 120
-WIDTH_RATIOS = [1.15, 1.0, 1.15]
-WSPACE, HSPACE = 0.12, 0.16
-M_LEFT, M_RIGHT, M_TOP, M_BOT = 0.075, 0.985, 0.88, 0.03
+FIG_W, FIG_H, OUT_DPI = 15.0, 8.8, 120
+GS = dict(left=0.105, right=0.985, top=0.80, bottom=0.045, wspace=0.16, hspace=0.20,
+          width_ratios=[0.8, 1.1, 1.1])   # narrow video col so the square fills its card
+CARD_FC, CARD_EC = "#fbfbfb", "#c4c4c4"
+ROW_TINT = {"Periodic": "#e9f5ea", "Chaotic": "#fdeceb"}
+COL_HEADERS = ["Pendulum", r"Arm phase", r"Phase coherence  $\rho$"]
 
 
 def inst_phase(theta_deg, omega_dps, f):
@@ -96,48 +98,107 @@ def crop_rgb(frame):
     return cv2.resize(cv2.cvtColor(c, cv2.COLOR_BGR2RGB), (DISP, DISP), interpolation=cv2.INTER_AREA)
 
 
-def _unit_circle(ax):
-    th = np.linspace(0, 2 * np.pi, 240)
-    ax.plot(np.cos(th), np.sin(th), color="0.75", lw=1.2, zorder=1)
-    ax.set_aspect("equal"); ax.set_xlim(-1.25, 1.25); ax.set_ylim(-1.5, 1.25); ax.axis("off")
+def _circle_axes(ax, lim=1.16):
+    """Clean circular plot: outer unit circle + faint cross-hairs, no spines."""
+    th = np.linspace(0, 2 * np.pi, 256)
+    ax.plot(np.cos(th), np.sin(th), color="0.45", lw=1.6, zorder=2)
+    ax.axhline(0, color="0.86", lw=0.8, zorder=1)
+    ax.axvline(0, color="0.86", lw=0.8, zorder=1)
+    ax.plot(0, 0, "o", color="0.35", ms=3, zorder=3)
+    ax.set_aspect("equal"); ax.set_xlim(-lim, lim); ax.set_ylim(-lim, lim)
+    ax.set_xticks([]); ax.set_yticks([]); ax.patch.set_visible(False)
+    for sp in ax.spines.values():
+        sp.set_visible(False)
+
+
+def _phase_dial(ax, lim=1.36):
+    """The (theta, omega) phase plane: phi_k is the angle of arm k's state here.
+    Labelled theta (x) / omega (y) axes with a faint unit-direction circle."""
+    th = np.linspace(0, 2 * np.pi, 256)
+    ax.plot(np.cos(th), np.sin(th), color="0.82", lw=1.1, zorder=1)        # unit reference
+    ax.annotate("", xy=(1.16, 0), xytext=(-1.16, 0),
+                arrowprops=dict(arrowstyle="-|>", color="0.45", lw=1.4), zorder=2)   # theta axis
+    ax.annotate("", xy=(0, 1.16), xytext=(0, -1.16),
+                arrowprops=dict(arrowstyle="-|>", color="0.45", lw=1.4), zorder=2)   # omega axis
+    ax.text(1.26, 0.0, r"$\theta$", ha="left", va="center", fontsize=14, color="0.3")
+    ax.text(0.0, 1.24, r"$\omega$", ha="center", va="bottom", fontsize=14, color="0.3")
+    ax.plot(0, 0, "o", color="0.35", ms=3, zorder=3)
+    ax.set_aspect("equal"); ax.set_xlim(-lim, lim); ax.set_ylim(-lim, lim)
+    ax.set_xticks([]); ax.set_yticks([]); ax.patch.set_visible(False)
+    for sp in ax.spines.values():
+        sp.set_visible(False)
+
+
+def _swarm_grid(ax):
+    th = np.linspace(0, 2 * np.pi, 256)
+    for rr in (0.5,):                                   # radial scale ring for rho
+        ax.plot(rr * np.cos(th), rr * np.sin(th), color="0.8", lw=0.9, ls=(0, (4, 3)), zorder=1)
+    ax.text(0.5, 0.05, "0.5", color="0.55", fontsize=8, ha="center", va="bottom", zorder=2)
+    ax.text(1.0, 0.05, "1", color="0.55", fontsize=8, ha="center", va="bottom", zorder=2)
 
 
 def build_figure(data):
     fig = plt.figure(figsize=(FIG_W, FIG_H))
-    gs = fig.add_gridspec(2, 3, width_ratios=WIDTH_RATIOS, wspace=WSPACE, hspace=HSPACE,
-                          left=M_LEFT, right=M_RIGHT, top=M_TOP, bottom=M_BOT)
+    gs = fig.add_gridspec(2, 3, **GS)
     H = {"vid": [], "h1": [], "h2": [], "swarm": [], "cur": [], "arrow": [], "rho": []}
     blank = np.zeros((DISP, DISP, 3), np.uint8)
-    for r, d in enumerate(data):
-        axv = fig.add_subplot(gs[r, 0]); axv.axis("off"); axv.set_box_aspect(1)
-        H["vid"].append(axv.imshow(blank, aspect="auto"))
-        axv.set_ylabel(f"{d['label']}\n{d['f']:g} Hz", fontsize=15, fontweight="bold",
-                       rotation=0, ha="right", va="center", labelpad=22)
-        axv.axis("on"); axv.set_xticks([]); axv.set_yticks([])
-        for sp in axv.spines.values():
-            sp.set_visible(False)
 
-        axd = fig.add_subplot(gs[r, 1]); _unit_circle(axd)
-        (h1,) = axd.plot([], [], "-", lw=3, color=PHI1_C, solid_capstyle="round", zorder=4)
-        (h2,) = axd.plot([], [], "-", lw=3, color=PHI2_C, solid_capstyle="round", zorder=4)
-        axd.plot(0, 0, "ko", ms=3, zorder=5)
-        if r == 0:
-            axd.legend([h1, h2], [r"$\phi_1$", r"$\phi_2$"], loc="upper center",
-                       bbox_to_anchor=(0.5, 1.16), ncol=2, frameon=False, fontsize=14)
+    # ── skeleton: a card behind every cell ──
+    pad = 0.006
+    for r in range(2):
+        for c in range(3):
+            bb = gs[r, c].get_position(fig)
+            fig.add_artist(Rectangle((bb.x0 - pad, bb.y0 - pad),
+                                     bb.width + 2 * pad, bb.height + 2 * pad,
+                                     transform=fig.transFigure, facecolor=CARD_FC,
+                                     edgecolor=CARD_EC, lw=1.3, zorder=0))
+
+    for r, d in enumerate(data):
+        axv = fig.add_subplot(gs[r, 0]); axv.set_box_aspect(1)
+        axv.set_xticks([]); axv.set_yticks([])
+        for sp in axv.spines.values():
+            sp.set_color("0.6")
+        H["vid"].append(axv.imshow(blank, aspect="auto"))
+
+        axd = fig.add_subplot(gs[r, 1]); _phase_dial(axd)
+        (h1,) = axd.plot([], [], "-", lw=3.4, color=PHI1_C, solid_capstyle="round", zorder=4)
+        (h2,) = axd.plot([], [], "-", lw=3.4, color=PHI2_C, solid_capstyle="round", zorder=4)
         H["h1"].append(h1); H["h2"].append(h2)
 
-        axs = fig.add_subplot(gs[r, 2]); _unit_circle(axs)
-        (sw,) = axs.plot([], [], ".", ms=5, color=d["color"], alpha=0.20, zorder=2)
-        (cur,) = axs.plot([], [], "-", lw=1.6, color="0.35", zorder=3)
+        axs = fig.add_subplot(gs[r, 2]); _circle_axes(axs); _swarm_grid(axs)
+        (sw,) = axs.plot([], [], ".", ms=5, color=d["color"], alpha=0.22, zorder=2)
+        (cur,) = axs.plot([], [], "-", lw=1.6, color="0.4", zorder=3)
         arrow = FancyArrowPatch((0, 0), (0, 0), arrowstyle="-|>", mutation_scale=18,
                                 lw=2.8, color="black", zorder=5)
         axs.add_patch(arrow)
-        axs.plot(0, 0, "ko", ms=3, zorder=6)
-        rho_txt = axs.text(0, -1.34, "", ha="center", va="center", fontsize=18, fontweight="bold")
+        rho_txt = axs.text(0.96, 0.95, "", transform=axs.transAxes, ha="right", va="top",
+                           fontsize=15, fontweight="bold",
+                           bbox=dict(boxstyle="round,pad=0.32", fc="white", ec="0.6", lw=1.1))
         H["swarm"].append(sw); H["cur"].append(cur); H["arrow"].append(arrow); H["rho"].append(rho_txt)
 
-    fig.suptitle(r"Phase coherence  $\rho=\left|\langle e^{\,i(\phi_1-\phi_2)}\rangle\right|$",
-                 fontsize=17, y=0.965)
+    # ── column headers ──
+    for c, htext in enumerate(COL_HEADERS):
+        bb = gs[0, c].get_position(fig)
+        fig.text(bb.x0 + bb.width / 2, GS["top"] + 0.052, htext, ha="center", va="bottom",
+                 fontsize=15, fontweight="bold")
+    bb = gs[0, 1].get_position(fig); xc = bb.x0 + bb.width / 2
+    fig.text(xc - 0.017, GS["top"] + 0.024, r"$\phi_1$", color=PHI1_C, ha="right", va="bottom",
+             fontsize=15, fontweight="bold")
+    fig.text(xc, GS["top"] + 0.024, ",", color="0.3", ha="center", va="bottom", fontsize=15)
+    fig.text(xc + 0.017, GS["top"] + 0.024, r"$\phi_2$", color=PHI2_C, ha="left", va="bottom",
+             fontsize=15, fontweight="bold")
+
+    # ── row label cards (left margin) ──
+    for r, d in enumerate(data):
+        bb = gs[r, 0].get_position(fig); yc = bb.y0 + bb.height / 2
+        fig.add_artist(Rectangle((0.012, yc - 0.07), 0.078, 0.14, transform=fig.transFigure,
+                                 facecolor=ROW_TINT[d["label"]], edgecolor="0.55", lw=1.2, zorder=0))
+        fig.text(0.051, yc, f"{d['label']}\n{d['f']:g} Hz", ha="center", va="center",
+                 fontsize=13, fontweight="bold")
+
+    # ── title bar ──
+    fig.text(0.5, 0.945, r"Phase coherence   $\rho=\left|\langle e^{\,i(\phi_1-\phi_2)}\rangle\right|$",
+             ha="center", va="center", fontsize=19, fontweight="bold")
     return fig, H
 
 
