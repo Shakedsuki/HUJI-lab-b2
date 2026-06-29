@@ -107,7 +107,9 @@ for i, target_freq in enumerate(CHOSEN_FREQS):
     # =========================================================================
     # 4. FORMATTING
     # =========================================================================
-    ax.set_ylabel(f"$\\theta_2$ (deg)", fontsize=LABEL_FONT_SIZE, labelpad=LABEL_PAD)
+    # Only the middle panel carries the y-axis label (top/bottom are redundant).
+    if i == len(CHOSEN_FREQS) // 2:
+        ax.set_ylabel(f"$\\theta_2$ (deg)", fontsize=LABEL_FONT_SIZE, labelpad=LABEL_PAD)
     ax.set_ylim(*Y_LIM)
     ax.set_yticks(Y_TICKS)
     ax.tick_params(axis="both", which="major", labelsize=TICK_FONT_SIZE, pad=TICK_PAD)
