@@ -54,11 +54,12 @@ PHI1_C, PHI2_C = "#1f77b4", "#ff7f0e"   # phi1 / phi2 hand colours
 HAND_LEN = 0.9
 
 FIG_W, FIG_H, OUT_DPI = 15.0, 8.8, 120
-GS = dict(left=0.105, right=0.985, top=0.80, bottom=0.045, wspace=0.16, hspace=0.20,
-          width_ratios=[0.8, 1.1, 1.1])   # narrow video col so the square fills its card
+GS = dict(left=0.092, right=0.99, top=0.80, bottom=0.045, wspace=0.13, hspace=0.20,
+          width_ratios=[1.0, 0.82, 0.82, 1.0])   # video | arm1 plane | arm2 plane | swarm
 CARD_FC, CARD_EC = "#fbfbfb", "#c4c4c4"
 ROW_TINT = {"Periodic": "#e9f5ea", "Chaotic": "#fdeceb"}
-COL_HEADERS = ["Pendulum", r"Arm phase", r"Phase coherence  $\rho$"]
+COL_HEADERS = ["Pendulum", "Arm 1 phase", "Arm 2 phase", r"Phase coherence  $\rho$"]
+HEADER_COLORS = ["0.15", "#1f77b4", "#ff7f0e", "0.15"]
 
 
 def inst_phase(theta_deg, omega_dps, f):
@@ -111,17 +112,20 @@ def _circle_axes(ax, lim=1.16):
         sp.set_visible(False)
 
 
-def _phase_dial(ax, lim=1.36):
-    """The (theta, omega) phase plane: phi_k is the angle of arm k's state here.
-    Labelled theta (x) / omega (y) axes with a faint unit-direction circle."""
+def _phase_dial(ax, sub, color, lim=1.46):
+    """Arm `sub`'s (theta_sub, omega_sub) phase plane. phi_sub is the angle of
+    that arm's state vector here; axes are labelled with the arm's subscript and
+    coloured to match the arm."""
     th = np.linspace(0, 2 * np.pi, 256)
     ax.plot(np.cos(th), np.sin(th), color="0.82", lw=1.1, zorder=1)        # unit reference
     ax.annotate("", xy=(1.16, 0), xytext=(-1.16, 0),
                 arrowprops=dict(arrowstyle="-|>", color="0.45", lw=1.4), zorder=2)   # theta axis
     ax.annotate("", xy=(0, 1.16), xytext=(0, -1.16),
                 arrowprops=dict(arrowstyle="-|>", color="0.45", lw=1.4), zorder=2)   # omega axis
-    ax.text(1.26, 0.0, r"$\theta$", ha="left", va="center", fontsize=14, color="0.3")
-    ax.text(0.0, 1.24, r"$\omega$", ha="center", va="bottom", fontsize=14, color="0.3")
+    ax.text(1.28, 0.0, rf"$\theta_{{{sub}}}$", ha="left", va="center",
+            fontsize=15, color=color, fontweight="bold")
+    ax.text(0.0, 1.26, rf"$\omega_{{{sub}}}$", ha="center", va="bottom",
+            fontsize=15, color=color, fontweight="bold")
     ax.plot(0, 0, "o", color="0.35", ms=3, zorder=3)
     ax.set_aspect("equal"); ax.set_xlim(-lim, lim); ax.set_ylim(-lim, lim)
     ax.set_xticks([]); ax.set_yticks([]); ax.patch.set_visible(False)
@@ -139,14 +143,14 @@ def _swarm_grid(ax):
 
 def build_figure(data):
     fig = plt.figure(figsize=(FIG_W, FIG_H))
-    gs = fig.add_gridspec(2, 3, **GS)
+    gs = fig.add_gridspec(2, 4, **GS)
     H = {"vid": [], "h1": [], "h2": [], "swarm": [], "cur": [], "arrow": [], "rho": []}
     blank = np.zeros((DISP, DISP, 3), np.uint8)
 
     # ── skeleton: a card behind every cell ──
     pad = 0.006
     for r in range(2):
-        for c in range(3):
+        for c in range(4):
             bb = gs[r, c].get_position(fig)
             fig.add_artist(Rectangle((bb.x0 - pad, bb.y0 - pad),
                                      bb.width + 2 * pad, bb.height + 2 * pad,
@@ -160,12 +164,13 @@ def build_figure(data):
             sp.set_color("0.6")
         H["vid"].append(axv.imshow(blank, aspect="auto"))
 
-        axd = fig.add_subplot(gs[r, 1]); _phase_dial(axd)
-        (h1,) = axd.plot([], [], "-", lw=3.4, color=PHI1_C, solid_capstyle="round", zorder=4)
-        (h2,) = axd.plot([], [], "-", lw=3.4, color=PHI2_C, solid_capstyle="round", zorder=4)
+        ax1 = fig.add_subplot(gs[r, 1]); _phase_dial(ax1, "1", PHI1_C)
+        (h1,) = ax1.plot([], [], "-", lw=3.6, color=PHI1_C, solid_capstyle="round", zorder=4)
+        ax2 = fig.add_subplot(gs[r, 2]); _phase_dial(ax2, "2", PHI2_C)
+        (h2,) = ax2.plot([], [], "-", lw=3.6, color=PHI2_C, solid_capstyle="round", zorder=4)
         H["h1"].append(h1); H["h2"].append(h2)
 
-        axs = fig.add_subplot(gs[r, 2]); _circle_axes(axs); _swarm_grid(axs)
+        axs = fig.add_subplot(gs[r, 3]); _circle_axes(axs); _swarm_grid(axs)
         (sw,) = axs.plot([], [], ".", ms=5, color=d["color"], alpha=0.22, zorder=2)
         (cur,) = axs.plot([], [], "-", lw=1.6, color="0.4", zorder=3)
         arrow = FancyArrowPatch((0, 0), (0, 0), arrowstyle="-|>", mutation_scale=18,
@@ -176,17 +181,11 @@ def build_figure(data):
                            bbox=dict(boxstyle="round,pad=0.32", fc="white", ec="0.6", lw=1.1))
         H["swarm"].append(sw); H["cur"].append(cur); H["arrow"].append(arrow); H["rho"].append(rho_txt)
 
-    # ── column headers ──
+    # ── column headers (arm columns coloured to match their hands) ──
     for c, htext in enumerate(COL_HEADERS):
         bb = gs[0, c].get_position(fig)
-        fig.text(bb.x0 + bb.width / 2, GS["top"] + 0.052, htext, ha="center", va="bottom",
-                 fontsize=15, fontweight="bold")
-    bb = gs[0, 1].get_position(fig); xc = bb.x0 + bb.width / 2
-    fig.text(xc - 0.017, GS["top"] + 0.024, r"$\phi_1$", color=PHI1_C, ha="right", va="bottom",
-             fontsize=15, fontweight="bold")
-    fig.text(xc, GS["top"] + 0.024, ",", color="0.3", ha="center", va="bottom", fontsize=15)
-    fig.text(xc + 0.017, GS["top"] + 0.024, r"$\phi_2$", color=PHI2_C, ha="left", va="bottom",
-             fontsize=15, fontweight="bold")
+        fig.text(bb.x0 + bb.width / 2, GS["top"] + 0.04, htext, ha="center", va="bottom",
+                 fontsize=15, fontweight="bold", color=HEADER_COLORS[c])
 
     # ── row label cards (left margin) ──
     for r, d in enumerate(data):
