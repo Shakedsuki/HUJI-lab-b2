@@ -105,6 +105,13 @@ for i, (ax, s) in enumerate(zip(axs, series)):
 
 axs[-1].set_xlabel("Time (s)", fontsize=LABEL_FONT_SIZE, labelpad=LABEL_PAD)
 
+# flip icons on the chaotic (middle) panel, revealed in real time
+mid = len(CHOSEN_FREQS) // 2
+flip_items = add_flip_icons(
+    axs[mid], detect_flips(series[mid]["t"], series[mid]["y"]),
+    y_icon=150, fontsize=26, animated=True,
+)
+
 # =============================================================================
 # 4. ANIMATE: synchronized left-to-right reveal in real time
 # =============================================================================
@@ -124,6 +131,7 @@ def update(frame):
             cur.set_xdata([tc, tc])
             cur.set_alpha(0.0 if frame >= n_sweep else 0.5)
             artists.append(cur)
+    reveal_flips(flip_items, tc)
     return artists
 
 
