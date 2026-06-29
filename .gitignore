@@ -17,6 +17,7 @@
 # PowerPoint's ~$ lock/autosave sidecars.
 *.pptx
 !presentation/presentation chaos final nir-no-videos-with-edits.pptx
+!presentation/presentation chaos final nir-shaked-click-animations.pptx
 ~$*.pptx
 *.zip.[0-9][0-9][0-9]
 
