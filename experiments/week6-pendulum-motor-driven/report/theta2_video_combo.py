@@ -9,7 +9,8 @@ The plotted window is the SAME last-10 s segment that theta2_colored.py /
 theta2_timeseries_colored.mp4 use, and each video frame is paired with the exact
 tracking sample being drawn, so the live motion matches the point on the plot.
 
-Run:  python theta2_video_combo.py
+Run:   python theta2_video_combo.py          # render the mp4
+QA:    python -c "import theta2_video_combo as M; M.qa([120,330], 'qa.png')"
 """
 import os
 import numpy as np
@@ -38,80 +39,42 @@ HOLD_SECONDS = 1.5             # freeze on completed figure
 
 # square crop on the 1280x720 frame (contains full swing + pivot for all clips)
 CX0, CY0, CSIDE = 245, 35, 680
-DISP = 430                     # px the crop is resized to for display
+DISP = 660                     # px the crop is resized to (video sharpness)
 
-# timeseries styling (scaled down from the standalone figure for the 3-up stack)
+# ---- layout: wide 16:9 canvas, enlarged squares, minimal whitespace ----
+FIG_W, FIG_H = 18.0, 10.13     # ~16:9 so it fills a slide
+OUT_DPI = 120                  # -> ~2160x1216 px
+WIDTH_RATIOS = [1.0, 4.9]      # video col sized ~= row height (square fills it, no side gap)
+WSPACE, HSPACE = 0.03, 0.12
+M_LEFT, M_RIGHT, M_TOP, M_BOT = 0.012, 0.993, 0.995, 0.062
+
+# timeseries styling
 MARKER_SIZE = 4
-LABEL_FS = 19
-TICK_FS = 15
-FREQ_FS = 18
+LABEL_FS = 22
+TICK_FS = 17
+FREQ_FS = 21
 Y_LIM = (-185, 185)
 Y_TICKS = [-180, 0, 180]
 X_LIM = (-0.4, T + 0.4)
 
-FIG_W, FIG_H, OUT_DPI = 14, 9, 110
-
 
 # ---------------------------------------------------------------------------
-# Load window data + locate the matching video frames for each clip
-# ---------------------------------------------------------------------------
-def load_clip(stem):
-    df = pd.read_csv(os.path.join(BASE, "measurements", stem, "tracking.csv"))
-    df = df.dropna(subset=["time_s", "theta2_deg"])
-    tmax = df["time_s"].max()
-    w = df[df["time_s"] >= tmax - T].copy()
-    t_rel = (w["time_s"] - w["time_s"].min()).to_numpy()
-    y = w["theta2_deg"].to_numpy()
-    start_frame = int(w["frame"].min())
-    return t_rel, y, start_frame, len(w)
-
-
-data = []
-caps = []
-for c in CLIPS:
-    t_rel, y, start_frame, n = load_clip(c["stem"])
-    cap = cv2.VideoCapture(os.path.join(BASE, "videos", c["stem"] + ".mov"))
-    cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
-    data.append({"t": t_rel, "y": y, "n": n, "color": c["color"], "freq": c["freq"]})
-    caps.append(cap)
-    print(f"{c['freq']} Hz: {n} frames from video frame {start_frame}")
-
-N_SWEEP = min(d["n"] for d in data)           # all 600; align by index
-N_HOLD = int(round(FPS * HOLD_SECONDS))
-TOTAL = N_SWEEP + N_HOLD
-
-# ---------------------------------------------------------------------------
-# Figure: 3 rows x (video | timeseries)
-# ---------------------------------------------------------------------------
-fig = plt.figure(figsize=(FIG_W, FIG_H))
-gs = fig.add_gridspec(3, 2, width_ratios=[1.0, 2.4], wspace=0.06, hspace=0.30,
-                      left=0.04, right=0.985, top=0.98, bottom=0.085)
-
-vid_axes, vid_ims, ts_axes, ts_lines = [], [], [], []
-blank = np.zeros((DISP, DISP, 3), np.uint8)
-for r, d in enumerate(data):
-    axv = fig.add_subplot(gs[r, 0])
-    axv.axis("off")
-    axv.set_box_aspect(1)
-    im = axv.imshow(blank, aspect="auto")
-    vid_axes.append(axv)
-    vid_ims.append(im)
-
-    axt = fig.add_subplot(gs[r, 1])
-    (ln,) = axt.plot([], [], ".", markersize=MARKER_SIZE, color=d["color"], alpha=0.85)
-    axt.set_xlim(*X_LIM)
-    axt.set_ylim(*Y_LIM)
-    axt.set_yticks(Y_TICKS)
-    axt.set_ylabel(r"$\theta_2$ (deg)", fontsize=LABEL_FS)
-    axt.tick_params(axis="both", labelsize=TICK_FS)
-    axt.text(0.015, 0.92, f"{d['freq']:g} Hz", transform=axt.transAxes,
-             fontsize=FREQ_FS, fontweight="bold", va="top", ha="left",
-             color=d["color"])
-    if r < 2:
-        axt.tick_params(labelbottom=False)
-    ts_axes.append(axt)
-    ts_lines.append(ln)
-ts_axes[-1].set_xlabel("Time (s)", fontsize=LABEL_FS)
+def load_clips():
+    """Return per-clip window data (t, y, start_frame, n) and open VideoCaptures."""
+    data, caps = [], []
+    for c in CLIPS:
+        df = pd.read_csv(os.path.join(BASE, "measurements", c["stem"], "tracking.csv"))
+        df = df.dropna(subset=["time_s", "theta2_deg"])
+        tmax = df["time_s"].max()
+        w = df[df["time_s"] >= tmax - T].copy()
+        t_rel = (w["time_s"] - w["time_s"].min()).to_numpy()
+        y = w["theta2_deg"].to_numpy()
+        start_frame = int(w["frame"].min())
+        cap = cv2.VideoCapture(os.path.join(BASE, "videos", c["stem"] + ".mov"))
+        data.append({"t": t_rel, "y": y, "n": len(w), "start": start_frame,
+                     "color": c["color"], "freq": c["freq"]})
+        caps.append(cap)
+    return data, caps
 
 
 def crop_rgb(frame):
@@ -120,30 +83,93 @@ def crop_rgb(frame):
     return cv2.resize(c, (DISP, DISP), interpolation=cv2.INTER_AREA)
 
 
-# ---------------------------------------------------------------------------
-# Render (sequential reads -> low memory, frame-exact sync)
-# ---------------------------------------------------------------------------
-writer = FFMpegWriter(
-    fps=FPS, bitrate=12000, codec="libx264",
-    extra_args=["-vf", "pad=ceil(iw/2)*2:ceil(ih/2)*2:color=white", "-pix_fmt", "yuv420p"],
-)
+def build_figure(data):
+    fig = plt.figure(figsize=(FIG_W, FIG_H))
+    gs = fig.add_gridspec(3, 2, width_ratios=WIDTH_RATIOS, wspace=WSPACE, hspace=HSPACE,
+                          left=M_LEFT, right=M_RIGHT, top=M_TOP, bottom=M_BOT)
+    vid_ims, ts_lines = [], []
+    blank = np.zeros((DISP, DISP, 3), np.uint8)
+    for r, d in enumerate(data):
+        axv = fig.add_subplot(gs[r, 0])
+        axv.axis("off")
+        axv.set_box_aspect(1)
+        vid_ims.append(axv.imshow(blank, aspect="auto"))
 
-last_frames = [blank, blank, blank]
-with writer.saving(fig, OUT_MP4, dpi=OUT_DPI):
-    for i in range(TOTAL):
-        idx = min(i, N_SWEEP - 1)
-        if i < N_SWEEP:
-            for r, cap in enumerate(caps):
-                ret, frame = cap.read()
-                if ret:
-                    last_frames[r] = crop_rgb(frame)
-                vid_ims[r].set_data(last_frames[r])
-                d = data[r]
-                ts_lines[r].set_data(d["t"][:idx + 1], d["y"][:idx + 1])
-        writer.grab_frame()
-        if i % 60 == 0:
-            print(f"  frame {i}/{TOTAL}")
+        axt = fig.add_subplot(gs[r, 1])
+        (ln,) = axt.plot([], [], ".", markersize=MARKER_SIZE, color=d["color"], alpha=0.85)
+        axt.set_xlim(*X_LIM)
+        axt.set_ylim(*Y_LIM)
+        axt.set_yticks(Y_TICKS)
+        axt.set_ylabel(r"$\theta_2$ (deg)", fontsize=LABEL_FS)
+        axt.tick_params(axis="both", labelsize=TICK_FS)
+        axt.text(0.012, 0.93, f"{d['freq']:g} Hz", transform=axt.transAxes,
+                 fontsize=FREQ_FS, fontweight="bold", va="top", ha="left", color=d["color"])
+        if r < 2:
+            axt.tick_params(labelbottom=False)
+        ts_lines.append(ln)
+    fig.axes[-1].set_xlabel("Time (s)", fontsize=LABEL_FS)
+    return fig, vid_ims, ts_lines
 
-for cap in caps:
-    cap.release()
-print(f"Saved -> {OUT_MP4}  ({TOTAL} frames @ {FPS} fps)")
+
+def qa(idxs, out_png):
+    """Render a few composite frames (by window index) to a montage PNG — fast layout check."""
+    data, caps = load_clips()
+    tiles = []
+    for k, idx in enumerate(idxs):
+        fig, vid_ims, ts_lines = build_figure(data)
+        for r, (cap, d) in enumerate(zip(caps, data)):
+            cap.set(cv2.CAP_PROP_POS_FRAMES, d["start"] + idx)
+            ret, frame = cap.read()
+            if ret:
+                vid_ims[r].set_data(crop_rgb(frame))
+            ts_lines[r].set_data(d["t"][:idx + 1], d["y"][:idx + 1])
+        p = f"{out_png}.{k}.png"
+        fig.savefig(p, dpi=70)
+        plt.close(fig)
+        tiles.append(p)
+    from PIL import Image
+    ims = [Image.open(p) for p in tiles]
+    w = max(i.width for i in ims)
+    montage = Image.new("RGB", (w, sum(i.height for i in ims) + 10 * len(ims)), "white")
+    yo = 0
+    for im in ims:
+        montage.paste(im, (0, yo)); yo += im.height + 10
+    montage.save(out_png)
+    for cap in caps:
+        cap.release()
+    print("saved", out_png)
+
+
+def render():
+    data, caps = load_clips()
+    for cap, d in zip(caps, data):
+        cap.set(cv2.CAP_PROP_POS_FRAMES, d["start"])
+    fig, vid_ims, ts_lines = build_figure(data)
+
+    n_sweep = min(d["n"] for d in data)
+    total = n_sweep + int(round(FPS * HOLD_SECONDS))
+    writer = FFMpegWriter(
+        fps=FPS, bitrate=14000, codec="libx264",
+        extra_args=["-vf", "pad=ceil(iw/2)*2:ceil(ih/2)*2:color=white", "-pix_fmt", "yuv420p"],
+    )
+    last = [np.zeros((DISP, DISP, 3), np.uint8)] * 3
+    with writer.saving(fig, OUT_MP4, dpi=OUT_DPI):
+        for i in range(total):
+            idx = min(i, n_sweep - 1)
+            if i < n_sweep:
+                for r, cap in enumerate(caps):
+                    ret, frame = cap.read()
+                    if ret:
+                        last[r] = crop_rgb(frame)
+                    vid_ims[r].set_data(last[r])
+                    ts_lines[r].set_data(data[r]["t"][:idx + 1], data[r]["y"][:idx + 1])
+            writer.grab_frame()
+            if i % 120 == 0:
+                print(f"  frame {i}/{total}")
+    for cap in caps:
+        cap.release()
+    print(f"Saved -> {OUT_MP4}  ({total} frames @ {FPS} fps)")
+
+
+if __name__ == "__main__":
+    render()
