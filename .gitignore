@@ -10,14 +10,15 @@
 *.mkv
 *.m4v
 
-# ── Presentation: collaborate on the lightweight deck only ──
-# The full decks carry hundreds of MB of embedded video. Only the lightweight
-# "…-no-videos-with-edits.pptx" is versioned so the team can co-edit it. Ignore
-# every other .pptx (full + "compressed" exports), the split-zip archives, and
-# PowerPoint's ~$ lock/autosave sidecars.
+# ── Presentation: version the two final click-animation decks only ──
+# The full decks carry hundreds of MB of embedded video. We track only the two
+# "final" working versions — click-animations and its new-order variant — in
+# Git LFS (*.pptx filter). Ignore every other .pptx (full + "compressed"
+# exports + the old no-videos draft), the split-zip archives, and PowerPoint's
+# ~$ lock/autosave sidecars.
 *.pptx
-!presentation/presentation chaos final nir-no-videos-with-edits.pptx
 !presentation/presentation chaos final nir-shaked-click-animations.pptx
+!presentation/presentation chaos final nir-shaked-click-animations -new-order.pptx
 ~$*.pptx
 *.zip.[0-9][0-9][0-9]
 
