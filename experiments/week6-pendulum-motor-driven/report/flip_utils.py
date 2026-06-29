@@ -8,8 +8,11 @@ circular rotation icon (Style B): the curl direction encodes which way it went.
 import numpy as np
 import matplotlib.patheffects as pe
 
-CW = "↻"   # over-the-top flip  (crossed +180)
-CCW = "↺"  # over-the-bottom flip (crossed -180)
+CW = "↻"   # clockwise
+CCW = "↺"  # counter-clockwise
+# Mapping to a flip's wrap boundary: crossing +180 means theta2 is INCREASING
+# (positive direction) over the top -> counter-clockwise; crossing -180 means
+# theta2 is decreasing under the bottom -> clockwise.
 
 
 def detect_flips(t, y, thresh=180.0):
@@ -34,7 +37,7 @@ def add_flip_icons(ax, flips, y_icon=150, fontsize=28, dashed=True, animated=Fal
     a0 = 0.0 if animated else 1.0
     items = []
     for tf, b in flips:
-        sym = CW if b > 0 else CCW
+        sym = CCW if b > 0 else CW   # +180 crossing = CCW, -180 crossing = CW
         txt = ax.text(
             tf, y_icon, sym, fontsize=fontsize, ha="center", va="center",
             color="black", fontweight="bold", zorder=6, alpha=a0,
