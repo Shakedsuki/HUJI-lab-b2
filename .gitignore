@@ -10,6 +10,16 @@
 *.mkv
 *.m4v
 
+# ── Presentation: collaborate on the lightweight deck only ──
+# The full decks carry hundreds of MB of embedded video. Only the lightweight
+# "…-no-videos-with-edits.pptx" is versioned so the team can co-edit it. Ignore
+# every other .pptx (full + "compressed" exports), the split-zip archives, and
+# PowerPoint's ~$ lock/autosave sidecars.
+*.pptx
+!presentation/presentation chaos final nir-no-videos-with-edits.pptx
+~$*.pptx
+*.zip.[0-9][0-9][0-9]
+
 # ── Interactive HTML viewers ─────────────────────
 # Plotly phase-portrait viewers are several MB each and fully regenerable
 # from tracking.csv — treated like the animations above, not versioned.
