@@ -37,6 +37,9 @@ TICK_FONT_SIZE = 24     # Size of the numbers on the axes
 TICK_PAD = 10           # Gap between tick numbers and the axis
 LABEL_PAD = 14          # Gap between axis title and the tick numbers
 HSPACE = 0.45           # Vertical breathing room between subplots
+FIG_WIDTH = 16          # Figure width in inches (wide -> less horizontal density)
+PANEL_HEIGHT = 2.8      # Height per subplot in inches
+DPI = 300               # Output resolution
 Y_LIM = (-185, 185)
 Y_TICKS = [-180, 0, 180]
 # ---------------------
@@ -66,7 +69,7 @@ for file_path in csv_files:
 # =============================================================================
 fig, axs = plt.subplots(
     len(CHOSEN_FREQS), 1,
-    figsize=(10, 3.2 * len(CHOSEN_FREQS)),
+    figsize=(FIG_WIDTH, PANEL_HEIGHT * len(CHOSEN_FREQS)),
     sharex=True,
     gridspec_kw={"hspace": HSPACE},
 )
@@ -116,5 +119,5 @@ for i, target_freq in enumerate(CHOSEN_FREQS):
 
 axs[-1].set_xlabel("Time (s)", fontsize=LABEL_FONT_SIZE, labelpad=LABEL_PAD)
 
-fig.savefig(OUT_PNG, dpi=200, bbox_inches="tight")
+fig.savefig(OUT_PNG, dpi=DPI, bbox_inches="tight")
 print(f"Saved figure -> {OUT_PNG}")
