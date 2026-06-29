@@ -46,8 +46,8 @@ DISP = 660                     # px the crop is resized to (video sharpness)
 FIG_W, FIG_H = 18.0, 10.13     # ~16:9 so it fills a slide
 OUT_DPI = 120                  # -> ~2160x1216 px
 WIDTH_RATIOS = [1.0, 4.9]      # video col sized ~= row height (square fills it, no side gap)
-WSPACE, HSPACE = 0.03, 0.12
-M_LEFT, M_RIGHT, M_TOP, M_BOT = 0.012, 0.993, 0.995, 0.062
+WSPACE, HSPACE = 0.16, 0.12    # column gap leaves room for the theta2 label + y-ticks
+M_LEFT, M_RIGHT, M_TOP, M_BOT = 0.012, 0.993, 0.985, 0.115  # bottom margin clears the Time axis
 
 # timeseries styling
 MARKER_SIZE = 4
