@@ -20,6 +20,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.animation import FFMpegWriter
+from flip_utils import detect_flips, add_flip_icons, reveal_flips
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 BASE = os.path.join(HERE, "..")
@@ -87,7 +88,7 @@ def build_figure(data):
     fig = plt.figure(figsize=(FIG_W, FIG_H))
     gs = fig.add_gridspec(3, 2, width_ratios=WIDTH_RATIOS, wspace=WSPACE, hspace=HSPACE,
                           left=M_LEFT, right=M_RIGHT, top=M_TOP, bottom=M_BOT)
-    vid_ims, ts_lines = [], []
+    vid_ims, ts_lines, ts_axes = [], [], []
     blank = np.zeros((DISP, DISP, 3), np.uint8)
     for r, d in enumerate(data):
         axv = fig.add_subplot(gs[r, 0])
@@ -107,22 +108,30 @@ def build_figure(data):
         if r < 2:
             axt.tick_params(labelbottom=False)
         ts_lines.append(ln)
+        ts_axes.append(axt)
     fig.axes[-1].set_xlabel("Time (s)", fontsize=LABEL_FS)
-    return fig, vid_ims, ts_lines
+
+    # flip icons on the chaotic (middle) panel, revealed in real time
+    mid = len(data) // 2
+    flips = detect_flips(data[mid]["t"], data[mid]["y"])
+    flip_items = add_flip_icons(ts_axes[mid], flips, y_icon=150, fontsize=24, animated=True)
+    return fig, vid_ims, ts_lines, flip_items
 
 
 def qa(idxs, out_png):
     """Render a few composite frames (by window index) to a montage PNG — fast layout check."""
     data, caps = load_clips()
     tiles = []
+    mid = len(data) // 2
     for k, idx in enumerate(idxs):
-        fig, vid_ims, ts_lines = build_figure(data)
+        fig, vid_ims, ts_lines, flip_items = build_figure(data)
         for r, (cap, d) in enumerate(zip(caps, data)):
             cap.set(cv2.CAP_PROP_POS_FRAMES, d["start"] + idx)
             ret, frame = cap.read()
             if ret:
                 vid_ims[r].set_data(crop_rgb(frame))
             ts_lines[r].set_data(d["t"][:idx + 1], d["y"][:idx + 1])
+        reveal_flips(flip_items, data[mid]["t"][idx])
         p = f"{out_png}.{k}.png"
         fig.savefig(p, dpi=70)
         plt.close(fig)
@@ -144,7 +153,8 @@ def render():
     data, caps = load_clips()
     for cap, d in zip(caps, data):
         cap.set(cv2.CAP_PROP_POS_FRAMES, d["start"])
-    fig, vid_ims, ts_lines = build_figure(data)
+    fig, vid_ims, ts_lines, flip_items = build_figure(data)
+    mid = len(data) // 2
 
     n_sweep = min(d["n"] for d in data)
     total = n_sweep + int(round(FPS * HOLD_SECONDS))
@@ -163,6 +173,7 @@ def render():
                         last[r] = crop_rgb(frame)
                     vid_ims[r].set_data(last[r])
                     ts_lines[r].set_data(data[r]["t"][:idx + 1], data[r]["y"][:idx + 1])
+                reveal_flips(flip_items, data[mid]["t"][idx])
             writer.grab_frame()
             if i % 120 == 0:
                 print(f"  frame {i}/{total}")

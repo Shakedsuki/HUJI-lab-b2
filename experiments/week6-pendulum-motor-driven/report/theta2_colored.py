@@ -15,6 +15,7 @@ import pandas as pd
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+from flip_utils import detect_flips, add_flip_icons
 
 # =============================================================================
 # 1. CONFIGURATION
@@ -103,6 +104,11 @@ for i, target_freq in enumerate(CHOSEN_FREQS):
                     capsize=2,
                     alpha=0.8,
                 )
+
+                # mark each lower-arm flip on the chaotic (middle) panel
+                if i == len(CHOSEN_FREQS) // 2:
+                    flips = detect_flips(time_shared.to_numpy(), theta2.to_numpy())
+                    add_flip_icons(ax, flips, y_icon=150, fontsize=32)
             except Exception as e:
                 print(f"Failed to process {file_path}: {e}")
             break

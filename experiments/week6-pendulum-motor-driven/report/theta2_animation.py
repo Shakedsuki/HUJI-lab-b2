@@ -16,6 +16,7 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation, FFMpegWriter
+from flip_utils import detect_flips, add_flip_icons, reveal_flips
 
 # =============================================================================
 # 1. CONFIGURATION  (kept in sync with theta2_colored.py)
