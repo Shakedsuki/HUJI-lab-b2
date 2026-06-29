@@ -9,9 +9,10 @@ phasor exp(i(phi1-phi2)) drops onto the unit circle and the running resultant
 (black arrow, length = rho) updates live. Periodic -> phasors cluster, arrow
 stays long (rho ~ 0.85). Chaotic -> phasors smear, arrow collapses (rho ~ 0.05).
 
-Each clip's FULL post-transient record is compressed evenly into the animation
-(video sped up ~5-8x) so rho reaches its true asymptotic value, consistent with
-the static phase_coherence_swarm figure.
+Plays the last T_WINDOW seconds of each clip at REAL TIME (1x) so the arms and
+dials are easy to follow. Over a finite window the chaotic rho settles to
+~0.27 (it keeps falling toward the static figure's full-record 0.05 the longer
+you observe); the periodic rho stays ~0.85.
 
 phi_k = inst_phase(theta_k, omega_k, f_drive) (phase_locking convention);
 omega via kinematics.angular_velocity.
@@ -42,8 +43,7 @@ ROWS = [
     {"label": "Chaotic",  "stem": "3.2V_1.19Hz", "f": 1.19, "color": "#d62728"},
 ]
 
-TRANSIENT_S = 5.0
-N_FRAMES = 900          # animation length (frames); full record compressed to this
+T_WINDOW = 20.0         # seconds of steady-state shown, played at REAL TIME (1x)
 FPS = 60
 HOLD_S = 1.6
 
@@ -73,7 +73,7 @@ def load_rows():
         th1 = df["theta1_deg"].to_numpy()
         th2 = df["theta2_deg"].to_numpy()
         fr = df["frame"].to_numpy()
-        keep = t >= t[0] + TRANSIENT_S
+        keep = t >= t.max() - T_WINDOW                 # last T_WINDOW s, real time
         t, th1, th2, fr = t[keep], th1[keep], th2[keep], fr[keep]
         dt = float(np.median(np.diff(t)))
         win = int(0.2 * (1.0 / r["f"]) / dt) | 1
@@ -81,11 +81,10 @@ def load_rows():
         o2 = angular_velocity(th2, t, window=max(win, 3))
         phi1 = inst_phase(th1, o1, r["f"])
         phi2 = inst_phase(th2, o2, r["f"])
-        idx = np.linspace(0, len(t) - 1, N_FRAMES).astype(int)   # even-sample full record
         data.append({
-            "phi1": phi1[idx], "phi2": phi2[idx],
-            "z": np.exp(1j * (phi1[idx] - phi2[idx])),
-            "vframe": fr[idx].astype(int), "color": r["color"],
+            "phi1": phi1, "phi2": phi2,
+            "z": np.exp(1j * (phi1 - phi2)),
+            "start": int(fr[0]), "n": len(t), "color": r["color"],
             "label": r["label"], "f": r["f"],
         })
         caps.append(cv2.VideoCapture(os.path.join(BASE, "videos", r["stem"] + ".mov")))
@@ -159,36 +158,32 @@ def _update(H, data, i):
 def render():
     data, caps = load_rows()
     for cap, d in zip(caps, data):
-        cap.set(cv2.CAP_PROP_POS_FRAMES, int(d["vframe"][0]))
-    cur_frame = [int(d["vframe"][0]) for d in data]
+        cap.set(cv2.CAP_PROP_POS_FRAMES, d["start"])
     last = [np.zeros((DISP, DISP, 3), np.uint8) for _ in data]
     fig, H = build_figure(data)
 
+    n_sweep = min(d["n"] for d in data)
     from matplotlib.animation import FFMpegWriter
     writer = FFMpegWriter(fps=FPS, bitrate=14000, codec="libx264",
                           extra_args=["-vf", "pad=ceil(iw/2)*2:ceil(ih/2)*2:color=white",
                                       "-pix_fmt", "yuv420p"])
     hold = int(round(FPS * HOLD_S))
     with writer.saving(fig, OUT_MP4, dpi=OUT_DPI):
-        for i in range(N_FRAMES):
+        for i in range(n_sweep):
             for r, cap in enumerate(caps):
-                target = int(data[r]["vframe"][i])
-                while cur_frame[r] < target:          # skip-grab up to the target frame
-                    cap.grab(); cur_frame[r] += 1
-                ok, frame = cap.read()                # read + decode frame `target`
-                cur_frame[r] += 1
+                ok, frame = cap.read()                # real-time sequential 1:1
                 if ok and frame is not None:
                     last[r] = crop_rgb(frame)
                 H["vid"][r].set_data(last[r])
             _update(H, data, i)
             writer.grab_frame()
             if i % 120 == 0:
-                print(f"  frame {i}/{N_FRAMES}")
+                print(f"  frame {i}/{n_sweep}")
         for _ in range(hold):
             writer.grab_frame()
     for cap in caps:
         cap.release()
-    print(f"Saved -> {OUT_MP4}  ({N_FRAMES + hold} frames @ {FPS} fps)")
+    print(f"Saved -> {OUT_MP4}  ({n_sweep + hold} frames @ {FPS} fps, {(n_sweep+hold)/FPS:.1f}s)")
 
 
 def qa(idxs, out_png):
@@ -197,7 +192,7 @@ def qa(idxs, out_png):
     for k, i in enumerate(idxs):
         fig, H = build_figure(data)
         for r, cap in enumerate(caps):
-            cap.set(cv2.CAP_PROP_POS_FRAMES, int(data[r]["vframe"][i]))
+            cap.set(cv2.CAP_PROP_POS_FRAMES, data[r]["start"] + i)
             ok, frame = cap.read()
             if ok:
                 H["vid"][r].set_data(crop_rgb(frame))
