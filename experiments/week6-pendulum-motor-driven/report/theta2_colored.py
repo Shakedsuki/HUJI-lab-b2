@@ -31,11 +31,14 @@ CHOSEN_FREQS = [0.9, 1.19, 1.34]
 PANEL_COLORS = ["green", "red", "green"]
 
 # --- PLOT SETTINGS ---
-MARKER_SIZE = 7         # Size of the scatter points
+MARKER_SIZE = 4         # Size of the scatter points (smaller -> less dense)
 LABEL_FONT_SIZE = 28    # Size of the X and Y axis titles
 TICK_FONT_SIZE = 24     # Size of the numbers on the axes
-Y_LIM = (-180, 180)
-Y_TICKS = [-180, -90, 0, 90, 180]
+TICK_PAD = 10           # Gap between tick numbers and the axis
+LABEL_PAD = 14          # Gap between axis title and the tick numbers
+HSPACE = 0.45           # Vertical breathing room between subplots
+Y_LIM = (-185, 185)
+Y_TICKS = [-180, 0, 180]
 # ---------------------
 
 csv_files = glob.glob(os.path.join(BASE_DIR, "*", "tracking.csv"), recursive=True)
@@ -61,7 +64,12 @@ for file_path in csv_files:
 # =============================================================================
 # 3. LOAD & PLOT
 # =============================================================================
-fig, axs = plt.subplots(len(CHOSEN_FREQS), 1, figsize=(10, 3 * len(CHOSEN_FREQS)), sharex=True)
+fig, axs = plt.subplots(
+    len(CHOSEN_FREQS), 1,
+    figsize=(10, 3.2 * len(CHOSEN_FREQS)),
+    sharex=True,
+    gridspec_kw={"hspace": HSPACE},
+)
 axs = np.atleast_1d(axs)
 
 for i, target_freq in enumerate(CHOSEN_FREQS):
@@ -99,13 +107,12 @@ for i, target_freq in enumerate(CHOSEN_FREQS):
     # =========================================================================
     # 4. FORMATTING
     # =========================================================================
-    ax.set_ylabel(f"$\\theta_2$ (deg)", fontsize=LABEL_FONT_SIZE)
+    ax.set_ylabel(f"$\\theta_2$ (deg)", fontsize=LABEL_FONT_SIZE, labelpad=LABEL_PAD)
     ax.set_ylim(*Y_LIM)
     ax.set_yticks(Y_TICKS)
-    ax.tick_params(axis="both", which="major", labelsize=TICK_FONT_SIZE)
+    ax.tick_params(axis="both", which="major", labelsize=TICK_FONT_SIZE, pad=TICK_PAD)
 
-axs[-1].set_xlabel("Time (s)", fontsize=LABEL_FONT_SIZE)
+axs[-1].set_xlabel("Time (s)", fontsize=LABEL_FONT_SIZE, labelpad=LABEL_PAD)
 
-plt.tight_layout()
 fig.savefig(OUT_PNG, dpi=200, bbox_inches="tight")
 print(f"Saved figure -> {OUT_PNG}")
