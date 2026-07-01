@@ -24,6 +24,7 @@ import pandas as pd
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import matplotlib.patheffects as pe
 from scipy.interpolate import interp1d
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -37,6 +38,24 @@ HATCH_MIN = 0.02           # only hatch/label gaps wider than this
 
 # large-screen type
 FS_LABEL, FS_TICK, FS_CBAR = 25, 19, 22
+
+# resonance guide (pendulum freq = drive freq): saturated cyan core with a black
+# halo so it reads on BOTH the bright yellow ridge and the dark background.
+# Kept thin with gappy dashes so it marks the ridge without burying the data.
+GUIDE_LABEL = r"$f_{\mathrm{pendulum}} = f_{\mathrm{drive}}$"
+GUIDE_KW = dict(color="#19ffe4", ls=(0, (5, 6)), lw=1.7, alpha=1.0, zorder=6,
+                solid_capstyle="round", dash_capstyle="round", label=GUIDE_LABEL,
+                path_effects=[pe.withStroke(linewidth=3.4, foreground="black")])
+
+
+def add_guide_legend(ax):
+    leg = ax.legend(loc="upper left", fontsize=FS_TICK, frameon=True,
+                    handlelength=2.6, borderpad=0.5, labelspacing=0.3)
+    fr = leg.get_frame()
+    fr.set_facecolor("black"); fr.set_edgecolor("0.7"); fr.set_alpha(0.65)
+    for t in leg.get_texts():
+        t.set_color("white")
+    return leg
 
 
 def load_columns():
@@ -102,7 +121,8 @@ def direction1(uf, freqs, cols, vmax, out_png):
 
     fig, ax = plt.subplots(figsize=(14, 7))
     pc = ax.pcolormesh(grid, uf, Zm, shading="nearest", cmap=cmap, vmin=0, vmax=vmax)
-    ax.plot(grid, grid, color="cyan", ls="--", lw=3, alpha=0.30)
+    ax.plot(grid, grid, **GUIDE_KW)
+    add_guide_legend(ax)
     for x0, x1 in gap_ranges(grid, measured):
         if x1 - x0 >= HATCH_MIN:
             ax.add_patch(plt.Rectangle((x0, 0), x1 - x0, MAX_FFT_FREQ, facecolor="none",
@@ -135,8 +155,9 @@ def direction2(uf, freqs, cols, vmax, out_png, tick_step=2):
     axL.pcolormesh(iL, uf, cL, shading="nearest", cmap="inferno", vmin=0, vmax=vmax)
     pc = axR.pcolormesh(iR, uf, cR, shading="nearest", cmap="inferno", vmin=0, vmax=vmax)
     # resonance guide (pendulum freq = drive freq) on the categorical axis
-    axL.plot(iL, fL, color="cyan", ls="--", lw=3, alpha=0.30)
-    axR.plot(iR, fR, color="cyan", ls="--", lw=3, alpha=0.30)
+    axL.plot(iL, fL, **GUIDE_KW)
+    axR.plot(iR, fR, **GUIDE_KW)
+    add_guide_legend(axL)
 
     M = 0.7                                   # half-column margin -> break breathing room
     axL.set_xlim(-M, len(fL) - 1 + M)
