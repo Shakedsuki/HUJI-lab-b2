@@ -161,7 +161,7 @@ def direction2(uf, freqs, cols, vmax, out_png, tick_step=2):
     # makes the gap ~1.5x the left panel. We render a narrower break and accept
     # a small vertical step of (0.15 - VIS_BREAK) Hz where the line resumes --
     # tiny on the 2.5 Hz axis, and it buys much bigger data panels.
-    VIS_BREAK = 0.09                            # rendered gap between the 1.00 & 1.15 columns (Hz)
+    VIS_BREAK = 0.11                            # rendered gap between the 1.00 & 1.15 columns (Hz)
     residual_step = (fR[0] - fL[-1]) - VIS_BREAK
     wspace = (VIS_BREAK - 2 * hc) / ((spanL + spanR) / 2)
     print(f"  break={VIS_BREAK:.2f} Hz, residual guide-line step={residual_step:.2f} Hz")
@@ -203,6 +203,17 @@ def direction2(uf, freqs, cols, vmax, out_png, tick_step=2):
     L, R, B, T = 0.06, 0.90, 0.135, 0.985
     fig.subplots_adjust(bottom=B, left=L, right=R, top=T)
     fig.text((L + R) / 2, 0.03, "Driving Motor Frequency (Hz)", ha="center", fontsize=FS_LABEL)
+
+    # broken-axis "no data" band between the panels: the // marks flag the break,
+    # a neutral hatched grey band + label makes the omission explicit for an
+    # audience (a colormap has no natural "empty" colour, so grey is used).
+    pL, pR = axL.get_position(), axR.get_position()
+    gx0, gx1 = pL.x1, pR.x0
+    fig.add_artist(plt.Rectangle((gx0, pL.y0), gx1 - gx0, pL.height,
+                                 transform=fig.transFigure, facecolor="0.9",
+                                 hatch="///", edgecolor="0.6", lw=0.0, zorder=0))
+    fig.text((gx0 + gx1) / 2, (pL.y0 + pL.y1) / 2, "no data\n(1.00-1.15 Hz)",
+             rotation=90, ha="center", va="center", fontsize=15, color="0.35")
     cax = fig.add_axes([R + 0.015, B, 0.018, T - B])
     cbar = fig.colorbar(pc, cax=cax)
     cbar.set_label("FFT Amplitude", fontsize=FS_CBAR); cbar.ax.tick_params(labelsize=FS_TICK)
