@@ -174,7 +174,6 @@ def direction2(uf, freqs, cols, vmax, out_png, tick_step=2):
     # resonance guide (pendulum freq = drive freq): true y=x, continuous across break
     axL.plot(fL, fL, **GUIDE_KW)
     axR.plot(fR, fR, **GUIDE_KW)
-    add_guide_legend(axL)
 
     axL.set_xlim(loL, hiL)
     axR.set_xlim(loR, hiR)
@@ -213,7 +212,7 @@ def direction2(uf, freqs, cols, vmax, out_png, tick_step=2):
                                  transform=fig.transFigure, facecolor="0.9",
                                  hatch="///", edgecolor="0.6", lw=0.0, zorder=0))
     fig.text((gx0 + gx1) / 2, (pL.y0 + pL.y1) / 2, "no data\n(1.00-1.15 Hz)",
-             rotation=90, ha="center", va="center", fontsize=15, color="0.35")
+             rotation=0, ha="center", va="center", fontsize=14, color="0.35")
     cax = fig.add_axes([R + 0.015, B, 0.018, T - B])
     cbar = fig.colorbar(pc, cax=cax)
     cbar.set_label("FFT Amplitude", fontsize=FS_CBAR); cbar.ax.tick_params(labelsize=FS_TICK)
