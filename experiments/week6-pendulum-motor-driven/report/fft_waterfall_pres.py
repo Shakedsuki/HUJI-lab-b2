@@ -154,9 +154,17 @@ def direction2(uf, freqs, cols, vmax, out_png, tick_step=2):
     loL, hiL = fL[0] - hc, fL[-1] + hc
     loR, hiR = fR[0] - hc, fR[-1] + hc
     spanL, spanR = hiL - loL, hiR - loR
-    # width_ratios = spans -> equal Hz/pixel; wspace = true omitted span at that
-    # same scale -> the y=x diagonal continues straight through the break.
-    wspace = (loR - hiL) / ((spanL + spanR) / 2)
+    # Break-width vs. line-continuity tradeoff. Both panels keep the same
+    # Hz/pixel (width_ratios = spans), so the guide segments are parallel
+    # (slope 1). TRUE collinearity needs the break to span the full omitted
+    # range (points 1.00->1.15 are 0.15 Hz apart on the shared y-axis), which
+    # makes the gap ~1.5x the left panel. We render a narrower break and accept
+    # a small vertical step of (0.15 - VIS_BREAK) Hz where the line resumes --
+    # tiny on the 2.5 Hz axis, and it buys much bigger data panels.
+    VIS_BREAK = 0.09                            # rendered gap between the 1.00 & 1.15 columns (Hz)
+    residual_step = (fR[0] - fL[-1]) - VIS_BREAK
+    wspace = (VIS_BREAK - 2 * hc) / ((spanL + spanR) / 2)
+    print(f"  break={VIS_BREAK:.2f} Hz, residual guide-line step={residual_step:.2f} Hz")
 
     fig = plt.figure(figsize=(17, 7.4))
     gs = fig.add_gridspec(1, 2, width_ratios=[spanL, spanR], wspace=wspace)
