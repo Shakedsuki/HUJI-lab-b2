@@ -140,36 +140,51 @@ def direction1(uf, freqs, cols, vmax, out_png):
 
 
 def direction2(uf, freqs, cols, vmax, out_png, tick_step=2):
-    """Broken x-axis with DISCRETE, equal-width columns (one per measured clip),
-    ticked at the real measured frequencies. The under-sampled middle
-    (1.00–1.15 Hz, only 1.09) is dropped."""
+    """Broken x-axis in REAL frequency units (clips are on a uniform 0.01 Hz
+    grid, so columns stay equal-width without distortion). The under-sampled
+    middle (1.00-1.15 Hz, only 1.09) is dropped. Both panels share one linear
+    Hz-per-pixel scale and the break is sized to the true omitted span, so the
+    f_pendulum = f_drive diagonal stays COLLINEAR across the gap."""
     mL = freqs <= 1.005
     mR = freqs >= 1.145
     fL, cL = freqs[mL], cols[:, mL]
     fR, cR = freqs[mR], cols[:, mR]
-    iL, iR = np.arange(len(fL)), np.arange(len(fR))
 
-    fig = plt.figure(figsize=(15.5, 7.4))
-    gs = fig.add_gridspec(1, 2, width_ratios=[len(fL), len(fR)], wspace=0.05)
+    hc = 0.005                                  # half the 0.01 Hz clip spacing
+    loL, hiL = fL[0] - hc, fL[-1] + hc
+    loR, hiR = fR[0] - hc, fR[-1] + hc
+    spanL, spanR = hiL - loL, hiR - loR
+    # Break-width vs. line-continuity tradeoff. Both panels keep the same
+    # Hz/pixel (width_ratios = spans), so the guide segments are parallel
+    # (slope 1). TRUE collinearity needs the break to span the full omitted
+    # range (points 1.00->1.15 are 0.15 Hz apart on the shared y-axis), which
+    # makes the gap ~1.5x the left panel. We render a narrower break and accept
+    # a small vertical step of (0.15 - VIS_BREAK) Hz where the line resumes --
+    # tiny on the 2.5 Hz axis, and it buys much bigger data panels.
+    VIS_BREAK = 0.11                            # rendered gap between the 1.00 & 1.15 columns (Hz)
+    residual_step = (fR[0] - fL[-1]) - VIS_BREAK
+    wspace = (VIS_BREAK - 2 * hc) / ((spanL + spanR) / 2)
+    print(f"  break={VIS_BREAK:.2f} Hz, residual guide-line step={residual_step:.2f} Hz")
+
+    fig = plt.figure(figsize=(17, 7.4))
+    gs = fig.add_gridspec(1, 2, width_ratios=[spanL, spanR], wspace=wspace)
     axL = fig.add_subplot(gs[0]); axR = fig.add_subplot(gs[1], sharey=axL)
-    axL.pcolormesh(iL, uf, cL, shading="nearest", cmap="inferno", vmin=0, vmax=vmax)
-    pc = axR.pcolormesh(iR, uf, cR, shading="nearest", cmap="inferno", vmin=0, vmax=vmax)
-    # resonance guide (pendulum freq = drive freq) on the categorical axis
-    axL.plot(iL, fL, **GUIDE_KW)
-    axR.plot(iR, fR, **GUIDE_KW)
-    add_guide_legend(axL)
+    axL.pcolormesh(fL, uf, cL, shading="nearest", cmap="inferno", vmin=0, vmax=vmax)
+    pc = axR.pcolormesh(fR, uf, cR, shading="nearest", cmap="inferno", vmin=0, vmax=vmax)
+    # resonance guide (pendulum freq = drive freq): true y=x, continuous across break
+    axL.plot(fL, fL, **GUIDE_KW)
+    axR.plot(fR, fR, **GUIDE_KW)
 
-    M = 0.7                                   # half-column margin -> break breathing room
-    axL.set_xlim(-M, len(fL) - 1 + M)
-    axR.set_xlim(-M, len(fR) - 1 + M)
+    axL.set_xlim(loL, hiL)
+    axR.set_xlim(loR, hiR)
     axL.set_ylim(0, MAX_FFT_FREQ)
 
-    def discrete_ticks(ax, idx, fvals):
-        sel = list(range(0, len(idx), tick_step))
-        ax.set_xticks(idx[sel])
-        ax.set_xticklabels([f"{fvals[i]:.2f}" for i in sel])
-    discrete_ticks(axL, iL, fL)
-    discrete_ticks(axR, iR, fR)
+    def freq_ticks(ax, f0, f1):
+        ticks = np.round(np.arange(f0, f1 + 1e-9, 0.01 * tick_step), 2)
+        ax.set_xticks(ticks)
+        ax.set_xticklabels([f"{t:.2f}" for t in ticks])
+    freq_ticks(axL, fL[0], fL[-1])
+    freq_ticks(axR, fR[0], fR[-1])
 
     axL.spines["right"].set_visible(False); axR.spines["left"].set_visible(False)
     axR.tick_params(left=False); plt.setp(axR.get_yticklabels(), visible=False)
@@ -183,10 +198,24 @@ def direction2(uf, freqs, cols, vmax, out_png, tick_step=2):
         ax.plot((xx - dd, xx + dd), (1 - dd, 1 + dd), **kw)
 
     axL.set_ylabel("Pendulum Frequency (Hz)", fontsize=FS_LABEL)
-    fig.text(0.5, 0.03, "Driving Motor Frequency (Hz)", ha="center", fontsize=FS_LABEL)
-    cbar = fig.colorbar(pc, ax=axR, pad=0.02)
+    # dedicated colorbar axes so it doesn't steal width from the (already narrow) panels
+    L, R, B, T = 0.06, 0.90, 0.135, 0.985
+    fig.subplots_adjust(bottom=B, left=L, right=R, top=T)
+    fig.text((L + R) / 2, 0.03, "Driving Motor Frequency (Hz)", ha="center", fontsize=FS_LABEL)
+
+    # broken-axis "no data" band between the panels: the // marks flag the break,
+    # a neutral hatched grey band + label makes the omission explicit for an
+    # audience (a colormap has no natural "empty" colour, so grey is used).
+    pL, pR = axL.get_position(), axR.get_position()
+    gx0, gx1 = pL.x1, pR.x0
+    fig.add_artist(plt.Rectangle((gx0, pL.y0), gx1 - gx0, pL.height,
+                                 transform=fig.transFigure, facecolor="0.9",
+                                 hatch="///", edgecolor="0.6", lw=0.0, zorder=0))
+    fig.text((gx0 + gx1) / 2, (pL.y0 + pL.y1) / 2, "no data\n(1.00-1.15 Hz)",
+             rotation=0, ha="center", va="center", fontsize=14, color="0.35")
+    cax = fig.add_axes([R + 0.015, B, 0.018, T - B])
+    cbar = fig.colorbar(pc, cax=cax)
     cbar.set_label("FFT Amplitude", fontsize=FS_CBAR); cbar.ax.tick_params(labelsize=FS_TICK)
-    fig.subplots_adjust(bottom=0.135, left=0.065, right=0.99, top=0.985)
     fig.savefig(out_png, dpi=200); plt.close(fig)
     print("Saved ->", out_png)
 
