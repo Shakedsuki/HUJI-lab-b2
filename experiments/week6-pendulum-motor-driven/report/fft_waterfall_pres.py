@@ -42,7 +42,7 @@ FS_LABEL, FS_TICK, FS_CBAR = 25, 19, 22
 # resonance guide (pendulum freq = drive freq): saturated cyan core with a black
 # halo so it reads on BOTH the bright yellow ridge and the dark background.
 # Kept thin with gappy dashes so it marks the ridge without burying the data.
-GUIDE_LABEL = r"$f_{\mathrm{pend}} = f_{\mathrm{drive}}$"
+GUIDE_LABEL = r"$f_{\mathrm{pendulum}} = f_{\mathrm{drive}}$"
 GUIDE_KW = dict(color="#19ffe4", ls=(0, (5, 6)), lw=1.7, alpha=1.0, zorder=6,
                 solid_capstyle="round", dash_capstyle="round", label=GUIDE_LABEL,
                 path_effects=[pe.withStroke(linewidth=3.4, foreground="black")])
